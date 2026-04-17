@@ -65,6 +65,12 @@ serverless-cookbook/
 - [Contributing guide](./CONTRIBUTING.md)
 - [Developer guide](./DEVELOPER_GUIDE.md)
 
+## Acknowledgements
+
+This repository is based on [mnrozhkov/serverless-cookbook](https://github.com/mnrozhkov/serverless-cookbook). Thanks to the original contributors: [Mikhail Rozhkov](https://github.com/mnrozhkov), [Gleb Berjoskin](https://github.com/GlebBerjoskin), [Aleksandr Dzhumurat](https://github.com/aleksandr-dzhumurat), and [Re Alvarez Parmar](https://github.com/realvz).
+
+See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for the full list.
+
 ---
 
 > **Note:** This repository is maintained by Nebius engineers as a community resource — not official product documentation. APIs and behavior may evolve. For authoritative reference, see [docs.nebius.com/serverless](https://docs.nebius.com/serverless).
