@@ -1,96 +1,70 @@
-# Serverless Cookbook
+# Serverless AI Cookbook
 
-Runnable, workload-first examples for **Serverless AI Jobs and Endpoints** on Nebius.
+Run GPU workloads on [Nebius Serverless](https://nebius.com/services/serverless) — no infrastructure management, per-second billing, GPU in minutes.
 
-This repository shows how to run real AI/ML workloads without managing VM lifecycle directly.  
-Examples focus on practical use cases such as:
+This repo contains runnable code samples for **Serverless AI Jobs** (batch workloads that auto-terminate) and **Endpoints** (persistent HTTP-accessible services). Examples cover model training, fine-tuning, inference serving, AI agents, and scientific simulations.
 
-- model training
-- fine-tuning
-- batch inference
-- LLM serving
-- simulations and domain workloads
+## Quickstart (30 seconds)
 
-> ⚠️ This is a **community-style repository maintained by Nebius engineers**.  
-> It is not official product documentation, but reflects real usage patterns and experiments.  
-> APIs and behavior may evolve.  
->  
-> For official documentation, see: https://docs.nebius.com/serverless
+Spin up a GPU job and verify your setup:
 
-## Try a workload
+```bash
+nebius ai job create \
+  --name my-first-job \
+  --image nvidia/cuda:13.1.1-runtime-ubuntu24.04 \
+  --container-command bash \
+  --args "-c nvidia-smi" \
+  --platform gpu-l40s-a \
+  --preset 1gpu-8vcpu-32gb \
+  --timeout 15m
 
-Choose the path that best matches what you want to run:
+# Get the job ID and stream logs
+export JOB_ID=$(nebius ai job get-by-name --name my-first-job \
+  --format jsonpath='{.metadata.id}')
+nebius ai logs "$JOB_ID"
+```
 
-- **First run** → [Quickstarts](./quickstarts/)
-- **Training / fine-tuning** → [Training examples](./training/)
-- **Inference / serving** → [Inference examples](./inference/)
-- **Scientific / domain workloads** → [Life science examples](./life-science/)
+→ Full walkthrough: [first-job.md](./quickstarts/first-job.md)
 
-## Getting started
+## Prerequisites
 
-1. Install the Nebius CLI: [Install guide](https://docs.nebius.com/cli/install)
-2. Configure your CLI profile and project: [Configure guide](https://docs.nebius.com/cli/configure)
-3. Pick an example from the sections below
-4. Follow the example README and verify the expected output
+0. [Create a Nebius account](https://console.nebius.com) and set up a project
+1. [Install the Nebius CLI](https://docs.nebius.com/cli/install)
+2. [Configure your CLI profile](https://docs.nebius.com/cli/configure)
 
 ## Example catalog
 
-### 🚀 Quickstarts
-Lowest-friction first runs.
-
-- [`first-job.md`](./quickstarts/first-job.md) — run `nvidia-smi` in a Serverless AI job
-- [`first-endpoint.md`](./quickstarts/first-endpoint.md) — deploy a quick `nginx` endpoint
-
-### 🏋️ Training
-Model training and fine-tuning workloads.
-
-- [`axolotl-finetuning`](./training/axolotl-finetuning/README.md) — get started fine-tuning with Axolotl
-- [`train-and-serve`](./training/train-and-serve/README.md) — fine-tune TinyLlama in a Job and serve it with a vLLM Endpoint
-
-### ⚡ Inference
-Endpoint serving and batch inference workloads.
-
-- [`vllm-endpoint`](./inference/vllm-endpoint/README.md) — serve Qwen with an OpenAI-compatible vLLM endpoint
-
-### 🧬 Life Science
-Domain-specific simulation and analysis workloads.
-
-- [`openmm-simulation`](./life-science/openmm-simulation/README.md) — run GPU-backed molecular dynamics simulations with OpenMM
+| Category | Example | What it does |
+|---|---|---|
+| **Quickstarts** | [first-job](./quickstarts/first-job.md) | Run `nvidia-smi` in a GPU job — fastest setup check |
+| | [first-endpoint](./quickstarts/first-endpoint.md) | Deploy an `nginx` endpoint |
+| **Training** | [axolotl-finetuning](./training/axolotl-finetuning/README.md) | Fine-tune an LLM with Axolotl |
+| | [train-and-serve](./training/train-and-serve/README.md) | Fine-tune TinyLlama in a Job, then serve it via vLLM Endpoint |
+| **Inference** | [vllm-endpoint](./inference/vllm-endpoint/README.md) | Serve Qwen with an OpenAI-compatible vLLM endpoint |
+| **Agents** | [openclaw](./agents/openclaw/README.md) | Deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory |
+| **Life Science** | [openmm-simulation](./life-science/openmm-simulation/README.md) | GPU-backed molecular dynamics simulation with OpenMM |
 
 ## Repository structure
 
-```text
-serverless-cookbook/
-├─ README.md
-├─ CONTRIBUTING.md
-├─ DEVELOPER_GUIDE.md
-├─ LICENSE
-├─ quickstarts/
-│  ├─ first-job.md
-│  ├─ first-endpoint.md
-├─ training/
-│  ├─ axolotl-finetuning/
-│  ├─ train-and-serve/
-│  └─ ...
-├─ inference/
-│  ├─ vllm-endpoint/
-│  └─ ...
-├─ life-science/
-│  ├─ openmm-simulation/
-│  └─ ...
 ```
-
-## Section guide
-
-- `quickstarts/`: lowest-friction first runs.
-- `training/`: model training and fine-tuning workloads.
-- `inference/`: endpoint serving and batch inference workloads.
-- `life-science/`: domain-specific simulation and analysis workloads.
-
+serverless-cookbook/
+├── quickstarts/          # Lowest-friction first runs
+├── training/             # Model training and fine-tuning
+├── inference/            # Endpoint serving and batch inference
+├── agents/               # AI gateway and agent deployments
+├── life-science/         # Domain-specific simulations
+├── CONTRIBUTING.md
+└── DEVELOPER_GUIDE.md
+```
 
 ## Resources
 
-- [Contributing](./CONTRIBUTING.md)
-- [Developer Guide](./DEVELOPER_GUIDE.md)
-- [Serverless AI overview docs](https://docs.nebius.com/serverless/overview)
-- [CLI AI reference](https://docs.nebius.com/cli/reference/ai/)
+- [Nebius Console](https://console.nebius.com)
+- [Serverless AI docs](https://docs.nebius.com/serverless/overview)
+- [CLI reference](https://docs.nebius.com/cli/reference/ai/)
+- [Contributing guide](./CONTRIBUTING.md)
+- [Developer guide](./DEVELOPER_GUIDE.md)
+
+---
+
+> **Note:** This repository is maintained by Nebius engineers as a community resource — not official product documentation. APIs and behavior may evolve. For authoritative reference, see [docs.nebius.com/serverless](https://docs.nebius.com/serverless).
