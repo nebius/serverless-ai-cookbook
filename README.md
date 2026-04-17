@@ -1,5 +1,7 @@
 # Serverless AI Cookbook
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
+
 Run GPU workloads on [Nebius Serverless](https://nebius.com/services/serverless) — no infrastructure management, per-second billing, GPU in minutes.
 
 This repo contains runnable code samples for **Serverless AI Jobs** (batch workloads that auto-terminate) and **Endpoints** (persistent HTTP-accessible services). Examples cover model training, fine-tuning, inference serving, AI agents, and scientific simulations.
@@ -70,6 +72,23 @@ serverless-cookbook/
 This repository is based on [mnrozhkov/serverless-cookbook](https://github.com/mnrozhkov/serverless-cookbook). Thanks to the original contributors: [Mikhail Rozhkov](https://github.com/mnrozhkov), [Gleb Berjoskin](https://github.com/GlebBerjoskin), [Aleksandr Dzhumurat](https://github.com/aleksandr-dzhumurat), and [Re Alvarez Parmar](https://github.com/realvz).
 
 See [CONTRIBUTORS.md](./CONTRIBUTORS.md) for the full list.
+
+## License
+
+Copyright 2026 Nebius B.V.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+<http://www.apache.org/licenses/LICENSE-2.0>
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+_Apache and the Apache logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and/or other countries._
 
 ---
 
