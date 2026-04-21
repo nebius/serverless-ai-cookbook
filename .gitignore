@@ -3,6 +3,8 @@
 .DS_Store
 .venv
 .env.*
+semgrep-report-*.json
+kingfisher-result*.json
 **/.env*
 
 # Byte-compiled / optimized / DLL files
