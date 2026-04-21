@@ -46,15 +46,17 @@ nebius ai logs "$JOB_ID"
 | **Agents** | [openclaw](./agents/openclaw/README.md) | Deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory |
 | **Life Science** | [openmm-simulation](./life-science/openmm-simulation/README.md) | GPU-backed molecular dynamics simulation with OpenMM |
 
-## Claude Code skills
+## AI agent playbooks
 
-If you use [Claude Code](https://claude.com/claude-code), this repo ships **skills** that teach Claude how to drive Nebius Serverless AI correctly on the first try — full lifecycle for jobs and endpoints, registry conventions, auth/secrets/volumes, and end-to-end recipes (training, serving, CI/CD, debugging, preemptible). Install with:
+This repo ships **agent playbooks** that teach any AI coding agent how to drive Nebius Serverless AI correctly on the first try — full lifecycle for jobs and endpoints, registry conventions, auth/secrets/volumes, and end-to-end recipes (training, serving, CI/CD, debugging, preemptible).
 
-```bash
-cp -r skills/nebius-* ~/.claude/skills/
-```
+Supported out of the box:
 
-See [skills/README.md](./skills/README.md) for the catalog.
+- **[Claude Code](https://claude.com/claude-code)** — as skills: `cp -r skills/nebius-* ~/.claude/skills/`
+- **OpenAI Codex CLI, Aider, and other [AGENTS.md](https://agents.md)-aware tools** — auto-discovered via [`AGENTS.md`](./AGENTS.md) at repo root
+- **Cursor, GitHub Copilot, others** — install guide in [skills/README.md](./skills/README.md)
+
+See [skills/README.md](./skills/README.md) for the catalog and per-tool setup.
 
 ## Repository structure
 
