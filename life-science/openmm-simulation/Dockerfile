@@ -34,15 +34,21 @@ RUN conda install -y -c conda-forge --strict-channel-priority \
     "openmm=8.4.*" "cuda-version=12" && \
     conda clean -afy
 
-RUN mkdir -p /openmm/results
+# Create an unprivileged user to run the simulation. The image itself is
+# built as root (needed for apt, conda, AWS CLI install), but the container
+# drops to this user for all runtime work.
+RUN useradd --create-home --uid 1000 --shell /bin/bash nebius && \
+    mkdir -p /openmm/results && \
+    chown -R nebius:nebius /openmm
+
 WORKDIR /openmm
 
-# Copy project files
-COPY pyproject.toml .
-COPY uv.lock .
-COPY README.md .
-COPY sim/ ./sim/
-COPY assets/ ./assets/
+# Copy project files with ownership set to the runtime user
+COPY --chown=nebius:nebius pyproject.toml .
+COPY --chown=nebius:nebius uv.lock .
+COPY --chown=nebius:nebius README.md .
+COPY --chown=nebius:nebius sim/ ./sim/
+COPY --chown=nebius:nebius assets/ ./assets/
 
 # Install the project plus all non-OpenMM dependencies pinned from uv.lock.
 # We intentionally keep OpenMM from conda-forge to preserve CUDA platform
@@ -51,6 +57,9 @@ RUN uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requiremen
     sed -i '/^openmm==/d' /tmp/requirements.txt && \
     uv pip install --python /opt/conda/bin/python -r /tmp/requirements.txt && \
     uv pip install --python /opt/conda/bin/python --no-deps .
+
+# Drop privileges before running the simulation
+USER nebius
 
 # Define the entrypoint using the modular approach
 ENTRYPOINT ["python", "-m", "sim.run"]
