@@ -8,10 +8,21 @@ echo "Setting up OpenMM Serverless Simulation environment..."
 
 # Check if uv is installed
 if ! command -v uv &> /dev/null; then
-    echo "Installing uv..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    echo "Please restart your shell or run: source ~/.bashrc (or ~/.zshrc)"
-    echo "Then run this script again."
+    echo "uv is not installed."
+    echo ""
+    echo "Install it with one of the following (recommended — uses a signed package):"
+    echo "  macOS (Homebrew):  brew install uv"
+    echo "  Linux  (pipx):     pipx install uv"
+    echo "  Any OS (pip):      pip install --user uv"
+    echo ""
+    echo "Alternatively, install from upstream by downloading the script first,"
+    echo "inspecting it, and then running it — do not pipe curl directly into a shell."
+    echo "  curl -LsSf --proto '=https' --tlsv1.2 https://astral.sh/uv/install.sh -o /tmp/uv-install.sh"
+    echo "  less /tmp/uv-install.sh   # review before executing"
+    echo "  sh /tmp/uv-install.sh"
+    echo ""
+    echo "After installing, restart your shell (or 'source ~/.bashrc' / 'source ~/.zshrc')"
+    echo "and re-run this script."
     exit 1
 fi
 

@@ -44,17 +44,13 @@ COPY README.md .
 COPY sim/ ./sim/
 COPY assets/ ./assets/
 
-# Install package with non-OpenMM dependencies from pyproject.
-# We intentionally keep OpenMM from conda-forge to preserve CUDA platform support.
-RUN uv pip install --python /opt/conda/bin/python --no-deps . && \
-    uv pip install --python /opt/conda/bin/python \
-      boto3 \
-      requests \
-      "matplotlib>=3.7.0" \
-      "seaborn>=0.12.0" \
-      "numpy>=1.24.0" \
-      "pandas>=2.0.0" \
-      "mdtraj>=1.9.8"
+# Install the project plus all non-OpenMM dependencies pinned from uv.lock.
+# We intentionally keep OpenMM from conda-forge to preserve CUDA platform
+# support, so openmm is filtered out of the exported requirements.
+RUN uv export --frozen --no-dev --no-hashes --no-emit-project -o /tmp/requirements.txt && \
+    sed -i '/^openmm==/d' /tmp/requirements.txt && \
+    uv pip install --python /opt/conda/bin/python -r /tmp/requirements.txt && \
+    uv pip install --python /opt/conda/bin/python --no-deps .
 
 # Define the entrypoint using the modular approach
 ENTRYPOINT ["python", "-m", "sim.run"]
