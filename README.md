@@ -46,6 +46,16 @@ nebius ai logs "$JOB_ID"
 | **Agents** | [openclaw](./agents/openclaw/README.md) | Deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory |
 | **Life Science** | [openmm-simulation](./life-science/openmm-simulation/README.md) | GPU-backed molecular dynamics simulation with OpenMM |
 
+## Claude Code skills
+
+If you use [Claude Code](https://claude.com/claude-code), this repo ships **skills** that teach Claude how to drive Nebius Serverless AI correctly on the first try — full lifecycle for jobs and endpoints, registry conventions, auth/secrets/volumes, and end-to-end recipes (training, serving, CI/CD, debugging, preemptible). Install with:
+
+```bash
+cp -r skills/nebius-* ~/.claude/skills/
+```
+
+See [skills/README.md](./skills/README.md) for the catalog.
+
 ## Repository structure
 
 ```
@@ -55,6 +65,7 @@ serverless-cookbook/
 ├── inference/            # Endpoint serving and batch inference
 ├── agents/               # AI gateway and agent deployments
 ├── life-science/         # Domain-specific simulations
+├── skills/               # Claude Code skills for Nebius Serverless AI
 ├── CONTRIBUTING.md
 └── DEVELOPER_GUIDE.md
 ```
