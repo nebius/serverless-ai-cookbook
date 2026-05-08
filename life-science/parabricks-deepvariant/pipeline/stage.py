@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import boto3
 
@@ -18,3 +19,9 @@ def make_client():
         aws_secret_access_key=_required_env("AWS_SECRET_ACCESS_KEY"),
         region_name=_required_env("AWS_DEFAULT_REGION"),
     )
+
+
+def download_file(client, bucket: str, key: str, dest: Path) -> None:
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    client.download_file(bucket, key, str(dest))
