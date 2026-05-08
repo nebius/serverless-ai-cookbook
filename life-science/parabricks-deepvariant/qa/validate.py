@@ -13,6 +13,9 @@ GIAB_BASE = "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/release/As
 TRUTH_VCF_URL = f"{GIAB_BASE}/HG002_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
 TRUTH_TBI_URL = f"{TRUTH_VCF_URL}.tbi"
 TRUTH_BED_URL = f"{GIAB_BASE}/HG002_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed"
+GRCH38_BASE = "https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0"
+REF_FASTA_URL = f"{GRCH38_BASE}/Homo_sapiens_assembly38.fasta"
+REF_FAI_URL = f"{REF_FASTA_URL}.fai"
 
 
 def _required_env(name: str) -> str:
@@ -32,6 +35,17 @@ def fetch_giab_truth(scratch: Path) -> tuple[Path, Path]:
         if not dest.exists():
             urllib.request.urlretrieve(url, dest)  # noqa: S310 (URL is constant, not user input)
     return vcf, bed
+
+
+def fetch_grch38_reference(scratch: Path) -> Path:
+    ref_dir = scratch / "ref"
+    ref_dir.mkdir(parents=True, exist_ok=True)
+    fasta = ref_dir / "Homo_sapiens_assembly38.fasta"
+    fai = ref_dir / "Homo_sapiens_assembly38.fasta.fai"
+    for url, dest in [(REF_FASTA_URL, fasta), (REF_FAI_URL, fai)]:
+        if not dest.exists():
+            urllib.request.urlretrieve(url, dest)  # noqa: S310 (URL is constant, not user input)
+    return fasta
 
 
 def parse_happy_summary(summary_csv: Path) -> dict:
@@ -72,9 +86,11 @@ def run_validation(scratch: Path, min_snp_f1: float = 0.999) -> None:
         region_name=region,
     )
     query_vcf = scratch / f"{sample_id}.vcf"
-    s3.download_file(bucket, f"{out_prefix}/{sample_id}/{sample_id}.vcf", str(query_vcf))
+    output_key = f"{out_prefix.rstrip('/')}/{sample_id}/{sample_id}.vcf"
+    s3.download_file(bucket, output_key, str(query_vcf))
 
     truth_vcf, truth_bed = fetch_giab_truth(scratch)
+    ref_fasta = fetch_grch38_reference(scratch)
 
     out_dir = scratch / "happy"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -83,6 +99,7 @@ def run_validation(scratch: Path, min_snp_f1: float = 0.999) -> None:
     cmd = [
         "hap.py", str(truth_vcf), str(query_vcf),
         "-f", str(truth_bed),
+        "-r", str(ref_fasta),
         "-o", out_prefix_local,
         "--engine=vcfeval",
     ]

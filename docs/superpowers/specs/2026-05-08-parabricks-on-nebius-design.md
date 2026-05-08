@@ -3,7 +3,7 @@
 **Ticket:** [ARCHVTEAMS-1827](https://nebius.atlassian.net/browse/ARCHVTEAMS-1827) — Parabricks implementation
 **Author:** René Schönfelder
 **Date:** 2026-05-08
-**Status:** Revised 2026-05-08 with implementation decisions: GIAB assets fetched at runtime (not committed), NGC inline auth as default with MysteryBox alternative documented, `pkrusche/hap.py` as QA image base, all five target SKUs (L40S, RTX6000 Ada, H200, B200, B300) verified end-to-end as part of v1.
+**Status:** Revised 2026-05-08 with implementation decisions: GIAB assets fetched at runtime (not committed), NGC inline auth as default with MysteryBox alternative documented, `BioContainers hap.py copied into a Python 3 QA image, all five target SKUs (L40S, RTX6000 Ada, H200, B200, B300) verified end-to-end as part of v1.
 
 ---
 
@@ -61,7 +61,7 @@ life-science/parabricks-deepvariant/
 │   ├── run_qa.sh                   # Mode B QA: nebius ai job create with QA image
 │   └── stage_demo_data.sh          # One-shot: stage HG002 FASTQ + GRCh38 ref into customer bucket
 ├── qa/
-│   ├── Dockerfile                  # FROM pkrusche/hap.py + boto3 + validate.py (thin)
+│   ├── Dockerfile                  # FROM BioContainers hap.py + Python 3 + boto3 + validate.py (thin)
 │   └── validate.py                 # Fetches output VCF + GIAB truth at runtime; runs hap.py
 ├── bench/
 │   └── results/                    # Committed wall-clock + $/sample per SKU (L40S, H200, B200, B300)
@@ -97,7 +97,7 @@ The README is the deliverable's primary surface. It follows the OpenMM example's
    | Highest performance | 1× B200 / B300 | Lowest single-sample latency |
 
    Parabricks runs on every Nebius SKU; no SKU is hard-coded in scripts.
-5. **Validate accuracy (optional).** Build and push the QA image (`qa/Dockerfile` — `FROM pkrusche/hap.py` plus `boto3` and `validate.py`, ~5 lines), then submit `scripts/run_qa.sh`. The job downloads the output VCF and fetches the GIAB v4.2.1 truth VCF + confidence BED from public NIH at runtime. Pass criterion: SNP F1 ≥ 0.999 on HG002 30×.
+5. **Validate accuracy (optional).** Build and push the QA image (`qa/Dockerfile` — BioContainers `hap.py` copied into a Python 3 image with `boto3` and `validate.py`), then submit `scripts/run_qa.sh`. The job downloads the output VCF and fetches the GIAB v4.2.1 truth VCF + confidence BED from public NIH at runtime. Pass criterion: SNP F1 ≥ 0.999 on HG002 35×.
 6. **Benchmark and contribute results.** How to run `bench/` and submit a PR adding to `bench/results/`.
 7. **Troubleshooting.** GPU/preset access, NGC image pull, S3 auth, bucket region/endpoint mismatches.
 
@@ -133,7 +133,7 @@ All large data is fetched from public sources — nothing committed to the repo.
 `scripts/stage_demo_data.sh` stages from public sources into the customer's own bucket. v1 does **not** ship a Nebius-mirrored reference bucket (revisit if traction justifies the maintenance commitment).
 
 - **GRCh38 reference bundle:** `Homo_sapiens_assembly38.fasta` + `.fai` + `.dict` + BWA index → `s3://${S3_BUCKET}/parabricks/ref/grch38/`. Source: Broad's public bucket.
-- **HG002 demo FASTQ:** NIST Genome in a Bottle HG002 30× WGS FASTQ → `s3://${S3_BUCKET}/parabricks/demo/hg002/`. Source: NIH NCBI public bucket.
+- **HG002 demo FASTQ:** NIST Genome in a Bottle HG002 35× WGS FASTQ → `s3://${S3_BUCKET}/parabricks/demo/hg002/`. Source: NIH NCBI public bucket.
 - **GIAB v4.2.1 truth VCF + confidence BED:** Fetched at runtime by `qa/validate.py` directly inside the QA job, cached to `/scratch/`. Not staged to the customer bucket and not committed to the repo.
 
 ## 9. QA: GIAB truth comparison
@@ -143,7 +143,7 @@ All large data is fetched from public sources — nothing committed to the repo.
 1. Downloads the customer's output VCF from `s3://${S3_BUCKET}/${S3_OUTPUT_PREFIX}/${SAMPLE_ID}/`.
 2. Fetches the GIAB v4.2.1 HG002 truth VCF + confidence BED from NIH at runtime, caches to `/scratch/`.
 3. Runs `hap.py` to compare and emit precision, recall, and F1 for SNPs and indels.
-4. Compares against a committed golden-numbers file (expected SNP F1 ≥ 0.999 on HG002 30× per Parabricks' published accuracy).
+4. Compares against a committed golden-numbers file (expected SNP F1 ≥ 0.999 on HG002 35× per Parabricks' published accuracy).
 5. Exits non-zero if the run regresses below threshold.
 
 ## 10. Benchmarks
@@ -173,7 +173,7 @@ v1 commits five baseline results: **L40S, RTX6000 Ada, H200, B200, and B300**. E
 
 ## 13. Phasing
 
-Single phase. The recipe is small enough (one folder, ~10 source files plus README) that splitting it adds overhead without value. The implementation plan (next step) breaks it into ordered tasks: confirm CLI platform/preset names → Mode A scripts + README sections → pipeline image (Dockerfile + `pipeline/` wrapper) → Mode B scripts + README sections → QA image + `validate.py` → bench harness → run end-to-end on all four target SKUs and commit `bench/results/` → top-level cookbook README link.
+Single phase. The recipe is small enough (one folder, ~10 source files plus README) that splitting it adds overhead without value. The implementation plan (next step) breaks it into ordered tasks: confirm CLI platform/preset names → Mode A scripts + README sections → pipeline image (Dockerfile + `pipeline/` wrapper) → Mode B scripts + README sections → QA image + `validate.py` → bench harness → run end-to-end on all five target SKUs and commit `bench/results/` → top-level cookbook README link.
 
 ## 14. Out of scope follow-ups (separate tickets)
 

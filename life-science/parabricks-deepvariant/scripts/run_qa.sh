@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Submit the Parabricks DeepVariant pipeline as a Nebius AI Job using the
-# customer's pre-built pipeline image in their Nebius Container Registry.
+# Submit the QA validation as a Nebius AI Job. CPU-only: hap.py does not
+# require a GPU.
 
 set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: scripts/run_serverless.sh
+Usage: scripts/run_qa.sh
 
-Submit the Parabricks DeepVariant pipeline as a Nebius AI Job.
+Submit the CPU-only hap.py QA validation job for a completed DeepVariant run.
 
 Required environment:
-  PIPELINE_IMAGE        Pipeline image in Nebius Container Registry
+  QA_IMAGE              QA image in Nebius Container Registry
   S3_BUCKET             Object Storage bucket name
   S3_ENDPOINT_URL       Object Storage endpoint URL
   AWS_ACCESS_KEY_ID     Object Storage access key ID
@@ -19,7 +19,7 @@ Required environment:
 
 Optional environment:
   PARENT_ID SUBNET_ID PLATFORM PRESET DISK_SIZE JOB_NAME
-  S3_INPUT_PREFIX S3_REF_PREFIX S3_OUTPUT_PREFIX SAMPLE_ID AWS_DEFAULT_REGION
+  S3_OUTPUT_PREFIX SAMPLE_ID AWS_DEFAULT_REGION SCRATCH_DIR
 EOF
 }
 
@@ -28,39 +28,37 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     exit 0
 fi
 
-: "${PIPELINE_IMAGE:?PIPELINE_IMAGE required (e.g. cr.eu-north1.nebius.cloud/<project>/parabricks-deepvariant:4.7.0-1)}"
+: "${QA_IMAGE:?QA_IMAGE required (e.g. cr.eu-north1.nebius.cloud/<project>/parabricks-qa:0.1.0)}"
 : "${S3_BUCKET:?S3_BUCKET required}"
 : "${S3_ENDPOINT_URL:?S3_ENDPOINT_URL required}"
 : "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID required}"
 : "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY required}"
 
-S3_INPUT_PREFIX="${S3_INPUT_PREFIX:-parabricks/demo/hg002}"
-S3_REF_PREFIX="${S3_REF_PREFIX:-parabricks/ref/grch38}"
 S3_OUTPUT_PREFIX="${S3_OUTPUT_PREFIX:-parabricks/out}"
 SAMPLE_ID="${SAMPLE_ID:-HG002}"
 AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-eu-north1}"
+SCRATCH_DIR="${SCRATCH_DIR:-/scratch}"
 
-PLATFORM="${PLATFORM:-gpu-h200-sxm}"
-PRESET="${PRESET:-1gpu-16vcpu-200gb}"
-DISK_SIZE="${DISK_SIZE:-500Gi}"
-JOB_NAME="${JOB_NAME:-parabricks-deepvariant-${SAMPLE_ID}-$(date +%s)}"
+PLATFORM="${PLATFORM:-cpu-d3}"
+PRESET="${PRESET:-16vcpu-64gb}"
+DISK_SIZE="${DISK_SIZE:-100Gi}"
+JOB_NAME="${JOB_NAME:-parabricks-qa-${SAMPLE_ID}-$(date +%s)}"
 
 CREATE_CMD=(
     nebius ai job create
     --name "$JOB_NAME"
-    --image "$PIPELINE_IMAGE"
+    --image "$QA_IMAGE"
     --platform "$PLATFORM"
     --preset "$PRESET"
     --disk-size "$DISK_SIZE"
     --env "S3_BUCKET=$S3_BUCKET"
     --env "S3_ENDPOINT_URL=$S3_ENDPOINT_URL"
-    --env "S3_INPUT_PREFIX=$S3_INPUT_PREFIX"
-    --env "S3_REF_PREFIX=$S3_REF_PREFIX"
     --env "S3_OUTPUT_PREFIX=$S3_OUTPUT_PREFIX"
     --env "SAMPLE_ID=$SAMPLE_ID"
     --env "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
     --env "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
     --env "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION"
+    --env "SCRATCH_DIR=$SCRATCH_DIR"
 )
 
 if [[ -n "${PARENT_ID:-}" ]]; then

@@ -114,7 +114,7 @@ def test_emit_metadata_writes_expected_fields(tmp_path):
 
 
 def test_fastq_glob_matches_dot_r_naming(tmp_path, s3_env):
-    """Demo data uses HG002.novaseq.pcr-free.30x.R1.fq.gz (dot, not underscore)."""
+    """Demo data uses HG002.novaseq.pcr-free.35x.R1.fastq.gz (dot, not underscore)."""
     from unittest.mock import MagicMock, patch
 
     def fake_download_prefix(client, bucket, prefix, dest):
@@ -122,8 +122,8 @@ def test_fastq_glob_matches_dot_r_naming(tmp_path, s3_env):
         if "ref" in prefix:
             (Path(dest) / "Homo_sapiens_assembly38.fasta").write_text("")
         else:
-            (Path(dest) / "HG002.novaseq.pcr-free.30x.R1.fq.gz").write_text("")
-            (Path(dest) / "HG002.novaseq.pcr-free.30x.R2.fq.gz").write_text("")
+            (Path(dest) / "HG002.novaseq.pcr-free.35x.R1.fastq.gz").write_text("")
+            (Path(dest) / "HG002.novaseq.pcr-free.35x.R2.fastq.gz").write_text("")
 
     completed = MagicMock(returncode=0, stdout="")
     with patch("pipeline.run.stage.make_client", return_value=MagicMock()), \

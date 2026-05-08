@@ -1,10 +1,33 @@
 #!/usr/bin/env bash
-# One-shot: stage the GRCh38 reference bundle and HG002 30x WGS FASTQ into
+# One-shot: stage the GRCh38 reference bundle and HG002 35x WGS FASTQ into
 # the customer's Nebius Object Storage bucket. Runs as a CPU-only Nebius AI
 # Job so the transfer happens inside Nebius (fast) rather than via the
 # customer's laptop.
 
 set -euo pipefail
+
+usage() {
+    cat <<'EOF'
+Usage: scripts/stage_demo_data.sh
+
+Submit a CPU-only Nebius AI Job that stages GRCh38 reference files and HG002
+35x FASTQ inputs into the configured Object Storage bucket.
+
+Required environment:
+  S3_BUCKET             Object Storage bucket name
+  S3_ENDPOINT_URL       Object Storage endpoint URL
+  AWS_ACCESS_KEY_ID     Object Storage access key ID
+  AWS_SECRET_ACCESS_KEY Object Storage secret access key
+
+Optional environment:
+  AWS_DEFAULT_REGION PARENT_ID SUBNET_ID PLATFORM PRESET
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+fi
 
 : "${S3_BUCKET:?S3_BUCKET required}"
 : "${S3_ENDPOINT_URL:?S3_ENDPOINT_URL required}"
@@ -34,34 +57,44 @@ for f in \
     Homo_sapiens_assembly38.fasta.64.bwt \
     Homo_sapiens_assembly38.fasta.64.pac \
     Homo_sapiens_assembly38.fasta.64.sa ; do
-    wget -q -O "ref/$f" "https://storage.googleapis.com/genomics-public-data/references/GRCh38/$f"
+    wget -q -O "ref/$f" "https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/$f"
     aws s3 cp --endpoint-url "$S3_ENDPOINT_URL" "ref/$f" "s3://$S3_BUCKET/parabricks/ref/grch38/$f"
 done
 
-# 2) HG002 30x WGS FASTQ (paired) from NIST GIAB on NIH bucket.
+# 2) HG002 35x WGS FASTQ (paired) from the NIST GIAB Open Data mirror.
 for fq in \
-    HG002.novaseq.pcr-free.30x.R1.fq.gz \
-    HG002.novaseq.pcr-free.30x.R2.fq.gz ; do
-    wget -q -O "hg002/$fq" "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/NIST_HiSeq_HG002_Homogeneity-10953946/NHGRI_Illumina300X_AJtrio_novoalign_bams/$fq" || \
-    # Some mirror paths differ. Fallback list:
-    wget -q -O "hg002/$fq" "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_indexes/AshkenazimTrio/sequence.index.AJtrio_Illumina_2x250bps_06012016/HG002/$fq"
+    HG002.novaseq.pcr-free.35x.R1.fastq.gz \
+    HG002.novaseq.pcr-free.35x.R2.fastq.gz ; do
+    wget -q -O "hg002/$fq" "https://opendata.nist.gov/pdrsrv/mds2-2336/input_fastqs/$fq"
     aws s3 cp --endpoint-url "$S3_ENDPOINT_URL" "hg002/$fq" "s3://$S3_BUCKET/parabricks/demo/hg002/$fq"
 done
 
 echo "Staging complete."
 EOF
 
-set -x
-nebius ai job create \
-    --name "$JOB_NAME" \
-    --image amazonlinux:2 \
-    --platform "$PLATFORM" \
-    --preset "$PRESET" \
-    --disk-size 500Gi \
-    --env "S3_BUCKET=$S3_BUCKET" \
-    --env "S3_ENDPOINT_URL=$S3_ENDPOINT_URL" \
-    --env "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID" \
-    --env "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY" \
-    --env "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION" \
-    --container-command bash \
+echo "Submitting Nebius AI Job: $JOB_NAME"
+CREATE_CMD=(
+    nebius ai job create
+    --name "$JOB_NAME"
+    --image amazonlinux:2
+    --platform "$PLATFORM"
+    --preset "$PRESET"
+    --disk-size 500Gi
+    --env "S3_BUCKET=$S3_BUCKET"
+    --env "S3_ENDPOINT_URL=$S3_ENDPOINT_URL"
+    --env "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
+    --env "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
+    --env "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION"
+    --container-command bash
     --args "-c \"$STAGE_SCRIPT\""
+)
+
+if [[ -n "${PARENT_ID:-}" ]]; then
+    CREATE_CMD+=(--parent-id "$PARENT_ID")
+fi
+
+if [[ -n "${SUBNET_ID:-}" ]]; then
+    CREATE_CMD+=(--subnet-id "$SUBNET_ID")
+fi
+
+"${CREATE_CMD[@]}"

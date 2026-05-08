@@ -22,8 +22,8 @@ Usage: $(basename "$0") <tutorial> [--platform <p>] [--preset <p>]
 
 Tutorials:
   get-sample-data    Download Parabricks sample data into the container scratch.
-  fq2bam             Run pbrun fq2bam against the sample data.
-  haplotypecaller    Run pbrun haplotypecaller against the fq2bam output.
+  fq2bam             Download sample data, then run pbrun fq2bam.
+  haplotypecaller    Download sample data, run fq2bam, then run haplotypecaller.
 
 NGC auth:
   Default: export NGC_API_KEY=<key> ; the key is passed inline via
@@ -53,17 +53,19 @@ done
 
 case "$TUTORIAL" in
     get-sample-data)
-        # NVIDIA's docs: https://docs.nvidia.com/clara/parabricks/latest/tutorials/samplebrca.html
+        # NVIDIA's docs: https://docs.nvidia.com/clara/latest/tutorials/gettingthesampledata.html
         CONTAINER_CMD="bash"
-        ARGS='-c "set -e; mkdir -p /workdir && cd /workdir && wget -q https://s3.amazonaws.com/parabricks.sample/parabricks_sample.tar.gz && tar xzf parabricks_sample.tar.gz && ls -la parabricks_sample/"'
+        ARGS='-lc "set -euo pipefail; command -v wget >/dev/null || (apt-get update && apt-get install -y --no-install-recommends wget ca-certificates); mkdir -p /workdir && cd /workdir && wget -q https://s3.amazonaws.com/parabricks.sample/parabricks_sample.tar.gz && tar xzf parabricks_sample.tar.gz && ls -la parabricks_sample/"'
         ;;
     fq2bam)
-        CONTAINER_CMD="pbrun"
-        ARGS='fq2bam --ref /workdir/parabricks_sample/Ref/Homo_sapiens_assembly38.fasta --in-fq /workdir/parabricks_sample/Data/sample_1.fq.gz /workdir/parabricks_sample/Data/sample_2.fq.gz --out-bam /workdir/fq2bam_output.bam'
+        # NVIDIA's docs: https://docs.nvidia.com/clara/latest/tutorials/fq2bam_tutorial.html
+        CONTAINER_CMD="bash"
+        ARGS='-lc "set -euo pipefail; command -v wget >/dev/null || (apt-get update && apt-get install -y --no-install-recommends wget ca-certificates); mkdir -p /workdir && cd /workdir && wget -q https://s3.amazonaws.com/parabricks.sample/parabricks_sample.tar.gz && tar xzf parabricks_sample.tar.gz && pbrun fq2bam --ref /workdir/parabricks_sample/Ref/Homo_sapiens_assembly38.fasta --in-fq /workdir/parabricks_sample/Data/sample_1.fq.gz /workdir/parabricks_sample/Data/sample_2.fq.gz --out-bam /workdir/fq2bam_output.bam && ls -lh /workdir/fq2bam_output.bam"'
         ;;
     haplotypecaller)
-        CONTAINER_CMD="pbrun"
-        ARGS='haplotypecaller --ref /workdir/parabricks_sample/Ref/Homo_sapiens_assembly38.fasta --in-bam /workdir/fq2bam_output.bam --out-variants /workdir/output.vcf'
+        # NVIDIA's docs: https://docs.nvidia.com/clara/latest/tutorials/haplotypecaller_tutorial.html
+        CONTAINER_CMD="bash"
+        ARGS='-lc "set -euo pipefail; command -v wget >/dev/null || (apt-get update && apt-get install -y --no-install-recommends wget ca-certificates); mkdir -p /workdir && cd /workdir && wget -q https://s3.amazonaws.com/parabricks.sample/parabricks_sample.tar.gz && tar xzf parabricks_sample.tar.gz && pbrun fq2bam --ref /workdir/parabricks_sample/Ref/Homo_sapiens_assembly38.fasta --in-fq /workdir/parabricks_sample/Data/sample_1.fq.gz /workdir/parabricks_sample/Data/sample_2.fq.gz --out-bam /workdir/fq2bam_output.bam && pbrun haplotypecaller --ref /workdir/parabricks_sample/Ref/Homo_sapiens_assembly38.fasta --in-bam /workdir/fq2bam_output.bam --out-variants /workdir/output.vcf && ls -lh /workdir/output.vcf"'
         ;;
     *)
         usage; exit 1 ;;
@@ -84,13 +86,25 @@ else
     exit 1
 fi
 
-set -x
-nebius ai job create \
-    --name "$JOB_NAME" \
-    --image "$NGC_IMAGE" \
-    --platform "$PLATFORM" \
-    --preset "$PRESET" \
-    --disk-size "$DISK_SIZE" \
-    --container-command "$CONTAINER_CMD" \
-    --args "$ARGS" \
+echo "Submitting Nebius AI Job: $JOB_NAME"
+CREATE_CMD=(
+    nebius ai job create
+    --name "$JOB_NAME"
+    --image "$NGC_IMAGE"
+    --platform "$PLATFORM"
+    --preset "$PRESET"
+    --disk-size "$DISK_SIZE"
+    --container-command "$CONTAINER_CMD"
+    --args "$ARGS"
     "${AUTH_FLAGS[@]}"
+)
+
+if [[ -n "${PARENT_ID:-}" ]]; then
+    CREATE_CMD+=(--parent-id "$PARENT_ID")
+fi
+
+if [[ -n "${SUBNET_ID:-}" ]]; then
+    CREATE_CMD+=(--subnet-id "$SUBNET_ID")
+fi
+
+"${CREATE_CMD[@]}"

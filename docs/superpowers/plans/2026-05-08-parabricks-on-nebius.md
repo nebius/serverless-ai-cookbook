@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a `life-science/parabricks-deepvariant/` cookbook recipe to `nebius/serverless-ai-cookbook` that lets a customer run NVIDIA Parabricks on Nebius via two modes (NGC tutorials + BYO DeepVariant pipeline), validated end-to-end on L40S, H200, B200, and B300.
+**Goal:** Add a `life-science/parabricks-deepvariant/` cookbook recipe to `nebius/serverless-ai-cookbook` that lets a customer run NVIDIA Parabricks on Nebius via two modes (NGC tutorials + BYO DeepVariant pipeline), validated end-to-end on L40S, RTX6000 Ada, H200, B200, and B300.
 
-**Architecture:** Single recipe folder modeled on `life-science/openmm-simulation/`. A Python wrapper (`pipeline/`) handles S3 staging and `pbrun` invocation; a thin pipeline `Dockerfile` extends the NGC Parabricks image. A separate thin QA image (`qa/Dockerfile`) wraps `pkrusche/hap.py` and runs `validate.py` to compare output VCFs against the GIAB v4.2.1 truth set. Shell scripts wrap `nebius ai job create` for each user-facing flow (Mode A tutorials, Mode B pipeline, QA, bench). Reference data, demo FASTQ, and GIAB truth are all fetched from public sources at runtime — nothing large in git.
+**Architecture:** Single recipe folder modeled on `life-science/openmm-simulation/`. A Python wrapper (`pipeline/`) handles S3 staging and `pbrun` invocation; a thin pipeline `Dockerfile` extends the NGC Parabricks image. A separate thin QA image (`qa/Dockerfile`) copies the BioContainers `hap.py` toolchain into a Python 3 image and runs `validate.py` to compare output VCFs against the GIAB v4.2.1 truth set. Shell scripts wrap `nebius ai job create` for each user-facing flow (Mode A tutorials, Mode B pipeline, QA, bench). Reference data, demo FASTQ, and GIAB truth are all fetched from public sources at runtime — nothing large in git.
 
-**Tech Stack:** Python 3.11, `boto3`, `uv` (dependency management, mirrors openmm-simulation), `pytest` (unit tests for wrapper logic), Docker, NVIDIA Parabricks 4.7.0-1 from NGC, `pkrusche/hap.py` for QA, `nebius` CLI, bash + `shellcheck`.
+**Tech Stack:** Python 3.11, `boto3`, `uv` (dependency management, mirrors openmm-simulation), `pytest` (unit tests for wrapper logic), Docker, NVIDIA Parabricks 4.7.0-1 from NGC, BioContainers `hap.py` for QA, `nebius` CLI, bash + `shellcheck`.
 
 **Spec:** [`docs/superpowers/specs/2026-05-08-parabricks-on-nebius-design.md`](../specs/2026-05-08-parabricks-on-nebius-design.md)
 
@@ -40,7 +40,7 @@ life-science/parabricks-deepvariant/
 │   ├── run.py                     # orchestration: stage_in → pbrun → metadata → stage_out
 │   └── cli.py                     # entrypoint: env-var validation, calls run.run_germline()
 ├── qa/
-│   ├── Dockerfile                 # FROM pkrusche/hap.py + boto3 + validate.py
+│   ├── Dockerfile                 # FROM BioContainers hap.py + Python 3 + boto3 + validate.py
 │   └── validate.py                # downloads VCF, fetches GIAB truth, runs hap.py, parses summary
 ├── scripts/
 │   ├── stage_demo_data.sh         # one-shot: stage GRCh38 + HG002 FASTQ to customer bucket
@@ -1141,7 +1141,7 @@ This script runs once per customer bucket. It uses a one-shot Nebius AI Job (che
 
 ```bash
 #!/usr/bin/env bash
-# One-shot: stage the GRCh38 reference bundle and HG002 30x WGS FASTQ into
+# One-shot: stage the GRCh38 reference bundle and HG002 35x WGS FASTQ into
 # the customer's Nebius Object Storage bucket. Runs as a CPU-only Nebius AI
 # Job so the transfer happens inside Nebius (fast) rather than via the
 # customer's laptop.
@@ -1180,10 +1180,10 @@ for f in \
     aws s3 cp --endpoint-url "$S3_ENDPOINT_URL" "ref/$f" "s3://$S3_BUCKET/parabricks/ref/grch38/$f"
 done
 
-# 2) HG002 30x WGS FASTQ (paired) from NIST GIAB on NIH bucket.
+# 2) HG002 35x WGS FASTQ (paired) from NIST GIAB on NIH bucket.
 for fq in \
-    HG002.novaseq.pcr-free.30x.R1.fq.gz \
-    HG002.novaseq.pcr-free.30x.R2.fq.gz ; do
+    HG002.novaseq.pcr-free.35x.R1.fastq.gz \
+    HG002.novaseq.pcr-free.35x.R2.fastq.gz ; do
     wget -q -O "hg002/$fq" "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data/AshkenazimTrio/HG002_NA24385_son/NIST_HiSeq_HG002_Homogeneity-10953946/NHGRI_Illumina300X_AJtrio_novoalign_bams/$fq" || \
     # Some mirror paths differ. Fallback list:
     wget -q -O "hg002/$fq" "https://ftp-trace.ncbi.nlm.nih.gov/ReferenceSamples/giab/data_indexes/AshkenazimTrio/sequence.index.AJtrio_Illumina_2x250bps_06012016/HG002/$fq"
@@ -1303,7 +1303,7 @@ git commit -m "Add run_serverless.sh for Mode B DeepVariant submission"
 - Create: `life-science/parabricks-deepvariant/qa/validate.py`
 - Create: `life-science/parabricks-deepvariant/tests/test_validate.py`
 
-The QA image runs `pkrusche/hap.py`, which provides a `hap.py` binary and the genome reference utilities. `validate.py` downloads the customer's VCF, fetches the GIAB v4.2.1 truth from NIH at runtime, calls `hap.py`, parses the summary, and exits non-zero if SNP F1 falls below threshold.
+The QA image copies the BioContainers `hap.py` toolchain into a Python 3 image, keeping a wrapper for the bundled Python 2.7 `hap.py` runtime and using Python 3 for `validate.py`. `validate.py` downloads the customer's VCF, fetches the GIAB v4.2.1 truth from NIH at runtime, calls `hap.py`, parses the summary, and exits non-zero if SNP F1 falls below threshold.
 
 - [ ] **Step 13.1: Write the failing test**
 
@@ -1579,7 +1579,7 @@ cd life-science/parabricks-deepvariant/qa
 docker build -t parabricks-qa:dev .
 ```
 
-Expected: build succeeds. `pkrusche/hap.py:v0.3.15` is on Docker Hub (no auth needed).
+Expected: build succeeds using the BioContainers hap.py base image (no auth needed).
 
 - [ ] **Step 14.3: Smoke-test the entrypoint**
 
@@ -1593,7 +1593,7 @@ Expected: exits non-zero with "Missing required environment variable: ..." (env 
 
 ```bash
 git add life-science/parabricks-deepvariant/qa/Dockerfile
-git commit -m "Add QA Dockerfile based on pkrusche/hap.py"
+git commit -m "Add QA Dockerfile based on BioContainers hap.py"
 ```
 
 ---
@@ -1731,7 +1731,7 @@ cat > "$REPORT" <<EOF
 # Parabricks DeepVariant — ${SKU_LABEL^^} bench
 
 - **Date:** ${DATE}
-- **Sample:** ${SAMPLE_ID} (HG002 30x WGS)
+- **Sample:** ${SAMPLE_ID} (HG002 35x WGS)
 - **Platform / preset:** ${PLATFORM} / ${PRESET}
 - **GPU detected:** ${GPU}
 - **Parabricks version:** ${PB_VER}
@@ -2044,7 +2044,7 @@ Wait for the QA job to finish. Verify exit status is `Succeeded`. If `Failed`, i
 
 ```bash
 git add life-science/parabricks-deepvariant/bench/results/<date>-l40s.md
-git commit -m "Bench: L40S baseline for HG002 30x DeepVariant"
+git commit -m "Bench: L40S baseline for HG002 35x DeepVariant"
 ```
 
 ---
@@ -2076,7 +2076,7 @@ Expected: PASS (SNP F1 ≥ 0.999).
 
 ```bash
 git add life-science/parabricks-deepvariant/bench/results/<date>-rtx6000.md
-git commit -m "Bench: RTX6000 Ada result for HG002 30x DeepVariant"
+git commit -m "Bench: RTX6000 Ada result for HG002 35x DeepVariant"
 ```
 
 ---
@@ -2108,7 +2108,7 @@ Expected: PASS.
 
 ```bash
 git add life-science/parabricks-deepvariant/bench/results/<date>-h200.md
-git commit -m "Bench: H200 result for HG002 30x DeepVariant"
+git commit -m "Bench: H200 result for HG002 35x DeepVariant"
 ```
 
 ---
@@ -2136,7 +2136,7 @@ Expected: PASS.
 
 ```bash
 git add life-science/parabricks-deepvariant/bench/results/<date>-b200.md
-git commit -m "Bench: B200 result for HG002 30x DeepVariant"
+git commit -m "Bench: B200 result for HG002 35x DeepVariant"
 ```
 
 ---
@@ -2164,7 +2164,7 @@ Expected: PASS.
 
 ```bash
 git add life-science/parabricks-deepvariant/bench/results/<date>-b300.md
-git commit -m "Bench: B300 result for HG002 30x DeepVariant"
+git commit -m "Bench: B300 result for HG002 35x DeepVariant"
 ```
 
 ---
@@ -2190,7 +2190,7 @@ gh pr create --title "Add Parabricks DeepVariant cookbook recipe" --body "$(cat 
 - New `life-science/parabricks-deepvariant/` recipe with two run modes:
   - **Mode A:** NVIDIA's three official Parabricks tutorials submitted directly via `nebius ai job create` against the NGC image.
   - **Mode B:** Production DeepVariant pipeline against customer S3, BYO image (~10 lines on top of NGC), with `pipeline/` Python wrapper.
-- QA image (`pkrusche/hap.py` + boto3 + `validate.py`) gates output VCF accuracy at SNP F1 ≥ 0.999 against GIAB v4.2.1 truth.
+- QA image (BioContainers `hap.py` + Python 3 + boto3 + `validate.py`) gates output VCF accuracy at SNP F1 ≥ 0.999 against GIAB v4.2.1 truth.
 - End-to-end verified on **L40S, RTX6000 Ada, H200, B200, and B300** with bench results committed in `bench/results/`.
 
 ## Spec

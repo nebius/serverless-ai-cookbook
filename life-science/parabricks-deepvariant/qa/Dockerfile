@@ -1,25 +1,34 @@
 # syntax=docker/dockerfile:1.7
-# QA image: BioContainers/Bioconda is the canonical maintained hap.py
-# distribution. The long-stale pkrusche/hap.py Docker Hub images use a
-# deprecated manifest v1 schema that modern Docker refuses to pull.
-FROM quay.io/biocontainers/hap.py:0.3.15--py27hcb73b3d_0
+# QA image: BioContainers/Bioconda is the maintained hap.py distribution.
+# The long-stale pkrusche/hap.py Docker Hub images use a deprecated manifest v1
+# schema that modern Docker refuses to pull. We copy the BioContainers hap.py
+# toolchain into a Python 3 image so validate.py can use current boto3 without
+# colliding with hap.py's Python 2 runtime.
+FROM quay.io/biocontainers/hap.py:0.3.15--py27hcb73b3d_0 AS happy
 
-USER root
+FROM python:3.11-slim-bookworm
 
-# BioContainers ships hap.py under a Python 2.7 Conda env. We add a
-# Python 3 venv for our validate.py wrapper so it never collides with
-# the conda environment hap.py itself runs in.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3 python3-venv ca-certificates wget \
-    && rm -rf /var/lib/apt/lists/* \
-    && python3 -m venv /opt/qa-venv \
-    && /opt/qa-venv/bin/pip install --no-cache-dir boto3
+COPY --from=happy /usr/local /opt/happy
 
-ENV PATH="/opt/qa-venv/bin:${PATH}"
+ENV PATH="/opt/happy/bin:${PATH}"
+
+COPY requirements.txt ./requirements.txt
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
+
+# Keep plain `python` on Python 3 for smoke checks and wrapper tooling, but run
+# hap.py itself with the Python 2.7 runtime bundled in the BioContainers image.
+RUN printf '%s\n' \
+        '#!/bin/sh' \
+        'export PATH="/opt/happy/bin:${PATH}"' \
+        'exec /opt/happy/bin/python2.7 /opt/happy/bin/hap.py "$@"' \
+        > /usr/local/bin/hap.py \
+    && chmod +x /usr/local/bin/hap.py
+
+ENV PATH="/usr/local/bin:/opt/happy/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 WORKDIR /opt/qa
 COPY validate.py ./
 
-# hap.py resolves from PATH via the BioContainers conda env
-# (/usr/local/bin/hap.py).
-ENTRYPOINT ["/opt/qa-venv/bin/python", "validate.py"]
+# validate.py runs on the base image's Python 3 runtime; the hap.py wrapper above
+# dispatches to BioContainers' Python 2 runtime for hap.py internals.
+ENTRYPOINT ["/usr/local/bin/python3", "validate.py"]

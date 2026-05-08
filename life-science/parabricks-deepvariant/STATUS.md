@@ -18,38 +18,37 @@ Plan: `docs/superpowers/plans/2026-05-08-parabricks-on-nebius.md` (gitignored, l
 | T7  | `023be96` | `pipeline/run.py`: `emit_metadata()` parses `nvidia-smi --query-gpu=name` and `pbrun --version`; writes `run_metadata.json` (sample_id, wall_clock_seconds, gpu_name, parabricks_version) before upload. |
 | T8  | `226d61b` | `pipeline/cli.py`: `validate_env()` against 9 required env vars + `main()` dispatch. Full pipeline module: 21 tests, ruff clean. |
 | Fix | `8ca6b61` | FASTQ glob broadened to match `.R1.fq.gz` / `_R1.fq.gz` / `.fastq.gz`; `S3_OUTPUT_PREFIX` trailing slash no longer produces `bucket/prefix//sample/`. **Pipeline module: 24 tests, ruff clean.** |
-| T9  | `<this commit>` | Pipeline `Dockerfile` written (FROM `nvcr.io/nvidia/clara/clara-parabricks:4.7.0-1`, install Python 3 + uv-pinned boto3, copy `pipeline/`, ENTRYPOINT `python3 -m pipeline.cli`, runs as root with documented rationale). **Image build was at ~700 MB / 4.37 GB pull when interrupted — not yet smoke-tested locally.** |
-| T10 | `58933bf` | `scripts/run_nvidia_tutorial.sh` (Mode A) — three tutorials (get-sample-data / fq2bam / haplotypecaller), NGC inline auth default + MysteryBox `--registry-secret` alternative, `--help` works, shellcheck clean (one justified `SC2016` disable for the literal `'$oauthtoken'` username). |
-| T11 | `f400925` | `scripts/stage_demo_data.sh` — submits a CPU-only Nebius AI Job that downloads GRCh38 reference + HG002 FASTQ from public buckets into the customer's S3 bucket. |
-| T12 | `30ae089` | `scripts/run_serverless.sh` (Mode B) — wraps `nebius ai job create` with all the env vars `pipeline.cli` requires; defaults `gpu-h200-sxm` / `1gpu-16vcpu-200gb` / `500Gi`. |
-| T13 | `1c8c7e4` | `qa/validate.py` + `qa/__init__.py` + `tests/test_validate.py` — fetches GIAB v4.2.1 truth from NIH at runtime, downloads customer's VCF from S3, runs `hap.py`, parses summary, gates SNP F1 ≥ 0.999. **Suite: 28 tests, ruff clean.** |
-| T14 (partial) | `<this commit>` | QA `Dockerfile` written. **Plan/spec corrected:** original `pkrusche/hap.py:v0.3.15` does not exist on Docker Hub and pkrusche's available tags use a deprecated manifest format that modern Docker refuses to pull. Swapped to `quay.io/biocontainers/hap.py:0.3.15--py27hcb73b3d_0` (BioContainers/Bioconda — verified pullable, modern manifest). New Dockerfile uses a Python 3 venv at `/opt/qa-venv` to avoid colliding with the conda env hap.py runs in. **Build never attempted.** |
+| T9  | `<pending>` | Pipeline `Dockerfile` written (FROM `nvcr.io/nvidia/clara/clara-parabricks:4.7.0-1`, install Python 3 + uv-pinned boto3, copy `pipeline/`, ENTRYPOINT `python3 -m pipeline.cli`, runs as root with documented rationale). Local image build succeeded from cached NGC base as `parabricks-deepvariant:dev`; smoke checks passed (`pipeline` import, missing-env failure, `pbrun --version` = `4.7.0-1`). Clean-cache pulls still require NGC auth/login; `~/.docker/config.json` has no `nvcr.io` auth. |
+| T10 | `58933bf` + pending edits | `scripts/run_nvidia_tutorial.sh` (Mode A) — three tutorials now self-contain data download in each ephemeral job, NGC inline auth default + MysteryBox `--registry-secret`, optional `PARENT_ID`/`SUBNET_ID`, `--help` works, shellcheck clean. |
+| T11 | `f400925` + pending edits | `scripts/stage_demo_data.sh` submits a CPU-only Nebius AI Job to stage GRCh38 reference + HG002 35x FASTQ; optional `PARENT_ID`/`SUBNET_ID`; no xtrace secret leakage. Public source URLs were checked with HTTP 200 responses. |
+| T12 | `30ae089` + pending edits | `scripts/run_serverless.sh` wraps `nebius ai job create` with all `pipeline.cli` env vars; optional `PARENT_ID`/`SUBNET_ID`; no xtrace secret leakage. |
+| T13 | `1c8c7e4` + pending edits | `qa/validate.py` + tests fetch GIAB v4.2.1 truth and GRCh38 reference at runtime, strip trailing output-prefix slashes, pass `-r` to `hap.py --engine=vcfeval`, parse summary, and gate SNP F1 ≥ 0.999. |
+| T14 | `<pending>` | QA `Dockerfile` fixed and built locally as `parabricks-qa:verify`. It copies BioContainers hap.py into `python:3.11-slim-bookworm`, installs pinned boto3 deps from `qa/requirements.txt`, uses Python 3 for `validate.py`, and routes `hap.py` through the bundled Python 2 runtime. Smoke checks: missing-env failure, Python 3 `boto3` import, and `hap.py --version`. |
+| T15 | `<pending>` | `scripts/run_qa.sh` added: CPU-only QA submission with `QA_IMAGE`, S3 envs, optional `PARENT_ID`/`SUBNET_ID`, `--help`, and no xtrace secret leakage. Shellcheck clean. |
+| T16 | `<pending>` | `bench/run_bench.sh` added: wraps `run_serverless.sh`, requires `PARENT_ID` for `get-by-name`, polls with visible CLI errors, fetches `run_metadata.json` with AWS CLI, writes `bench/results/<date>-<sku>.md`, and has `--help`. Shellcheck clean. |
+| T17 | `<pending>` | Customer README added with Mode A/Mode B walkthroughs, NGC inline-vs-MysteryBox auth, working-directory guidance, Container Registry auth links, staging/build/submit/inspect flows, GPU guidance, QA, benchmarking, and troubleshooting. External links checked. |
+| T18 | `<pending>` | Top-level cookbook `README.md` links the Parabricks DeepVariant recipe under Life Science. |
+| T19 (partial) | (no commit) | Local dev gate passed: `uv run pytest -v` (29 passed), `uv run ruff check .`, `shellcheck scripts/*.sh bench/*.sh`, `git diff --check`, QA Docker build + smoke, and cached pipeline Docker build + smoke. Runtime bench flow is not smoke-tested because AWS CLI and real Object Storage credentials are missing. |
 | Spec | (gitignored) | Spec + plan revised to add **RTX6000 Ada** to the SKU verification matrix. v1 now requires bench results on **L40S, RTX6000 Ada, H200, B200, B300** (five SKUs). |
 
-## Not done
+## Not done / blocked
 
-### Code/docs (autonomous range, blocked only by tooling)
+### Code/docs
 
-- **T9 finish:** Build pipeline image locally (`docker build -t parabricks-deepvariant:dev life-science/parabricks-deepvariant/`) and run two smoke tests (entrypoint imports + missing-env-var error). Cache from the interrupted ~700 MB pull should make resumption faster.
-- **T14 finish:** Build QA image (`docker build -t parabricks-qa:dev life-science/parabricks-deepvariant/qa/`) and smoke-test entrypoint.
-- **T15:** `scripts/run_qa.sh` — wraps `nebius ai job create` for the QA validation submission.
-- **T16:** `bench/run_bench.sh` — submits a Mode B run, polls completion, pulls `run_metadata.json` from S3, renders Markdown to `bench/results/<date>-<sku>.md`.
-- **T17:** Recipe `README.md` (the customer-facing surface; ~400–500 lines mirroring `life-science/openmm-simulation/README.md`).
-- **T18:** Top-level cookbook `README.md` row under "Life Science".
-- **T19:** Final lint + test gate (rebuild both images, full pytest, ruff, shellcheck on all scripts).
+- Fresh pipeline image pulls require NGC registry auth/login. The current workstation can rebuild from cached layers, but `~/.docker/config.json` has no persisted `nvcr.io` auth, so a clean environment still needs `NGC_API_KEY` or equivalent Docker auth.
+- `bench/run_bench.sh` runtime also requires AWS CLI; it is not installed on this workstation (`command -v aws` returned empty). Static lint is clean, but an actual metadata download was not smoke-tested.
 
-### Real-world (require Rene Schönfelder)
+### Real-world (require Rene Schönfelder authorization / credentials)
 
 - **T20:** `docker tag` + `docker push` pipeline + QA images to Nebius Container Registry.
 - **T21:** Run `scripts/stage_demo_data.sh` against Rene's bucket (~10–40 min one-shot).
-- **T22:** Mode A H200 smoke test (catches NGC auth + `bash -c` quoting issues before SKU matrix burns time).
-- **T23–T26 + T23b:** End-to-end Mode B + QA + bench commit on **L40S, RTX6000 Ada, H200, B200, B300** (five SKUs, ~3–5 hours total wall time of real Nebius GPU compute).
-- **T27:** `gh pr create` after STATUS.md is removed.
+- **T22:** Mode A H200 smoke test (NGC auth + `bash -c` quoting validation).
+- **T23–T26 + T23b:** End-to-end Mode B + QA + bench commit on **L40S, RTX6000 Ada, H200, B200, B300** (paid Nebius GPU jobs).
+- **T27:** `gh pr create` after `STATUS.md` is removed.
 
 ## Resume from here
 
-1. `cd life-science/parabricks-deepvariant && docker build -t parabricks-deepvariant:dev .` (cached layers should resume the NGC pull quickly).
-2. `cd qa && docker build -t parabricks-qa:dev .` (BioContainers base, ~3–5 min total).
-3. `docker run --rm --entrypoint python3 parabricks-deepvariant:dev -c "from pipeline import cli; print('ok')"` (expect `ok`).
-4. `docker run --rm parabricks-qa:dev || true` (expect non-zero exit with `Missing required environment variable: ...`).
-5. Continue with T15.
+1. Provide local NGC auth so the pipeline image can be rebuilt from a clean cache, not only from this workstation's cached base.
+2. Install/configure AWS CLI if `bench/run_bench.sh` will be run locally.
+3. Provide Object Storage bucket/keys, NGC auth or MysteryBox selector, Container Registry target refs, and explicit approval to spend Nebius GPU time.
+4. Push images and run the real Nebius staging/tutorial/QA/benchmark jobs.
