@@ -1,6 +1,9 @@
+import json
 import os
+import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from pipeline import stage
@@ -29,6 +32,28 @@ def _first_match(directory: Path, glob: str) -> Path:
     return matches[0]
 
 
+def _capture_stdout(cmd: list[str]) -> str:
+    completed = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    return completed.stdout or ""
+
+
+def _parse_pbrun_version(stdout: str) -> str:
+    match = re.search(r"Parabricks Version[:\s]+([^\s]+)", stdout)
+    return match.group(1) if match else "unknown"
+
+
+def emit_metadata(dest: Path, wall_clock_seconds: float, sample_id: str) -> None:
+    gpu_stdout = _capture_stdout(["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"])
+    pbrun_stdout = _capture_stdout(["pbrun", "--version"])
+    payload = {
+        "sample_id": sample_id,
+        "wall_clock_seconds": wall_clock_seconds,
+        "gpu_name": gpu_stdout.strip().splitlines()[0] if gpu_stdout.strip() else "unknown",
+        "parabricks_version": _parse_pbrun_version(pbrun_stdout),
+    }
+    Path(dest).write_text(json.dumps(payload, indent=2))
+
+
 def run_germline(scratch: Path) -> None:
     scratch = Path(scratch)
     ref_dir = scratch / "ref"
@@ -53,8 +78,12 @@ def run_germline(scratch: Path) -> None:
     out_bam = out_dir / f"{sample_id}.bam"
 
     cmd = build_pbrun_command(ref_fasta, fq_pair, out_vcf, out_bam)
+    started = time.monotonic()
     completed = subprocess.run(cmd, check=False)
+    elapsed = time.monotonic() - started
     if completed.returncode != 0:
         sys.exit(completed.returncode)
+
+    emit_metadata(out_dir / "run_metadata.json", wall_clock_seconds=elapsed, sample_id=sample_id)
 
     stage.upload_prefix(client, out_dir, bucket, f"{os.environ['S3_OUTPUT_PREFIX']}/{sample_id}")
