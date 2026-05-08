@@ -69,9 +69,19 @@ def run_germline(scratch: Path) -> None:
     stage.download_prefix(client, bucket, os.environ["S3_INPUT_PREFIX"], in_dir)
 
     ref_fasta = _first_match(ref_dir, "*.fasta")
-    fq_files = sorted(in_dir.rglob("*_R[12].fq.gz")) or sorted(in_dir.rglob("*_[12].fq.gz"))
+    # Match common paired-FASTQ naming conventions:
+    #   *.R1.fq.gz / *_R1.fq.gz / *.R1.fastq.gz   (Illumina-style, dot or underscore)
+    #   *_1.fq.gz / *_1.fastq.gz                   (NVIDIA tutorial sample_1.fq.gz)
+    fq_files = (
+        sorted(in_dir.rglob("*[._]R[12].f*q.gz"))
+        or sorted(in_dir.rglob("*_[12].f*q.gz"))
+    )
     if len(fq_files) < 2:
-        raise FileNotFoundError(f"Expected paired FASTQ under {in_dir}, found {fq_files}")
+        listing = sorted(p.name for p in in_dir.rglob("*") if p.is_file())
+        raise FileNotFoundError(
+            f"Expected paired FASTQ under {in_dir}; found {fq_files}. "
+            f"Directory contents: {listing}"
+        )
     fq_pair = (fq_files[0], fq_files[1])
 
     out_vcf = out_dir / f"{sample_id}.vcf"
@@ -86,4 +96,9 @@ def run_germline(scratch: Path) -> None:
 
     emit_metadata(out_dir / "run_metadata.json", wall_clock_seconds=elapsed, sample_id=sample_id)
 
-    stage.upload_prefix(client, out_dir, bucket, f"{os.environ['S3_OUTPUT_PREFIX']}/{sample_id}")
+    stage.upload_prefix(
+        client,
+        out_dir,
+        bucket,
+        f"{os.environ['S3_OUTPUT_PREFIX'].rstrip('/')}/{sample_id}",
+    )

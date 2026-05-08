@@ -111,3 +111,69 @@ def test_emit_metadata_writes_expected_fields(tmp_path):
     assert payload["wall_clock_seconds"] == pytest.approx(123.4)
     assert payload["gpu_name"] == "NVIDIA H200"
     assert payload["parabricks_version"] == "4.7.0-1"
+
+
+def test_fastq_glob_matches_dot_r_naming(tmp_path, s3_env):
+    """Demo data uses HG002.novaseq.pcr-free.30x.R1.fq.gz (dot, not underscore)."""
+    from unittest.mock import MagicMock, patch
+
+    def fake_download_prefix(client, bucket, prefix, dest):
+        Path(dest).mkdir(parents=True, exist_ok=True)
+        if "ref" in prefix:
+            (Path(dest) / "Homo_sapiens_assembly38.fasta").write_text("")
+        else:
+            (Path(dest) / "HG002.novaseq.pcr-free.30x.R1.fq.gz").write_text("")
+            (Path(dest) / "HG002.novaseq.pcr-free.30x.R2.fq.gz").write_text("")
+
+    completed = MagicMock(returncode=0, stdout="")
+    with patch("pipeline.run.stage.make_client", return_value=MagicMock()), \
+         patch("pipeline.run.stage.download_prefix", side_effect=fake_download_prefix), \
+         patch("pipeline.run.stage.upload_prefix"), \
+         patch("pipeline.run.subprocess.run", return_value=completed):
+        run.run_germline(scratch=tmp_path)  # should not raise
+
+
+def test_fastq_glob_matches_underscore_digit_naming(tmp_path, s3_env):
+    """NVIDIA tutorial sample uses sample_1.fq.gz / sample_2.fq.gz."""
+    from unittest.mock import MagicMock, patch
+
+    def fake_download_prefix(client, bucket, prefix, dest):
+        Path(dest).mkdir(parents=True, exist_ok=True)
+        if "ref" in prefix:
+            (Path(dest) / "Homo_sapiens_assembly38.fasta").write_text("")
+        else:
+            (Path(dest) / "sample_1.fq.gz").write_text("")
+            (Path(dest) / "sample_2.fq.gz").write_text("")
+
+    completed = MagicMock(returncode=0, stdout="")
+    with patch("pipeline.run.stage.make_client", return_value=MagicMock()), \
+         patch("pipeline.run.stage.download_prefix", side_effect=fake_download_prefix), \
+         patch("pipeline.run.stage.upload_prefix"), \
+         patch("pipeline.run.subprocess.run", return_value=completed):
+        run.run_germline(scratch=tmp_path)
+
+
+def test_output_prefix_trailing_slash_does_not_double_slash(tmp_path, s3_env, monkeypatch):
+    monkeypatch.setenv("S3_OUTPUT_PREFIX", "parabricks/out/")
+    from unittest.mock import MagicMock, patch
+
+    upload_calls = []
+    def fake_upload_prefix(client, src, bucket, prefix):
+        upload_calls.append(prefix)
+
+    def fake_download_prefix(client, bucket, prefix, dest):
+        Path(dest).mkdir(parents=True, exist_ok=True)
+        if "ref" in prefix:
+            (Path(dest) / "Homo_sapiens_assembly38.fasta").write_text("")
+        else:
+            (Path(dest) / "HG002.R1.fq.gz").write_text("")
+            (Path(dest) / "HG002.R2.fq.gz").write_text("")
+
+    completed = MagicMock(returncode=0, stdout="")
+    with patch("pipeline.run.stage.make_client", return_value=MagicMock()), \
+         patch("pipeline.run.stage.download_prefix", side_effect=fake_download_prefix), \
+         patch("pipeline.run.stage.upload_prefix", side_effect=fake_upload_prefix), \
+         patch("pipeline.run.subprocess.run", return_value=completed):
+        run.run_germline(scratch=tmp_path)
+
+    assert upload_calls == ["parabricks/out/HG002"]  # no double slash
