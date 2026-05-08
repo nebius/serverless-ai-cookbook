@@ -49,8 +49,7 @@ class FakePaginator:
         self._pages = pages
 
     def paginate(self, **_):
-        for p in self._pages:
-            yield p
+        yield from self._pages
 
 
 class FakeClient:
