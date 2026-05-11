@@ -38,7 +38,11 @@ def _capture_stdout(cmd: list[str]) -> str:
 
 
 def _parse_pbrun_version(stdout: str) -> str:
-    match = re.search(r"Parabricks Version[:\s]+([^\s]+)", stdout)
+    match = re.search(
+        r"(?:Parabricks Version|pbrun)[:\s]+([0-9][^\s]+)",
+        stdout,
+        flags=re.IGNORECASE,
+    )
     return match.group(1) if match else "unknown"
 
 

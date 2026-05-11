@@ -113,6 +113,17 @@ def test_emit_metadata_writes_expected_fields(tmp_path):
     assert payload["parabricks_version"] == "4.7.0-1"
 
 
+@pytest.mark.parametrize(
+    ("stdout", "expected"),
+    [
+        ("Parabricks Version: 4.7.0-1\n", "4.7.0-1"),
+        ("Please visit ...\npbrun: 4.7.0-1\n", "4.7.0-1"),
+    ],
+)
+def test_parse_pbrun_version_accepts_documented_and_runtime_formats(stdout, expected):
+    assert run._parse_pbrun_version(stdout) == expected
+
+
 def test_fastq_glob_matches_dot_r_naming(tmp_path, s3_env):
     """Demo data uses HG002.novaseq.pcr-free.35x.R1.fastq.gz (dot, not underscore)."""
     from unittest.mock import MagicMock, patch

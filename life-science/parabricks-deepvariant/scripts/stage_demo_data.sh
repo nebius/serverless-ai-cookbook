@@ -17,7 +17,8 @@ Required environment:
   S3_BUCKET             Object Storage bucket name
   S3_ENDPOINT_URL       Object Storage endpoint URL
   AWS_ACCESS_KEY_ID     Object Storage access key ID
-  AWS_SECRET_ACCESS_KEY Object Storage secret access key
+  AWS_SECRET_ACCESS_KEY Object Storage secret access key, or set
+                        AWS_SECRET_ACCESS_KEY_SECRET to a MysteryBox selector
 
 Optional environment:
   AWS_DEFAULT_REGION PARENT_ID SUBNET_ID PLATFORM PRESET
@@ -32,7 +33,10 @@ fi
 : "${S3_BUCKET:?S3_BUCKET required}"
 : "${S3_ENDPOINT_URL:?S3_ENDPOINT_URL required}"
 : "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID required}"
-: "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY required}"
+if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" && -z "${AWS_SECRET_ACCESS_KEY_SECRET:-}" ]]; then
+    echo "Error: set AWS_SECRET_ACCESS_KEY or AWS_SECRET_ACCESS_KEY_SECRET." >&2
+    exit 1
+fi
 : "${AWS_DEFAULT_REGION:=eu-north1}"
 
 PLATFORM="${PLATFORM:-cpu-d3}"
@@ -83,11 +87,16 @@ CREATE_CMD=(
     --env "S3_BUCKET=$S3_BUCKET"
     --env "S3_ENDPOINT_URL=$S3_ENDPOINT_URL"
     --env "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
-    --env "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
     --env "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION"
     --container-command bash
     --args "-c \"$STAGE_SCRIPT\""
 )
+
+if [[ -n "${AWS_SECRET_ACCESS_KEY_SECRET:-}" ]]; then
+    CREATE_CMD+=(--env-secret "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY_SECRET")
+else
+    CREATE_CMD+=(--env "AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY")
+fi
 
 if [[ -n "${PARENT_ID:-}" ]]; then
     CREATE_CMD+=(--parent-id "$PARENT_ID")

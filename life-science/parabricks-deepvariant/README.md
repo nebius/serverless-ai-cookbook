@@ -54,6 +54,15 @@ export S3_ENDPOINT_URL="https://storage.eu-north1.nebius.cloud"
 export S3_BUCKET="<bucket-name>"
 ```
 
+For production runs, prefer storing the secret access key in MysteryBox and exporting a selector instead of the plaintext value:
+
+```bash
+export AWS_SECRET_ACCESS_KEY_SECRET="<secret-id>@<version-id>"
+unset AWS_SECRET_ACCESS_KEY
+```
+
+`scripts/stage_demo_data.sh`, `scripts/run_serverless.sh`, and `scripts/run_qa.sh` use `--env-secret` when `AWS_SECRET_ACCESS_KEY_SECRET` is set.
+
 If your project requires an explicit subnet, export it once and the helper scripts will pass it to `nebius ai job create`:
 
 ```bash
