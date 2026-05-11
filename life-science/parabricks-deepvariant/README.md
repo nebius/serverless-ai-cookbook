@@ -57,11 +57,12 @@ export S3_BUCKET="<bucket-name>"
 For production runs, prefer storing the secret access key in MysteryBox and exporting a selector instead of the plaintext value:
 
 ```bash
+# The MysteryBox payload key must be AWS_SECRET_ACCESS_KEY.
 export AWS_SECRET_ACCESS_KEY_SECRET="<secret-id>@<version-id>"
 unset AWS_SECRET_ACCESS_KEY
 ```
 
-`scripts/stage_demo_data.sh`, `scripts/run_serverless.sh`, and `scripts/run_qa.sh` use `--env-secret` when `AWS_SECRET_ACCESS_KEY_SECRET` is set.
+`scripts/stage_demo_data.sh`, `scripts/run_serverless.sh`, `scripts/run_qa.sh`, and `bench/run_bench.sh` use `--env-secret` when `AWS_SECRET_ACCESS_KEY_SECRET` is set. The benchmark helper also reads the same MysteryBox selector locally so it can fetch `run_metadata.json` after the job finishes.
 
 If your project requires an explicit subnet, export it once and the helper scripts will pass it to `nebius ai job create`:
 

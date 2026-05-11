@@ -23,7 +23,8 @@ Required environment:
   S3_BUCKET             Object Storage bucket name
   S3_ENDPOINT_URL       Object Storage endpoint URL
   AWS_ACCESS_KEY_ID     Object Storage access key ID
-  AWS_SECRET_ACCESS_KEY Object Storage secret access key
+  AWS_SECRET_ACCESS_KEY Object Storage secret access key, or set
+                        AWS_SECRET_ACCESS_KEY_SECRET to a MysteryBox selector
   PARENT_ID             Project ID used for polling with get-by-name
 
 Optional environment:
@@ -44,7 +45,10 @@ fi
 : "${S3_BUCKET:?S3_BUCKET required}"
 : "${S3_ENDPOINT_URL:?S3_ENDPOINT_URL required}"
 : "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID required}"
-: "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY required}"
+if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" && -z "${AWS_SECRET_ACCESS_KEY_SECRET:-}" ]]; then
+    echo "Error: set AWS_SECRET_ACCESS_KEY or AWS_SECRET_ACCESS_KEY_SECRET." >&2
+    exit 1
+fi
 : "${PARENT_ID:?PARENT_ID required for polling with nebius ai job get-by-name}"
 
 command -v nebius >/dev/null || { echo "nebius CLI is required" >&2; exit 127; }
@@ -63,6 +67,40 @@ export AWS_DEFAULT_REGION
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
+
+if [[ -z "${AWS_SECRET_ACCESS_KEY:-}" && -n "${AWS_SECRET_ACCESS_KEY_SECRET:-}" ]]; then
+    SECRET_ID="${AWS_SECRET_ACCESS_KEY_SECRET%@*}"
+    VERSION_ID=""
+    if [[ "$AWS_SECRET_ACCESS_KEY_SECRET" == *@* ]]; then
+        VERSION_ID="${AWS_SECRET_ACCESS_KEY_SECRET#*@}"
+    fi
+
+    SECRET_PAYLOAD="$TMP_DIR/aws-secret-payload.json"
+    SECRET_CMD=(nebius mysterybox payload get --secret-id "$SECRET_ID" --format json)
+    if [[ -n "$VERSION_ID" ]]; then
+        SECRET_CMD+=(--version-id "$VERSION_ID")
+    fi
+    "${SECRET_CMD[@]}" >"$SECRET_PAYLOAD"
+
+    AWS_SECRET_ACCESS_KEY="$(
+        python3 - "$SECRET_PAYLOAD" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as fh:
+    payload = json.load(fh)
+
+for item in payload.get("data") or []:
+    value = item.get("string_value") or item.get("stringValue")
+    if item.get("key") == "AWS_SECRET_ACCESS_KEY" and value:
+        print(value)
+        raise SystemExit
+
+raise SystemExit("MysteryBox payload must contain an AWS_SECRET_ACCESS_KEY string value")
+PY
+    )"
+    export AWS_SECRET_ACCESS_KEY
+fi
 
 JOB_NAME="$JOB_NAME" \
 PARENT_ID="$PARENT_ID" \
