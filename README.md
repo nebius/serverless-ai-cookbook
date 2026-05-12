@@ -44,6 +44,7 @@ nebius ai logs "$JOB_ID"
 | | [train-and-serve](./training/train-and-serve/README.md) | Fine-tune TinyLlama in a Job, then serve it via vLLM Endpoint |
 | **Inference** | [vllm-endpoint](./inference/vllm-endpoint/README.md) | Serve Qwen with an OpenAI-compatible vLLM endpoint |
 | **Agents** | [openclaw](./agents/openclaw/README.md) | Deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory |
+| | [mcp-server-endpoint](./agents/mcp-server-endpoint/README.md) | Run an MCP tool server on a CPU endpoint backed by Nebius TokenFactory |
 | **Life Science** | [openmm-simulation](./life-science/openmm-simulation/README.md) | GPU-backed molecular dynamics simulation with OpenMM |
 
 ## Repository structure
