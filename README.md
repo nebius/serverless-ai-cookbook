@@ -68,6 +68,7 @@ Endpoint serving and batch inference workloads.
 AI gateway and agent deployments.
 
 - [`openclaw`](./agents/openclaw/README.md) — deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory
+- [`mcp-server-endpoint`](./agents/mcp-server-endpoint/README.md) — run an MCP tool server on a CPU endpoint backed by Nebius TokenFactory
 
 ### 🧬 Life Science
 Domain-specific simulation and analysis workloads.

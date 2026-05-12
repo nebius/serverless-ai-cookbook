@@ -1,3 +1,18 @@
+---
+title: OpenClaw AI Gateway on Serverless Endpoint
+category: agents
+type: endpoint
+runtime: cpu
+frameworks:
+  - openclaw
+keywords:
+  - ai-gateway
+  - openai-compatible
+  - tokenfactory
+  - cpu-endpoint
+difficulty: intermediate
+---
+
 # Running OpenClaw Gateway on Nebius Serverless
 
 This tutorial shows how to deploy [OpenClaw](https://github.com/openclaw/openclaw) — an open-source AI gateway — as a serverless CPU endpoint on Nebius AI, connected to TokenFactory model inference.
