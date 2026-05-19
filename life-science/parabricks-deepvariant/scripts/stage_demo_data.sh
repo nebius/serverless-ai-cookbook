@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2016
+# SC2016 is intentional here: the --args value contains '$STAGE_SCRIPT_B64'
+# inside single quotes so the variable stays unexpanded host-side and is
+# resolved by the container's bash from the --env we pass on submission.
+
 # One-shot: stage the GRCh38 reference bundle and HG002 35x WGS FASTQ into
 # the customer's Nebius Object Storage bucket. Runs as a CPU-only Nebius AI
 # Job so the transfer happens inside Nebius (fast) rather than via the
@@ -76,6 +81,13 @@ done
 echo "Staging complete."
 EOF
 
+# `nebius ai job create --args` is shell-tokenized on the way into the
+# container, so embedding multi-line scripts with inner double quotes (e.g.
+# `aws configure set region "$VAR"`) breaks word splitting. Encode the script
+# to base64 so it is opaque to that tokenization, and decode it inside the
+# container.
+STAGE_SCRIPT_B64=$(printf '%s' "$STAGE_SCRIPT" | base64 | tr -d '\n')
+
 echo "Submitting Nebius AI Job: $JOB_NAME"
 CREATE_CMD=(
     nebius ai job create
@@ -88,8 +100,9 @@ CREATE_CMD=(
     --env "S3_ENDPOINT_URL=$S3_ENDPOINT_URL"
     --env "AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID"
     --env "AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION"
+    --env "STAGE_SCRIPT_B64=$STAGE_SCRIPT_B64"
     --container-command bash
-    --args "-c \"$STAGE_SCRIPT\""
+    --args '-c "echo $STAGE_SCRIPT_B64 | base64 -d | bash"'
 )
 
 if [[ -n "${AWS_SECRET_ACCESS_KEY_SECRET:-}" ]]; then
