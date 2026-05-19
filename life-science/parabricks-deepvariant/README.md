@@ -442,7 +442,7 @@ git add bench/results/2026-05-08-h200.md
 git commit -m "Bench: H200 result for HG002 35x DeepVariant"
 ```
 
-This branch includes tutorial-sample runtime notes for L40S, RTX6000, H200, B200, and B300 under `bench/results/`.
+Bench reports land under `bench/results/` as `<YYYY-MM-DD>-<sku>.md`, one file per SKU per run. Reports are produced by `bench/run_bench.sh` on Nebius AI Jobs.
 
 ## Project Structure
 

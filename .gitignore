@@ -223,3 +223,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Personal design docs (superpowers brainstorming/planning artifacts)
+docs/superpowers/

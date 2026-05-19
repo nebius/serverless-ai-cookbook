@@ -12,8 +12,7 @@ COPY --from=happy /usr/local /opt/happy
 
 ENV PATH="/opt/happy/bin:${PATH}"
 
-COPY requirements.txt ./requirements.txt
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir 'boto3==1.43.6'
 
 # Keep plain `python` on Python 3 for smoke checks and wrapper tooling, but run
 # hap.py itself with the Python 2.7 runtime bundled in the BioContainers image.
