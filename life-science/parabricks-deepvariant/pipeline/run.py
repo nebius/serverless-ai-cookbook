@@ -32,6 +32,18 @@ def _first_match(directory: Path, glob: str) -> Path:
     return matches[0]
 
 
+def _normalize_bwa_index(ref_fasta: Path) -> None:
+    # Broad publishes the BWA index with a `.64.` infix
+    # (`<fasta>.64.{amb,ann,bwt,pac,sa}`), but pbrun fq2bam looks for the
+    # canonical `<fasta>.{amb,ann,bwt,pac,sa}`. Symlink the canonical names
+    # to the `.64.` files when only the `.64.` variant is present.
+    for ext in ("amb", "ann", "bwt", "pac", "sa"):
+        canonical = ref_fasta.with_name(f"{ref_fasta.name}.{ext}")
+        broad = ref_fasta.with_name(f"{ref_fasta.name}.64.{ext}")
+        if not canonical.exists() and broad.exists():
+            canonical.symlink_to(broad.name)
+
+
 def _capture_stdout(cmd: list[str]) -> str:
     completed = subprocess.run(cmd, capture_output=True, text=True, check=False)
     return completed.stdout or ""
@@ -73,6 +85,7 @@ def run_germline(scratch: Path) -> None:
     stage.download_prefix(client, bucket, os.environ["S3_INPUT_PREFIX"], in_dir)
 
     ref_fasta = _first_match(ref_dir, "*.fasta")
+    _normalize_bwa_index(ref_fasta)
     # Match common paired-FASTQ naming conventions:
     #   *.R1.fq.gz / *_R1.fq.gz / *.R1.fastq.gz   (Illumina-style, dot or underscore)
     #   *_1.fq.gz / *_1.fastq.gz                   (NVIDIA tutorial sample_1.fq.gz)

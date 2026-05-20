@@ -56,7 +56,9 @@ command -v aws >/dev/null || { echo "aws CLI is required to fetch run_metadata.j
 command -v python3 >/dev/null || { echo "python3 is required" >&2; exit 127; }
 
 HOURLY_RATE_USD="${HOURLY_RATE_USD:-0.00}"
-SAMPLE_ID="${SAMPLE_ID:-HG002}"
+# Namespace SAMPLE_ID by SKU so concurrent bench runs don't overwrite each
+# other's run_metadata.json under the shared S3 output prefix.
+SAMPLE_ID="${SAMPLE_ID:-HG002-${SKU_LABEL}}"
 S3_OUTPUT_PREFIX="${S3_OUTPUT_PREFIX:-parabricks/out}"
 AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-eu-north1}"
 BENCH_POLL_SECONDS="${BENCH_POLL_SECONDS:-30}"
