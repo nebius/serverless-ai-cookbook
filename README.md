@@ -45,6 +45,7 @@ nebius ai logs "$JOB_ID"
 | **Inference** | [vllm-endpoint](./inference/vllm-endpoint/README.md) | Serve Qwen with an OpenAI-compatible vLLM endpoint |
 | **Agents** | [openclaw](./agents/openclaw/README.md) | Deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory |
 | **Life Science** | [openmm-simulation](./life-science/openmm-simulation/README.md) | GPU-backed molecular dynamics simulation with OpenMM |
+| | [parabricks-deepvariant](./life-science/parabricks-deepvariant/README.md) | Run NVIDIA Parabricks DeepVariant genomics workflows with Nebius AI Jobs |
 
 ## Repository structure
 
