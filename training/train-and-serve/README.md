@@ -1,7 +1,7 @@
 ---
 title: Train and Serve TinyLlama with Serverless
 category: training
-type: workflow
+type: job
 runtime: gpu
 frameworks:
   - pytorch
