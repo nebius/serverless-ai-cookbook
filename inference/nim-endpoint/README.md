@@ -12,6 +12,8 @@ keywords:
   - openai-compatible
   - image-generation
   - container-registry
+  - prometheus
+  - metrics
 difficulty: intermediate
 ---
 
@@ -161,6 +163,38 @@ out.jpg: JPEG image data, JFIF standard 1.01, 1024x1024   # ~3.9 s on one H200
 ```
 
 A request **without** a valid token returns `401`; while the model is still warming up the proxy returns `502`.
+
+## Monitor with Prometheus
+
+The NIM exposes Prometheus-format metrics at **`/v1/metrics`** on the same port `8000`, behind the same token auth (`401` without it). LLM NIMs expose request/latency/token metrics (`e2e_request_latency_seconds`, `time_per_output_token_seconds`, `num_requests_running`, `prompt_tokens_total`, `request_success_total`); GPU metrics (`gpu_utilization`, `gpu_power_usage_watts`, `gpu_total_energy_consumption_joules`) are exposed across NIM types.
+
+Quick check:
+
+```bash
+curl -s "$URL/v1/metrics" -H "Authorization: Bearer $AUTH_TOKEN" | grep -vE '^#' | head
+```
+
+Add a **static** scrape job to `prometheus.yml` (the endpoint is a stable target for the life of the endpoint):
+
+```yaml
+scrape_configs:
+  - job_name: nim
+    scheme: http                 # endpoint serves plain HTTP on :8000
+    metrics_path: /v1/metrics
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/nim-token   # contains the endpoint --auth token
+    static_configs:
+      - targets: ["ENDPOINT_IP:8000"]               # status.public_endpoints[0]
+        labels: { model: NIM_NAME }
+```
+
+Notes:
+
+- If Prometheus runs in the **same VPC**, scrape the private target (`status.private_endpoints[0]`) instead of the public IP.
+- The endpoint IP is stable while the endpoint exists but **changes if you recreate it** — re-template the target on deploy, or front it with DNS.
+- Deploy with a **shared, known token** (`--token "$SCRAPE_TOKEN"`) so one job can list multiple endpoint targets, or use `--auth none` for a private-only endpoint.
+- Only container-port `8000` is published, so `/v1/metrics` (the NIM-aggregated set) is the scrape path; Triton's native metrics port isn't exposed by the endpoint.
 
 ## How to adapt
 
