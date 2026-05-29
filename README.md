@@ -43,6 +43,7 @@ nebius ai logs "$JOB_ID"
 | **Training** | [axolotl-finetuning](./training/axolotl-finetuning/README.md) | Fine-tune an LLM with Axolotl |
 | | [train-and-serve](./training/train-and-serve/README.md) | Fine-tune TinyLlama in a Job, then serve it via vLLM Endpoint |
 | **Inference** | [vllm-endpoint](./inference/vllm-endpoint/README.md) | Serve Qwen with an OpenAI-compatible vLLM endpoint |
+| | [nim-endpoint](./inference/nim-endpoint/README.md) | Deploy an NVIDIA NIM (LLM or image-gen) as an endpoint, incl. the large-image Container Registry workaround |
 | **Agents** | [openclaw](./agents/openclaw/README.md) | Deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory |
 | **Life Science** | [openmm-simulation](./life-science/openmm-simulation/README.md) | GPU-backed molecular dynamics simulation with OpenMM |
 | | [parabricks-deepvariant](./life-science/parabricks-deepvariant/README.md) | Run NVIDIA Parabricks DeepVariant genomics workflows with Nebius AI Jobs |
