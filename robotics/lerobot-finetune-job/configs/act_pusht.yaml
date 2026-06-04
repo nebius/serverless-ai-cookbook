@@ -1,0 +1,29 @@
+# Reference CLI flags for lerobot-train v0.5.1 on lerobot/pusht.
+# Confirmed via `lerobot-train --help` inside the container.
+#
+# Pass any flag directly to lerobot-train, e.g.:
+#   lerobot-train --policy.type=act --dataset.repo_id=lerobot/pusht --steps=5000
+
+# Policy and dataset (required)
+policy:
+  type: act            # act | diffusion | smolvla | pi0 | ...
+  push_to_hub: false   # Skip HF Hub upload (otherwise lerobot-train needs policy.repo_id).
+dataset:
+  repo_id: lerobot/pusht   # HuggingFace dataset repo_id
+
+# Top-level training flags
+steps: 5000            # Gradient steps. 5 000 = quick demo; 50 000+ for real results.
+batch_size: 8          # Increase on H100 (try 32–64). On L40S stay ≤ 16 for ACT.
+save_freq: 5000        # Save checkpoint every N steps.
+
+# Optional evaluation (requires a display / xvfb in the container)
+# env:
+#   type: pusht
+# eval:
+#   batch_size: 10
+
+# Experiment tracking
+wandb:
+  enable: false        # Set true and export WANDB_API_KEY to log to W&B.
+
+output_dir: outputs/train/lerobot-act-pusht
