@@ -36,17 +36,67 @@ nebius ai logs "$JOB_ID"
 
 ## Example catalog
 
-| Category | Example | What it does |
-|---|---|---|
-| **Quickstarts** | [first-job](./quickstarts/first-job.md) | Run `nvidia-smi` in a GPU job — fastest setup check |
-| | [first-endpoint](./quickstarts/first-endpoint.md) | Deploy an `nginx` endpoint |
-| **Training** | [axolotl-finetuning](./training/axolotl-finetuning/README.md) | Fine-tune an LLM with Axolotl |
-| | [train-and-serve](./training/train-and-serve/README.md) | Fine-tune TinyLlama in a Job, then serve it via vLLM Endpoint |
-| **Inference** | [vllm-endpoint](./inference/vllm-endpoint/README.md) | Serve Qwen with an OpenAI-compatible vLLM endpoint |
-| | [nim-endpoint](./inference/nim-endpoint/README.md) | Deploy an NVIDIA NIM (LLM or image-gen) as an endpoint, incl. the large-image Container Registry workaround |
-| **Agents** | [openclaw](./agents/openclaw/README.md) | Deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory |
-| **Life Science** | [openmm-simulation](./life-science/openmm-simulation/README.md) | GPU-backed molecular dynamics simulation with OpenMM |
-| | [parabricks-deepvariant](./life-science/parabricks-deepvariant/README.md) | Run NVIDIA Parabricks DeepVariant genomics workflows with Nebius AI Jobs |
+Pick the section that matches your goal — each links to runnable examples:
+
+- 🚀 [**Quickstarts**](#-quickstarts) — lowest-friction first runs.
+- 🏋️ [**Training**](#️-training) — model training and fine-tuning workloads.
+- ⚡ [**Inference**](#-inference) — endpoint serving and batch inference workloads.
+- 🤖 [**Agents**](#-agents) — AI gateway and agent deployments.
+- 🧬 [**Life Science**](#-life-science) — domain-specific simulation and analysis workloads.
+- 🦾 [**Robotics**](#-robotics) — simulation, dataset generation, and robotics workflows.
+
+### 🚀 Quickstarts
+Lowest-friction first runs.
+
+- [`first-job`](./quickstarts/first-job.md) — run `nvidia-smi` in a Serverless AI job
+- [`first-endpoint`](./quickstarts/first-endpoint.md) — deploy a quick `nginx` endpoint
+
+### 🏋️ Training
+Model training and fine-tuning workloads.
+
+- [`axolotl-finetuning`](./training/axolotl-finetuning/README.md) — get started fine-tuning with Axolotl
+- [`image-classifier-finetuning`](./training/image-classifier-finetuning/README.md) — fine-tune an image classifier on a HuggingFace dataset in a serverless GPU job
+- [`train-and-serve`](./training/train-and-serve/README.md) — fine-tune TinyLlama in a Job and serve it with a vLLM Endpoint
+
+### ⚡ Inference
+Endpoint serving and batch inference workloads.
+
+- [`vllm-endpoint`](./inference/vllm-endpoint/README.md) — serve Qwen with an OpenAI-compatible vLLM endpoint
+- [`nim-endpoint`](./inference/nim-endpoint/README.md) — deploy an NVIDIA NIM as an endpoint, including the large-image Container Registry workaround
+
+### 🤖 Agents
+AI gateway and agent deployments.
+
+- [`openclaw`](./agents/openclaw/README.md) — deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory
+
+### 🧬 Life Science
+Domain-specific simulation and analysis workloads.
+
+- [`openmm-simulation`](./life-science/openmm-simulation/README.md) — run GPU-backed molecular dynamics simulations with OpenMM
+- [`parabricks-deepvariant`](./life-science/parabricks-deepvariant/README.md) — run NVIDIA Parabricks DeepVariant genomics workflows with Nebius AI Jobs
+
+### 🦾 Robotics
+Robotics and physical-AI experiment loops.
+
+- [`lerobot-finetune-job`](./robotics/lerobot-finetune-job/README.md) — fine-tune a LeRobot ACT or Diffusion policy on a robotics dataset in a serverless GPU job
+- [`smolva-ft-norma-core`](./robotics/smolva-ft-norma-core/README.md) — fine-tune SmolVLA for SO-101 with bundled trajectories
+
+---
+
+## Awesome Community Projects
+
+External examples and writeups from the community running serverless workloads on Nebius. Got something to add? Open a PR.
+
+### Robotics
+
+- 🤖 **Positronic + Nebius serverless workflows** — Convert datasets, train ACT/SmolVLA, and serve checkpoints as endpoints — all serverless on Nebius. — *by vertix* · [💻 code](https://github.com/vertix/positronic-open/tree/add-nebius-workflows/workflows/nebius)
+- 🦾 **norma-core SmolVLA — Nebius fine-tune recipe** — Upstream recipe the [`robotics/smolva-ft-norma-core`](./robotics/smolva-ft-norma-core/) example mirrors. — *by norma-core* · [💻 code](https://github.com/norma-core/norma-core/blob/main/software/ai/smolvla_py/nebius.md)
+
+### MLOps / Pipelines
+
+- 🎬 **Video transcription pipeline with Prefect + Nebius** — Prefect flows orchestrating S3 + ffmpeg (CPU job) + Whisper (GPU job) on Nebius. — *by Darko Mesaros* · [💻 code](https://github.com/darko-mesaros/video-transcriber-prefect) · [📝 post](https://rup12.net/posts/video-transcription-pipeline-with-prefect-and-nebius/)
+
+---
 
 ## Repository structure
 
@@ -57,6 +107,7 @@ serverless-cookbook/
 ├── inference/            # Endpoint serving and batch inference
 ├── agents/               # AI gateway and agent deployments
 ├── life-science/         # Domain-specific simulations
+├── robotics/             # Robotics and physical-AI workflows
 ├── CONTRIBUTING.md
 └── DEVELOPER_GUIDE.md
 ```
