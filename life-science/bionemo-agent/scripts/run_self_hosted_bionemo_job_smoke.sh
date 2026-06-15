@@ -1,25 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${IMAGE:?IMAGE required, for example cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0}"
+: "${BIONEMO_SERVICE_IMAGE:?BIONEMO_SERVICE_IMAGE required, for example cr.<region>.nebius.cloud/<registry-path>/bionemo-service:0.1.0}"
 
 PARENT_ID="${PARENT_ID:-}"
-PLATFORM="${PLATFORM:-cpu-d3}"
-PRESET="${PRESET:-4vcpu-16gb}"
+PLATFORM="${PLATFORM:-gpu-b200-sxm-a}"
+PRESET="${PRESET:-1gpu-20vcpu-224gb}"
 TIMEOUT="${TIMEOUT:-20m}"
-QUERY="${QUERY:-protein sequence embedding}"
-JOB_NAME="${JOB_NAME:-bionemo-agent-smoke-$(date +%s)}"
+JOB_NAME="${JOB_NAME:-self-hosted-bionemo-smoke-$(date +%s)}"
 PREEMPTIBLE="${PREEMPTIBLE:-false}"
 
 CREATE_CMD=(
   nebius ai job create
   --name "$JOB_NAME"
-  --image "$IMAGE"
+  --image "$BIONEMO_SERVICE_IMAGE"
   --platform "$PLATFORM"
   --preset "$PRESET"
   --timeout "$TIMEOUT"
-  --container-command python
-  --args "-m bionemo_agent.smoke --query '$QUERY'"
+  --container-command python3
+  --args "-m bionemo_agent.service_smoke"
 )
 
 if [[ "$PREEMPTIBLE" == "true" ]]; then
@@ -34,7 +33,7 @@ if [[ -n "${SUBNET_ID:-}" ]]; then
   CREATE_CMD+=(--subnet-id "$SUBNET_ID")
 fi
 
-echo "Submitting Nebius AI Job: $JOB_NAME"
+echo "Submitting self-hosted BioNeMo-compatible service GPU smoke job: $JOB_NAME"
 "${CREATE_CMD[@]}"
 
 GET_CMD=(nebius ai job get-by-name --name "$JOB_NAME" --format "jsonpath={.metadata.id}")

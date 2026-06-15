@@ -5,8 +5,10 @@ import pytest
 from bionemo_agent.tools import (
     BioNeMoResearchToolsConfig,
     BioNeMoServiceRequest,
+    BioNeMoSkillRequest,
     bionemo_research_tools,
     call_bionemo_service,
+    call_bionemo_skill,
     list_capabilities,
     route_request,
 )
@@ -37,6 +39,45 @@ async def test_call_bionemo_service_returns_dry_run_when_unconfigured():
     assert result["configured"] is False
     assert result["request"]["path"] == "/v1/example"
     assert result["request"]["payload"] == {"sequence": "MKTAYIAK"}
+
+
+@pytest.mark.asyncio
+async def test_call_bionemo_skill_returns_named_skill_dry_run_when_unconfigured():
+    config = BioNeMoResearchToolsConfig()
+    skill_request = BioNeMoSkillRequest(
+        skill="protein_embedding",
+        payload={"sequence": "MKTAYIAK"},
+    )
+
+    result = json.loads(await call_bionemo_skill(config=config, skill_request=skill_request))
+
+    assert result["configured"] is False
+    assert result["request"]["path"] == "/v1/embeddings/protein"
+    assert result["request"]["payload"] == {"sequence": "MKTAYIAK"}
+
+
+@pytest.mark.asyncio
+async def test_call_bionemo_skill_uses_get_for_capabilities():
+    config = BioNeMoResearchToolsConfig()
+    skill_request = BioNeMoSkillRequest(skill="capabilities", payload={})
+
+    result = json.loads(await call_bionemo_skill(config=config, skill_request=skill_request))
+
+    assert result["configured"] is False
+    assert result["request"]["method"] == "GET"
+    assert result["request"]["path"] == "/v1/capabilities"
+
+
+@pytest.mark.asyncio
+async def test_call_bionemo_skill_rejects_unknown_skill():
+    config = BioNeMoResearchToolsConfig()
+    skill_request = BioNeMoSkillRequest(skill="unknown", payload={})
+
+    result = json.loads(await call_bionemo_skill(config=config, skill_request=skill_request))
+
+    assert result["configured"] is False
+    assert result["error"] == "Unknown BioNeMo skill: unknown"
+    assert "protein_embedding" in result["available_skills"]
 
 
 @pytest.mark.asyncio

@@ -12,16 +12,18 @@ difficulty: intermediate
 
 This cookbook recipe packages a research-only BioNeMo assistant with the
 [NVIDIA NeMo Agent Toolkit](https://github.com/NVIDIA/NeMo-Agent-Toolkit) and runs it on Nebius
-Serverless.
+Serverless. It also includes a self-hosted BioNeMo-compatible GPU service that exposes every
+life-science model skill the agent advertises.
 
-It has two paths:
+It has three paths:
 
-1. **Serverless Endpoint:** run the interactive agent as a FastAPI service with `nat serve`.
-2. **Serverless Job:** run a container smoke check or one-shot workflow without keeping an endpoint alive.
+1. **Full stack:** run the BioNeMo-compatible model service on a GPU endpoint, then run the agent against it.
+2. **Agent-only endpoint:** run the interactive agent as a FastAPI service with `nat serve`.
+3. **Serverless Job:** run a container smoke check or one-shot workflow without keeping an endpoint alive.
 
-The example does not host a BioNeMo model inside the agent container. Instead, the agent routes life-science
-requests to a curated set of BioNeMo-oriented capabilities and can optionally call a configured
-BioNeMo-compatible HTTP service.
+The included self-hosted service is a GPU-deployable integration harness with deterministic, nonclinical demo
+handlers for the agent's BioNeMo-oriented skills. It is intentionally small so users can start quickly and then
+replace individual handlers with real NVIDIA BioNeMo Framework or NIM backends when they have model access.
 
 ## Safety Scope
 
@@ -35,15 +37,18 @@ datasets.
 
 ```
 client
-  -> Nebius Serverless CPU Endpoint
+  -> Nebius Serverless GPU or CPU Agent Endpoint
        -> NVIDIA NeMo Agent Toolkit ReAct workflow
             -> BioNeMo capability-routing tools
-            -> optional BioNeMo-compatible HTTP API
+            -> call_bionemo_skill / call_bionemo_service
+       -> Nebius Serverless GPU BioNeMo-compatible Service Endpoint
+            -> protein embeddings, structure prediction, retrieval,
+               molecular dynamics, genomics generation, chat
        -> Nebius TokenFactory or another OpenAI-compatible LLM API
 ```
 
-The agent container runs on CPU because it orchestrates tools and remote APIs. Use a GPU endpoint only if you
-modify the image to host model inference locally.
+The agent container can run on CPU because it orchestrates tools and remote APIs. For this full-stack demo,
+both the agent and the BioNeMo-compatible service can also run on GPU Serverless endpoints.
 
 ## Prerequisites
 
@@ -52,7 +57,8 @@ modify the image to host model inference locally.
 - Nebius Container Registry repository.
 - Access to Nebius Serverless Endpoints and Jobs.
 - `NEBIUS_API_KEY` for TokenFactory, or `NEBIUS_API_KEY_SECRET` pointing to a MysteryBox secret.
-- Optional: `BIONEMO_BASE_URL` and `BIONEMO_API_KEY` or `BIONEMO_API_KEY_SECRET` for live BioNeMo service calls.
+- Optional for real model replacement: NVIDIA NGC or API Catalog access for the BioNeMo/NIM model containers
+  you want to host.
 
 Run all commands from this recipe directory:
 
@@ -109,15 +115,91 @@ export IMAGE="cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0"
 scripts/build_image.sh
 ```
 
-## 3. Run a Serverless Job Smoke Check
+## 3. Build and Run the Self-hosted BioNeMo-compatible GPU Service
 
-Use this path first to verify that the image pulls and starts on Nebius Serverless without keeping an endpoint
-running:
+Build the BioNeMo-compatible service image:
+
+```bash
+export BIONEMO_SERVICE_IMAGE="cr.<region>.nebius.cloud/<registry-path>/bionemo-service:0.1.0"
+scripts/build_bionemo_service_image.sh
+```
+
+Run a GPU smoke job before creating an always-on endpoint:
 
 ```bash
 export PARENT_ID="<project-id>"
-export PLATFORM="cpu-d3"
-export PRESET="4vcpu-16gb"
+export PLATFORM="gpu-b200-sxm-a"
+export PRESET="1gpu-20vcpu-224gb"
+export PREEMPTIBLE="true" # optional, useful for quick validation
+export SUBNET_ID="<subnet-id>" # optional
+
+scripts/run_self_hosted_bionemo_job_smoke.sh
+```
+
+The smoke job exercises all named service skills and should print `ok: true` in the job logs.
+
+Create a token-protected GPU endpoint:
+
+```bash
+export PLATFORM="gpu-b200-sxm-a"
+export PRESET="1gpu-20vcpu-224gb"
+export SUBNET_ID="<subnet-id>" # optional
+export BIONEMO_ENDPOINT_NAME="self-hosted-bionemo-demo"
+export AUTH_TOKEN="$(openssl rand -hex 32)"
+
+scripts/run_self_hosted_bionemo_endpoint.sh
+```
+
+Keep this token for the agent:
+
+```bash
+export BIONEMO_API_KEY="$AUTH_TOKEN"
+```
+
+When the service endpoint reaches `RUNNING`, set `BIONEMO_BASE_URL`:
+
+```bash
+export BIONEMO_ENDPOINT_ID=$(nebius ai endpoint get-by-name --name "$BIONEMO_ENDPOINT_NAME" \
+  --format jsonpath='{.metadata.id}')
+
+export BIONEMO_BASE_URL="http://$(nebius ai endpoint get "$BIONEMO_ENDPOINT_ID" \
+  --format json | jq -r '.status.public_endpoints[0]')"
+```
+
+Check the service:
+
+```bash
+curl -sS "$BIONEMO_BASE_URL/health" \
+  -H "Authorization: Bearer $BIONEMO_API_KEY" | jq
+
+curl -sS "$BIONEMO_BASE_URL/v1/embeddings/protein" \
+  -H "Authorization: Bearer $BIONEMO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"sequence":"MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFP"}' | jq
+```
+
+The service exposes these named skills for the agent:
+
+| Skill | Path | Demo model family |
+|---|---|---|
+| `capabilities` | `/v1/capabilities` | Catalog metadata |
+| `chat` | `/v1/chat/completions` | BioMedLM-style educational text |
+| `protein_embedding` | `/v1/embeddings/protein` | ESM-2-style protein embeddings |
+| `structure_prediction` | `/v1/structure/boltz2` | Boltz2-style structure prediction |
+| `literature_retrieval` | `/v1/retrieval/literature` | NV-EmbedQA-style retrieval |
+| `molecular_dynamics` | `/v1/md/openmm` | OpenMM-style MD metadata |
+| `genomics_generation` | `/v1/genomics/carbon` | Carbon-style DNA/RNA generation |
+
+## 4. Run a Serverless Job Smoke Check
+
+Use this path to verify that the agent image pulls and starts on Nebius Serverless without keeping an endpoint
+running. For the full-stack GPU demo, use the same B200 platform as the self-hosted service:
+
+```bash
+export PARENT_ID="<project-id>"
+export PLATFORM="gpu-b200-sxm-a"
+export PRESET="1gpu-20vcpu-224gb"
+export PREEMPTIBLE="true" # optional, useful for quick validation
 export SUBNET_ID="<subnet-id>" # optional if your project has a default
 
 scripts/run_serverless_job_smoke.sh
@@ -140,7 +222,7 @@ Expected output:
 }
 ```
 
-## 4. Create the Serverless Endpoint
+## 5. Create the Agent Serverless Endpoint
 
 For a quick demo, export a TokenFactory key:
 
@@ -160,11 +242,13 @@ Create the endpoint:
 ```bash
 export PARENT_ID="<project-id>"
 export IMAGE="cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0"
-export PLATFORM="cpu-d3"
-export PRESET="4vcpu-16gb"
+export PLATFORM="gpu-b200-sxm-a" # or cpu-d3 for agent-only orchestration
+export PRESET="1gpu-20vcpu-224gb" # or 4vcpu-16gb with cpu-d3
 export SUBNET_ID="<subnet-id>" # optional
 export ENDPOINT_NAME="bionemo-agent"
 export AUTH_TOKEN="$(openssl rand -hex 16)"
+export BIONEMO_BASE_URL="<self-hosted-service-url>" # optional, from step 3
+export BIONEMO_API_KEY="<self-hosted-service-token>" # optional, from step 3
 
 scripts/run_serverless_endpoint.sh
 ```
@@ -178,7 +262,14 @@ export AUTH_TOKEN_SECRET="<secret-id>@<version-id>"
 unset AUTH_TOKEN
 ```
 
-## 5. Call the Endpoint
+If you use MysteryBox for the self-hosted service token, create a payload key named `BIONEMO_API_KEY` and set:
+
+```bash
+export BIONEMO_API_KEY_SECRET="<secret-id>@<version-id>"
+unset BIONEMO_API_KEY
+```
+
+## 6. Call the Agent Endpoint
 
 Wait until the endpoint reaches `RUNNING`:
 
@@ -204,7 +295,7 @@ curl -sS "$ENDPOINT_URL/generate" \
   -H "Authorization: Bearer $AUTH_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "input_message": "Recommend a safe public benchmark flow for biomedical literature retrieval."
+    "input_message": "Use the BioNeMo protein_embedding skill on public sequence MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFP and summarize the nonclinical result."
   }' | jq
 ```
 
@@ -217,6 +308,10 @@ curl -sS "$ENDPOINT_URL/generate" \
 | `SUBNET_ID` | Optional | Subnet ID for projects without a usable default subnet. |
 | `PLATFORM` | No | Defaults to `cpu-d3`. |
 | `PRESET` | No | Defaults to `4vcpu-16gb`. |
+| `BIONEMO_SERVICE_IMAGE` | Service only | Container image for the self-hosted BioNeMo-compatible service. |
+| `BIONEMO_ENDPOINT_NAME` | Service only | Service endpoint name, defaults to `self-hosted-bionemo-demo`. |
+| `TIMEOUT` | Job only | Job timeout, defaults to `20m` for smoke checks. |
+| `PREEMPTIBLE` | Job only | Set to `true` to request preemptible GPU capacity for smoke checks. |
 | `NEBIUS_API_KEY` | Endpoint only | TokenFactory or OpenAI-compatible LLM API key for quick demos. |
 | `NEBIUS_API_KEY_SECRET` | Endpoint only | MysteryBox secret selector for the LLM API key. |
 | `AUTH_TOKEN` | Endpoint only | Bearer token for quick endpoint authentication. |
@@ -227,20 +322,22 @@ curl -sS "$ENDPOINT_URL/generate" \
 | `BIONEMO_API_KEY` | No | Optional bearer token for `BIONEMO_BASE_URL`. |
 | `BIONEMO_API_KEY_SECRET` | No | MysteryBox secret selector for the BioNeMo bearer token. |
 
-## Optional BioNeMo Service
+## Replacing the Demo Service with Real BioNeMo
 
-You do not need a BioNeMo service URL or key for the default assistant. Without `BIONEMO_BASE_URL`, the
-`call_bionemo_service` tool returns a dry-run payload and the agent still routes requests to BioNeMo-oriented
-capabilities.
+You do not need a BioNeMo service URL or key for the default routing assistant. Without `BIONEMO_BASE_URL`,
+`call_bionemo_skill` and `call_bionemo_service` return dry-run payloads and the agent still routes requests to
+BioNeMo-oriented capabilities.
 
-Set `BIONEMO_BASE_URL` only when you already have a BioNeMo-compatible HTTP service to call. Common sources are:
+Set `BIONEMO_BASE_URL` when you have a BioNeMo-compatible HTTP service to call. Common sources are:
 
 - A self-hosted NVIDIA BioNeMo Framework or NVIDIA NIM service running in your own environment. In this case,
   `BIONEMO_BASE_URL` is the URL of that service.
 - NVIDIA-hosted NIM APIs from the NVIDIA API Catalog. In this case, use the API endpoint and API key for the
   specific model or service you selected.
 
-The payload and path are tool inputs, so match them to the target service API.
+To replace this demo service with real model backends, keep the same endpoint paths or update `SERVICE_PATHS`
+in `bionemo_agent/catalog.py`. Real BioNeMo Framework or NIM containers usually require NVIDIA NGC or API
+Catalog access and the license terms for the selected model.
 
 ## Project Structure
 
@@ -248,6 +345,7 @@ The payload and path are tool inputs, so match them to the target service API.
 life-science/bionemo-agent/
 ├── bionemo_agent/          # NeMo Agent Toolkit component and smoke check
 ├── configs/config.yml      # ReAct workflow served by nat
+├── self-hosted-bionemo/    # GPU service image for BioNeMo-compatible skills
 ├── scripts/                # local build, job, and endpoint helpers
 ├── tests/                  # unit tests for routing and dry-run behavior
 ├── Dockerfile
@@ -260,6 +358,7 @@ life-science/bionemo-agent/
 - **OpenTelemetry/protobuf import error during `nat` startup:** set `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python`. The Dockerfile and `scripts/run_local.sh` already set this for served runs.
 - **Endpoint reaches `RUNNING` but `/generate` fails:** check `NEBIUS_API_KEY` or `NEBIUS_API_KEY_SECRET`; the server can start before the first LLM call.
 - **`call_bionemo_service` returns `configured=false`:** set `BIONEMO_BASE_URL` and, if needed, `BIONEMO_API_KEY` or `BIONEMO_API_KEY_SECRET`.
+- **Self-hosted service returns 401:** use the same token from the service endpoint as `BIONEMO_API_KEY`, or create a MysteryBox secret with payload key `BIONEMO_API_KEY`.
 - **Image pull or cold start is slow:** keep this agent on CPU, use a small preset first, and move heavy model inference to a separate endpoint or job.
 
 ## Cleanup
@@ -268,6 +367,12 @@ Delete the endpoint when finished:
 
 ```bash
 nebius ai endpoint delete "$ENDPOINT_ID"
+```
+
+Delete the self-hosted service endpoint too:
+
+```bash
+nebius ai endpoint delete "$BIONEMO_ENDPOINT_ID"
 ```
 
 Jobs stop automatically after completion. Delete old job records if you no longer need them:
