@@ -35,10 +35,15 @@ The example is intentionally bounded and nonclinical:
 ## Run Profile
 
 - Compute: start with `gpu-l40s-a`, preset `1gpu-8vcpu-32gb`.
+  If your sandbox exposes only B200, use `gpu-b200-sxm-a` with
+  `1gpu-20vcpu-224gb`.
 - Timeout: `1h`, the minimum supported job timeout. The default synthetic run should finish much faster.
 - Input data: synthetic 3D phantom generated inside the job.
 - Output mode: local/job disk by default, optional S3-compatible Nebius Object Storage upload.
 - Best for: validating MONAI container, job logs, artifact generation, and object-storage persistence.
+
+The Dockerfile uses a PyTorch CUDA 13 runtime so the same recipe can run on
+Blackwell/B200 GPUs as well as earlier CUDA-capable GPUs.
 
 Use a larger GPU only after you increase volume size, use a trained model, or add a real public benchmark dataset.
 

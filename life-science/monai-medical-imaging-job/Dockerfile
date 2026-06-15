@@ -1,5 +1,6 @@
 # GPU-ready MONAI runtime for a bounded synthetic medical-imaging job.
-ARG PYTORCH_IMAGE=pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime
+# PyTorch 2.12/CUDA 13 includes Blackwell B200-compatible kernels.
+ARG PYTORCH_IMAGE=pytorch/pytorch:2.12.0-cuda13.0-cudnn9-runtime
 FROM ${PYTORCH_IMAGE}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -21,4 +22,3 @@ RUN python -m pip install --no-cache-dir --upgrade pip && \
 USER nebius
 
 ENTRYPOINT ["python", "-m", "monai_job.run"]
-
