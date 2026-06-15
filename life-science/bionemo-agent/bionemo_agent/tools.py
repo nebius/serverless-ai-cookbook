@@ -1,7 +1,5 @@
 """Tooling for a research-only BioNeMo assistant."""
 
-from __future__ import annotations
-
 import asyncio
 import json
 import logging

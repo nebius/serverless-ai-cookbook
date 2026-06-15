@@ -5,6 +5,7 @@ import pytest
 from bionemo_agent.tools import (
     BioNeMoResearchToolsConfig,
     BioNeMoServiceRequest,
+    bionemo_research_tools,
     call_bionemo_service,
     list_capabilities,
     route_request,
@@ -45,3 +46,9 @@ async def test_call_bionemo_service_rejects_absolute_paths():
 
     with pytest.raises(ValueError, match="relative"):
         await call_bionemo_service(config=config, service_request=service_request)
+
+
+@pytest.mark.asyncio
+async def test_function_group_builds_registered_tools():
+    async with bionemo_research_tools(BioNeMoResearchToolsConfig(), None) as group:
+        assert group is not None
