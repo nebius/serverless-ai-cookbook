@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nebius-bionemo-agent"
+version = "0.1.0"
+description = "NVIDIA NeMo Agent Toolkit BioNeMo research assistant for Nebius Serverless"
+requires-python = ">=3.11,<3.14"
+authors = [
+    {name = "Nebius AI", email = "support@nebius.com"},
+]
+dependencies = [
+    "nvidia-nat[langchain]>=1.7.0",
+]
+
+[project.entry-points.'nat.components']
+nebius_bionemo_agent = "bionemo_agent.register"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.4",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "bionemo_agent/*.py",
+    "configs/*.yml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["--strict-markers", "-q"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
