@@ -16,8 +16,8 @@ WORKDIR /workspace
 COPY pyproject.toml README.md ./
 COPY monai_job/ ./monai_job/
 
-RUN python -m pip install --no-cache-dir --upgrade pip && \
-    python -m pip install --no-cache-dir .
+RUN python -m pip install --break-system-packages --no-cache-dir --upgrade pip && \
+    python -m pip install --break-system-packages --no-cache-dir .
 
 USER nebius
 
