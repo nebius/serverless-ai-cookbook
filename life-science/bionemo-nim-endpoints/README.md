@@ -33,7 +33,25 @@ These examples are **research-only**. Do not submit patient data, PHI, confident
 - Cleans up the endpoint so it stops billing.
 - Provides a candidate matrix for Boltz/OpenFold, DiffDock, GenMol/MolMIM, RFdiffusion, and ProteinMPNN.
 
-> **Validation scope:** this cookbook change did not create live endpoints, run GPU inference, or consume Serverless GPU quota. Treat the commands as deployment-ready scaffolding until you run and record validation in your own Nebius project.
+> **Validation scope:** this cookbook includes a sandbox smoke attempt recorded on 2026-06-15. Image mirroring and endpoint creation were exercised, but the Boltz-2 endpoint did not reach readiness, so the sample inference request is not validated on Nebius Serverless Endpoints yet. Treat the commands as deployment-ready scaffolding until you run a green readiness and sample-response validation in your own Nebius project.
+
+## Sandbox smoke attempt: 2026-06-15
+
+The task branch was tested against the Nebius `sandbox` profile after explicit approval to consume GPU:
+
+| Check | Result |
+|---|---|
+| Project | `project-i00xz31gpr00xp9jhp982v` |
+| Platform / preset | `gpu-b200-sxm-a` / `1gpu-20vcpu-224gb` |
+| Source image | Forge regional mirror for `nvcr.io/nim/mit/boltz2:1.7.0` |
+| Sandbox registry copy | Passed. Copied to a sandbox Container Registry tag, then removed the temporary registry artifacts during cleanup. |
+| Runtime NGC key handling | Passed. Used a temporary MysteryBox secret, then deleted it during cleanup. |
+| Endpoint create | Partially passed. Endpoint was created and received public/private addresses. |
+| Readiness | Failed. Endpoint remained `PROVISIONING`, its compute instance reported `STOPPED`, `/v1/health/ready` timed out, and no container logs were available. |
+| Sample inference | Not run. The endpoint never reached readiness. |
+| Cleanup | Passed. Endpoint deleted, temporary MysteryBox secret deleted, temporary registry artifacts removed. |
+
+This is not a successful Serverless validation. The most likely follow-up is to rerun with a same-region registry or a fresh NIM endpoint compatibility check for B200 Serverless, then inspect platform-side startup diagnostics if the instance stops before container logs appear.
 
 ## Requirements
 
@@ -232,7 +250,7 @@ Expected response shape: JSON containing generated ligand pose records or encode
 
 | Candidate | Public NIM image or family | Workflow fit | NGC/license gate | Suggested Nebius starting point | Validation status |
 |---|---|---|---|---|---|
-| Boltz-2 | `nvcr.io/nim/mit/boltz2:1.7.0` | Protein, ligand, DNA, and RNA structure prediction; good first structure demo. | NGC key and NVIDIA AI Product Agreement/EULA. | `gpu-h200-sxm` / `1gpu-16vcpu-200gb`, `500Gi` disk. NVIDIA docs require at least 48 GB GPU memory. | Concrete cookbook example. Not run on Serverless by this task. Task context records `boltz2-nim` as directly ready in Forge on 2026-06-05, which is not the same as Serverless endpoint validation. |
+| Boltz-2 | `nvcr.io/nim/mit/boltz2:1.7.0` | Protein, ligand, DNA, and RNA structure prediction; good first structure demo. | NGC key and NVIDIA AI Product Agreement/EULA. | `gpu-h200-sxm` / `1gpu-16vcpu-200gb`, `500Gi` disk. NVIDIA docs require at least 48 GB GPU memory. Sandbox also exposed `gpu-b200-sxm-a` / `1gpu-20vcpu-224gb`, but the 2026-06-15 endpoint smoke did not reach readiness. | Concrete cookbook example, but not green on Serverless yet. The 2026-06-15 sandbox run mirrored the image and created an endpoint, then failed before readiness with the instance `STOPPED` and no logs. Task context records `boltz2-nim` as directly ready in Forge on 2026-06-05, which is not the same as Serverless endpoint validation. |
 | OpenFold3 / OpenFold2 | `nvcr.io/nim/openfold/openfold3:<pin>` or OpenFold2 NIM tags from NGC. | AlphaFold/OpenFold-style structure prediction, often with MSA inputs. | NGC key and current NIM terms; pin a tag or digest before an event. | Start with `gpu-h200-sxm`; check current driver/CUDA requirements and MSA input requirements. | Storyboard/candidate for this pack. Forge context had OpenFold evidence, but this cookbook does not include current Serverless validation. |
 | DiffDock | `nvcr.io/nim/mit/diffdock:2.2.0` | Protein-ligand docking and ranked pose generation. | NGC key and NVIDIA NIM terms. | `gpu-h200-sxm` or `gpu-l40s-a` after checking the current support matrix and endpoint image size. | Storyboard-ready here. Prior Forge smoke probe existed, but June readiness notes still required stricter benchmark completion. |
 | GenMol | `nvcr.io/nim/nvidia/genmol:2.0.0` | Small-molecule generation from SAFE/SMILES templates. | NGC key and NVIDIA NIM terms. | `gpu-l40s-a`, `gpu-rtx6000`, or `gpu-h200-sxm`; the documented profile is one GPU and relatively small. | Candidate. Forge inventory shows active support, but no Serverless endpoint run was performed in this task. |
