@@ -74,6 +74,9 @@ Domain-specific simulation and analysis workloads.
 
 - [`openmm-simulation`](./life-science/openmm-simulation/README.md) — run GPU-backed molecular dynamics simulations with OpenMM
 - [`parabricks-deepvariant`](./life-science/parabricks-deepvariant/README.md) — run NVIDIA Parabricks DeepVariant genomics workflows with Nebius AI Jobs
+- [`monai-medical-imaging-job`](./life-science/monai-medical-imaging-job/README.md) — run synthetic MONAI medical-imaging segmentation inference with optional Object Storage artifacts
+
+Browse the [Life Science portfolio index](./life-science/README.md) for HCLS data and safety guardrails.
 
 ### 🦾 Robotics
 Robotics and physical-AI experiment loops.
