@@ -42,7 +42,7 @@ Pick the section that matches your goal — each links to runnable examples:
 - 🏋️ [**Training**](#️-training) — model training and fine-tuning workloads.
 - ⚡ [**Inference**](#-inference) — endpoint serving and batch inference workloads.
 - 🤖 [**Agents**](#-agents) — AI gateway and agent deployments.
-- 🧬 [**Life Science**](#-life-science) — domain-specific simulation and analysis workloads.
+- 🧬 [**Life Science**](#-life-science) — domain-specific simulation, analysis, and BioNeMo/NIM endpoint workloads.
 - 🦾 [**Robotics**](#-robotics) — simulation, dataset generation, and robotics workflows.
 
 ### 🚀 Quickstarts
@@ -70,8 +70,11 @@ AI gateway and agent deployments.
 - [`openclaw`](./agents/openclaw/README.md) — deploy OpenClaw AI gateway on a CPU endpoint, connected to TokenFactory
 
 ### 🧬 Life Science
-Domain-specific simulation and analysis workloads.
+Domain-specific simulation, analysis, and HCLS endpoint workloads.
 
+See the [Life Science index](./life-science/README.md) for the domain portfolio.
+
+- [`bionemo-nim-endpoints`](./life-science/bionemo-nim-endpoints/README.md) — deploy BioNeMo-style NVIDIA HCLS NIMs on Serverless Endpoints with research-only sample requests and validation notes
 - [`openmm-simulation`](./life-science/openmm-simulation/README.md) — run GPU-backed molecular dynamics simulations with OpenMM
 - [`parabricks-deepvariant`](./life-science/parabricks-deepvariant/README.md) — run NVIDIA Parabricks DeepVariant genomics workflows with Nebius AI Jobs
 
