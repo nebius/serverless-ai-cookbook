@@ -227,6 +227,21 @@ curl -sS "$ENDPOINT_URL/generate" \
 | `BIONEMO_API_KEY` | No | Optional bearer token for `BIONEMO_BASE_URL`. |
 | `BIONEMO_API_KEY_SECRET` | No | MysteryBox secret selector for the BioNeMo bearer token. |
 
+## Optional BioNeMo Service
+
+You do not need a BioNeMo service URL or key for the default assistant. Without `BIONEMO_BASE_URL`, the
+`call_bionemo_service` tool returns a dry-run payload and the agent still routes requests to BioNeMo-oriented
+capabilities.
+
+Set `BIONEMO_BASE_URL` only when you already have a BioNeMo-compatible HTTP service to call. Common sources are:
+
+- A self-hosted NVIDIA BioNeMo Framework or NVIDIA NIM service running in your own environment. In this case,
+  `BIONEMO_BASE_URL` is the URL of that service.
+- NVIDIA-hosted NIM APIs from the NVIDIA API Catalog. In this case, use the API endpoint and API key for the
+  specific model or service you selected.
+
+The payload and path are tool inputs, so match them to the target service API.
+
 ## Project Structure
 
 ```text
