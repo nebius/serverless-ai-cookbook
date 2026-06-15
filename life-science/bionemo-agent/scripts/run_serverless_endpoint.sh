@@ -2,7 +2,14 @@
 set -euo pipefail
 
 : "${IMAGE:?IMAGE required, for example cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0}"
-: "${AUTH_TOKEN:?AUTH_TOKEN required. Generate one with: export AUTH_TOKEN=\$(openssl rand -hex 16)}"
+
+if [[ -z "${AUTH_TOKEN:-}" && -z "${AUTH_TOKEN_SECRET:-}" ]]; then
+  cat >&2 <<'EOF'
+Error: set AUTH_TOKEN for a quick demo or AUTH_TOKEN_SECRET for a MysteryBox secret selector.
+The MysteryBox payload key for AUTH_TOKEN_SECRET must be AUTH_TOKEN.
+EOF
+  exit 1
+fi
 
 if [[ -z "${NEBIUS_API_KEY:-}" && -z "${NEBIUS_API_KEY_SECRET:-}" ]]; then
   cat >&2 <<'EOF'
@@ -28,10 +35,15 @@ CREATE_CMD=(
   --container-port 8000
   --public
   --auth token
-  --token "$AUTH_TOKEN"
   --env "AGENT_LLM_BASE_URL=$AGENT_LLM_BASE_URL"
   --env "AGENT_MODEL_NAME=$AGENT_MODEL_NAME"
 )
+
+if [[ -n "${AUTH_TOKEN_SECRET:-}" ]]; then
+  CREATE_CMD+=(--token-secret "$AUTH_TOKEN_SECRET")
+else
+  CREATE_CMD+=(--token "$AUTH_TOKEN")
+fi
 
 if [[ -n "$PARENT_ID" ]]; then
   CREATE_CMD+=(--parent-id "$PARENT_ID")

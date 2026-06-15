@@ -171,6 +171,13 @@ scripts/run_serverless_endpoint.sh
 
 Keep `AUTH_TOKEN` secret and leave it in your shell for the test request.
 
+For shared environments, store the endpoint token in MysteryBox with payload key `AUTH_TOKEN` and export:
+
+```bash
+export AUTH_TOKEN_SECRET="<secret-id>@<version-id>"
+unset AUTH_TOKEN
+```
+
 ## 5. Call the Endpoint
 
 Wait until the endpoint reaches `RUNNING`:
@@ -212,6 +219,8 @@ curl -sS "$ENDPOINT_URL/generate" \
 | `PRESET` | No | Defaults to `4vcpu-16gb`. |
 | `NEBIUS_API_KEY` | Endpoint only | TokenFactory or OpenAI-compatible LLM API key for quick demos. |
 | `NEBIUS_API_KEY_SECRET` | Endpoint only | MysteryBox secret selector for the LLM API key. |
+| `AUTH_TOKEN` | Endpoint only | Bearer token for quick endpoint authentication. |
+| `AUTH_TOKEN_SECRET` | Endpoint only | MysteryBox secret selector with payload key `AUTH_TOKEN`. |
 | `AGENT_LLM_BASE_URL` | No | Defaults to `https://api.tokenfactory.us-central1.nebius.com/v1`. |
 | `AGENT_MODEL_NAME` | No | Defaults to `zai-org/GLM-5`. |
 | `BIONEMO_BASE_URL` | No | Optional BioNeMo-compatible service URL. |
