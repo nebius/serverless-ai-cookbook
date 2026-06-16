@@ -80,6 +80,7 @@ Robotics and physical-AI experiment loops.
 
 - [`lerobot-finetune-job`](./robotics/lerobot-finetune-job/README.md) — fine-tune a LeRobot ACT or Diffusion policy on a robotics dataset in a serverless GPU job
 - [`smolva-ft-norma-core`](./robotics/smolva-ft-norma-core/README.md) — fine-tune SmolVLA for SO-101 with bundled trajectories
+- [`isaac-for-healthcare-sdg`](./robotics/isaac-for-healthcare-sdg/README.md) — feasibility + headless synthetic data generation for NVIDIA Isaac for Healthcare (RT-Core GPU gate; explicit non-fit paths for teleop / hardware-in-the-loop / GUI / edge)
 
 ---
 
