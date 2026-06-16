@@ -18,5 +18,11 @@ COPY bionemo_agent/ ./bionemo_agent/
 
 EXPOSE 8000
 
+# Bypass the CUDA base image entrypoint so its startup banner does not pollute
+# stdout. The smoke check (python3 -m bionemo_agent.service_smoke) prints a
+# single JSON document to stdout, and clean stdout keeps that output parseable
+# in Serverless Job logs.
+ENTRYPOINT []
+
 CMD ["sh", "-c", "python3 -m uvicorn bionemo_agent.self_hosted_service:app --host 0.0.0.0 --port ${PORT}"]
 

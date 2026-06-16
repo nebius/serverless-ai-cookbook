@@ -25,6 +25,25 @@ The included self-hosted service is a GPU-deployable integration harness with de
 handlers for the agent's BioNeMo-oriented skills. It is intentionally small so users can start quickly and then
 replace individual handlers with real NVIDIA BioNeMo Framework or NIM backends when they have model access.
 
+## Contents
+
+- [Safety Scope](#safety-scope)
+- [What You Build](#what-you-build)
+- [Prerequisites](#prerequisites)
+- [1. Validate Locally](#1-validate-locally)
+- [2. Test the Full Stack Locally](#2-test-the-full-stack-locally)
+- [3. Build and Push the Image](#3-build-and-push-the-image)
+- [4. Build and Run the Self-hosted BioNeMo-compatible GPU Service](#4-build-and-run-the-self-hosted-bionemo-compatible-gpu-service)
+- [5. Run a Serverless Job Smoke Check](#5-run-a-serverless-job-smoke-check)
+- [6. Create the Agent Serverless Endpoint](#6-create-the-agent-serverless-endpoint)
+- [7. Call the Agent Endpoint](#7-call-the-agent-endpoint)
+- [Configuration](#configuration)
+- [Replacing the Demo Service with Real BioNeMo](#replacing-the-demo-service-with-real-bionemo)
+- [Project Structure](#project-structure)
+- [Tested Configuration](#tested-configuration)
+- [Troubleshooting](#troubleshooting)
+- [Cleanup](#cleanup)
+
 ## Safety Scope
 
 This is a nonclinical, research-only example. Do not send PHI, patient records, confidential customer data,
@@ -100,7 +119,23 @@ curl -sS http://localhost:8000/generate \
   }' | jq
 ```
 
-## 2. Build and Push the Image
+## 2. Test the Full Stack Locally
+
+Before creating any GPU endpoint, you can run the entire stack on your machine with no Nebius
+resources: the self-hosted service runs in a container (it starts on CPU; `nvidia-smi` simply
+reports unavailable) and the agent is served against it with a real LLM key.
+
+```bash
+export NEBIUS_API_KEY="<tokenfactory-api-key>"
+scripts/run_local_fullstack.sh
+```
+
+The script builds the service image, starts it with a generated bearer token, serves the agent,
+sends one research-only `/generate` request, prints the agent's answer and the service access log,
+then tears everything down. A successful run shows a `POST /v1/embeddings/protein ... 200` line,
+which confirms the agent's ReAct loop called the live service skill end to end.
+
+## 3. Build and Push the Image
 
 Configure Docker for Nebius Container Registry:
 
@@ -115,7 +150,7 @@ export IMAGE="cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0"
 scripts/build_image.sh
 ```
 
-## 3. Build and Run the Self-hosted BioNeMo-compatible GPU Service
+## 4. Build and Run the Self-hosted BioNeMo-compatible GPU Service
 
 Build the BioNeMo-compatible service image:
 
@@ -190,7 +225,7 @@ The service exposes these named skills for the agent:
 | `molecular_dynamics` | `/v1/md/openmm` | OpenMM-style MD metadata |
 | `genomics_generation` | `/v1/genomics/carbon` | Carbon-style DNA/RNA generation |
 
-## 4. Run a Serverless Job Smoke Check
+## 5. Run a Serverless Job Smoke Check
 
 Use this path to verify that the agent image pulls and starts on Nebius Serverless without keeping an endpoint
 running. For the full-stack GPU demo, use the same B200 platform as the self-hosted service:
@@ -222,7 +257,7 @@ Expected output:
 }
 ```
 
-## 5. Create the Agent Serverless Endpoint
+## 6. Create the Agent Serverless Endpoint
 
 For a quick demo, export a TokenFactory key:
 
@@ -247,8 +282,8 @@ export PRESET="1gpu-20vcpu-224gb" # or 4vcpu-16gb with cpu-d3
 export SUBNET_ID="<subnet-id>" # optional
 export ENDPOINT_NAME="bionemo-agent"
 export AUTH_TOKEN="$(openssl rand -hex 16)"
-export BIONEMO_BASE_URL="<self-hosted-service-url>" # optional, from step 3
-export BIONEMO_API_KEY="<self-hosted-service-token>" # optional, from step 3
+export BIONEMO_BASE_URL="<self-hosted-service-url>" # optional, from step 4
+export BIONEMO_API_KEY="<self-hosted-service-token>" # optional, from step 4
 
 scripts/run_serverless_endpoint.sh
 ```
@@ -269,7 +304,7 @@ export BIONEMO_API_KEY_SECRET="<secret-id>@<version-id>"
 unset BIONEMO_API_KEY
 ```
 
-## 6. Call the Agent Endpoint
+## 7. Call the Agent Endpoint
 
 Wait until the endpoint reaches `RUNNING`:
 
@@ -352,6 +387,32 @@ life-science/bionemo-agent/
 └── pyproject.toml
 ```
 
+## Tested Configuration
+
+This recipe was validated on Nebius Serverless with the following known-good configuration:
+
+| Item | Value |
+|---|---|
+| Region | `me-west1` |
+| GPU platform / preset | `gpu-b200-sxm-a` / `1gpu-20vcpu-224gb` (preemptible) |
+| Agent platform / preset | `cpu-d3` / `4vcpu-16gb` |
+| Agent LLM | `zai-org/GLM-5` via Nebius TokenFactory |
+| Python | 3.11 |
+
+What was verified:
+
+- `uv run pytest` (unit tests), `uv run ruff check .`, and `nat validate` all pass.
+- The self-hosted service GPU smoke job ran on a real **NVIDIA B200** and exercised all six skills,
+  printing a clean `ok: true` JSON document to the job logs.
+- The agent Serverless Job smoke check routed `protein sequence embedding` to
+  `facebook-esm-2-650m-protein-embedding`.
+- The full stack (service container + served agent + GLM-5) handled a `/generate` request whose
+  ReAct loop called the live, token-protected `protein_embedding` skill and returned a nonclinical
+  summary. Reproduce this locally with `scripts/run_local_fullstack.sh`.
+
+GPU availability, preset names, and model identifiers vary by project and region; adjust
+`PLATFORM`, `PRESET`, and `AGENT_MODEL_NAME` to match your tenant.
+
 ## Troubleshooting
 
 - **`nat validate` cannot find `bionemo_research_tools`:** run `uv sync` from this recipe directory so the local package entry point is installed.
@@ -360,6 +421,7 @@ life-science/bionemo-agent/
 - **`call_bionemo_service` returns `configured=false`:** set `BIONEMO_BASE_URL` and, if needed, `BIONEMO_API_KEY` or `BIONEMO_API_KEY_SECRET`.
 - **Self-hosted service returns 401:** use the same token from the service endpoint as `BIONEMO_API_KEY`, or create a MysteryBox secret with payload key `BIONEMO_API_KEY`.
 - **Image pull or cold start is slow:** keep this agent on CPU, use a small preset first, and move heavy model inference to a separate endpoint or job.
+- **`multiple subnets found, specify subnet using --subnet-id flag`:** your project has more than one subnet, so set `SUBNET_ID`. List subnets with `nebius vpc subnet list --format json | jq -r '.items[] | [.metadata.id, .metadata.name] | @tsv'` and export the one you want.
 
 ## Cleanup
 
