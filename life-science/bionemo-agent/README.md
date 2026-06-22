@@ -413,6 +413,28 @@ What was verified:
 GPU availability, preset names, and model identifiers vary by project and region; adjust
 `PLATFORM`, `PRESET`, and `AGENT_MODEL_NAME` to match your tenant.
 
+### GPU compatibility (verified)
+
+The self-hosted service container is a CUDA-runtime FastAPI app: it reads the GPU through
+`nvidia-smi` and serves all six skill endpoints, so it has no GPU-architecture-specific code
+path. To confirm this empirically, the service source plus the shipped `service_smoke` check were
+run as real GPU pods on every NVIDIA GPU type in the Nebius fleet. Each run confirmed the GPU was
+visible to the container and all six skill endpoints returned `ok: true`.
+
+| GPU | Reported by `nvidia-smi` | GPU memory | Driver | Result |
+|---|---|---|---|---|
+| H100   | `NVIDIA H100 80GB HBM3`                          | 81,559 MiB  | 580.126.09 | all 6 skills `ok` |
+| H200   | `NVIDIA H200`                                    | 143,771 MiB | 580.126.09 | all 6 skills `ok` |
+| L40S   | `NVIDIA L40S`                                    | 46,068 MiB  | 580.126.09 | all 6 skills `ok` |
+| B200   | `NVIDIA B200`                                    | 183,359 MiB | 580.126.09 | all 6 skills `ok` |
+| B300   | `NVIDIA B300 SXM6 AC`                            | 275,040 MiB | 580.126.09 | all 6 skills `ok` |
+| RTX6000| `NVIDIA RTX PRO 6000 Blackwell Server Edition`  | 97,887 MiB  | 580.126.09 | all 6 skills `ok` |
+
+The demo service runs on any of these GPUs (and on CPU). When you swap in **real** BioNeMo assets
+(see [Replacing the Demo Service with Real BioNeMo](#replacing-the-demo-service-with-real-bionemo)),
+the limiting factor becomes per-model GPU memory and architecture support, not this service layer —
+size the GPU to the model (for example ESM-2-3B or Boltz2 need materially more VRAM than the demo).
+
 ## Troubleshooting
 
 - **`nat validate` cannot find `bionemo_research_tools`:** run `uv sync` from this recipe directory so the local package entry point is installed.
