@@ -12,8 +12,8 @@ difficulty: intermediate
 
 This cookbook recipe packages a research-only BioNeMo assistant with the
 [NVIDIA NeMo Agent Toolkit](https://github.com/NVIDIA/NeMo-Agent-Toolkit) and runs it on Nebius
-Serverless. It also includes a self-hosted BioNeMo-compatible GPU service that exposes every
-life-science model skill the agent advertises.
+Serverless. It also includes a self-hosted BioNeMo-compatible GPU service endpoint for the
+agent's default model-backed skills.
 
 It has three paths:
 
@@ -21,9 +21,12 @@ It has three paths:
 2. **Agent-only endpoint:** run the interactive agent as a FastAPI service with `nat serve`.
 3. **Serverless Job:** run a container smoke check or one-shot workflow without keeping an endpoint alive.
 
-The included self-hosted service is a GPU-deployable integration harness with deterministic, nonclinical demo
-handlers for the agent's BioNeMo-oriented skills. It is intentionally small so users can start quickly and then
-replace individual handlers with real NVIDIA BioNeMo Framework or NIM backends when they have model access.
+The included self-hosted service has two modes:
+
+- `demo`: deterministic, nonclinical handlers that prove the agent-to-service wiring.
+- `real`: strict proxy mode. Every required model backend must be configured and pass `/health/models`.
+
+Use `real` mode for any claim that the endpoint is serving actual BioNeMo/NIM/model runtimes.
 
 ## Contents
 
@@ -40,6 +43,7 @@ replace individual handlers with real NVIDIA BioNeMo Framework or NIM backends w
 - [Configuration](#configuration)
 - [Replacing the Demo Service with Real BioNeMo](#replacing-the-demo-service-with-real-bionemo)
 - [Project Structure](#project-structure)
+- [Hardware Notes from Vendor Docs](#hardware-notes-from-vendor-docs)
 - [Tested Configuration](#tested-configuration)
 - [Troubleshooting](#troubleshooting)
 - [Cleanup](#cleanup)
@@ -60,14 +64,15 @@ client
        -> NVIDIA NeMo Agent Toolkit ReAct workflow
             -> BioNeMo capability-routing tools
             -> call_bionemo_skill / call_bionemo_service
-       -> Nebius Serverless GPU BioNeMo-compatible Service Endpoint
+       -> Nebius Serverless GPU BioNeMo-compatible Model Service Endpoint
             -> protein embeddings, structure prediction, retrieval,
-               molecular dynamics, genomics generation, chat
+               molecular dynamics, chat
        -> Nebius TokenFactory or another OpenAI-compatible LLM API
 ```
 
-The agent container can run on CPU because it orchestrates tools and remote APIs. For this full-stack demo,
-both the agent and the BioNeMo-compatible service can also run on GPU Serverless endpoints.
+The agent container can run on CPU because it orchestrates tools and remote APIs. The model service is the
+GPU-backed endpoint. Carbon genomics generation stays catalog-visible but optional because the B200 probe used
+most of a single GPU's memory, so it is not part of the default multi-model service.
 
 ## Prerequisites
 
@@ -167,11 +172,23 @@ export PLATFORM="gpu-b200-sxm-a"
 export PRESET="1gpu-20vcpu-224gb"
 export PREEMPTIBLE="true" # optional, useful for quick validation
 export SUBNET_ID="<subnet-id>" # optional
+export BIONEMO_MODEL_SERVICE_MODE="demo"
 
 scripts/run_self_hosted_bionemo_job_smoke.sh
 ```
 
-The smoke job exercises all named service skills and should print `ok: true` in the job logs.
+The smoke job exercises the required B200-default service skills and should print `ok: true` in the job logs.
+For a real deployment, set `BIONEMO_MODEL_SERVICE_MODE=real` and provide the required backend URLs before
+running the smoke job:
+
+```bash
+export BIONEMO_MODEL_SERVICE_MODE="real"
+export BIONEMO_MODEL_CHAT_URL="<biomedlm-compatible-url>"
+export BIONEMO_MODEL_LITERATURE_RETRIEVAL_URL="<nv-embedqa-compatible-url>"
+export BIONEMO_MODEL_STRUCTURE_PREDICTION_URL="<boltz2-compatible-url>"
+export BIONEMO_MODEL_PROTEIN_EMBEDDING_URL="<esm2-compatible-url>"
+export BIONEMO_MODEL_MOLECULAR_DYNAMICS_URL="<openmm-compatible-url>"
+```
 
 Create a token-protected GPU endpoint:
 
@@ -181,6 +198,7 @@ export PRESET="1gpu-20vcpu-224gb"
 export SUBNET_ID="<subnet-id>" # optional
 export BIONEMO_ENDPOINT_NAME="self-hosted-bionemo-demo"
 export AUTH_TOKEN="$(openssl rand -hex 32)"
+export BIONEMO_MODEL_SERVICE_MODE="demo"
 
 scripts/run_self_hosted_bionemo_endpoint.sh
 ```
@@ -207,6 +225,8 @@ Check the service:
 curl -sS "$BIONEMO_BASE_URL/health" \
   -H "Authorization: Bearer $BIONEMO_API_KEY" | jq
 
+scripts/check_bionemo_model_service.sh
+
 curl -sS "$BIONEMO_BASE_URL/v1/embeddings/protein" \
   -H "Authorization: Bearer $BIONEMO_API_KEY" \
   -H "Content-Type: application/json" \
@@ -215,15 +235,15 @@ curl -sS "$BIONEMO_BASE_URL/v1/embeddings/protein" \
 
 The service exposes these named skills for the agent:
 
-| Skill | Path | Demo model family |
-|---|---|---|
-| `capabilities` | `/v1/capabilities` | Catalog metadata |
-| `chat` | `/v1/chat/completions` | BioMedLM-style educational text |
-| `protein_embedding` | `/v1/embeddings/protein` | ESM-2-style protein embeddings |
-| `structure_prediction` | `/v1/structure/boltz2` | Boltz2-style structure prediction |
-| `literature_retrieval` | `/v1/retrieval/literature` | NV-EmbedQA-style retrieval |
-| `molecular_dynamics` | `/v1/md/openmm` | OpenMM-style MD metadata |
-| `genomics_generation` | `/v1/genomics/carbon` | Carbon-style DNA/RNA generation |
+| Skill | Path | Default service health | Model family |
+|---|---|---|---|
+| `capabilities` | `/v1/capabilities` | Metadata only | Catalog metadata |
+| `chat` | `/v1/chat/completions` | Required | BioMedLM-style educational text |
+| `protein_embedding` | `/v1/embeddings/protein` | Required | ESM-2-style protein embeddings |
+| `structure_prediction` | `/v1/structure/boltz2` | Required | Boltz2-style structure prediction |
+| `literature_retrieval` | `/v1/retrieval/literature` | Required | NV-EmbedQA-style retrieval |
+| `molecular_dynamics` | `/v1/md/openmm` | Required | OpenMM-style MD metadata |
+| `genomics_generation` | `/v1/genomics/carbon` | Optional, not B200 default | Carbon-style DNA/RNA generation |
 
 ## 5. Run a Serverless Job Smoke Check
 
@@ -282,8 +302,8 @@ export PRESET="1gpu-20vcpu-224gb" # or 4vcpu-16gb with cpu-d3
 export SUBNET_ID="<subnet-id>" # optional
 export ENDPOINT_NAME="bionemo-agent"
 export AUTH_TOKEN="$(openssl rand -hex 16)"
-export BIONEMO_BASE_URL="<self-hosted-service-url>" # optional, from step 4
-export BIONEMO_API_KEY="<self-hosted-service-token>" # optional, from step 4
+export BIONEMO_BASE_URL="<self-hosted-service-url>" # from step 4
+export BIONEMO_API_KEY="<self-hosted-service-token>" # from step 4
 
 scripts/run_serverless_endpoint.sh
 ```
@@ -345,6 +365,11 @@ curl -sS "$ENDPOINT_URL/generate" \
 | `PRESET` | No | Defaults to `4vcpu-16gb`. |
 | `BIONEMO_SERVICE_IMAGE` | Service only | Container image for the self-hosted BioNeMo-compatible service. |
 | `BIONEMO_ENDPOINT_NAME` | Service only | Service endpoint name, defaults to `self-hosted-bionemo-demo`. |
+| `BIONEMO_MODEL_SERVICE_MODE` | Service only | `demo` for deterministic handlers, `real` to require configured model backends. |
+| `BIONEMO_REQUIRE_GPU` | Service only | Defaults to `true`; `/health` is unhealthy without visible NVIDIA GPUs. |
+| `BIONEMO_HEALTH_STRICT` | Service only | Defaults to `true`; unhealthy `/health` returns HTTP 503. |
+| `BIONEMO_MODEL_<SKILL>_URL` | Real service only | HTTP endpoint for each required real backend, for example `BIONEMO_MODEL_STRUCTURE_PREDICTION_URL`. |
+| `BIONEMO_MODEL_<SKILL>_API_KEY` | Real service only | Optional bearer token for a specific real backend. |
 | `TIMEOUT` | Job only | Job timeout, defaults to `20m` for smoke checks. |
 | `PREEMPTIBLE` | Job only | Set to `true` to request preemptible GPU capacity for smoke checks. |
 | `NEBIUS_API_KEY` | Endpoint only | TokenFactory or OpenAI-compatible LLM API key for quick demos. |
@@ -353,26 +378,26 @@ curl -sS "$ENDPOINT_URL/generate" \
 | `AUTH_TOKEN_SECRET` | Endpoint only | MysteryBox secret selector with payload key `AUTH_TOKEN`. |
 | `AGENT_LLM_BASE_URL` | No | Defaults to `https://api.tokenfactory.us-central1.nebius.com/v1`. |
 | `AGENT_MODEL_NAME` | No | Defaults to `zai-org/GLM-5`. |
-| `BIONEMO_BASE_URL` | No | Optional BioNeMo-compatible service URL. |
-| `BIONEMO_API_KEY` | No | Optional bearer token for `BIONEMO_BASE_URL`. |
-| `BIONEMO_API_KEY_SECRET` | No | MysteryBox secret selector for the BioNeMo bearer token. |
+| `BIONEMO_BASE_URL` | Endpoint only | Required BioNeMo-compatible model service URL for the full-stack agent endpoint. |
+| `BIONEMO_API_KEY` | Endpoint only | Required bearer token for `BIONEMO_BASE_URL`, unless using `BIONEMO_API_KEY_SECRET`. |
+| `BIONEMO_API_KEY_SECRET` | Endpoint only | MysteryBox secret selector for the BioNeMo bearer token, used instead of `BIONEMO_API_KEY`. |
 
 ## Replacing the Demo Service with Real BioNeMo
 
-You do not need a BioNeMo service URL or key for the default routing assistant. Without `BIONEMO_BASE_URL`,
-`call_bionemo_skill` and `call_bionemo_service` return dry-run payloads and the agent still routes requests to
-BioNeMo-oriented capabilities.
+The deployed full-stack endpoint expects a BioNeMo-compatible model service. Local dry-run routing still works
+without `BIONEMO_BASE_URL`, but `scripts/run_serverless_endpoint.sh` requires the service URL and token.
 
-Set `BIONEMO_BASE_URL` when you have a BioNeMo-compatible HTTP service to call. Common sources are:
+Common real backend sources are:
 
 - A self-hosted NVIDIA BioNeMo Framework or NVIDIA NIM service running in your own environment. In this case,
   `BIONEMO_BASE_URL` is the URL of that service.
 - NVIDIA-hosted NIM APIs from the NVIDIA API Catalog. In this case, use the API endpoint and API key for the
   specific model or service you selected.
 
-To replace this demo service with real model backends, keep the same endpoint paths or update `SERVICE_PATHS`
-in `bionemo_agent/catalog.py`. Real BioNeMo Framework or NIM containers usually require NVIDIA NGC or API
-Catalog access and the license terms for the selected model.
+To make the included model service strict, set `BIONEMO_MODEL_SERVICE_MODE=real` and configure every required
+`BIONEMO_MODEL_<SKILL>_URL`. The service checks these paths through `/health/models`; if any required backend
+is missing or unhealthy, the smoke job and strict `/health` fail. Real BioNeMo Framework or NIM containers
+usually require NVIDIA NGC or API Catalog access and the license terms for the selected model.
 
 ## Project Structure
 
@@ -387,14 +412,29 @@ life-science/bionemo-agent/
 └── pyproject.toml
 ```
 
+## Hardware Notes from Vendor Docs
+
+Use these as minimum/reference requirements, not as proof that the bundled service image has loaded every real
+model. The real proof for this recipe is `BIONEMO_MODEL_SERVICE_MODE=real` plus a passing `/health/models` check.
+
+| Capability | Source docs | Listed hardware requirement |
+|---|---|---|
+| Boltz2 NIM | <https://docs.nvidia.com/nim/bionemo/boltz2/latest/support-matrix.html> | 12 CPU cores, 64 GB RAM, 80 GB NVMe, and one or more supported NVIDIA GPUs. NVIDIA lists B200 180 GB among tested GPUs and says the NIM needs at least 48 GB GPU memory. |
+| OpenFold3 NIM | <https://docs.nvidia.com/nim/bionemo/openfold3/latest/support-matrix.html> | Single GPU. NVIDIA lists B200 180 GB, H200 141 GB, B300 288 GB, L40S 48 GB, and others; docs also list 80 GB disk, at least 64 GB RAM, and at least 8 CPU cores. |
+| NV-EmbedQA E5 v5 | <https://docs.nvidia.com/nim/nemo-retriever/text-embedding/latest/support-matrix.html> | NeMo Retriever Embedding NIM requires an x86 processor with at least 8 cores. The docs list `nvidia/nv-embedqa-e5-v5` and show compute capability 12.0 FP16 support with about 0.87 GiB approximate GPU memory. |
+| BioMedLM 2.7B | <https://huggingface.co/stanford-crfm/BioMedLM> | The model card documents training on 128 A100-40GB GPUs and provides vLLM/SGLang serving examples, but it does not define a B200 serving minimum. Treat Forge probe results as the serving hardware source. |
+| ESM-2 650M | <https://docs.nvidia.com/bionemo-framework/2.1/models/esm2/> | BioNeMo Framework docs describe the 650M and 3B converted checkpoints, but the page is model documentation rather than a Serverless serving hardware matrix. Treat Forge probe results as the serving hardware source. |
+| OpenMM | <https://docs.openmm.org/latest/userguide/application/01_getting_started.html> | OpenMM installs CUDA automatically with the package when using an NVIDIA GPU, but OpenMM docs do not define a B200-specific serving minimum for this wrapper. Treat Forge probe results as the serving hardware source. |
+| Carbon 3B | <https://huggingface.co/HuggingFaceBio/Carbon-3B> plus Forge probe evidence | The model card describes vLLM compatibility and reports single-H100 throughput, but it does not list a B200 serving minimum. A B200 real-runtime probe passed, using about 146 GB VRAM, so it is optional and should be deployed as a dedicated service rather than in the default multi-model bundle. |
+
 ## Tested Configuration
 
 This recipe was validated on Nebius Serverless with the following known-good configuration:
 
 | Item | Value |
 |---|---|
-| Region | `me-west1` |
-| GPU platform / preset | `gpu-b200-sxm-a` / `1gpu-20vcpu-224gb` (preemptible) |
+| Region | `us-central1` |
+| GPU platform / preset | `gpu-b200-sxm-a` / `1gpu-20vcpu-224gb` |
 | Agent platform / preset | `cpu-d3` / `4vcpu-16gb` |
 | Agent LLM | `zai-org/GLM-5` via Nebius TokenFactory |
 | Python | 3.11 |
@@ -402,38 +442,18 @@ This recipe was validated on Nebius Serverless with the following known-good con
 What was verified:
 
 - `uv run pytest` (unit tests), `uv run ruff check .`, and `nat validate` all pass.
-- The self-hosted service GPU smoke job ran on a real **NVIDIA B200** and exercised all six skills,
-  printing a clean `ok: true` JSON document to the job logs.
+- The self-hosted service GPU smoke job ran on a real **NVIDIA B200** in demo mode and exercised the five
+  required B200-default service skills, printing a clean `ok: true` JSON document to the job logs.
 - The agent Serverless Job smoke check routed `protein sequence embedding` to
   `facebook-esm-2-650m-protein-embedding`.
 - The full stack (service container + served agent + GLM-5) handled a `/generate` request whose
   ReAct loop called the live, token-protected `protein_embedding` skill and returned a nonclinical
   summary. Reproduce this locally with `scripts/run_local_fullstack.sh`.
+- Real-mode model co-residency is intentionally not claimed until each required backend URL is configured and
+  `/health/models` passes against actual model services.
 
 GPU availability, preset names, and model identifiers vary by project and region; adjust
 `PLATFORM`, `PRESET`, and `AGENT_MODEL_NAME` to match your tenant.
-
-### GPU compatibility (verified)
-
-The self-hosted service container is a CUDA-runtime FastAPI app: it reads the GPU through
-`nvidia-smi` and serves all six skill endpoints, so it has no GPU-architecture-specific code
-path. To confirm this empirically, the service source plus the shipped `service_smoke` check were
-run as real GPU pods on every NVIDIA GPU type in the Nebius fleet. Each run confirmed the GPU was
-visible to the container and all six skill endpoints returned `ok: true`.
-
-| GPU | Reported by `nvidia-smi` | GPU memory | Driver | Result |
-|---|---|---|---|---|
-| H100   | `NVIDIA H100 80GB HBM3`                          | 81,559 MiB  | 580.126.09 | all 6 skills `ok` |
-| H200   | `NVIDIA H200`                                    | 143,771 MiB | 580.126.09 | all 6 skills `ok` |
-| L40S   | `NVIDIA L40S`                                    | 46,068 MiB  | 580.126.09 | all 6 skills `ok` |
-| B200   | `NVIDIA B200`                                    | 183,359 MiB | 580.126.09 | all 6 skills `ok` |
-| B300   | `NVIDIA B300 SXM6 AC`                            | 275,040 MiB | 580.126.09 | all 6 skills `ok` |
-| RTX6000| `NVIDIA RTX PRO 6000 Blackwell Server Edition`  | 97,887 MiB  | 580.126.09 | all 6 skills `ok` |
-
-The demo service runs on any of these GPUs (and on CPU). When you swap in **real** BioNeMo assets
-(see [Replacing the Demo Service with Real BioNeMo](#replacing-the-demo-service-with-real-bionemo)),
-the limiting factor becomes per-model GPU memory and architecture support, not this service layer —
-size the GPU to the model (for example ESM-2-3B or Boltz2 need materially more VRAM than the demo).
 
 ## Troubleshooting
 

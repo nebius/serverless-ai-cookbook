@@ -9,6 +9,9 @@ PRESET="${PRESET:-1gpu-20vcpu-224gb}"
 TIMEOUT="${TIMEOUT:-20m}"
 JOB_NAME="${JOB_NAME:-self-hosted-bionemo-smoke-$(date +%s)}"
 PREEMPTIBLE="${PREEMPTIBLE:-false}"
+BIONEMO_MODEL_SERVICE_MODE="${BIONEMO_MODEL_SERVICE_MODE:-demo}"
+BIONEMO_REQUIRE_GPU="${BIONEMO_REQUIRE_GPU:-true}"
+BIONEMO_HEALTH_STRICT="${BIONEMO_HEALTH_STRICT:-true}"
 
 CREATE_CMD=(
   nebius ai job create
@@ -19,6 +22,9 @@ CREATE_CMD=(
   --timeout "$TIMEOUT"
   --container-command python3
   --args "-m bionemo_agent.service_smoke"
+  --env "BIONEMO_MODEL_SERVICE_MODE=$BIONEMO_MODEL_SERVICE_MODE"
+  --env "BIONEMO_REQUIRE_GPU=$BIONEMO_REQUIRE_GPU"
+  --env "BIONEMO_HEALTH_STRICT=$BIONEMO_HEALTH_STRICT"
 )
 
 if [[ "$PREEMPTIBLE" == "true" ]]; then
@@ -32,6 +38,12 @@ fi
 if [[ -n "${SUBNET_ID:-}" ]]; then
   CREATE_CMD+=(--subnet-id "$SUBNET_ID")
 fi
+
+while IFS='=' read -r name _; do
+  if [[ "$name" == BIONEMO_MODEL_*_URL || "$name" == BIONEMO_MODEL_*_API_KEY ]]; then
+    CREATE_CMD+=(--env "$name=${!name}")
+  fi
+done < <(env | sort)
 
 echo "Submitting self-hosted BioNeMo-compatible service GPU smoke job: $JOB_NAME"
 "${CREATE_CMD[@]}"

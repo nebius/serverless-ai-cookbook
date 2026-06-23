@@ -15,6 +15,9 @@ PARENT_ID="${PARENT_ID:-}"
 PLATFORM="${PLATFORM:-gpu-b200-sxm-a}"
 PRESET="${PRESET:-1gpu-20vcpu-224gb}"
 ENDPOINT_NAME="${BIONEMO_ENDPOINT_NAME:-self-hosted-bionemo-demo}"
+BIONEMO_MODEL_SERVICE_MODE="${BIONEMO_MODEL_SERVICE_MODE:-demo}"
+BIONEMO_REQUIRE_GPU="${BIONEMO_REQUIRE_GPU:-true}"
+BIONEMO_HEALTH_STRICT="${BIONEMO_HEALTH_STRICT:-true}"
 
 CREATE_CMD=(
   nebius ai endpoint create
@@ -25,6 +28,9 @@ CREATE_CMD=(
   --container-port 8000
   --public
   --auth token
+  --env "BIONEMO_MODEL_SERVICE_MODE=$BIONEMO_MODEL_SERVICE_MODE"
+  --env "BIONEMO_REQUIRE_GPU=$BIONEMO_REQUIRE_GPU"
+  --env "BIONEMO_HEALTH_STRICT=$BIONEMO_HEALTH_STRICT"
 )
 
 if [[ -n "${AUTH_TOKEN_SECRET:-}" ]]; then
@@ -40,6 +46,12 @@ fi
 if [[ -n "${SUBNET_ID:-}" ]]; then
   CREATE_CMD+=(--subnet-id "$SUBNET_ID")
 fi
+
+while IFS='=' read -r name _; do
+  if [[ "$name" == BIONEMO_MODEL_*_URL || "$name" == BIONEMO_MODEL_*_API_KEY ]]; then
+    CREATE_CMD+=(--env "$name=${!name}")
+  fi
+done < <(env | sort)
 
 echo "Creating self-hosted BioNeMo-compatible GPU endpoint: $ENDPOINT_NAME"
 "${CREATE_CMD[@]}"

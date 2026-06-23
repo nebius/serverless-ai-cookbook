@@ -19,6 +19,22 @@ EOF
   exit 1
 fi
 
+if [[ -z "${BIONEMO_BASE_URL:-}" ]]; then
+  cat >&2 <<'EOF'
+Error: set BIONEMO_BASE_URL to the running BioNeMo-compatible model service endpoint.
+The full-stack agent endpoint must be wired to a model service.
+EOF
+  exit 1
+fi
+
+if [[ -z "${BIONEMO_API_KEY:-}" && -z "${BIONEMO_API_KEY_SECRET:-}" ]]; then
+  cat >&2 <<'EOF'
+Error: set BIONEMO_API_KEY or BIONEMO_API_KEY_SECRET for the BioNeMo-compatible model service.
+The agent needs this bearer token to call the model service endpoint.
+EOF
+  exit 1
+fi
+
 PARENT_ID="${PARENT_ID:-}"
 PLATFORM="${PLATFORM:-cpu-d3}"
 PRESET="${PRESET:-4vcpu-16gb}"
@@ -59,13 +75,11 @@ else
   CREATE_CMD+=(--env "NEBIUS_API_KEY=$NEBIUS_API_KEY")
 fi
 
-if [[ -n "${BIONEMO_BASE_URL:-}" ]]; then
-  CREATE_CMD+=(--env "BIONEMO_BASE_URL=$BIONEMO_BASE_URL")
-fi
+CREATE_CMD+=(--env "BIONEMO_BASE_URL=$BIONEMO_BASE_URL")
 
 if [[ -n "${BIONEMO_API_KEY_SECRET:-}" ]]; then
   CREATE_CMD+=(--env-secret "BIONEMO_API_KEY=$BIONEMO_API_KEY_SECRET")
-elif [[ -n "${BIONEMO_API_KEY:-}" ]]; then
+else
   CREATE_CMD+=(--env "BIONEMO_API_KEY=$BIONEMO_API_KEY")
 fi
 

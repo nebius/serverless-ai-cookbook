@@ -23,6 +23,11 @@ CAPABILITIES: list[dict[str, Any]] = [
         ),
         "service_skill": "literature_retrieval",
         "service_path": "/v1/retrieval/literature",
+        "model_service": {
+            "required": True,
+            "health_path": "/v1/retrieval/literature",
+            "gpu_backed": True,
+        },
     },
     {
         "slug": "stanfordcrfm-biomedlm-2-7b",
@@ -34,6 +39,11 @@ CAPABILITIES: list[dict[str, Any]] = [
         "serverless_fit": "Endpoint for chat-style assistance; Job for batch summaries.",
         "service_skill": "chat",
         "service_path": "/v1/chat/completions",
+        "model_service": {
+            "required": True,
+            "health_path": "/v1/chat/completions",
+            "gpu_backed": True,
+        },
     },
     {
         "slug": "boltz2-nim",
@@ -47,6 +57,11 @@ CAPABILITIES: list[dict[str, Any]] = [
         ),
         "service_skill": "structure_prediction",
         "service_path": "/v1/structure/boltz2",
+        "model_service": {
+            "required": True,
+            "health_path": "/v1/structure/boltz2",
+            "gpu_backed": True,
+        },
     },
     {
         "slug": "facebook-esm-2-650m-protein-embedding",
@@ -60,6 +75,11 @@ CAPABILITIES: list[dict[str, Any]] = [
         ),
         "service_skill": "protein_embedding",
         "service_path": "/v1/embeddings/protein",
+        "model_service": {
+            "required": True,
+            "health_path": "/v1/embeddings/protein",
+            "gpu_backed": True,
+        },
     },
     {
         "slug": "openmm-md-8-5-1-wrapper",
@@ -73,6 +93,11 @@ CAPABILITIES: list[dict[str, Any]] = [
         "serverless_fit": "Job is preferred because MD runs are bounded batch workloads.",
         "service_skill": "molecular_dynamics",
         "service_path": "/v1/md/openmm",
+        "model_service": {
+            "required": True,
+            "health_path": "/v1/md/openmm",
+            "gpu_backed": True,
+        },
     },
     {
         "slug": "huggingfacebio-carbon-3b-vllm-cuda13",
@@ -86,6 +111,15 @@ CAPABILITIES: list[dict[str, Any]] = [
         "serverless_fit": "Endpoint for interactive sequence examples; Job for scripted batches.",
         "service_skill": "genomics_generation",
         "service_path": "/v1/genomics/carbon",
+        "model_service": {
+            "required": False,
+            "health_path": "/v1/genomics/carbon",
+            "gpu_backed": True,
+            "notes": (
+                "Optional. A B200 runtime probe passed, but Carbon used most of a single "
+                "B200's memory, so it is not part of the default multi-model health gate."
+            ),
+        },
     },
 ]
 
@@ -98,6 +132,12 @@ SERVICE_PATHS = {
     "molecular_dynamics": "/v1/md/openmm",
     "genomics_generation": "/v1/genomics/carbon",
 }
+
+MODEL_SERVICE_SKILLS = [
+    capability
+    for capability in CAPABILITIES
+    if capability.get("model_service", {}).get("required") is True
+]
 
 
 def _tokenize(text: str) -> set[str]:
