@@ -1,0 +1,10 @@
+# Local SDG outputs and synced artifacts
+i4h-sdg-out/
+data/
+*.hdf5
+*.npz
+
+# Licenses / secrets — never commit
+rti_license.dat
+*.dat
+.env
