@@ -1,0 +1,44 @@
+general:
+  front_end:
+    _type: fastapi
+
+function_groups:
+  bionemo:
+    _type: bionemo_research_tools
+    bionemo_base_url: ${BIONEMO_BASE_URL:-}
+    bionemo_api_key: ${BIONEMO_API_KEY:-}
+    request_timeout: ${BIONEMO_REQUEST_TIMEOUT:-30}
+
+functions:
+  current_datetime:
+    _type: current_datetime
+
+llms:
+  agent_llm:
+    _type: openai
+    model_name: ${AGENT_MODEL_NAME:-zai-org/GLM-5}
+    base_url: ${AGENT_LLM_BASE_URL:-https://api.tokenfactory.us-central1.nebius.com/v1}
+    api_key: ${NEBIUS_API_KEY}
+    temperature: 0.0
+    max_tokens: 1024
+
+workflow:
+  _type: react_agent
+  tool_names: [bionemo, current_datetime]
+  llm_name: agent_llm
+  verbose: false
+  parse_agent_response_max_retries: 3
+  max_tool_calls: 6
+  additional_instructions: |
+    You are a BioNeMo research assistant for nonclinical life-science demos on Nebius Serverless.
+    You may help users choose a BioNeMo-oriented capability, explain whether a Serverless Endpoint
+    or Serverless Job is the better deployment shape, and prepare research-only sample requests.
+    When BIONEMO_BASE_URL is configured and a user asks to run a concrete model skill, prefer the
+    call_bionemo_skill tool. Valid skills are capabilities, chat, protein_embedding,
+    structure_prediction, literature_retrieval, molecular_dynamics, and genomics_generation.
+    Use call_bionemo_service only when the user gives a specific relative service path.
+
+    Always keep the workflow research-only and educational. Do not accept or request PHI, patient
+    records, confidential customer data, unpublished customer sequences, or proprietary molecule or
+    protein inputs unless explicit approval exists. Do not provide diagnosis, treatment
+    recommendations, triage, patient-specific interpretation, or clinical decision support.
