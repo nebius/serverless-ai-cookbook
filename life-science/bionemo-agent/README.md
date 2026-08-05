@@ -211,6 +211,39 @@ endpoint regular (non-preemptible), expose container port `18789`, enable a
 public IP with token authentication, and bind the three MysteryBox payloads
 listed above. Do not paste credential values into plain environment fields.
 
+### Serverless deployment evidence (2026-08-05)
+
+A real deployment attempt in project `project-e00z6b02t8ddk96c49` exposed two
+Serverless control-plane blockers before an instance was allocated:
+
+1. Passing the 137-character immutable image reference was rejected because an
+   internally generated Compute label exceeded its 64-character value limit.
+   As a bounded workaround, the same manifest was copied to the short,
+   digest-derived, never-reused alias
+   `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/ba:2.1.0-bdcdb40d`.
+   The alias is 62 characters and resolves to the exact published digest
+   `sha256:bdcdb40da80da132df2220120d6dfb23908d5e0870505893613db549134a31cc`.
+2. Two endpoint creates using regular `cpu-d3` / `4vcpu-16gb`, 30 GiB disk,
+   subnet `vpcsubnet-e00p701fa30cj5f7wq`, public token authentication, and
+   pinned MysteryBox versions both remained `PROVISIONING` with zero instances,
+   logs, or public endpoints for approximately 26–28 minutes, then failed with
+   Serverless internal error code 13. The retry used only same-project secrets,
+   ruling out cross-project secret resolution as the cause.
+
+Support evidence:
+
+| Attempt | Endpoint | Operation | Request | Trace |
+|---|---|---|---|---|
+| Existing cross-project secret selectors | `aiendpoint-e00vv5mb8wpja955f2` | `opvmapp-e00h7wrkhknksfyzf5` | `5c9e98d6-2a77-43ee-8950-81058af9e98e` | `c5eed8c91d9873dc51b9ccdcb4a13fe5` |
+| Same-project version-pinned selectors | `aiendpoint-e00z96sy0k42jrsawt` | `opvmapp-e00tn1nqm864wcyy6w` | `ee3d7133-7630-48fc-9aac-4ace0905f569` | `dd204de24be2392e4679a8f0956a4beb` |
+
+Both failed endpoints and the two temporary same-project credential aliases
+were deleted after evidence capture; the original MysteryBox secrets were not
+modified. No browser URL was produced. Do not claim a successful Serverless
+deployment until Nebius resolves the internal error and a fresh task-owned
+endpoint passes readiness, authenticated browser access, and the live NIM
+matrix.
+
 ## Create one participant endpoint
 
 ```bash
