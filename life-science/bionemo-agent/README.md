@@ -185,6 +185,31 @@ The previous application digest is the rollback target. Before replacing a
 participant endpoint, record its current `.status.image`/image field from the
 live endpoint object; never infer it from a local tag.
 
+### Published event image (2026-08-05)
+
+The reviewed `2.1.0` event image is published in Nebius Container Registry at:
+
+```text
+cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/models/bionemo-agent@sha256:bdcdb40da80da132df2220120d6dfb23908d5e0870505893613db549134a31cc
+```
+
+It was built from cookbook commit
+`39aa0581a709e3aff6063a526f75d55a61a80e8b`. The previously absent `2.1.0`
+tag means there is no overwritten application digest to use as rollback; for a
+new participant endpoint, rollback is deletion. A clean registry export by
+digest succeeded, the SPDX SBOM contains the published filesystem inventory,
+and the publication scans found zero embedded secrets and zero fixable
+Critical findings. See the full unfixed-upstream risk note in [Tests](#tests).
+
+Open the prefilled Nebius Console create page:
+
+[Create a BioNeMo 2.1 Serverless Endpoint](https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fmodels%2Fbionemo-agent%40sha256%3Abdcdb40da80da132df2220120d6dfb23908d5e0870505893613db549134a31cc&platform=cpu-d3&preset=4vcpu-16gb&preemptible=false)
+
+The link fills only supported, non-secret fields. In the Console, keep the
+endpoint regular (non-preemptible), expose container port `18789`, enable a
+public IP with token authentication, and bind the three MysteryBox payloads
+listed above. Do not paste credential values into plain environment fields.
+
 ## Create one participant endpoint
 
 ```bash
