@@ -1,0 +1,207 @@
+{
+  "update": {
+    "channel": "stable",
+    "checkOnStart": false,
+    "auto": {
+      "enabled": false
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}",
+      "rateLimit": {
+        "maxAttempts": 8,
+        "windowMs": 60000,
+        "lockoutMs": 300000,
+        "exemptLoopback": false
+      }
+    },
+    "controlUi": {
+      "enabled": true,
+      "embedSandbox": "strict",
+      "allowExternalEmbedUrls": false,
+      "allowedOrigins": []
+    },
+    "terminal": {
+      "enabled": false,
+      "detachedSessionTimeoutSeconds": 0
+    },
+    "tools": {
+      "deny": ["*"]
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/workspace/agent",
+      "model": {
+        "primary": "tokenfactory/zai-org/GLM-5.1",
+        "fallbacks": []
+      },
+      "skills": [
+        "boltz2-nim",
+        "diffdock-nim",
+        "evo2-nim",
+        "genmol-nim",
+        "molmim-nim",
+        "msa-search-nim",
+        "openfold2-nim",
+        "openfold3-nim",
+        "proteinmpnn-nim",
+        "rfdiffusion-nim",
+        "drug-discovery-pipeline",
+        "msa-structure-prediction-pipeline",
+        "protein-binder-design"
+      ],
+      "skipBootstrap": true,
+      "thinkingDefault": "medium",
+      "reasoningDefault": "off",
+      "toolProgressDetail": "explain",
+      "timeoutSeconds": 1800,
+      "maxConcurrent": 1,
+      "sandbox": {
+        "mode": "off"
+      }
+    },
+    "list": [
+      {
+        "id": "bionemo",
+        "default": true,
+        "name": "BioNeMo Research Agent",
+        "workspace": "/workspace/agent",
+        "identity": {
+          "name": "BioNeMo Research Agent",
+          "theme": "careful, reproducible nonclinical scientific research",
+          "emoji": "🧬"
+        },
+        "skills": [
+          "boltz2-nim",
+          "diffdock-nim",
+          "evo2-nim",
+          "genmol-nim",
+          "molmim-nim",
+          "msa-search-nim",
+          "openfold2-nim",
+          "openfold3-nim",
+          "proteinmpnn-nim",
+          "rfdiffusion-nim",
+          "drug-discovery-pipeline",
+          "msa-structure-prediction-pipeline",
+          "protein-binder-design"
+        ],
+        "sandbox": {
+          "mode": "off"
+        },
+        "subagents": {
+          "allowAgents": []
+        }
+      }
+    ]
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "tokenfactory": {
+        "baseUrl": "https://api.tokenfactory.nebius.com/v1",
+        "apiKey": "${NEBIUS_API_KEY}",
+        "api": "openai-completions",
+        "authHeader": true,
+        "models": [
+          {
+            "id": "zai-org/GLM-5.1",
+            "name": "GLM 5.1 via Nebius TokenFactory",
+            "reasoning": true,
+            "input": ["text"],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 202752,
+            "maxTokens": 8192,
+            "compat": {
+              "requiresStringContent": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "tools": {
+    "profile": "minimal",
+    "alsoAllow": [
+      "bionemo_boltz2",
+      "bionemo_diffdock",
+      "bionemo_evo2",
+      "bionemo_genmol",
+      "bionemo_molmim",
+      "bionemo_msa_search",
+      "bionemo_openfold2",
+      "bionemo_openfold3",
+      "bionemo_proteinmpnn",
+      "bionemo_rfdiffusion",
+      "bionemo_drug_discovery",
+      "bionemo_msa_to_structure",
+      "bionemo_protein_binder_design"
+    ],
+    "deny": [
+      "group:runtime",
+      "group:fs",
+      "group:web",
+      "group:ui",
+      "group:automation",
+      "group:messaging",
+      "group:nodes",
+      "group:agents",
+      "group:sessions",
+      "group:memory",
+      "group:media",
+      "bundle-mcp",
+      "gateway",
+      "cron",
+      "sessions_spawn",
+      "subagents"
+    ],
+    "exec": {
+      "mode": "deny"
+    },
+    "elevated": {
+      "enabled": false
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "allow": ["bionemo-agent-toolkit"],
+    "deny": [],
+    "load": {
+      "paths": ["/opt/bionemo/openclaw-plugin"]
+    },
+    "entries": {
+      "bionemo-agent-toolkit": {
+        "enabled": true,
+        "hooks": {
+          "allowPromptInjection": true,
+          "allowConversationAccess": false
+        },
+        "config": {}
+      }
+    }
+  },
+  "skills": {
+    "limits": {
+      "maxCandidatesPerRoot": 32,
+      "maxSkillsLoadedPerSource": 16,
+      "maxSkillsInPrompt": 13,
+      "maxSkillsPromptChars": 60000,
+      "maxSkillFileBytes": 65536
+    }
+  },
+  "logging": {
+    "level": "info",
+    "consoleLevel": "info",
+    "redactSensitive": "tools"
+  }
+}

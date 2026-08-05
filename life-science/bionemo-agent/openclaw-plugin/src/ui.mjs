@@ -1,0 +1,115 @@
+import { randomBytes } from "node:crypto";
+import { PUBLIC_CATALOG } from "./catalog.mjs";
+import { publicError, redactSecrets } from "./errors.mjs";
+
+function sendJson(res, status, value) {
+  const body = Buffer.from(`${JSON.stringify(redactSecrets(value))}\n`, "utf8");
+  res.writeHead(status, {
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": body.length,
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+  });
+  res.end(body);
+}
+
+function dashboardHtml(nonce) {
+  const catalog = JSON.stringify(PUBLIC_CATALOG).replace(/</gu, "\\u003c");
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BioNeMo Research Agent</title>
+<style nonce="${nonce}">
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,sans-serif;background:#07110d;color:#e9fff3}*{box-sizing:border-box}body{margin:0;padding:24px;background:radial-gradient(circle at top right,#153b28,#07110d 55%);min-height:100vh}main{max-width:1100px;margin:auto}.hero,.panel{border:1px solid #2c5f43;background:#0d1c15e8;border-radius:16px;padding:20px;box-shadow:0 18px 55px #0007}.hero{display:grid;gap:12px;margin-bottom:18px}h1,h2,h3,p{margin:0}h1{font-size:clamp(28px,5vw,48px);letter-spacing:-.035em}h2{font-size:19px}.accent{color:#71f2a8}.muted{color:#9fc8af}.warning{color:#ffd888}.auth{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}input,button{font:inherit;border-radius:9px;padding:10px 12px}input{flex:1;min-width:240px;border:1px solid #47705a;background:#07110d;color:#fff}button{border:0;background:#71f2a8;color:#052010;font-weight:700;cursor:pointer}button.secondary{background:#1b3b2b;color:#d9fbe7}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px;margin:12px 0}.card{border:1px solid #294b38;background:#0a1711;padding:14px;border-radius:12px;display:grid;gap:7px}.pill{display:inline-block;width:max-content;padding:3px 8px;border-radius:999px;background:#183d2a;color:#88f2b3;font-size:12px}.steps{font-size:12px;color:#a8d4b8}.runs{display:grid;gap:10px;margin-top:12px}.run{border-left:4px solid #4cd78b;background:#09150f;padding:12px;border-radius:8px}.run.failed{border-color:#ff7777}.progress{display:grid;gap:4px;margin:9px 0 0;padding:0;list-style:none}.progress li{font-size:12px;color:#a8d4b8}.progress li::before{content:'○';color:#ffd35c;margin-right:7px}.progress li.completed::before{content:'✓';color:#71f2a8}.progress li.failed::before{content:'×';color:#ff7777}.files{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.files button{font-size:12px;padding:6px 8px}.status{min-height:22px}.research{border-left:4px solid #ffd35c;padding-left:12px;margin-top:12px}.spaced{margin-top:18px}code{font-family:ui-monospace,monospace;color:#b5f7cf}
+</style></head><body><main>
+<section class="hero"><span class="pill">BioNeMo Agent Toolkit 2.1 event image</span><h1>Research workflows, <span class="accent">bounded by design.</span></h1><p class="muted">Ten NVIDIA-hosted NIM skills and three composed workflows. The agent cannot run a shell, read arbitrary files, call other hosts, or create cloud resources.</p><div class="research"><strong>Research only.</strong> Outputs are computational hypotheses, not clinical advice. Review model confidence and validate experimentally before scientific use.</div><form id="auth" class="auth"><input id="token" type="password" autocomplete="off" placeholder="Gateway token (kept only in this page's memory)" aria-label="Gateway token"><button id="connect" type="submit">Load authenticated activity</button><button id="refresh" class="secondary" type="button">Refresh</button></form><p id="status" class="status muted" role="status">The catalog below is public; activity and downloads require the gateway token.</p></section>
+<section class="panel"><h2>Hosted NIM skills</h2><div id="skills" class="grid"></div><h2>Composed workflows</h2><div id="workflows" class="grid"></div></section>
+<section class="panel spaced"><h2>Requests and artifacts</h2><div id="runs" class="runs"><p class="muted">Authenticate to load recent requests.</p></div></section>
+</main><script nonce="${nonce}">
+const catalog=${catalog};let bearer="",refreshTimer;const q=(s)=>document.querySelector(s);const esc=(v)=>String(v??"").replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+function card(x,kind){return '<article class="card"><span class="pill">'+kind+'</span><h3>'+esc(x.label)+'</h3><p class="muted">'+esc(x.description)+'</p>'+(x.steps?'<p class="steps">'+x.steps.map(esc).join(' → ')+'</p>':'')+'<code>'+esc(x.tool)+'</code></article>'}q('#skills').innerHTML=catalog.skills.map(x=>card(x,'NIM')).join('');q('#workflows').innerHTML=catalog.workflows.map(x=>card(x,'Workflow')).join('');
+async function api(path,options={}){if(!bearer)throw new Error('Enter the gateway token first.');const response=await fetch(path,{...options,headers:{...(options.headers||{}),Authorization:'Bearer '+bearer}});if(!response.ok){let detail={};try{detail=await response.json()}catch{}throw new Error(detail.message||('HTTP '+response.status));}return response}
+async function download(runId,name){try{const response=await api('/plugins/bionemo/api/artifacts/'+encodeURIComponent(runId)+'/'+encodeURIComponent(name));const blob=await response.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(error){q('#status').textContent=error.message}}
+function renderRuns(runs){if(!runs.length){q('#runs').innerHTML='<p class="muted">No requests yet.</p>';return}q('#runs').innerHTML=runs.map(run=>'<article class="run '+(run.status==='failed'?'failed':'')+'"><strong>'+esc(run.id)+'</strong> · '+esc(run.status)+'<br><span class="muted">'+esc(run.createdAt)+'</span>'+(run.steps?.length?'<ol class="progress">'+run.steps.map(step=>'<li class="'+esc(step.status)+'">'+esc(step.label)+' · '+esc(step.status)+(step.elapsedMs?' · '+esc(step.elapsedMs)+' ms':'')+'</li>').join('')+'</ol>':'')+(run.error?'<p class="warning">'+esc(run.error.message)+'</p>':'')+'<div class="files">'+(run.artifacts||[]).map(file=>'<button data-run="'+esc(run.runId)+'" data-file="'+esc(file.name)+'">Download '+esc(file.name)+' ('+esc(file.bytes)+' B)</button>').join('')+'</div></article>').join('');q('#runs').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>download(button.dataset.run,button.dataset.file)))}
+async function refresh(){try{q('#status').textContent='Loading authenticated activity…';const response=await api('/plugins/bionemo/api/status');const data=await response.json();renderRuns(data.runs||[]);q('#status').textContent='Ready · NVIDIA credential '+(data.configured.nvidia?'configured':'missing')+' · TokenFactory credential '+(data.configured.llm?'configured':'missing')}catch(error){q('#status').textContent=error.message}}
+q('#auth').addEventListener('submit',(event)=>{event.preventDefault();bearer=q('#token').value;q('#token').value='';clearInterval(refreshTimer);refresh();refreshTimer=setInterval(refresh,5000)});q('#refresh').addEventListener('click',refresh);
+</script></body></html>`;
+}
+
+function sendHtml(res) {
+  const nonce = randomBytes(18).toString("base64");
+  const body = Buffer.from(dashboardHtml(nonce), "utf8");
+  res.writeHead(200, {
+    "Cache-Control": "no-store",
+    "Content-Security-Policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'`,
+    "Content-Type": "text/html; charset=utf-8",
+    "Content-Length": body.length,
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "SAMEORIGIN",
+  });
+  res.end(body);
+}
+
+export function createUiHandlers({ store, env = process.env, runtimeVersion }) {
+  return {
+    dashboard(_req, res) { sendHtml(res); return true; },
+    health(_req, res) {
+      sendJson(res, 200, { status: "healthy", service: "bionemo-agent", runtimeVersion });
+      return true;
+    },
+    async readiness(_req, res) {
+      const configured = {
+        nvidia: Boolean(env.NVIDIA_API_KEY || env.NGC_API_KEY),
+        llm: Boolean(env.NEBIUS_API_KEY),
+        gateway: Boolean(env.OPENCLAW_GATEWAY_TOKEN),
+      };
+      try { await store.initialize(); } catch (error) {
+        sendJson(res, 503, { status: "not_ready", configured, artifactWorkspace: false, message: publicError(error).message });
+        return true;
+      }
+      const ready = Object.values(configured).every(Boolean);
+      sendJson(res, ready ? 200 : 503, { status: ready ? "ready" : "not_ready", configured, artifactWorkspace: true });
+      return true;
+    },
+    async api(req, res) {
+      try {
+        const url = new URL(req.url || "/", "http://localhost");
+        if (req.method === "GET" && url.pathname === "/plugins/bionemo/api/status") {
+          sendJson(res, 200, {
+            catalog: PUBLIC_CATALOG,
+            configured: {
+              nvidia: Boolean(env.NVIDIA_API_KEY || env.NGC_API_KEY),
+              llm: Boolean(env.NEBIUS_API_KEY),
+            },
+            runs: await store.listRuns(),
+          });
+          return true;
+        }
+        const match = url.pathname.match(/^\/plugins\/bionemo\/api\/artifacts\/([a-f0-9-]{36})\/([A-Za-z0-9][A-Za-z0-9._-]{0,127})$/u);
+        if (req.method === "GET" && match) {
+          const artifact = await store.openArtifact(match[1], match[2]);
+          res.writeHead(200, {
+            "Cache-Control": "no-store",
+            "Content-Disposition": `attachment; filename="${match[2]}"`,
+            "Content-Length": artifact.size,
+            "Content-Type": artifact.type,
+            "Referrer-Policy": "no-referrer",
+            "X-Content-Type-Options": "nosniff",
+          });
+          artifact.handle.createReadStream({ autoClose: true }).pipe(res);
+          return true;
+        }
+        sendJson(res, 404, { code: "not_found", message: "Unknown BioNeMo API route" });
+        return true;
+      } catch (error) {
+        const safe = publicError(error);
+        sendJson(res, safe.status >= 400 && safe.status < 600 ? safe.status : 500, safe);
+        return true;
+      }
+    },
+  };
+}
+
+export const __test = { dashboardHtml, sendJson };

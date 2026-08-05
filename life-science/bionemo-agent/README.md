@@ -1,486 +1,486 @@
----
-title: BioNeMo Agent on Nebius Serverless
-category: life-sciences
-type: endpoint
-runtime: nebius-ai-endpoints
-frameworks: [nvidia-nemo-agent-toolkit, bionemo, python]
-keywords: [bionemo, agents, life-science, serverless-endpoints, tokenfactory]
-difficulty: intermediate
----
+# BioNeMo Agent Toolkit 2.1 on Nebius Serverless
 
-# BioNeMo Agent on Nebius Serverless
+This recipe builds one CPU application image that opens an authenticated
+OpenClaw browser agent, uses Nebius TokenFactory for agent reasoning, and calls
+ten NVIDIA-hosted BioNeMo NIM APIs through bounded tools. It also exposes the
+three composed workflows from the pinned NVIDIA toolkit. Each event participant
+deploys a dedicated Serverless Endpoint in their own Nebius project and injects
+their own credentials from MysteryBox.
 
-This cookbook recipe packages a research-only BioNeMo assistant with the
-[NVIDIA NeMo Agent Toolkit](https://github.com/NVIDIA/NeMo-Agent-Toolkit) and runs it on Nebius
-Serverless. It also includes a self-hosted BioNeMo-compatible GPU service endpoint for the
-agent's default model-backed skills.
+The image does **not** contain NIM containers, model weights, NVIDIA credentials,
+TokenFactory credentials, a Docker daemon, a cloud CLI, or a general-purpose
+shell tool. It does not create Nebius resources from the browser. Model requests
+go to `https://health.api.nvidia.com`; the operator creates and removes the CPU
+endpoint with the commands in this runbook.
 
-It has three paths:
+All examples are nonclinical and research-only. Use only public, synthetic, or
+explicitly approved inputs. Structure, docking, sequence, affinity, and design
+outputs are computational hypotheses that require expert review and experimental
+or wet-lab validation.
 
-1. **Full stack:** run the BioNeMo-compatible model service on a GPU endpoint, then run the agent against it.
-2. **Agent-only endpoint:** run the interactive agent as a FastAPI service with `nat serve`.
-3. **Serverless Job:** run a container smoke check or one-shot workflow without keeping an endpoint alive.
+![Authenticated BioNeMo event dashboard](output/playwright/bionemo-dashboard-authenticated.png)
 
-The included self-hosted service has two modes:
+## Architecture and trust boundaries
 
-- `demo`: deterministic, nonclinical handlers that prove the agent-to-service wiring.
-- `real`: strict proxy mode. Every required model backend must be configured and pass `/health/models`.
-
-Use `real` mode for any claim that the endpoint is serving actual BioNeMo/NIM/model runtimes.
-
-## Contents
-
-- [Safety Scope](#safety-scope)
-- [What You Build](#what-you-build)
-- [Prerequisites](#prerequisites)
-- [1. Validate Locally](#1-validate-locally)
-- [2. Test the Full Stack Locally](#2-test-the-full-stack-locally)
-- [3. Build and Push the Image](#3-build-and-push-the-image)
-- [4. Build and Run the Self-hosted BioNeMo-compatible GPU Service](#4-build-and-run-the-self-hosted-bionemo-compatible-gpu-service)
-- [5. Run a Serverless Job Smoke Check](#5-run-a-serverless-job-smoke-check)
-- [6. Create the Agent Serverless Endpoint](#6-create-the-agent-serverless-endpoint)
-- [7. Call the Agent Endpoint](#7-call-the-agent-endpoint)
-- [Configuration](#configuration)
-- [Replacing the Demo Service with Real BioNeMo](#replacing-the-demo-service-with-real-bionemo)
-- [Project Structure](#project-structure)
-- [Hardware Notes from Vendor Docs](#hardware-notes-from-vendor-docs)
-- [Tested Configuration](#tested-configuration)
-- [Troubleshooting](#troubleshooting)
-- [Cleanup](#cleanup)
-
-## Safety Scope
-
-This is a nonclinical, research-only example. Do not send PHI, patient records, confidential customer data,
-unpublished customer sequences, or proprietary molecule/protein inputs unless explicit approval exists. Do not
-use the agent for diagnosis, treatment recommendations, triage, patient-specific interpretation, or clinical
-decision support. Use synthetic examples, public benchmark inputs, public protein sequences, or approved event
-datasets.
-
-## What You Build
-
-```
-client
-  -> Nebius Serverless GPU or CPU Agent Endpoint
-       -> NVIDIA NeMo Agent Toolkit ReAct workflow
-            -> BioNeMo capability-routing tools
-            -> call_bionemo_skill / call_bionemo_service
-       -> Nebius Serverless GPU BioNeMo-compatible Model Service Endpoint
-            -> protein embeddings, structure prediction, retrieval,
-               molecular dynamics, chat
-       -> Nebius TokenFactory or another OpenAI-compatible LLM API
+```text
+participant browser (HTTPS, gateway token)
+            |
+            v
+ supervised cloudflared quick tunnel          direct Serverless IP (token auth)
+            |                                              |
+            +----------------------+-----------------------+
+                                   v
+                      OpenClaw gateway + Control UI
+                      TokenFactory: agent reasoning
+                                   |
+                      exactly 13 typed bionemo_* tools
+                                   |
+                 fixed https://health.api.nvidia.com routes
+                                   |
+              generated artifacts under /workspace/artifacts
 ```
 
-The agent container can run on CPU because it orchestrates tools and remote APIs. The model service is the
-GPU-backed endpoint. Carbon genomics generation stays catalog-visible but optional because the B200 probe used
-most of a single GPU's memory, so it is not part of the default multi-model service.
+The public dashboard shell contains only a static skill catalog. Request status
+and artifact downloads live under `/plugins/bionemo/api/*` and require the
+gateway bearer token. The token is held only in page memory, never placed in a
+URL or browser storage. OpenClaw's `/healthz` and `/readyz` are public liveness
+and process-readiness responses; `/plugins/bionemo/readiness` returns only
+credential-presence booleans and artifact-workspace readiness.
+
+OpenClaw uses `tools.profile: minimal` plus the 13 exact tool names. Runtime,
+filesystem, network, browser, automation, session, node, agent, messaging, and
+media groups are denied. Exec is independently set to `mode: deny`, the host
+approval file sets `security: deny` and `autoAllowSkills: false`, elevated mode
+is disabled, and the browser operator terminal is disabled. NIM adapters:
+
+- build only fixed HTTPS URLs on `health.api.nvidia.com` and reject redirects;
+- reject unknown fields and validate request types, enums, sequence/PDB sizes,
+  event fan-out, and scientific request ranges;
+- use bounded timeouts, at most two retries for transient vendor failures, and
+  a 20 MB streamed response limit;
+- strip DiffDock receptors to PDB `ATOM` records;
+- redact credentials from errors, manifests, tool output, and logs;
+- generate filenames internally and serve only regular files under the
+  dedicated artifact root; arbitrary paths and symlinks are rejected.
+
+## Immutable pins
+
+| Component | Pin |
+|---|---|
+| NVIDIA BioNeMo Agent Toolkit | commit `38a63ada35f57770fe49e633d3461d4110746b26` (2026-08-04) |
+| OpenClaw release | `v2026.7.1-2`, commit `0790d9f593ad30c940ed93b5872a8cf6d6f3cf8c` |
+| OpenClaw base image | `ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac` |
+| Cloudflare tunnel client | `2026.7.3`, Linux amd64 SHA-256 `9d71c677db00134c1bd4144b7783486b654ad281b1ea62b4972098d19f770f17` |
+| Agent model | `tokenfactory/zai-org/GLM-5.1` |
+| TokenFactory API | `https://api.tokenfactory.nebius.com/v1`, OpenAI chat-completions protocol |
+| Application/plugin | `2.1.0`, Node runtime supplied by the pinned OpenClaw image |
+
+The selected toolkit commit was the requested minimum baseline and remained the
+upstream `main` HEAD at implementation time. The exact upstream NIM skills,
+evaluation assets, workflow documentation, licenses, and notice are vendored in
+`vendor/bionemo-agent-toolkit`. Browser-visible skills are safe hosted-only
+wrappers; they do not expose the upstream shell or local-Docker instructions.
+The four vendored PDB fixtures have only trailing blank columns removed, and
+the CC license has only its extra terminal blank line removed, so repository
+whitespace checks pass; molecule/structure records and license text are intact.
+
+## Supported hosted NIMs and workflows
+
+| Browser skill | Typed tool | Fixed hosted path |
+|---|---|---|
+| Boltz2 | `bionemo_boltz2` | `/v1/biology/mit/boltz2/predict` |
+| DiffDock | `bionemo_diffdock` | `/v1/biology/mit/diffdock` |
+| Evo2 40B | `bionemo_evo2` | `/v1/biology/arc/evo2-40b/generate` |
+| GenMol | `bionemo_genmol` | `/v1/biology/nvidia/genmol/generate` |
+| MolMIM | `bionemo_molmim` | `/v1/biology/nvidia/molmim/generate` |
+| MSA Search | `bionemo_msa_search` | `/v1/biology/colabfold/msa-search/predict` or fixed `/paired/predict` |
+| OpenFold2 | `bionemo_openfold2` | `/v1/biology/openfold/openfold2/predict-structure-from-msa-and-template` |
+| OpenFold3 | `bionemo_openfold3` | `/v1/biology/openfold/openfold3/predict` |
+| ProteinMPNN | `bionemo_proteinmpnn` | `/v1/biology/ipd/proteinmpnn/predict` |
+| RFdiffusion | `bionemo_rfdiffusion` | `/v1/biology/ipd/rfdiffusion/generate` |
+
+The composed tools are:
+
+- `bionemo_drug_discovery`: GenMol → DiffDock → Boltz2, capped at 20 generated,
+  5 docked, and 3 affinity-scored molecules (event defaults are 8/3/2).
+- `bionemo_msa_to_structure`: MSA Search → OpenFold3, capped at 500 alignment
+  sequences and one structure-prediction input.
+- `bionemo_protein_binder_design`: one RFdiffusion backbone → four
+  ProteinMPNN sequences → one OpenFold3 or Boltz2 co-fold. This bounded demo
+  does not prove binding or replace full self-consistency/control analysis.
+
+The image includes one fixed public `egfr_kinase_public` sample from the pinned
+upstream toolkit. It can be selected for DiffDock, ProteinMPNN, RFdiffusion,
+drug discovery, or binder design without pasting a PDB or supplying a path. No
+arbitrary asset name or file path is accepted.
 
 ## Prerequisites
 
-- Nebius CLI installed and authenticated.
-- Docker, `jq`, and `openssl` installed locally.
-- Nebius Container Registry repository.
-- Access to Nebius Serverless Endpoints and Jobs.
-- `NEBIUS_API_KEY` for TokenFactory, or `NEBIUS_API_KEY_SECRET` pointing to a MysteryBox secret.
-- Optional for real model replacement: NVIDIA NGC or API Catalog access for the BioNeMo/NIM model containers
-  you want to host.
+Each participant needs:
 
-Run all commands from this recipe directory:
+1. A Nebius project and CLI profile with permission to read MysteryBox secrets,
+   pull from the chosen Container Registry, and create/read/start/stop/delete
+   Serverless Endpoints plus view their logs.
+2. Serverless CPU quota for the selected platform/preset and a subnet with
+   outbound HTTPS access to TokenFactory, NVIDIA hosted APIs, GitHub only at
+   image build time, and `trycloudflare.com` when the bundled tunnel is used.
+3. An NVIDIA API key with entitlement to every NIM they plan to demonstrate.
+   A key can be syntactically valid while individual hosted NIMs remain
+   unentitled or unavailable; the UI reports that without substituting a model.
+4. A Nebius TokenFactory key that can use `zai-org/GLM-5.1`.
+5. A random gateway token of at least 24 characters. Use 32+ random bytes for
+   an event participant.
+6. Docker, `crane`, `syft`, `grype`, and `trivy` on the image-publishing
+   workstation.
+
+The endpoint is a regular (non-preemptible) CPU endpoint by default for event
+stability: platform `cpu-d3`, preset `4vcpu-16gb`, 30 GiB disk, container port
+`18789`. Override the platform/preset only after checking current project
+availability.
+
+## MysteryBox payloads
+
+Create three secret versions. The selectors can be a secret name, secret ID,
+version ID, or `SECRET_ID@VERSION_ID` as accepted by the Nebius CLI.
+
+| Selector variable | Required payload key | Value |
+|---|---|---|
+| `AUTH_TOKEN_SECRET` | `AUTH_TOKEN` | participant's random browser/endpoint token |
+| `NEBIUS_API_KEY_SECRET` | `NEBIUS_API_KEY` | participant's TokenFactory key |
+| `NVIDIA_API_KEY_SECRET` | `NVIDIA_API_KEY` | participant's NVIDIA hosted-API key |
+
+The `AUTH_TOKEN` selector is used twice: Serverless enforces it at the direct
+public endpoint, and the container injects it in memory as the OpenClaw gateway
+token. The launcher removes the `AUTH_TOKEN` name from the OpenClaw child and
+passes `OPENCLAW_GATEWAY_TOKEN`; no secret is written into the generated config
+or exec-approval files. Never pass any of these values as plain `--env`, commit
+them, paste them into chat, or put the gateway token in a URL.
+
+If the Container Registry is private and the Serverless runtime cannot use
+project identity directly, create a fourth MysteryBox version containing
+`REGISTRY_USERNAME` and `REGISTRY_PASSWORD`, then export its selector as
+`REGISTRY_SECRET`.
+
+## Build, scan, and publish by digest
+
+Build only from the recipe directory on the task branch:
 
 ```bash
 cd life-science/bionemo-agent
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/bionemo-agent:2.1.0"
+./scripts/build_image.sh
 ```
 
-## 1. Validate Locally
-
-Install dependencies and run a smoke check that does not need an LLM API key:
-
-```bash
-uv sync
-uv run python -m bionemo_agent.smoke --query "protein sequence embedding"
-```
-
-Validate the NVIDIA NeMo Agent Toolkit workflow config:
-
-```bash
-NEBIUS_API_KEY=dummy PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-  uv run nat validate --config_file configs/config.yml
-```
-
-If you have a TokenFactory key, run the interactive agent locally:
-
-```bash
-export NEBIUS_API_KEY="<tokenfactory-api-key>"
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-  uv run nat serve --config_file configs/config.yml --host 0.0.0.0 --port 8000
-```
-
-Then call it:
-
-```bash
-curl -sS http://localhost:8000/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input_message": "Route a public protein sequence embedding demo to the right BioNeMo capability and Nebius Serverless shape."
-  }' | jq
-```
-
-## 2. Test the Full Stack Locally
-
-Before creating any GPU endpoint, you can run the entire stack on your machine with no Nebius
-resources: the self-hosted service runs in a container (it starts on CPU; `nvidia-smi` simply
-reports unavailable) and the agent is served against it with a real LLM key.
-
-```bash
-export NEBIUS_API_KEY="<tokenfactory-api-key>"
-scripts/run_local_fullstack.sh
-```
-
-The script builds the service image, starts it with a generated bearer token, serves the agent,
-sends one research-only `/generate` request, prints the agent's answer and the service access log,
-then tears everything down. A successful run shows a `POST /v1/embeddings/protein ... 200` line,
-which confirms the agent's ReAct loop called the live service skill end to end.
-
-## 3. Build and Push the Image
-
-Configure Docker for Nebius Container Registry:
-
-```bash
-nebius registry configure-helper
-```
-
-Set your image path and build:
-
-```bash
-export IMAGE="cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0"
-scripts/build_image.sh
-```
-
-## 4. Build and Run the Self-hosted BioNeMo-compatible GPU Service
-
-Build the BioNeMo-compatible service image:
-
-```bash
-export BIONEMO_SERVICE_IMAGE="cr.<region>.nebius.cloud/<registry-path>/bionemo-service:0.1.0"
-scripts/build_bionemo_service_image.sh
-```
-
-Run a GPU smoke job before creating an always-on endpoint:
-
-```bash
-export PARENT_ID="<project-id>"
-export PLATFORM="gpu-b200-sxm-a"
-export PRESET="1gpu-20vcpu-224gb"
-export PREEMPTIBLE="true" # optional, useful for quick validation
-export SUBNET_ID="<subnet-id>" # optional
-export BIONEMO_MODEL_SERVICE_MODE="demo"
-
-scripts/run_self_hosted_bionemo_job_smoke.sh
-```
-
-The smoke job exercises the required B200-default service skills and should print `ok: true` in the job logs.
-For a real deployment, set `BIONEMO_MODEL_SERVICE_MODE=real` and provide the required backend URLs before
-running the smoke job:
-
-```bash
-export BIONEMO_MODEL_SERVICE_MODE="real"
-export BIONEMO_MODEL_CHAT_URL="<biomedlm-compatible-url>"
-export BIONEMO_MODEL_LITERATURE_RETRIEVAL_URL="<nv-embedqa-compatible-url>"
-export BIONEMO_MODEL_STRUCTURE_PREDICTION_URL="<boltz2-compatible-url>"
-export BIONEMO_MODEL_PROTEIN_EMBEDDING_URL="<esm2-compatible-url>"
-export BIONEMO_MODEL_MOLECULAR_DYNAMICS_URL="<openmm-compatible-url>"
-```
-
-Create a token-protected GPU endpoint:
-
-```bash
-export PLATFORM="gpu-b200-sxm-a"
-export PRESET="1gpu-20vcpu-224gb"
-export SUBNET_ID="<subnet-id>" # optional
-export BIONEMO_ENDPOINT_NAME="self-hosted-bionemo-demo"
-export AUTH_TOKEN="$(openssl rand -hex 32)"
-export BIONEMO_MODEL_SERVICE_MODE="demo"
-
-scripts/run_self_hosted_bionemo_endpoint.sh
-```
-
-Keep this token for the agent:
-
-```bash
-export BIONEMO_API_KEY="$AUTH_TOKEN"
-```
-
-When the service endpoint reaches `RUNNING`, set `BIONEMO_BASE_URL`:
-
-```bash
-export BIONEMO_ENDPOINT_ID=$(nebius ai endpoint get-by-name --name "$BIONEMO_ENDPOINT_NAME" \
-  --format jsonpath='{.metadata.id}')
-
-export BIONEMO_BASE_URL="http://$(nebius ai endpoint get "$BIONEMO_ENDPOINT_ID" \
-  --format json | jq -r '.status.public_endpoints[0]')"
-```
-
-Check the service:
-
-```bash
-curl -sS "$BIONEMO_BASE_URL/health" \
-  -H "Authorization: Bearer $BIONEMO_API_KEY" | jq
-
-scripts/check_bionemo_model_service.sh
-
-curl -sS "$BIONEMO_BASE_URL/v1/embeddings/protein" \
-  -H "Authorization: Bearer $BIONEMO_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"sequence":"MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFP"}' | jq
-```
-
-The service exposes these named skills for the agent:
-
-| Skill | Path | Default service health | Model family |
-|---|---|---|---|
-| `capabilities` | `/v1/capabilities` | Metadata only | Catalog metadata |
-| `chat` | `/v1/chat/completions` | Required | BioMedLM-style educational text |
-| `protein_embedding` | `/v1/embeddings/protein` | Required | ESM-2-style protein embeddings |
-| `structure_prediction` | `/v1/structure/boltz2` | Required | Boltz2-style structure prediction |
-| `literature_retrieval` | `/v1/retrieval/literature` | Required | NV-EmbedQA-style retrieval |
-| `molecular_dynamics` | `/v1/md/openmm` | Required | OpenMM-style MD metadata |
-| `genomics_generation` | `/v1/genomics/carbon` | Optional, not B200 default | Carbon-style DNA/RNA generation |
-
-## 5. Run a Serverless Job Smoke Check
-
-Use this path to verify that the agent image pulls and starts on Nebius Serverless without keeping an endpoint
-running. For the full-stack GPU demo, use the same B200 platform as the self-hosted service:
-
-```bash
-export PARENT_ID="<project-id>"
-export PLATFORM="gpu-b200-sxm-a"
-export PRESET="1gpu-20vcpu-224gb"
-export PREEMPTIBLE="true" # optional, useful for quick validation
-export SUBNET_ID="<subnet-id>" # optional if your project has a default
-
-scripts/run_serverless_job_smoke.sh
-```
-
-Follow logs:
-
-```bash
-nebius ai logs <job-id> --follow --timestamps
-```
-
-Expected output:
-
-```json
-{
-  "ok": true,
-  "query": "protein sequence embedding",
-  "recommended_slug": "facebook-esm-2-650m-protein-embedding",
-  "dry_run_path": "/v1/example"
-}
-```
-
-## 6. Create the Agent Serverless Endpoint
-
-For a quick demo, export a TokenFactory key:
-
-```bash
-export NEBIUS_API_KEY="<tokenfactory-api-key>"
-```
-
-For a shared or production-like setup, use a MysteryBox secret selector instead:
-
-```bash
-export NEBIUS_API_KEY_SECRET="<secret-id>@<version-id>"
-unset NEBIUS_API_KEY
-```
-
-Create the endpoint:
-
-```bash
-export PARENT_ID="<project-id>"
-export IMAGE="cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0"
-export PLATFORM="gpu-b200-sxm-a" # or cpu-d3 for agent-only orchestration
-export PRESET="1gpu-20vcpu-224gb" # or 4vcpu-16gb with cpu-d3
-export SUBNET_ID="<subnet-id>" # optional
-export ENDPOINT_NAME="bionemo-agent"
-export AUTH_TOKEN="$(openssl rand -hex 16)"
-export BIONEMO_BASE_URL="<self-hosted-service-url>" # from step 4
-export BIONEMO_API_KEY="<self-hosted-service-token>" # from step 4
-
-scripts/run_serverless_endpoint.sh
-```
-
-Keep `AUTH_TOKEN` secret and leave it in your shell for the test request.
-
-For shared environments, store the endpoint token in MysteryBox with payload key `AUTH_TOKEN` and export:
-
-```bash
-export AUTH_TOKEN_SECRET="<secret-id>@<version-id>"
-unset AUTH_TOKEN
-```
-
-If you use MysteryBox for the self-hosted service token, create a payload key named `BIONEMO_API_KEY` and set:
-
-```bash
-export BIONEMO_API_KEY_SECRET="<secret-id>@<version-id>"
-unset BIONEMO_API_KEY
-```
-
-## 7. Call the Agent Endpoint
-
-Wait until the endpoint reaches `RUNNING`:
-
-```bash
-export ENDPOINT_ID=$(nebius ai endpoint get-by-name --name "$ENDPOINT_NAME" \
-  --format jsonpath='{.metadata.id}')
-
-nebius ai endpoint get "$ENDPOINT_ID" --format json | jq '.status.state'
-```
-
-Get the endpoint IP:
-
-```bash
-export ENDPOINT_IP=$(nebius ai endpoint get "$ENDPOINT_ID" \
-  --format json | jq -r '.status.public_endpoints[0]')
-export ENDPOINT_URL="http://${ENDPOINT_IP}"
-```
-
-Send a request:
-
-```bash
-curl -sS "$ENDPOINT_URL/generate" \
-  -H "Authorization: Bearer $AUTH_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input_message": "Use the BioNeMo protein_embedding skill on public sequence MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFP and summarize the nonclinical result."
-  }' | jq
-```
-
-## Configuration
-
-| Variable | Required | Purpose |
-|---|---:|---|
-| `IMAGE` | Yes | Container image pushed to a registry Nebius can pull. |
-| `PARENT_ID` | Recommended | Nebius project ID. |
-| `SUBNET_ID` | Optional | Subnet ID for projects without a usable default subnet. |
-| `PLATFORM` | No | Defaults to `cpu-d3`. |
-| `PRESET` | No | Defaults to `4vcpu-16gb`. |
-| `BIONEMO_SERVICE_IMAGE` | Service only | Container image for the self-hosted BioNeMo-compatible service. |
-| `BIONEMO_ENDPOINT_NAME` | Service only | Service endpoint name, defaults to `self-hosted-bionemo-demo`. |
-| `BIONEMO_MODEL_SERVICE_MODE` | Service only | `demo` for deterministic handlers, `real` to require configured model backends. |
-| `BIONEMO_REQUIRE_GPU` | Service only | Defaults to `true`; `/health` is unhealthy without visible NVIDIA GPUs. |
-| `BIONEMO_HEALTH_STRICT` | Service only | Defaults to `true`; unhealthy `/health` returns HTTP 503. |
-| `BIONEMO_MODEL_<SKILL>_URL` | Real service only | HTTP endpoint for each required real backend, for example `BIONEMO_MODEL_STRUCTURE_PREDICTION_URL`. |
-| `BIONEMO_MODEL_<SKILL>_API_KEY` | Real service only | Optional bearer token for a specific real backend. |
-| `TIMEOUT` | Job only | Job timeout, defaults to `20m` for smoke checks. |
-| `PREEMPTIBLE` | Job only | Set to `true` to request preemptible GPU capacity for smoke checks. |
-| `NEBIUS_API_KEY` | Endpoint only | TokenFactory or OpenAI-compatible LLM API key for quick demos. |
-| `NEBIUS_API_KEY_SECRET` | Endpoint only | MysteryBox secret selector for the LLM API key. |
-| `AUTH_TOKEN` | Endpoint only | Bearer token for quick endpoint authentication. |
-| `AUTH_TOKEN_SECRET` | Endpoint only | MysteryBox secret selector with payload key `AUTH_TOKEN`. |
-| `AGENT_LLM_BASE_URL` | No | Defaults to `https://api.tokenfactory.us-central1.nebius.com/v1`. |
-| `AGENT_MODEL_NAME` | No | Defaults to `zai-org/GLM-5`. |
-| `BIONEMO_BASE_URL` | Endpoint only | Required BioNeMo-compatible model service URL for the full-stack agent endpoint. |
-| `BIONEMO_API_KEY` | Endpoint only | Required bearer token for `BIONEMO_BASE_URL`, unless using `BIONEMO_API_KEY_SECRET`. |
-| `BIONEMO_API_KEY_SECRET` | Endpoint only | MysteryBox secret selector for the BioNeMo bearer token, used instead of `BIONEMO_API_KEY`. |
-
-## Replacing the Demo Service with Real BioNeMo
-
-The deployed full-stack endpoint expects a BioNeMo-compatible model service. Local dry-run routing still works
-without `BIONEMO_BASE_URL`, but `scripts/run_serverless_endpoint.sh` requires the service URL and token.
-
-Common real backend sources are:
-
-- A self-hosted NVIDIA BioNeMo Framework or NVIDIA NIM service running in your own environment. In this case,
-  `BIONEMO_BASE_URL` is the URL of that service.
-- NVIDIA-hosted NIM APIs from the NVIDIA API Catalog. In this case, use the API endpoint and API key for the
-  specific model or service you selected.
-
-To make the included model service strict, set `BIONEMO_MODEL_SERVICE_MODE=real` and configure every required
-`BIONEMO_MODEL_<SKILL>_URL`. The service checks these paths through `/health/models`; if any required backend
-is missing or unhealthy, the smoke job and strict `/health` fail. Real BioNeMo Framework or NIM containers
-usually require NVIDIA NGC or API Catalog access and the license terms for the selected model.
-
-## Project Structure
+The script pulls the pinned base, builds and pushes the version tag, resolves
+the registry digest, writes an SPDX JSON SBOM with Syft, records Docker
+provenance metadata, writes a Grype JSON report, and fails on Critical scanner
+findings. Evidence is written under `.task-output/image/`. Use only the final
+reference printed in `immutable-image.txt`, for example:
 
 ```text
-life-science/bionemo-agent/
-├── bionemo_agent/          # NeMo Agent Toolkit component and smoke check
-├── configs/config.yml      # ReAct workflow served by nat
-├── self-hosted-bionemo/    # GPU service image for BioNeMo-compatible skills
-├── scripts/                # local build, job, and endpoint helpers
-├── tests/                  # unit tests for routing and dry-run behavior
-├── Dockerfile
-└── pyproject.toml
+cr.eu-north1.nebius.cloud/<registry-id>/bionemo-agent@sha256:<digest>
 ```
 
-## Hardware Notes from Vendor Docs
+The previous application digest is the rollback target. Before replacing a
+participant endpoint, record its current `.status.image`/image field from the
+live endpoint object; never infer it from a local tag.
 
-Use these as minimum/reference requirements, not as proof that the bundled service image has loaded every real
-model. The real proof for this recipe is `BIONEMO_MODEL_SERVICE_MODE=real` plus a passing `/health/models` check.
+## Create one participant endpoint
 
-| Capability | Source docs | Listed hardware requirement |
-|---|---|---|
-| Boltz2 NIM | <https://docs.nvidia.com/nim/bionemo/boltz2/latest/support-matrix.html> | 12 CPU cores, 64 GB RAM, 80 GB NVMe, and one or more supported NVIDIA GPUs. NVIDIA lists B200 180 GB among tested GPUs and says the NIM needs at least 48 GB GPU memory. |
-| OpenFold3 NIM | <https://docs.nvidia.com/nim/bionemo/openfold3/latest/support-matrix.html> | Single GPU. NVIDIA lists B200 180 GB, H200 141 GB, B300 288 GB, L40S 48 GB, and others; docs also list 80 GB disk, at least 64 GB RAM, and at least 8 CPU cores. |
-| NV-EmbedQA E5 v5 | <https://docs.nvidia.com/nim/nemo-retriever/text-embedding/latest/support-matrix.html> | NeMo Retriever Embedding NIM requires an x86 processor with at least 8 cores. The docs list `nvidia/nv-embedqa-e5-v5` and show compute capability 12.0 FP16 support with about 0.87 GiB approximate GPU memory. |
-| BioMedLM 2.7B | <https://huggingface.co/stanford-crfm/BioMedLM> | The model card documents training on 128 A100-40GB GPUs and provides vLLM/SGLang serving examples, but it does not define a B200 serving minimum. Treat Forge probe results as the serving hardware source. |
-| ESM-2 650M | <https://docs.nvidia.com/bionemo-framework/2.1/models/esm2/> | BioNeMo Framework docs describe the 650M and 3B converted checkpoints, but the page is model documentation rather than a Serverless serving hardware matrix. Treat Forge probe results as the serving hardware source. |
-| OpenMM | <https://docs.openmm.org/latest/userguide/application/01_getting_started.html> | OpenMM installs CUDA automatically with the package when using an NVIDIA GPU, but OpenMM docs do not define a B200-specific serving minimum for this wrapper. Treat Forge probe results as the serving hardware source. |
-| Carbon 3B | <https://huggingface.co/HuggingFaceBio/Carbon-3B> plus Forge probe evidence | The model card describes vLLM compatibility and reports single-H100 throughput, but it does not list a B200 serving minimum. A B200 real-runtime probe passed, using about 146 GB VRAM, so it is optional and should be deployed as a dedicated service rather than in the default multi-model bundle. |
+```bash
+cd life-science/bionemo-agent
+export PROFILE=sandbox
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/bionemo-agent@sha256:<digest>"
+export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
+export NEBIUS_API_KEY_SECRET="<selector-with-NEBIUS_API_KEY>"
+export NVIDIA_API_KEY_SECRET="<selector-with-NVIDIA_API_KEY>"
+export ENDPOINT_NAME="bionemo-agent-${USER}-event"
 
-## Tested Configuration
+# Set these when the profile does not provide one unambiguous project/subnet.
+export PARENT_ID="<participant-project-id>"
+export SUBNET_ID="<participant-subnet-id>"
 
-This recipe was validated on Nebius Serverless with the following known-good configuration:
+# Optional for a private registry:
+# export REGISTRY_SECRET="<selector-with-REGISTRY_USERNAME-and-REGISTRY_PASSWORD>"
 
-| Item | Value |
-|---|---|
-| Region | `us-central1` |
-| GPU platform / preset | `gpu-b200-sxm-a` / `1gpu-20vcpu-224gb` |
-| Agent platform / preset | `cpu-d3` / `4vcpu-16gb` |
-| Agent LLM | `zai-org/GLM-5` via Nebius TokenFactory |
-| Python | 3.11 |
+./scripts/run_serverless_endpoint.sh
+```
 
-What was verified:
+The agent never sees this command and cannot run it. The script requires an
+immutable image and MysteryBox selectors; it rejects plaintext-secret fallback.
 
-- `uv run pytest` (unit tests), `uv run ruff check .`, and `nat validate` all pass.
-- The self-hosted service GPU smoke job ran on a real **NVIDIA B200** in demo mode and exercised the five
-  required B200-default service skills, printing a clean `ok: true` JSON document to the job logs.
-- The agent Serverless Job smoke check routed `protein sequence embedding` to
-  `facebook-esm-2-650m-protein-embedding`.
-- The full stack (service container + served agent + GLM-5) handled a `/generate` request whose
-  ReAct loop called the live, token-protected `protein_embedding` skill and returned a nonclinical
-  summary. Reproduce this locally with `scripts/run_local_fullstack.sh`.
-- Real-mode model co-residency is intentionally not claimed until each required backend URL is configured and
-  `/health/models` passes against actual model services.
+Get the endpoint ID and follow startup:
 
-GPU availability, preset names, and model identifiers vary by project and region; adjust
-`PLATFORM`, `PRESET`, and `AGENT_MODEL_NAME` to match your tenant.
+```bash
+export ENDPOINT_ID="$(nebius --profile "$PROFILE" ai endpoint get-by-name \
+  --name "$ENDPOINT_NAME" --format jsonpath='{.metadata.id}')"
+nebius --profile "$PROFILE" ai endpoint get "$ENDPOINT_ID" --format json
+nebius --profile "$PROFILE" ai endpoint logs "$ENDPOINT_ID" \
+  --tail 200 --timestamps --follow
+```
+
+Wait for a log line like:
+
+```text
+BioNeMo authenticated HTTPS browser URL: https://<random>.trycloudflare.com
+```
+
+The URL contains no credential. Open it on a clean participant machine, paste
+the participant's `AUTH_TOKEN` into the OpenClaw login, and connect. Open the
+**BioNeMo** tab to see all ten skills, the three workflows, request status, safe
+vendor errors, and artifact downloads. The tab asks for the token separately
+for protected status/download requests and keeps it only in that page's memory.
+
+The quick tunnel is supervised by the launcher: if it exits, the gateway stops
+instead of silently leaving the participant on an unmonitored transport path.
+Quick tunnels are best-effort and route public/synthetic demo data through
+Cloudflare. For a production or long-running event, put an approved managed
+HTTPS ingress in front of the endpoint, set its exact origin with
+`BIONEMO_PUBLIC_ORIGIN=https://agent.example`, and set
+`BIONEMO_ENABLE_HTTPS_TUNNEL=false`; do not enable OpenClaw's dangerous Host
+header fallback or insecure-auth flags.
+
+## Health and direct API checks
+
+From the HTTPS URL:
+
+```bash
+curl -fsS "${BROWSER_URL}/healthz"
+curl -fsS "${BROWSER_URL}/readyz"
+curl -fsS "${BROWSER_URL}/plugins/bionemo/readiness"
+curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" \
+  "${BROWSER_URL}/plugins/bionemo/api/status" | jq
+```
+
+`/plugins/bionemo/readiness` returns `503` if any of the three runtime
+credentials is absent or the artifact root is not writable. It returns only
+booleans, never values. The direct Serverless endpoint also requires its outer
+bearer token:
+
+```bash
+curl -fsS -H "Authorization: Bearer ${AUTH_TOKEN}" \
+  "http://${ENDPOINT_IP}:18789/healthz"
+```
+
+Do not use `curl -v`, shell tracing, or commands that print environment values
+while credentials are loaded.
+
+## Browser demo prompts
+
+Use these small public/synthetic requests. Before a multi-call workflow, the
+agent should summarize the fan-out and ask for confirmation.
+
+1. **Boltz2**
+
+   > Using Boltz2, predict one mmCIF structure for public crambin sequence `TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN`. Use one diffusion sample, then explain returned confidence and link the artifacts. Research only.
+
+2. **DiffDock**
+
+   > Dock ethanol (`CCO`) to the built-in `egfr_kinase_public` receptor with DiffDock. Request one pose, no trajectory, explain that docking confidence is not affinity, and link the SDF.
+
+3. **Evo2**
+
+   > Continue synthetic DNA `ACGTACGTACGTACGT` by 16 tokens with Evo2, seed 7, temperature 0.7, top-k 4. Save FASTA and explain biosafety and validation limits.
+
+4. **GenMol**
+
+   > Generate two unique research molecules from SAFE notation `[*{5-10}]` with GenMol, QED scoring, temperature and noise `1.0`. Link SMI/JSON and do not imply efficacy.
+
+5. **MolMIM**
+
+   > Run a two-molecule, two-iteration MolMIM CMA-ES QED optimization from benzene `c1ccccc1`, with two particles and radius 1. Link outputs and explain property-score limits.
+
+6. **MSA Search**
+
+   > Search UniRef30 for public crambin sequence `TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN`, cap the MSA at 20 sequences, request A3M, report depth, and link it.
+
+7. **OpenFold2**
+
+   > Predict public crambin with OpenFold2 using model 1, no relaxation. Return PDB/mmCIF and confidence caveats.
+
+8. **OpenFold3**
+
+   > Predict one PDB structure for public crambin with OpenFold3 and one diffusion sample. If the hosted route is unavailable, report that exactly without using another model.
+
+9. **ProteinMPNN**
+
+   > Use ProteinMPNN on built-in `egfr_kinase_public`, redesign chain A, return one sequence at sampling temperature 0.1 with seed 7, exclude native/WT from score pairing, and link FASTA.
+
+10. **RFdiffusion**
+
+    > Using built-in `egfr_kinase_public`, run an RFdiffusion research backbone request with contig `A672-995/0 20-20`, 5 diffusion steps, and seed 7. Link PDB and explain the ProteinMPNN/validation handoff.
+
+11. **Drug discovery workflow**
+
+    > After confirming the fan-out, run the drug-discovery workflow on built-in `egfr_kinase_public` from SAFE `[*{5-10}]`: generate 2, dock 1, affinity-score 1. Show GenMol → DiffDock → Boltz2 progress and link every artifact.
+
+12. **MSA-to-structure workflow**
+
+    > Run the MSA-to-structure workflow for public crambin, cap MSA depth at 20, request PDB, show MSA Search → OpenFold3 progress, and explain confidence limits.
+
+13. **Protein-binder-design workflow**
+
+    > This is a legitimate non-pathogen research demo. After asking me to confirm the cost and target, run one binder workflow against built-in `egfr_kinase_public` with contig `A672-995/0 20-20`, binder chain B, sampling temperature 0.1, and OpenFold3 validation. Explain that it is not proof of binding and link every artifact.
+
+OpenFold3 and other hosted routes can be entitlement- or availability-sensitive.
+An `unavailable` result is a valid event outcome when backed by the safe error;
+do not describe it as successful and do not substitute a different NIM.
+
+## Artifact handling
+
+Every atomic call writes a redacted `response.json` plus detected scientific
+artifacts. Workflows prefix step artifacts and add `workflow-summary.json`.
+Supported downloads include mmCIF/CIF, PDB, SDF, JSON, A3M, FASTA, and SMI.
+Run manifests record timestamps, step state, response keys, byte counts, and
+safe error categories—not prompts or credentials. Data remains on the endpoint's
+ephemeral/local application disk unless the participant downloads it. Deleting
+the endpoint removes that task-owned runtime; download required artifacts first.
+
+## Expected time and cost envelope
+
+These are planning bounds, not performance claims. Measure them in the target
+project before the event:
+
+- First endpoint start includes image pull and should be budgeted at 2–10
+  minutes; warm process restarts are commonly tens of seconds. Capacity,
+  registry locality, and Serverless behavior can change this.
+- Small generation/docking calls may finish in seconds to a few minutes.
+  MSA Search, OpenFold, RFdiffusion, and composed workflows can take several
+  minutes and are bounded by 10–15 minute per-call adapter timeouts.
+- The regular CPU endpoint is billed by Nebius for its lifetime. Hosted NIM API
+  usage, quota, credits, and billing are controlled by the participant's current
+  NVIDIA account/entitlements. Check the NVIDIA account before the event; this
+  runbook intentionally does not claim a fixed price.
+- The 2/1/1 and single-backbone prompts minimize vendor calls. Do not expand
+  fan-out during a shared event without explicit participant approval.
+
+Record observed cold start, per-step timing, NVIDIA request ID, endpoint CPU
+platform/preset, region, image digest, and cleanup time in the event evidence.
+
+## Tests
+
+Unit/integration/security coverage uses Node's built-in test runner:
+
+```bash
+npm test
+git diff --check
+```
+
+It covers all ten validators and adapters, exact host/routes, redirects,
+request/response limits, retries and vendor errors, secret redaction, artifact
+path/symlink isolation, all three workflow handoffs, plugin/manifest tool
+parity, browser CSP/auth route posture, config pins, MysteryBox launcher config,
+and deny-mode execution controls.
+
+Real hosted validation is explicit and never falls back to mocks:
+
+```bash
+export BIONEMO_RUN_LIVE=1
+export NVIDIA_API_KEY="<load securely; do not print>"
+npm run test:live
+```
+
+The live suite attempts all ten NIMs even if one route fails, then all three
+workflows, and writes non-secret timings, request summaries, response shapes,
+request IDs, and artifact metadata under `.task-output/live-nims/`. An
+authentication, entitlement, quota, or permission failure must be fixed by the
+participant; do not switch credentials, accounts, projects, models, or regions.
+
+Container checks:
+
+```bash
+hadolint Dockerfile
+docker build -t bionemo-agent:2.1.0-test .
+trivy image --severity HIGH,CRITICAL bionemo-agent:2.1.0-test
+```
+
+The publication script emits SPDX, Grype, and Trivy reports, scans the whole
+image for secrets, and blocks any **fixable** critical finding. Unfixed
+findings from the immutable OpenClaw/Debian base remain in the reports instead
+of being hidden. On 2026-08-05, the hardened local image had zero secret
+findings and zero fixable critical findings; the full reports still contained
+37 Grype and 18 Trivy critical matches without an available fix. Treat those as
+an explicit upstream-base risk, retain the reports with event evidence, and
+rebuild/rescan when the OpenClaw pin changes. The image removes npm, corepack,
+and Vitest from runtime and pins the available GnuTLS security revision.
+
+The OpenClaw audit must resolve the gateway token reference when it runs:
+
+```bash
+docker exec -e OPENCLAW_GATEWAY_TOKEN="$AUTH_TOKEN" <container> \
+  node /app/openclaw.mjs security audit --json
+```
+
+The expected summary is zero critical, zero warning, with no open tool groups,
+elevated tools, hooks, or browser control. Update checks and automatic runtime
+updates are disabled; publish a newly built immutable image to update OpenClaw.
+
+For a local browser smoke test, set all three credentials in the shell without
+printing them and run `./scripts/run_local.sh`. It binds only
+`127.0.0.1:18789`, disables the external tunnel, uses a read-only root,
+capability drop, `no-new-privileges`, and named state/artifact volumes.
 
 ## Troubleshooting
 
-- **`nat validate` cannot find `bionemo_research_tools`:** run `uv sync` from this recipe directory so the local package entry point is installed.
-- **OpenTelemetry/protobuf import error during `nat` startup:** set `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python`. The Dockerfile and `scripts/run_local.sh` already set this for served runs.
-- **Endpoint reaches `RUNNING` but `/generate` fails:** check `NEBIUS_API_KEY` or `NEBIUS_API_KEY_SECRET`; the server can start before the first LLM call.
-- **`call_bionemo_service` returns `configured=false`:** set `BIONEMO_BASE_URL` and, if needed, `BIONEMO_API_KEY` or `BIONEMO_API_KEY_SECRET`.
-- **Self-hosted service returns 401:** use the same token from the service endpoint as `BIONEMO_API_KEY`, or create a MysteryBox secret with payload key `BIONEMO_API_KEY`.
-- **Image pull or cold start is slow:** keep this agent on CPU, use a small preset first, and move heavy model inference to a separate endpoint or job.
-- **`multiple subnets found, specify subnet using --subnet-id flag`:** your project has more than one subnet, so set `SUBNET_ID`. List subnets with `nebius vpc subnet list --format json | jq -r '.items[] | [.metadata.id, .metadata.name] | @tsv'` and export the one you want.
+- **`not_ready` / NVIDIA false:** verify the selected MysteryBox version has a
+  payload key exactly named `NVIDIA_API_KEY` and the endpoint service account
+  can read it.
+- **TokenFactory false or chat fails before a tool call:** verify payload key
+  `NEBIUS_API_KEY`, TokenFactory access, and model `zai-org/GLM-5.1`.
+- **401/403 from a NIM:** the NVIDIA key or that NIM entitlement was rejected.
+  Ask the participant to fix it; do not search for another credential.
+- **404 / `hosted_route_unavailable`:** the pinned vendor route is unavailable.
+  Report it in the UI and event evidence; no model substitution occurs.
+- **429:** wait briefly and retry the same bounded request. The adapter retries
+  transient failures at most twice.
+- **Timeout:** reduce sequence length, pose/sample count, MSA depth, or workflow
+  fan-out. The existing request remains recorded as failed.
+- **No HTTPS URL:** inspect endpoint egress/DNS and cloudflared logs. Do not add
+  the gateway token to a URL or enable insecure OpenClaw origin/auth flags.
+- **Browser origin rejected:** restart with the exact approved HTTPS origin in
+  `BIONEMO_PUBLIC_ORIGIN`. The launcher writes that origin before OpenClaw starts.
+- **Artifact download asks for auth:** enter the gateway token in the BioNeMo
+  tab. It is intentionally separate from the parent Control UI connection.
+- **Image pull fails:** verify the digest exists and configure `REGISTRY_SECRET`
+  with exact `REGISTRY_USERNAME` / `REGISTRY_PASSWORD` payload keys when project
+  identity cannot pull it.
+- **Multiple subnets:** export the explicit task-owned `SUBNET_ID`; do not pick
+  one by guesswork.
 
-## Cleanup
+## Stop, restart, rollback, and cleanup
 
-Delete the endpoint when finished:
+Stop when a participant pauses the demo; CPU billing behavior should be checked
+against current Serverless terms:
 
 ```bash
-nebius ai endpoint delete "$ENDPOINT_ID"
+nebius --profile "$PROFILE" ai endpoint stop "$ENDPOINT_ID"
+nebius --profile "$PROFILE" ai endpoint start "$ENDPOINT_ID"
 ```
 
-Delete the self-hosted service endpoint too:
+After restart, follow logs for the new quick-tunnel URL and verify `/healthz`,
+`/readyz`, authenticated status, one small prompt, and an artifact download.
+The HTTPS URL changes because the bundled tunnel is ephemeral.
+
+Rollback means create or update a task-owned endpoint using the recorded prior
+immutable application digest, then repeat the browser smoke test. Never use a
+mutable tag as a rollback record.
+
+Delete the participant endpoint after downloading artifacts:
 
 ```bash
-nebius ai endpoint delete "$BIONEMO_ENDPOINT_ID"
+nebius --profile "$PROFILE" ai endpoint delete "$ENDPOINT_ID"
+nebius --profile "$PROFILE" ai endpoint list --format json | \
+  jq -e --arg id "$ENDPOINT_ID" '[.items[]?.metadata.id] | index($id) == null'
 ```
 
-Jobs stop automatically after completion. Delete old job records if you no longer need them:
+Delete task-created temporary registry tags/tunnels and revoke or delete
+event-only secret versions according to the participant's credential policy.
+The Cloudflare process exits with the endpoint; there is no timer, cron job, or
+background agent left on the workstation.
 
-```bash
-nebius ai job delete <job-id>
-```
+## Upstream references
+
+- [NVIDIA BioNeMo Agent Toolkit](https://github.com/NVIDIA-BioNeMo/bionemo-agent-toolkit)
+- [Pinned toolkit commit](https://github.com/NVIDIA-BioNeMo/bionemo-agent-toolkit/commit/38a63ada35f57770fe49e633d3461d4110746b26)
+- [NVIDIA BioNeMo Agent Toolkit announcement](https://nvidianews.nvidia.com/news/nvidia-launches-bionemo-agent-toolkit-giving-ai-agents-the-tools-to-accelerate-scientific-discovery)
+- [OpenClaw release `v2026.7.1-2`](https://github.com/openclaw/openclaw/releases/tag/v2026.7.1-2)

@@ -1,0 +1,32 @@
+{
+  "id": "bionemo-agent-toolkit",
+  "name": "BioNeMo Agent Toolkit",
+  "description": "Bounded NVIDIA-hosted BioNeMo NIM skills and composed research workflows.",
+  "version": "2.1.0",
+  "activation": {
+    "onStartup": true,
+    "onRoutes": ["/plugins/bionemo", "/plugins/bionemo/readiness"]
+  },
+  "contracts": {
+    "tools": [
+      "bionemo_boltz2",
+      "bionemo_diffdock",
+      "bionemo_evo2",
+      "bionemo_genmol",
+      "bionemo_molmim",
+      "bionemo_msa_search",
+      "bionemo_openfold2",
+      "bionemo_openfold3",
+      "bionemo_proteinmpnn",
+      "bionemo_rfdiffusion",
+      "bionemo_drug_discovery",
+      "bionemo_msa_to_structure",
+      "bionemo_protein_binder_design"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

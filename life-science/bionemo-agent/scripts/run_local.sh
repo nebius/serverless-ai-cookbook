@@ -1,16 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-uv sync
-uv run python -m bionemo_agent.smoke --query "${1:-protein sequence embedding}"
+: "${NEBIUS_API_KEY:?Set the TokenFactory key in NEBIUS_API_KEY}"
+if [[ -z "${NVIDIA_API_KEY:-}" && -z "${NGC_API_KEY:-}" ]]; then
+  echo "Set NVIDIA_API_KEY (preferred) or NGC_API_KEY." >&2
+  exit 2
+fi
+: "${AUTH_TOKEN:?Set a random gateway token with at least 24 characters}"
 
-if [[ -z "${NEBIUS_API_KEY:-}" ]]; then
-  cat <<'EOF'
-NEBIUS_API_KEY is not set, so skipping nat serve.
-Set NEBIUS_API_KEY to run the interactive agent locally.
-EOF
-  exit 0
+if ((${#AUTH_TOKEN} < 24)); then
+  echo "AUTH_TOKEN must contain at least 24 characters." >&2
+  exit 2
 fi
 
-PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python \
-  uv run nat serve --config_file configs/config.yml --host 0.0.0.0 --port "${PORT:-8000}"
+IMAGE="${IMAGE:-bionemo-agent:2.1.0-local}"
+PORT="${PORT:-18789}"
+STATE_VOLUME="${STATE_VOLUME:-bionemo-agent-state}"
+ARTIFACT_VOLUME="${ARTIFACT_VOLUME:-bionemo-agent-artifacts}"
+
+docker build --tag "$IMAGE" .
+docker run --rm --name bionemo-agent-local \
+  --read-only \
+  --cap-drop=ALL \
+  --security-opt=no-new-privileges \
+  --tmpfs /tmp:rw,noexec,nosuid,size=128m \
+  --volume "$STATE_VOLUME:/workspace/state" \
+  --volume "$ARTIFACT_VOLUME:/workspace/artifacts" \
+  --publish "127.0.0.1:${PORT}:18789" \
+  --env NEBIUS_API_KEY \
+  --env NVIDIA_API_KEY \
+  --env NGC_API_KEY \
+  --env AUTH_TOKEN \
+  --env BIONEMO_ENABLE_HTTPS_TUNNEL=false \
+  "$IMAGE"

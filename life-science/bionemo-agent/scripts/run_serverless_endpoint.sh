@@ -1,94 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${IMAGE:?IMAGE required, for example cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0}"
+: "${IMAGE:?Set IMAGE to the immutable application reference ending in @sha256:<digest>}"
+: "${AUTH_TOKEN_SECRET:?Set AUTH_TOKEN_SECRET to a MysteryBox selector whose payload contains AUTH_TOKEN}"
+: "${NEBIUS_API_KEY_SECRET:?Set NEBIUS_API_KEY_SECRET to a MysteryBox selector whose payload contains NEBIUS_API_KEY}"
+: "${NVIDIA_API_KEY_SECRET:?Set NVIDIA_API_KEY_SECRET to a MysteryBox selector whose payload contains NVIDIA_API_KEY}"
 
-if [[ -z "${AUTH_TOKEN:-}" && -z "${AUTH_TOKEN_SECRET:-}" ]]; then
-  cat >&2 <<'EOF'
-Error: set AUTH_TOKEN for a quick demo or AUTH_TOKEN_SECRET for a MysteryBox secret selector.
-The MysteryBox payload key for AUTH_TOKEN_SECRET must be AUTH_TOKEN.
-EOF
-  exit 1
+if [[ "$IMAGE" != cr.*.nebius.cloud/*@sha256:* ]]; then
+  echo "IMAGE must be an immutable Nebius Container Registry reference." >&2
+  exit 2
 fi
 
-if [[ -z "${NEBIUS_API_KEY:-}" && -z "${NEBIUS_API_KEY_SECRET:-}" ]]; then
-  cat >&2 <<'EOF'
-Error: set NEBIUS_API_KEY for a quick demo or NEBIUS_API_KEY_SECRET for a MysteryBox secret selector.
-The endpoint can start without a key, but chat requests need an OpenAI-compatible LLM key.
-EOF
-  exit 1
-fi
-
-if [[ -z "${BIONEMO_BASE_URL:-}" ]]; then
-  cat >&2 <<'EOF'
-Error: set BIONEMO_BASE_URL to the running BioNeMo-compatible model service endpoint.
-The full-stack agent endpoint must be wired to a model service.
-EOF
-  exit 1
-fi
-
-if [[ -z "${BIONEMO_API_KEY:-}" && -z "${BIONEMO_API_KEY_SECRET:-}" ]]; then
-  cat >&2 <<'EOF'
-Error: set BIONEMO_API_KEY or BIONEMO_API_KEY_SECRET for the BioNeMo-compatible model service.
-The agent needs this bearer token to call the model service endpoint.
-EOF
-  exit 1
-fi
-
-PARENT_ID="${PARENT_ID:-}"
+ENDPOINT_NAME="${ENDPOINT_NAME:-bionemo-agent-2-1}"
 PLATFORM="${PLATFORM:-cpu-d3}"
 PRESET="${PRESET:-4vcpu-16gb}"
-ENDPOINT_NAME="${ENDPOINT_NAME:-bionemo-agent}"
-AGENT_LLM_BASE_URL="${AGENT_LLM_BASE_URL:-https://api.tokenfactory.us-central1.nebius.com/v1}"
-AGENT_MODEL_NAME="${AGENT_MODEL_NAME:-zai-org/GLM-5}"
+DISK_SIZE="${DISK_SIZE:-30Gi}"
+PROFILE="${PROFILE:-sandbox}"
 
 CREATE_CMD=(
-  nebius ai endpoint create
+  nebius --profile "$PROFILE" ai endpoint create
   --name "$ENDPOINT_NAME"
   --image "$IMAGE"
   --platform "$PLATFORM"
   --preset "$PRESET"
-  --container-port 8000
+  --disk-size "$DISK_SIZE"
+  --container-port 18789
   --public
   --auth token
-  --env "AGENT_LLM_BASE_URL=$AGENT_LLM_BASE_URL"
-  --env "AGENT_MODEL_NAME=$AGENT_MODEL_NAME"
+  --token-secret "$AUTH_TOKEN_SECRET"
+  --env-secret "AUTH_TOKEN=$AUTH_TOKEN_SECRET"
+  --env-secret "NEBIUS_API_KEY=$NEBIUS_API_KEY_SECRET"
+  --env-secret "NVIDIA_API_KEY=$NVIDIA_API_KEY_SECRET"
+  --env "BIONEMO_ENABLE_HTTPS_TUNNEL=true"
 )
 
-if [[ -n "${AUTH_TOKEN_SECRET:-}" ]]; then
-  CREATE_CMD+=(--token-secret "$AUTH_TOKEN_SECRET")
-else
-  CREATE_CMD+=(--token "$AUTH_TOKEN")
-fi
+if [[ -n "${PARENT_ID:-}" ]]; then CREATE_CMD+=(--parent-id "$PARENT_ID"); fi
+if [[ -n "${SUBNET_ID:-}" ]]; then CREATE_CMD+=(--subnet-id "$SUBNET_ID"); fi
+if [[ -n "${REGISTRY_SECRET:-}" ]]; then CREATE_CMD+=(--registry-secret "$REGISTRY_SECRET"); fi
 
-if [[ -n "$PARENT_ID" ]]; then
-  CREATE_CMD+=(--parent-id "$PARENT_ID")
-fi
-
-if [[ -n "${SUBNET_ID:-}" ]]; then
-  CREATE_CMD+=(--subnet-id "$SUBNET_ID")
-fi
-
-if [[ -n "${NEBIUS_API_KEY_SECRET:-}" ]]; then
-  CREATE_CMD+=(--env-secret "NEBIUS_API_KEY=$NEBIUS_API_KEY_SECRET")
-else
-  CREATE_CMD+=(--env "NEBIUS_API_KEY=$NEBIUS_API_KEY")
-fi
-
-CREATE_CMD+=(--env "BIONEMO_BASE_URL=$BIONEMO_BASE_URL")
-
-if [[ -n "${BIONEMO_API_KEY_SECRET:-}" ]]; then
-  CREATE_CMD+=(--env-secret "BIONEMO_API_KEY=$BIONEMO_API_KEY_SECRET")
-else
-  CREATE_CMD+=(--env "BIONEMO_API_KEY=$BIONEMO_API_KEY")
-fi
-
-echo "Creating Nebius Serverless Endpoint: $ENDPOINT_NAME"
+echo "Creating task-owned regular CPU Serverless Endpoint '$ENDPOINT_NAME' from an immutable image."
 "${CREATE_CMD[@]}"
+
 cat <<EOF
 
-Endpoint created. Keep the AUTH_TOKEN value in your shell for test requests.
+The endpoint starts a supervised Cloudflare quick tunnel and prints an HTTPS URL
+to its logs. The URL never contains the gateway token.
 
-Get the endpoint IP:
-  nebius ai endpoint get-by-name --name "$ENDPOINT_NAME" --format json
+Inspect the endpoint and logs:
+  nebius --profile "$PROFILE" ai endpoint get-by-name --name "$ENDPOINT_NAME" --format json
+  ENDPOINT_ID=\$(nebius --profile "$PROFILE" ai endpoint get-by-name --name "$ENDPOINT_NAME" --format jsonpath='{.metadata.id}')
+  nebius --profile "$PROFILE" ai endpoint logs "\$ENDPOINT_ID" --tail 200 --timestamps
+
+Open the logged https://*.trycloudflare.com URL from a clean browser and enter
+the AUTH_TOKEN value. The direct Serverless IP remains protected by the same
+MysteryBox AUTH_TOKEN through Serverless endpoint authentication.
 EOF
