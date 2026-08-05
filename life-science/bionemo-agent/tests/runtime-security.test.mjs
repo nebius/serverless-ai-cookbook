@@ -73,12 +73,22 @@ test("readiness reveals only credential presence", async () => {
 
 test("launcher validates secrets without printing values and parses only safe origins", () => {
   assert.equal(launcher.requireEnvironment({ NEBIUS_API_KEY: "n", NVIDIA_API_KEY: "v", AUTH_TOKEN: "a".repeat(24) }), "a".repeat(24));
+  assert.equal(launcher.requireEnvironment({ NEBIUS_API_KEY: "n", NGC_API_KEY: "v", AUTH_TOKEN: "a".repeat(24) }), "a".repeat(24));
   assert.throws(() => launcher.requireEnvironment({}), /NEBIUS_API_KEY.*NVIDIA_API_KEY.*AUTH_TOKEN/u);
   assert.throws(() => launcher.requireEnvironment({ NEBIUS_API_KEY: "secret-one", NVIDIA_API_KEY: "secret-two", AUTH_TOKEN: "short" }), /at least 24/u);
   assert.equal(launcher.safeOrigin("https://example.test"), "https://example.test");
   assert.throws(() => launcher.safeOrigin("https://user:pass@example.test"), /without credentials/u);
   assert.throws(() => launcher.safeOrigin("https://example.test/path"), /without credentials/u);
   assert.match("https://bounded-name.trycloudflare.com", new RegExp(launcher.CLOUDFLARED_URL_PATTERN));
+});
+
+test("Serverless launch binds exactly one matching NVIDIA MysteryBox payload", async () => {
+  const script = await readFile(new URL("../scripts/run_serverless_endpoint.sh", import.meta.url), "utf8");
+  assert.match(script, /Set only one of NVIDIA_API_KEY_SECRET or NGC_API_KEY_SECRET/u);
+  assert.match(script, /--env-secret "NVIDIA_API_KEY=\$NVIDIA_API_KEY_SECRET"/u);
+  assert.match(script, /--env-secret "NGC_API_KEY=\$NGC_API_KEY_SECRET"/u);
+  assert.equal(script.includes("--env \"NVIDIA_API_KEY="), false);
+  assert.equal(script.includes("--env \"NGC_API_KEY="), false);
 });
 
 test("runtime config and exec approvals persist placeholders, never secret values", async (t) => {

@@ -147,7 +147,8 @@ version ID, or `SECRET_ID@VERSION_ID` as accepted by the Nebius CLI.
 |---|---|---|
 | `AUTH_TOKEN_SECRET` | `AUTH_TOKEN` | participant's random browser/endpoint token |
 | `NEBIUS_API_KEY_SECRET` | `NEBIUS_API_KEY` | participant's TokenFactory key |
-| `NVIDIA_API_KEY_SECRET` | `NVIDIA_API_KEY` | participant's NVIDIA hosted-API key |
+| `NVIDIA_API_KEY_SECRET` | `NVIDIA_API_KEY` | participant's NVIDIA hosted-API key (preferred) |
+| `NGC_API_KEY_SECRET` | `NGC_API_KEY` | alternative NVIDIA/NGC key; set this instead of `NVIDIA_API_KEY_SECRET` |
 
 The `AUTH_TOKEN` selector is used twice: Serverless enforces it at the direct
 public endpoint, and the container injects it in memory as the OpenClaw gateway
@@ -219,6 +220,8 @@ export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/bionemo-agent@sha256:<dige
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 export NEBIUS_API_KEY_SECRET="<selector-with-NEBIUS_API_KEY>"
 export NVIDIA_API_KEY_SECRET="<selector-with-NVIDIA_API_KEY>"
+# Or, instead of NVIDIA_API_KEY_SECRET:
+# export NGC_API_KEY_SECRET="<selector-with-NGC_API_KEY>"
 export ENDPOINT_NAME="bionemo-agent-${USER}-event"
 
 # Set these when the profile does not provide one unambiguous project/subnet.
@@ -448,8 +451,9 @@ capability drop, `no-new-privileges`, and named state/artifact volumes.
 ## Troubleshooting
 
 - **`not_ready` / NVIDIA false:** verify the selected MysteryBox version has a
-  payload key exactly named `NVIDIA_API_KEY` and the endpoint service account
-  can read it.
+  payload key exactly named `NVIDIA_API_KEY` or `NGC_API_KEY`, its matching
+  selector variable is set (not both), and the endpoint service account can
+  read it.
 - **TokenFactory false or chat fails before a tool call:** verify payload key
   `NEBIUS_API_KEY`, TokenFactory access, and model `zai-org/GLM-5.1`.
 - **401/403 from a NIM:** the NVIDIA key or that NIM entitlement was rejected.
