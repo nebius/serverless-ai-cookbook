@@ -1,16 +1,21 @@
 # Chatterbox
 
 <!-- factory:deploy -->
-<a href="https://console.eu.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fchatterbox-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fchatterbox-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
 <!-- /factory:deploy -->
 
 <!-- factory:intro -->
+
 Chatterbox is a MIT expressive English TTS model with bundled preset voices and an OpenAI-compatible speech API on preemptible H100.
 
 **License:** [MIT](https://github.com/resemble-ai/chatterbox/blob/master/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/ResembleAI/chatterbox)
+
 <!-- /factory:intro -->
 
 ---
+
 title: Chatterbox
 category: inference
 type: endpoint
@@ -18,9 +23,8 @@ runtime: gpu-h100-sxm
 frameworks: [chatterbox-tts]
 keywords: [tts, text-to-speech, voice-clone, chatterbox, openai-speech, h100]
 difficulty: intermediate
+
 ---
-
-
 
 Expressive English text-to-speech endpoint serving [Chatterbox](https://huggingface.co/ResembleAI/chatterbox)
 (Resemble AI) on a single preemptible H100. ~500M parameters, MIT license, and an
@@ -29,8 +33,6 @@ OpenAI-shaped speech API on port 8000.
 Pair with [Kokoro-82M](../endpoint-kokoro-82m/README.md) for a lighter “simple TTS”
 demo on L40S; Chatterbox targets expressive synthesis and zero-shot voice cloning
 from bundled preset reference clips.
-
-
 
 ## Run
 
@@ -91,13 +93,13 @@ not expose a multipart upload route.
 `ux_case: one_click` — nothing is required. Defaults are baked into the image because
 Deploy URLs cannot carry env vars; override only to retune:
 
-| Var | Default | Meaning |
-|-----|---------|---------|
-| `MODEL_ID` | `ResembleAI/chatterbox` | Hugging Face repo (informational) |
-| `DEFAULT_VOICE` | `Emily.wav` | preset reference clip when `voice` is omitted |
-| `CFG_WEIGHT` | `0.5` | classifier-free guidance (expressiveness vs stability) |
-| `EXAGGERATION` | `0.5` | prosody exaggeration (higher → more dramatic delivery) |
-| `VOICES_DIR` | `/app/voices` | directory of bundled preset reference WAV files |
+| Var             | Default                 | Meaning                                                |
+| --------------- | ----------------------- | ------------------------------------------------------ |
+| `MODEL_ID`      | `ResembleAI/chatterbox` | Hugging Face repo (informational)                      |
+| `DEFAULT_VOICE` | `Emily.wav`             | preset reference clip when `voice` is omitted          |
+| `CFG_WEIGHT`    | `0.5`                   | classifier-free guidance (expressiveness vs stability) |
+| `EXAGGERATION`  | `0.5`                   | prosody exaggeration (higher → more dramatic delivery) |
+| `VOICES_DIR`    | `/app/voices`           | directory of bundled preset reference WAV files        |
 
 ## Build the image yourself
 
@@ -120,14 +122,14 @@ curl -sS localhost:8000/v1/models
 
 ## Failure modes
 
-| Symptom | Likely cause |
-|---------|----------------|
-| 502 / connection refused for several minutes | Weights still downloading; uvicorn has not bound yet |
-| `no CUDA device` in logs | Deployed on a CPU platform/preset |
-| `unknown voice` HTTP 400 | `voice` must match a `*.wav` under `/app/voices` |
-| OOM during load | Chatterbox 500M needs H100-class VRAM; do not downsize preset without testing |
-| Garbled or accented output | Reference clip language/accent mismatches the input text; pick a matching preset |
-| Slow first synthesis after READY | First request for a new preset voice re-encodes conditionals from the reference clip |
+| Symptom                                      | Likely cause                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------ |
+| 502 / connection refused for several minutes | Weights still downloading; uvicorn has not bound yet                                 |
+| `no CUDA device` in logs                     | Deployed on a CPU platform/preset                                                    |
+| `unknown voice` HTTP 400                     | `voice` must match a `*.wav` under `/app/voices`                                     |
+| OOM during load                              | Chatterbox 500M needs H100-class VRAM; do not downsize preset without testing        |
+| Garbled or accented output                   | Reference clip language/accent mismatches the input text; pick a matching preset     |
+| Slow first synthesis after READY             | First request for a new preset voice re-encodes conditionals from the reference clip |
 
 ## Toward production
 
@@ -166,6 +168,7 @@ For production, enable token auth when creating the endpoint and send
 > [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 <!-- factory:cli -->
+
 ## CLI alternative
 
 ```bash
@@ -179,16 +182,17 @@ nebius ai endpoint create \
   --shm-size 16Gi \
   --disk-size 500Gi
 ```
+
 <!-- /factory:cli -->
 
 ## Troubleshooting
 
-| Symptom | Cause |
-|---------|-------|
-| `Quota limit exceeded` / `vpc.ipv4-address.public.count` on create | Tenant public IPv4 quota is full — delete STOPPED or ERROR endpoints (they still hold addresses until removed) or raise the VPC quota |
-| Smoke returns 502 for the first few minutes | Weights download at startup; wait for `ready in …s` in logs |
-| Empty or failed MP3 | `ffmpeg` missing or synthesis error — check endpoint logs |
-| `speed is not supported` | OpenAI `speed` is accepted in the schema but Chatterbox has no speed knob in v1 |
-| `502 failed to connect to local service` | Tunnel up but port 8000 not bound yet — poll `/v1/models`; RUNNING ≠ API ready |
-| Slow first pull | Add optional `HF_TOKEN`; disk throughput scales with size — template asks for 500 Gi |
-| Wrong image or port | `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/chatterbox-serve:d315ae1` on container port `8000` (`gpu-h100-sxm` / `1gpu-16vcpu-200gb`, preemptible) |
+| Symptom                                                            | Cause                                                                                                                                                |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Quota limit exceeded` / `vpc.ipv4-address.public.count` on create | Tenant public IPv4 quota is full — delete STOPPED or ERROR endpoints (they still hold addresses until removed) or raise the VPC quota                |
+| Smoke returns 502 for the first few minutes                        | Weights download at startup; wait for `ready in …s` in logs                                                                                          |
+| Empty or failed MP3                                                | `ffmpeg` missing or synthesis error — check endpoint logs                                                                                            |
+| `speed is not supported`                                           | OpenAI `speed` is accepted in the schema but Chatterbox has no speed knob in v1                                                                      |
+| `502 failed to connect to local service`                           | Tunnel up but port 8000 not bound yet — poll `/v1/models`; RUNNING ≠ API ready                                                                       |
+| Slow first pull                                                    | Add optional `HF_TOKEN`; disk throughput scales with size — template asks for 500 Gi                                                                 |
+| Wrong image or port                                                | `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/chatterbox-serve:d315ae1` on container port `8000` (`gpu-h100-sxm` / `1gpu-16vcpu-200gb`, preemptible) |
