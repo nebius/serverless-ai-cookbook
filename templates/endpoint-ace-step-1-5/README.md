@@ -1,16 +1,21 @@
 # ACE-Step 1.5
 
 <!-- factory:deploy -->
-<a href="https://console.eu.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Facestep-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Facestep-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
 <!-- /factory:deploy -->
 
 <!-- factory:intro -->
+
 ACE-Step 1.5 is an MIT text-to-audio (music) model with a sync OpenAI-shaped generation API on preemptible H100.
 
 **License:** [MIT](https://huggingface.co/ACE-Step/Ace-Step1.5/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/ACE-Step/Ace-Step1.5)
+
 <!-- /factory:intro -->
 
 ---
+
 title: Ace-Step 1.5
 category: inference
 type: endpoint
@@ -18,9 +23,8 @@ runtime: gpu-h100-sxm
 frameworks: [ace-step]
 keywords: [t2a, text-to-audio, music-generation, ace-step, openai-audio, h100]
 difficulty: intermediate
+
 ---
-
-
 
 Text-to-audio (music) endpoint serving [ACE-Step 1.5](https://huggingface.co/ACE-Step/Ace-Step1.5)
 (ACE-Step) on a single preemptible H100. MIT license, no gated weights, and a
@@ -29,8 +33,6 @@ catalog-friendly synchronous API on port 8000.
 Upstream ACE-Step ships an async FastAPI server (`POST /release_task` +
 `POST /query_result`). This template wraps it with `POST /v1/audio/generations`
 that blocks until audio is ready — similar to vLLM-Omni `/v1/videos/sync`.
-
-
 
 ## Run
 
@@ -95,15 +97,15 @@ ACE-Step's worker queue is sized for a single GPU.
 `ux_case: one_click` — nothing is required. Defaults are baked into the image because
 Deploy URLs cannot carry env vars; override only to retune:
 
-| Var | Default | Meaning |
-|-----|---------|---------|
-| `ACESTEP_CONFIG_PATH` | `acestep-v15-turbo` | DiT checkpoint loaded at startup |
-| `ACESTEP_LM_MODEL_PATH` | `acestep-5Hz-lm-0.6B` | 5Hz LM for `thinking=true` / metadata |
-| `ACESTEP_NO_INIT` | `false` | Eager-load models at boot (recommended for smoke) |
-| `ACESTEP_INIT_LLM` | `false` | Force DiT-only (skip vLLM 5Hz LM). Set `true` for `thinking=true` |
-| `API_MODEL` | `ACE-Step/Ace-Step1.5` | Catalog model id returned by `/v1/models` |
-| `ACESTEP_API_PORT` | `8001` | Internal upstream port (do not expose publicly) |
-| `POLL_TIMEOUT_S` | `900` | Max wait for sync generation |
+| Var                     | Default                | Meaning                                                           |
+| ----------------------- | ---------------------- | ----------------------------------------------------------------- |
+| `ACESTEP_CONFIG_PATH`   | `acestep-v15-turbo`    | DiT checkpoint loaded at startup                                  |
+| `ACESTEP_LM_MODEL_PATH` | `acestep-5Hz-lm-0.6B`  | 5Hz LM for `thinking=true` / metadata                             |
+| `ACESTEP_NO_INIT`       | `false`                | Eager-load models at boot (recommended for smoke)                 |
+| `ACESTEP_INIT_LLM`      | `false`                | Force DiT-only (skip vLLM 5Hz LM). Set `true` for `thinking=true` |
+| `API_MODEL`             | `ACE-Step/Ace-Step1.5` | Catalog model id returned by `/v1/models`                         |
+| `ACESTEP_API_PORT`      | `8001`                 | Internal upstream port (do not expose publicly)                   |
+| `POLL_TIMEOUT_S`        | `900`                  | Max wait for sync generation                                      |
 
 ## Build the image yourself
 
@@ -126,15 +128,15 @@ curl -sS localhost:8000/v1/models
 
 ## Failure modes
 
-| Symptom | Likely cause |
-|---------|----------------|
-| 502 / connection refused for many minutes | Weights still downloading; acestep-api has not passed `/health` yet |
-| `acestep-api exited early` / exit -11 | Often vLLM LM segfault — keep `ACESTEP_INIT_LLM=false` for DiT-only smoke; else check CUDA/driver |
-| `acestep-api exited early` (other codes) | CUDA/driver mismatch or failed pip install — check GPU platform |
-| OOM during model init | H100 preset required; do not downsize without offloading flags |
-| HTTP 504 on `/v1/audio/generations` | Clip too long or cold queue backlog — raise `POLL_TIMEOUT_S` or use async upstream API |
-| Empty MP3 | Upstream task failed — inspect acestep-api logs for DiT/LM errors |
-| Preemptible stop mid-generation | Retry the request; prefer async upstream jobs for long clips |
+| Symptom                                   | Likely cause                                                                                      |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| 502 / connection refused for many minutes | Weights still downloading; acestep-api has not passed `/health` yet                               |
+| `acestep-api exited early` / exit -11     | Often vLLM LM segfault — keep `ACESTEP_INIT_LLM=false` for DiT-only smoke; else check CUDA/driver |
+| `acestep-api exited early` (other codes)  | CUDA/driver mismatch or failed pip install — check GPU platform                                   |
+| OOM during model init                     | H100 preset required; do not downsize without offloading flags                                    |
+| HTTP 504 on `/v1/audio/generations`       | Clip too long or cold queue backlog — raise `POLL_TIMEOUT_S` or use async upstream API            |
+| Empty MP3                                 | Upstream task failed — inspect acestep-api logs for DiT/LM errors                                 |
+| Preemptible stop mid-generation           | Retry the request; prefer async upstream jobs for long clips                                      |
 
 ## Toward production
 
@@ -175,6 +177,7 @@ For production, enable token auth when creating the endpoint and send
 > [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 <!-- factory:cli -->
+
 ## CLI alternative
 
 ```bash
@@ -188,16 +191,17 @@ nebius ai endpoint create \
   --shm-size 16Gi \
   --disk-size 500Gi
 ```
+
 <!-- /factory:cli -->
 
 ## Troubleshooting
 
-| Symptom | Cause |
-|---------|-------|
-| Smoke returns 502 for the first 15–30+ minutes | DiT + LM weights download on first boot; wait for `upstream ready` in logs |
-| `no CUDA device` in logs | Deployed on a CPU platform/preset |
-| `generation timed out` | Increase `POLL_TIMEOUT_S` or shorten `audio_duration` / `inference_steps` |
-| `502 failed to connect to local service` | Tunnel up but port 8000 not bound yet — poll `/v1/models`; RUNNING ≠ API ready |
-| Slow first pull | Add optional `HF_TOKEN`; disk throughput scales with size — template asks for 500 Gi |
-| `shm` errors in worker logs | Request `--shm-size 16Gi` (set in deploy configuration) |
-| Wrong image or port | `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/acestep-serve:d315ae1` on container port `8000` (`gpu-h100-sxm` / `1gpu-16vcpu-200gb`, preemptible) |
+| Symptom                                        | Cause                                                                                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Smoke returns 502 for the first 15–30+ minutes | DiT + LM weights download on first boot; wait for `upstream ready` in logs                                                                        |
+| `no CUDA device` in logs                       | Deployed on a CPU platform/preset                                                                                                                 |
+| `generation timed out`                         | Increase `POLL_TIMEOUT_S` or shorten `audio_duration` / `inference_steps`                                                                         |
+| `502 failed to connect to local service`       | Tunnel up but port 8000 not bound yet — poll `/v1/models`; RUNNING ≠ API ready                                                                    |
+| Slow first pull                                | Add optional `HF_TOKEN`; disk throughput scales with size — template asks for 500 Gi                                                              |
+| `shm` errors in worker logs                    | Request `--shm-size 16Gi` (set in deploy configuration)                                                                                           |
+| Wrong image or port                            | `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/acestep-serve:d315ae1` on container port `8000` (`gpu-h100-sxm` / `1gpu-16vcpu-200gb`, preemptible) |

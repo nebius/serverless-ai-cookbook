@@ -1,13 +1,17 @@
 # Sana
 
 <!-- factory:deploy -->
-<a href="https://console.eu.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fsana-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fsana-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
 <!-- /factory:deploy -->
 
 <!-- factory:intro -->
+
 Sana 1.6B is a fast Apache-2.0 1024px text-to-image model (~9GB weights) for single-L40S Diffusers serving.
 
 **License:** [Apache-2.0](https://huggingface.co/Efficient-Large-Model/Sana_1600M_1024px_diffusers/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/Efficient-Large-Model/Sana_1600M_1024px_diffusers)
+
 <!-- /factory:intro -->
 
 Text-to-image endpoint serving [Sana 1.6B](https://huggingface.co/Efficient-Large-Model/Sana_1600M_1024px_diffusers)
@@ -105,6 +109,7 @@ For production, enable token auth when creating the endpoint and send
 > [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 <!-- factory:cli -->
+
 ## CLI alternative
 
 ```bash
@@ -118,6 +123,7 @@ nebius ai endpoint create \
   --shm-size 16Gi \
   --disk-size 500Gi
 ```
+
 <!-- /factory:cli -->
 
 ## Troubleshooting

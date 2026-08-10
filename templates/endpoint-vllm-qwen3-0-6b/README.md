@@ -1,13 +1,17 @@
 # Qwen3-0.6B
 
 <!-- factory:deploy -->
-<a href="https://console.eu.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.19.1&amp;command=python3%20-m%20vllm.entrypoints.openai.api_server%20--model%20Qwen%2FQwen3-0.6B%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.19.1&amp;command=python3%20-m%20vllm.entrypoints.openai.api_server%20--model%20Qwen%2FQwen3-0.6B%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
 <!-- /factory:deploy -->
 
 <!-- factory:intro -->
+
 Qwen3-0.6B is a compact Apache-2.0 chat LLM served OpenAI-compatibly via vLLM on a single L40S.
 
 **License:** [Apache-2.0](https://huggingface.co/Qwen/Qwen3-0.6B/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/Qwen/Qwen3-0.6B)
+
 <!-- /factory:intro -->
 
 ## Test request
@@ -93,6 +97,7 @@ For production, enable token auth when creating the endpoint and send
 > [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 <!-- factory:cli -->
+
 ## CLI alternative
 
 ```bash
@@ -108,6 +113,7 @@ nebius ai endpoint create \
   --container-command bash \
   --args '-c python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000'
 ```
+
 <!-- /factory:cli -->
 
 ## Troubleshooting

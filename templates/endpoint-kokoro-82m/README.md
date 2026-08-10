@@ -1,13 +1,17 @@
 # Kokoro-82M
 
 <!-- factory:deploy -->
-<a href="https://console.eu.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fkokoro-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fkokoro-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
 <!-- /factory:deploy -->
 
 <!-- factory:intro -->
+
 Kokoro-82M is an 82M-parameter Apache-2.0 text-to-speech model with an OpenAI-compatible speech API on a single L40S.
 
 **License:** [Apache-2.0](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/hexgrad/Kokoro-82M)
+
 <!-- /factory:intro -->
 
 Text-to-speech endpoint serving [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M)
@@ -106,6 +110,7 @@ For production, enable token auth when creating the endpoint and send
 > [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 <!-- factory:cli -->
+
 ## CLI alternative
 
 ```bash
@@ -119,6 +124,7 @@ nebius ai endpoint create \
   --shm-size 16Gi \
   --disk-size 500Gi
 ```
+
 <!-- /factory:cli -->
 
 ## Troubleshooting
