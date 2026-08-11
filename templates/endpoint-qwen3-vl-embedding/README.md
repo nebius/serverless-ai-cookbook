@@ -8,7 +8,7 @@
 
 <!-- factory:intro -->
 
-Qwen3-VL-Embedding-8B is a state-of-the-art Apache-2.0 multimodal embedding model that maps text, images, and video into one shared vector space, served OpenAI-compatibly via vLLM on a preemptible H100.
+Qwen3-VL-Embedding-8B is an Apache-2.0 multimodal embedding model that maps text, images, and video into one shared vector space, served OpenAI-compatibly via vLLM.
 
 **License:** [Apache-2.0](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B)
 
