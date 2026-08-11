@@ -30,6 +30,12 @@ single L40S — see [CLI alternative](#cli-alternative).
 
 Copy the endpoint's public URL from the console (**Public endpoints**) into `BASE_URL`.
 
+> **Auth.** Like the other templates, this one deploys with **authentication off**
+> by default so you can try it quickly — meaning the endpoint is publicly callable
+> by anyone with the URL, so delete it when you're done. For production, create it
+> with `--auth token` and set `TOKEN` below; the commands add
+> `Authorization: Bearer $TOKEN` only when `TOKEN` is set.
+
 > **URL note.** The examples below use the `IP:port` form. Nebius is moving public
 > access to a managed HTTPS FQDN
 > (`https://port8000-<id>.tunnel.applications.<region>.nebius.cloud`) and retiring
