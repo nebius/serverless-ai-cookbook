@@ -8,7 +8,7 @@
 
 <!-- factory:intro -->
 
-Qwen3-0.6B is a compact Apache-2.0 chat LLM served OpenAI-compatibly via vLLM on a single L40S.
+Qwen3-0.6B is a compact Apache-2.0 chat LLM served OpenAI-compatibly via vLLM on preemptible L40S.
 
 **License:** [Apache-2.0](https://huggingface.co/Qwen/Qwen3-0.6B/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/Qwen/Qwen3-0.6B)
 

@@ -34,7 +34,7 @@ Templates are quick-start configurations to help you serve models and run jobs i
 <tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/62b4b5beb25cb80fcf278354/SIddx3hYu5rWXA4-O3Oaj.jpeg" width="20" height="20" alt="Sana" align="absmiddle">&nbsp;<a href="endpoint-sana/README.md"><strong>Sana</strong></a></td>
   <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fsana-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">Sana 1.6B is a fast Apache-2.0 1024px text-to-image model (~9GB weights) for single-L40S Diffusers serving.</td>
+  <td width="580" valign="middle">Sana 1.6B is a fast Apache-2.0 1024px text-to-image model (~9GB weights) for Diffusers serving on preemptible L40S.</td>
 </tr>
 <tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/64379d79fac5ea753f1c10f3/fxHO6QoYjdv9_LTyiUD3g.jpeg" width="20" height="20" alt="Z-Image-Turbo" align="absmiddle">&nbsp;<a href="endpoint-z-image-turbo/README.md"><strong>Z-Image-Turbo</strong></a></td>
@@ -140,7 +140,7 @@ Templates are quick-start configurations to help you serve models and run jobs i
 <tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/6629552c96f529a39bac7c89/EaoEz4WH2VoE5twl2oJie.png" width="20" height="20" alt="Kokoro-82M" align="absmiddle">&nbsp;<a href="endpoint-kokoro-82m/README.md"><strong>Kokoro-82M</strong></a></td>
   <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fkokoro-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">Kokoro-82M is an 82M-parameter Apache-2.0 text-to-speech model with an OpenAI-compatible speech API on a single L40S.</td>
+  <td width="580" valign="middle">Kokoro-82M is an 82M-parameter Apache-2.0 text-to-speech model with an OpenAI-compatible speech API on preemptible L40S.</td>
 </tr>
 </tbody>
 </table>
@@ -188,7 +188,7 @@ Templates are quick-start configurations to help you serve models and run jobs i
 <tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/6215ca5692c0ecfba9186921/hrRM50-6XcdWgg2AKpENG.jpeg" width="20" height="20" alt="Qwen3-0.6B" align="absmiddle">&nbsp;<a href="endpoint-vllm-qwen3-0-6b/README.md"><strong>Qwen3-0.6B</strong></a></td>
   <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.19.1&amp;command=python3%20-m%20vllm.entrypoints.openai.api_server%20--model%20Qwen%2FQwen3-0.6B%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">Qwen3-0.6B is a compact Apache-2.0 chat LLM served OpenAI-compatibly via vLLM on a single L40S.</td>
+  <td width="580" valign="middle">Qwen3-0.6B is a compact Apache-2.0 chat LLM served OpenAI-compatibly via vLLM on preemptible L40S.</td>
 </tr>
 </tbody>
 </table>
@@ -212,7 +212,7 @@ Templates are quick-start configurations to help you serve models and run jobs i
 <tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/6215ca5692c0ecfba9186921/hrRM50-6XcdWgg2AKpENG.jpeg" width="20" height="20" alt="Qwen3-VL-Embedding-8B" align="absmiddle">&nbsp;<a href="endpoint-qwen3-vl-embedding/README.md"><strong>Qwen3-VL-Embedding-8B</strong></a></td>
   <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.19.1&amp;command=python3%20-m%20vllm.entrypoints.openai.api_server%20--model%20Qwen%2FQwen3-VL-Embedding-8B%20--runner%20pooling%20--trust-remote-code%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500Gi&amp;shmSize=16Gi&amp;preemptible=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">Qwen3-VL-Embedding-8B is an Apache-2.0 multimodal embedding model for text, image, and video, served OpenAI-compatibly via vLLM.</td>
+  <td width="580" valign="middle">Qwen3-VL-Embedding-8B is an Apache-2.0 multimodal embedding model for text, image, and video, served OpenAI-compatibly via vLLM on preemptible H100.</td>
 </tr>
 </tbody>
 </table>

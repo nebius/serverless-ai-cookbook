@@ -8,7 +8,7 @@
 
 <!-- factory:intro -->
 
-Sana 1.6B is a fast Apache-2.0 1024px text-to-image model (~9GB weights) for single-L40S Diffusers serving.
+Sana 1.6B is a fast Apache-2.0 1024px text-to-image model (~9GB weights) for Diffusers serving on preemptible L40S.
 
 **License:** [Apache-2.0](https://huggingface.co/Efficient-Large-Model/Sana_1600M_1024px_diffusers/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/Efficient-Large-Model/Sana_1600M_1024px_diffusers)
 
