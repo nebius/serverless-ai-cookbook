@@ -30,7 +30,7 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 
 | Available credential | Reasoning provider | Default model |
 |---|---|---|
-| `NVIDIA_API_KEY` or `NGC_API_KEY` | NVIDIA Build | `nvidia/nemotron-3-nano-30b-a3b` |
+| `NVIDIA_API_KEY` or `NGC_API_KEY` | NVIDIA Build | `nvidia/nemotron-3-ultra-550b-a55b` |
 | `NEBIUS_API_KEY` | Nebius Token Factory | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` |
 | `OPENAI_API_KEY` | OpenAI | `gpt-5.6` using the OpenClaw runtime |
 | `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
@@ -46,6 +46,12 @@ under-reports those three as 8K. The image supplies the verified limits so
 OpenClaw does not compact ordinary sessions prematurely. It also sends
 `max_tokens` specifically for Super, whose route rejects
 `max_completion_tokens`.
+
+The NVIDIA Build profile uses Nemotron 3 Ultra with template thinking disabled,
+matching NVIDIA's documented OpenClaw default. Release probes showed structured
+function calls from Ultra, while the smaller NVIDIA-hosted Nano returned raw
+tool-call JSON as assistant text in six of six direct probes (including three
+with `tool_choice=required`). Nano is therefore not the NVIDIA event default.
 
 Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with

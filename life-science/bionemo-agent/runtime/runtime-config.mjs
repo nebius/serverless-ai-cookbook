@@ -3,7 +3,7 @@ import path from "node:path";
 import { EXACT_TOOL_NAMES } from "../openclaw-plugin/src/catalog.mjs";
 
 export const DEFAULT_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
-export const NVIDIA_MODEL = "nvidia/nemotron-3-nano-30b-a3b";
+export const NVIDIA_MODEL = "nvidia/nemotron-3-ultra-550b-a55b";
 export const NEBIUS_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
@@ -100,6 +100,7 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     };
   };
   const nvidiaModel = modelId("nvidia", NVIDIA_MODEL);
+  const nvidiaUsesDefault = nvidiaModel.toLowerCase() === NVIDIA_MODEL.toLowerCase();
   const requestedNebiusModel = modelId("nebius", NEBIUS_MODEL);
   const knownNebiusModel = TOKEN_FACTORY_MODELS.find(({ id }) => id.toLowerCase() === requestedNebiusModel.toLowerCase());
   const nebiusModel = knownNebiusModel?.id || requestedNebiusModel;
@@ -108,7 +109,18 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     : Object.freeze([...TOKEN_FACTORY_MODELS, Object.freeze({ id: nebiusModel, contextWindow: 262144, maxTokens: 8192 })]);
   const openaiModel = modelId("openai", OPENAI_MODEL);
   const anthropicModel = modelId("anthropic", ANTHROPIC_MODEL);
-  config.models.providers.nvidia = compatibleProvider({ configured: state.nvidia, baseUrl: state.reasoningProvider === "nvidia" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://integrate.api.nvidia.com/v1", apiKey: "${NVIDIA_API_KEY}", api: "openai-completions", models: [{ id: nvidiaModel, name: `${nvidiaModel} via NVIDIA Build` }] });
+  config.models.providers.nvidia = compatibleProvider({
+    configured: state.nvidia,
+    baseUrl: state.reasoningProvider === "nvidia" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://integrate.api.nvidia.com/v1",
+    apiKey: "${NVIDIA_API_KEY}",
+    api: "openai-completions",
+    models: [{
+      id: nvidiaModel,
+      name: `${nvidiaModel} via NVIDIA Build`,
+      contextWindow: nvidiaUsesDefault ? 1_000_000 : 262_144,
+      maxTokens: nvidiaUsesDefault ? 16_384 : 8_192,
+    }],
+  });
   config.models.providers.tokenfactory = compatibleProvider({ configured: state.nebius, baseUrl: state.reasoningProvider === "nebius" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.tokenfactory.nebius.com/v1", apiKey: "${NEBIUS_API_KEY}", api: "openai-completions", models: tokenFactoryModels.map((model) => ({ ...model, name: `${model.alias || model.id} via Nebius Token Factory` })) });
   config.models.providers.openai = compatibleProvider({ configured: state.openai, baseUrl: state.reasoningProvider === "openai" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.openai.com/v1", apiKey: "${OPENAI_API_KEY}", api: "openai-responses", models: [{ id: openaiModel, name: `${openaiModel} via OpenAI` }], agentRuntime: { id: "openclaw" } });
   config.models.providers.claude = compatibleProvider({ configured: state.anthropic, baseUrl: state.reasoningProvider === "anthropic" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.anthropic.com", apiKey: "${ANTHROPIC_API_KEY}", api: "anthropic-messages", models: [{ id: anthropicModel, name: `${anthropicModel} via Anthropic Claude`, contextWindow: 200000 }] });
@@ -125,7 +137,12 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   };
   config.agents.defaults.model.primary = primaryModels[state.reasoningProvider];
   config.agents.defaults.models = {
-    [`nvidia/${nvidiaModel}`]: {},
+    // NVIDIA's documented OpenClaw default. Disabling template thinking
+    // keeps normal answers visible and produced structured tool_calls in
+    // the release matrix; Nano emitted raw tool JSON in 6/6 probes.
+    [`nvidia/${nvidiaModel}`]: nvidiaUsesDefault
+      ? { params: { chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true } } }
+      : {},
     ...Object.fromEntries(tokenFactoryModels.map(({ id, alias }) => [`tokenfactory/${id}`, alias ? { alias } : {}])),
     [`openai/${openaiModel}`]: {},
     [`claude/${anthropicModel}`]: {},

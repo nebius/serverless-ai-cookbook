@@ -278,6 +278,27 @@ test("credential resolution supports all reasoning providers, MCP override, and 
   assert.equal(keyless.mcpUrl, DEFAULT_MCP_URL);
 });
 
+test("NVIDIA defaults to the tool-reliable Ultra profile", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(config, { AGENT_PROVIDER: "nvidia", NVIDIA_API_KEY: "do-not-persist" });
+  const [ultra] = config.models.providers.nvidia.models;
+  assert.equal(config.agents.defaults.model.primary, "nvidia/nvidia/nemotron-3-ultra-550b-a55b");
+  assert.equal(ultra.id, "nvidia/nemotron-3-ultra-550b-a55b");
+  assert.equal(ultra.contextWindow, 1_000_000);
+  assert.equal(ultra.maxTokens, 16_384);
+  assert.equal(ultra.params, undefined);
+  assert.deepEqual(config.agents.defaults.models["nvidia/nvidia/nemotron-3-ultra-550b-a55b"].params, {
+    chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true },
+  });
+  assert.equal(JSON.stringify(config).includes("do-not-persist"), false);
+
+  const custom = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(custom, { AGENT_PROVIDER: "nvidia", NVIDIA_API_KEY: "do-not-persist", AGENT_MODEL: "example/custom" });
+  assert.equal(custom.models.providers.nvidia.models[0].contextWindow, 262_144);
+  assert.equal(custom.models.providers.nvidia.models[0].maxTokens, 8_192);
+  assert.deepEqual(custom.agents.defaults.models["nvidia/example/custom"], {});
+});
+
 test("OpenClaw enables only configured remote MCP servers and keeps credential placeholders", () => {
   const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
   const state = configureOpenClaw(config, { NVIDIA_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", TAVILY_API_KEY: "t" });
