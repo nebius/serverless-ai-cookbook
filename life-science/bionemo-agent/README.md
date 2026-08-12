@@ -1,4 +1,4 @@
-# BioNeMo Agent Workbench 3.0 on Nebius Serverless
+# BioNeMo Agent Workbench 3.1 on Nebius Serverless
 
 This recipe packages a ready-to-start life-science agent environment for a
 Nebius Serverless CPU endpoint. The image contains:
@@ -7,7 +7,7 @@ Nebius Serverless CPU endpoint. The image contains:
 - Codex CLI `0.147.0` and Claude Code `2.1.228`, installed without auth caches;
 - all 31 skills from NVIDIA's pinned BioNeMo Agent Toolkit plugin;
 - the public Cerebrium BioNeMo MCP URL in all three clients;
-- ten bounded hosted-NIM adapters and three composed research workflows; and
+- ten bounded hosted-NIM adapters, three composed research workflows, and a bundled interactive 3Dmol structure viewer; and
 - optional Tavily MCP search.
 
 The container may start without a model credential. In that case the browser
@@ -32,11 +32,19 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 |---|---|---|
 | `NVIDIA_API_KEY` or `NGC_API_KEY` | NVIDIA Build | `nvidia/nemotron-3-nano-30b-a3b` |
 | `NEBIUS_API_KEY` | Nebius Token Factory | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` |
+| `OPENAI_API_KEY` | OpenAI | `gpt-5.6` using the OpenClaw runtime |
+| `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
 | none | local setup-required responder | no external model |
 
-Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|setup`, the
+Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
 `AGENT_BASE_URL`.
+
+All four external providers remain visible in the model selector when their
+credentials are absent. An unavailable selection is routed to the local setup
+responder, which explains the exact environment key to add instead of sending
+an unauthorized request upstream. `auto` prefers NVIDIA, then Token Factory,
+OpenAI, and Claude in that order.
 
 BioNeMo model tools use `BIONEMO_BACKEND=auto`:
 
@@ -68,7 +76,8 @@ images.
 | Cloudflared | `2026.7.3` with pinned Linux amd64 SHA-256 |
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
-| Workbench | `3.0.1` |
+| 3Dmol.js | `2.5.5` |
+| Workbench | `3.1.0` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -98,12 +107,19 @@ are disabled. The ten direct NVIDIA adapters accept bounded schemas and fixed
 NVIDIA HTTPS routes, reject redirects and arbitrary paths, cap responses, and
 redact credentials.
 
+Generated artifacts live under the agent workspace so OpenClaw can attach
+them without broad filesystem access. PDB and CIF results also get an
+unguessable, per-run viewer link. The link is a bearer capability for only
+that run's structure files, loads the image-bundled 3Dmol.js asset, carries no
+gateway or provider key, uses no external CDN, and is not persisted in run
+manifests.
+
 ## Build and publish
 
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.0.1"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.1.0"
 ./scripts/build_image.sh
 ```
 
@@ -124,13 +140,15 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.0.1-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.1.0-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
 export NVIDIA_API_KEY_SECRET="<selector-with-NVIDIA_API_KEY>"
 # export NGC_API_KEY_SECRET="<selector-with-NGC_API_KEY>"
 # export NEBIUS_API_KEY_SECRET="<selector-with-NEBIUS_API_KEY>"
+# export OPENAI_API_KEY_SECRET="<selector-with-OPENAI_API_KEY>"
+# export ANTHROPIC_API_KEY_SECRET="<selector-with-ANTHROPIC_API_KEY>"
 # export BIONEMO_MCP_API_KEY_SECRET="<selector-with-BIONEMO_MCP_API_KEY>"
 # export TAVILY_API_KEY_SECRET="<selector-with-TAVILY_API_KEY>"
 
@@ -157,10 +175,12 @@ set `BIONEMO_PUBLIC_ORIGIN=https://agent.example` and
 | `NVIDIA_API_KEY` | yes | no | NVIDIA reasoning and direct hosted NIMs |
 | `NGC_API_KEY` | yes | no | Compatibility alternative to `NVIDIA_API_KEY` |
 | `NEBIUS_API_KEY` | yes | no | Nebius Token Factory reasoning |
+| `OPENAI_API_KEY` | yes | no | OpenAI reasoning |
+| `ANTHROPIC_API_KEY` | yes | no | Anthropic Claude reasoning |
 | `BIONEMO_MCP_API_KEY` | yes | no | Cerebrium or private BioNeMo MCP bearer |
 | `TAVILY_API_KEY` | yes | no | Tavily MCP search |
 | `BIONEMO_MCP_URL` | no | no | Override the default live Cerebrium gateway |
-| `AGENT_PROVIDER` | no | no | `auto`, `nvidia`, `nebius`, or `setup` |
+| `AGENT_PROVIDER` | no | no | `auto`, `nvidia`, `nebius`, `openai`, `anthropic`, or `setup` |
 | `AGENT_MODEL` | no | no | Override the selected provider's model ID |
 | `AGENT_BASE_URL` | no | no | Override the selected provider's API base |
 | `BIONEMO_BACKEND` | no | no | `auto`, `mcp`, or `nvidia` |
@@ -172,8 +192,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.0.1-test .
-docker run --rm bionemo-agent:3.0.1-test doctor
+docker build -t bionemo-agent:3.1.0-test .
+docker run --rm bionemo-agent:3.1.0-test doctor
 ```
 
 For a running endpoint, get the tunnel URL from logs and check:

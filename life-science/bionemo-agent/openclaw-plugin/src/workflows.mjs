@@ -103,7 +103,7 @@ export class WorkflowRunner {
       else throw new InputError(`unsupported workflow: ${workflowId}`);
       await this.store.save(run, "workflow-summary.json", `${JSON.stringify(summary, null, 2)}\n`);
       await this.store.complete(run, { steps });
-      return { runId: run.runId, summary, steps, artifacts: run.manifest.artifacts };
+      return { runId: run.runId, summary, steps, artifacts: this.store.presentArtifacts(run) };
     } catch (error) {
       const active = steps.findLast((step) => step.status === "running");
       if (active) { active.status = "failed"; active.completedAt = new Date().toISOString(); }

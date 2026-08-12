@@ -7,7 +7,7 @@ import { createUiHandlers } from "./src/ui.mjs";
 import { JSON_SCHEMAS, VALIDATORS } from "./src/validation.mjs";
 import { WorkflowRunner } from "./src/workflows.mjs";
 
-export const PLUGIN_VERSION = "3.0.1";
+export const PLUGIN_VERSION = "3.1.0";
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };
@@ -31,7 +31,7 @@ function toolResult(value) {
 }
 
 export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env, artifactRoot, logger = console } = {}) {
-  const store = new ArtifactStore(artifactRoot || env.BIONEMO_ARTIFACT_ROOT || "/workspace/artifacts");
+  const store = new ArtifactStore(artifactRoot || env.BIONEMO_ARTIFACT_ROOT || "/workspace/agent/artifacts");
   const client = new NimClient({ fetchImpl, env, logger });
 
   async function runSkill(skillId, rawInput) {
@@ -44,7 +44,7 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
       return {
         runId: run.runId,
         summary: { skill: SKILLS[skillId].label, elapsedMs: result.elapsedMs, requestId: result.requestId, responseKeys: Object.keys(result.data).slice(0, 50) },
-        artifacts: run.manifest.artifacts,
+        artifacts: store.presentArtifacts(run),
       };
     } catch (error) {
       const safe = publicError(error);
@@ -92,6 +92,8 @@ export default {
 
     const handlers = createUiHandlers({ store: runtime.store, runtimeVersion: PLUGIN_VERSION });
     api.registerHttpRoute({ path: "/plugins/bionemo/readiness", auth: "plugin", match: "exact", handler: handlers.readiness });
+    api.registerHttpRoute({ path: "/plugins/bionemo/assets/3dmol.min.js", auth: "plugin", match: "exact", handler: handlers.viewerAsset });
+    api.registerHttpRoute({ path: "/plugins/bionemo/view", auth: "plugin", match: "prefix", handler: handlers.viewer });
     api.registerHttpRoute({ path: "/plugins/bionemo", auth: "plugin", match: "exact", handler: handlers.dashboard });
     api.registerHttpRoute({ path: "/plugins/bionemo/api", auth: "gateway", match: "prefix", handler: handlers.api });
     api.session.controls.registerControlUiDescriptor({
@@ -106,7 +108,7 @@ export default {
       requiredScopes: ["operator.read"],
     });
     api.on("before_prompt_build", async () => ({
-      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. Never ask for or reveal credentials. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
+      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. Never ask for or reveal credentials. When a structure artifact has viewerUrl, always give the user a normal Markdown link labeled View structure in 3D in addition to the downloadable local artifact. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
     }));
     api.logger.info?.(`BioNeMo Agent Toolkit ${PLUGIN_VERSION} registered ${PUBLIC_CATALOG.skills.length} skills and ${PUBLIC_CATALOG.workflows.length} workflows`);
   },

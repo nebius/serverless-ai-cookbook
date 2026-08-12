@@ -54,6 +54,9 @@ test("dashboard CSP is nonce-based and token never enters URL or persistent stor
   assert.match(html, /Authorization:'Bearer '\+bearer/u);
   assert.match(html, /setInterval\(refresh,5000\)/u);
   assert.match(html, /run\.steps/u);
+  assert.match(html, /View 3D/u);
+  assert.match(html, /3dmol\.min\.js/u);
+  assert.match(html, /addModel\(structure/u);
   const script = html.match(/<script nonce="[^"]+">([\s\S]+)<\/script>/u)?.[1];
   assert.ok(script);
   assert.doesNotThrow(() => new vm.Script(script));
@@ -70,7 +73,7 @@ test("readiness reveals only capability presence", async () => {
   assert.equal(body.includes("nvidia-secret"), false);
   assert.equal(body.includes("nebius-secret"), false);
   assert.equal(body.includes("gateway-secret"), false);
-  assert.deepEqual(JSON.parse(body).configured, { reasoning: true, reasoningProvider: "nvidia", modelBackend: "nvidia", nvidia: true, nebius: true, mcp: false, tavily: false, gateway: true });
+  assert.deepEqual(JSON.parse(body).configured, { reasoning: true, reasoningProvider: "nvidia", modelBackend: "nvidia", nvidia: true, nebius: true, openai: false, anthropic: false, mcp: false, tavily: false, gateway: true });
 });
 
 test("readiness stays healthy in keyless setup-required mode", async () => {
@@ -102,6 +105,8 @@ test("Serverless launch binds exactly one matching NVIDIA MysteryBox payload", a
   assert.equal(script.includes("--env \"NGC_API_KEY="), false);
   assert.match(script, /BIONEMO_MCP_API_KEY_SECRET/u);
   assert.match(script, /TAVILY_API_KEY_SECRET/u);
+  assert.match(script, /OPENAI_API_KEY_SECRET/u);
+  assert.match(script, /ANTHROPIC_API_KEY_SECRET/u);
   assert.match(script, /BIONEMO_REQUIRE_DEVICE_PAIRING/u);
   assert.equal(script.includes(": \"${NEBIUS_API_KEY_SECRET:?"), false);
 });
@@ -172,7 +177,7 @@ test("all pins and model identity are immutable in the shipped configuration", a
   assert.equal((await readFile(new URL("../vendor/bionemo-agent-toolkit/UPSTREAM_COMMIT", import.meta.url), "utf8")).trim(), TOOLKIT_COMMIT);
 });
 
-test("credential resolution supports NVIDIA-only, Nebius, MCP override, and keyless modes", () => {
+test("credential resolution supports all reasoning providers, MCP override, and keyless modes", () => {
   const nvidia = capabilities({ NVIDIA_API_KEY: "n" });
   assert.deepEqual([nvidia.reasoningProvider, nvidia.modelBackend, nvidia.nvidia, nvidia.nebius], ["nvidia", "nvidia", true, false]);
   const nebius = capabilities({ NEBIUS_API_KEY: "n" });
@@ -181,6 +186,8 @@ test("credential resolution supports NVIDIA-only, Nebius, MCP override, and keyl
   assert.equal(mcp.reasoningProvider, "nebius");
   assert.equal(mcp.modelBackend, "mcp");
   assert.equal(mcp.mcpUrl, "https://private.example/mcp");
+  assert.equal(capabilities({ OPENAI_API_KEY: "o" }).reasoningProvider, "openai");
+  assert.equal(capabilities({ ANTHROPIC_API_KEY: "a" }).reasoningProvider, "anthropic");
   const keyless = capabilities({});
   assert.equal(keyless.reasoningProvider, "setup");
   assert.equal(keyless.modelBackend, "unavailable");
@@ -196,6 +203,23 @@ test("OpenClaw enables only configured remote MCP servers and keeps credential p
   assert.equal(config.mcp.servers.tavily.headers.Authorization, "Bearer ${TAVILY_API_KEY}");
   assert.ok(config.tools.alsoAllow.includes("bundle-mcp"));
   assert.equal(config.tools.deny.includes("bundle-mcp"), false);
+  assert.deepEqual(Object.keys(config.models.providers), ["nvidia", "tokenfactory", "openai", "anthropic", "setup"]);
+  assert.match(config.models.providers.openai.models[0].name, /requires API key/u);
+  assert.match(config.models.providers.anthropic.models[0].name, /Anthropic Claude.*requires API key/u);
+  assert.equal(config.models.providers.openai.baseUrl, "http://127.0.0.1:18790/v1");
+  assert.equal(config.models.providers.anthropic.baseUrl, "http://127.0.0.1:18790/v1");
+  assert.deepEqual(config.agents.defaults.models["openai/gpt-5.6"], { agentRuntime: { id: "openclaw" } });
+});
+
+test("OpenAI and Claude use environment placeholders only when authorized", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(config, { AGENT_PROVIDER: "openai", OPENAI_API_KEY: "do-not-persist", ANTHROPIC_API_KEY: "also-do-not-persist" });
+  const serialized = JSON.stringify(config);
+  assert.equal(config.agents.defaults.model.primary, "openai/gpt-5.6");
+  assert.equal(config.models.providers.openai.apiKey, "${OPENAI_API_KEY}");
+  assert.equal(config.models.providers.anthropic.apiKey, "${ANTHROPIC_API_KEY}");
+  assert.equal(serialized.includes("do-not-persist"), false);
+  assert.equal(serialized.includes("also-do-not-persist"), false);
 });
 
 test("Codex and Claude configs contain placeholders and all packaged skills without auth caches", async (t) => {

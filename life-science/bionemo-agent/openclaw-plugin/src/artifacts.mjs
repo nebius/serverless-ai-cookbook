@@ -1,12 +1,13 @@
 import { constants as fsConstants } from "node:fs";
 import { mkdir, open, readdir, readFile, realpath, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { LIMITS } from "./validation.mjs";
 import { InputError, redactSecrets } from "./errors.mjs";
 
 const RUN_ID = /^[a-f0-9-]{36}$/u;
 const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
+const STRUCTURE_EXTENSIONS = new Set([".cif", ".mmcif", ".pdb"]);
 const CONTENT_TYPES = Object.freeze({
   ".json": "application/json; charset=utf-8",
   ".cif": "chemical/x-mmcif",
@@ -94,7 +95,7 @@ export function extractArtifacts(skillId, data) {
 }
 
 export class ArtifactStore {
-  constructor(root = process.env.BIONEMO_ARTIFACT_ROOT || "/workspace/artifacts") {
+  constructor(root = process.env.BIONEMO_ARTIFACT_ROOT || "/workspace/agent/artifacts") {
     this.root = path.resolve(root);
   }
 
@@ -108,6 +109,7 @@ export class ArtifactStore {
     const runId = randomUUID();
     const directory = path.join(this.root, runId);
     await mkdir(directory, { recursive: false, mode: 0o700 });
+    const viewerCapability = randomBytes(24).toString("base64url");
     const manifest = {
       schemaVersion: 1,
       runId,
@@ -118,9 +120,10 @@ export class ArtifactStore {
       inputSummary: redactSecrets(inputSummary),
       steps: [],
       artifacts: [],
+      structureCapabilityDigest: createHash("sha256").update(viewerCapability).digest("hex"),
     };
     await this.writeManifest(directory, manifest);
-    return { runId, directory, manifest };
+    return { runId, directory, manifest, viewerCapability };
   }
 
   async writeManifest(directory, manifest) {
@@ -137,7 +140,7 @@ export class ArtifactStore {
     const target = path.join(run.directory, fileName);
     const handle = await open(target, fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | fsConstants.O_NOFOLLOW, 0o600);
     try { await handle.writeFile(buffer); } finally { await handle.close(); }
-    const entry = { name: fileName, bytes: buffer.length, downloadPath: `/plugins/bionemo/api/artifacts/${run.runId}/${fileName}` };
+    const entry = { name: fileName, bytes: buffer.length, downloadPath: target };
     run.manifest.artifacts.push(entry);
     await this.writeManifest(run.directory, run.manifest);
     return entry;
@@ -160,6 +163,16 @@ export class ArtifactStore {
     return run.manifest;
   }
 
+  presentArtifacts(run) {
+    return run.manifest.artifacts.map((artifact) => {
+      if (!STRUCTURE_EXTENSIONS.has(path.extname(artifact.name).toLowerCase())) return artifact;
+      return {
+        ...artifact,
+        viewerUrl: `/plugins/bionemo/view/${run.runId}/${encodeURIComponent(artifact.name)}?access=${encodeURIComponent(run.viewerCapability)}`,
+      };
+    });
+  }
+
   async listRuns(limit = 25) {
     await this.initialize();
     const names = await readdir(this.root);
@@ -167,6 +180,7 @@ export class ArtifactStore {
     for (const name of names.filter((item) => RUN_ID.test(item)).slice(0, 200)) {
       try {
         const value = JSON.parse(await readFile(path.join(this.root, name, "manifest.json"), "utf8"));
+        delete value.structureCapabilityDigest;
         manifests.push(redactSecrets(value));
       } catch { /* ignore incomplete/corrupt run dirs */ }
     }
@@ -185,6 +199,17 @@ export class ArtifactStore {
     const handle = await open(targetReal, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
     return { handle, size: metadata.size, type: CONTENT_TYPES[path.extname(fileName).toLowerCase()] || "application/octet-stream" };
   }
+
+  async openViewerArtifact(runId, fileName, capability) {
+    if (typeof capability !== "string" || capability.length < 24 || capability.length > 128) throw new InputError("invalid structure viewer capability");
+    if (!STRUCTURE_EXTENSIONS.has(path.extname(fileName).toLowerCase())) throw new InputError("artifact format is not viewable in 3D");
+    if (!RUN_ID.test(runId) || !FILE_NAME.test(fileName) || fileName === "manifest.json") throw new InputError("invalid artifact identifier");
+    const manifest = JSON.parse(await readFile(path.join(this.root, runId, "manifest.json"), "utf8"));
+    const actual = createHash("sha256").update(capability).digest();
+    const expected = Buffer.from(String(manifest.structureCapabilityDigest || ""), "hex");
+    if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) throw new InputError("invalid structure viewer capability");
+    return this.openArtifact(runId, fileName);
+  }
 }
 
-export const __test = { safeName, RUN_ID, FILE_NAME, moleculeRows };
+export const __test = { safeName, RUN_ID, FILE_NAME, STRUCTURE_EXTENSIONS, moleculeRows };

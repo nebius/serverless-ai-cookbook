@@ -6,17 +6,19 @@ ARG CLOUDFLARED_SHA256="9d71c677db00134c1bd4144b7783486b654ad281b1ea62b4972098d1
 ARG BIONEMO_TOOLKIT_COMMIT="23d483511e0b42221bdafd7259ff43c05220ee86"
 ARG CODEX_VERSION="0.147.0"
 ARG CLAUDE_CODE_VERSION="2.1.228"
+ARG THREEDMOL_VERSION="2.5.5"
 
 LABEL org.opencontainers.image.title="Nebius BioNeMo Agent Workbench" \
       org.opencontainers.image.description="Authenticated BioNeMo browser agent plus unauthenticated Codex and Claude Code CLIs with NVIDIA BioNeMo skills and MCP" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook/tree/main/life-science/bionemo-agent" \
-      org.opencontainers.image.version="3.0.1" \
+      org.opencontainers.image.version="3.1.0" \
       org.opencontainers.image.licenses="Apache-2.0 AND CC-BY-4.0" \
       io.nebius.bionemo.toolkit.commit="${BIONEMO_TOOLKIT_COMMIT}" \
       io.nebius.openclaw.version="2026.7.1-2" \
       io.nebius.cloudflared.version="${CLOUDFLARED_VERSION}" \
       io.nebius.codex.version="${CODEX_VERSION}" \
-      io.nebius.claude-code.version="${CLAUDE_CODE_VERSION}"
+      io.nebius.claude-code.version="${CLAUDE_CODE_VERSION}" \
+      io.nebius.3dmol.version="${THREEDMOL_VERSION}"
 
 USER root
 RUN apt-get update \
@@ -25,6 +27,7 @@ RUN apt-get update \
     && npm install --global --omit=dev \
       "@openai/codex@${CODEX_VERSION}" \
       "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
+      "3dmol@${THREEDMOL_VERSION}" \
     && rm -rf /var/lib/apt/lists/* \
       /usr/local/lib/node_modules/npm \
       /usr/local/share/corepack \
@@ -42,7 +45,7 @@ COPY --chown=node:node workspace /workspace/agent
 COPY --chown=node:node vendor /opt/bionemo/vendor
 
 RUN install -d -o node -g node -m 0700 \
-      /workspace/artifacts /workspace/state /home/node/.claude/skills \
+      /workspace/agent/artifacts /workspace/state /home/node/.claude/skills \
     && install -d -o root -g root -m 0755 /etc/codex/skills \
     && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /etc/codex/skills/ \
     && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /home/node/.claude/skills/ \
@@ -55,7 +58,8 @@ ENV PORT=18789 \
     OPENCLAW_STATE_DIR=/workspace/state \
     OPENCLAW_CONFIG_PATH=/workspace/state/openclaw.json \
     BIONEMO_CONFIG_TEMPLATE=/opt/bionemo/config/openclaw.template.json \
-    BIONEMO_ARTIFACT_ROOT=/workspace/artifacts \
+    BIONEMO_ARTIFACT_ROOT=/workspace/agent/artifacts \
+    BIONEMO_3DMOL_PATH=/usr/local/lib/node_modules/3dmol/build/3Dmol-min.js \
     BIONEMO_VENDOR_ROOT=/opt/bionemo/vendor/bionemo-agent-toolkit \
     BIONEMO_MCP_URL=https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp \
     BIONEMO_ENABLE_HTTPS_TUNNEL=true \

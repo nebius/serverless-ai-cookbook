@@ -46,6 +46,8 @@ elif [[ -n "${NGC_API_KEY_SECRET:-}" ]]; then
   CREATE_CMD+=(--env-secret "NGC_API_KEY=$NGC_API_KEY_SECRET")
 fi
 if [[ -n "${NEBIUS_API_KEY_SECRET:-}" ]]; then CREATE_CMD+=(--env-secret "NEBIUS_API_KEY=$NEBIUS_API_KEY_SECRET"); fi
+if [[ -n "${OPENAI_API_KEY_SECRET:-}" ]]; then CREATE_CMD+=(--env-secret "OPENAI_API_KEY=$OPENAI_API_KEY_SECRET"); fi
+if [[ -n "${ANTHROPIC_API_KEY_SECRET:-}" ]]; then CREATE_CMD+=(--env-secret "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY_SECRET"); fi
 if [[ -n "${BIONEMO_MCP_API_KEY_SECRET:-}" ]]; then CREATE_CMD+=(--env-secret "BIONEMO_MCP_API_KEY=$BIONEMO_MCP_API_KEY_SECRET"); fi
 if [[ -n "${TAVILY_API_KEY_SECRET:-}" ]]; then CREATE_CMD+=(--env-secret "TAVILY_API_KEY=$TAVILY_API_KEY_SECRET"); fi
 

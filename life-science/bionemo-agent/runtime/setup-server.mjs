@@ -3,7 +3,7 @@ import http from "node:http";
 function responseBody() {
   const message = [
     "BioNeMo Agent Workbench is running, but no reasoning-model credential is configured.",
-    "Set NVIDIA_API_KEY for NVIDIA Build (recommended), or NEBIUS_API_KEY for Nebius Token Factory, then restart the endpoint.",
+    "Set NVIDIA_API_KEY for NVIDIA Build (recommended for the event), NEBIUS_API_KEY for Nebius Token Factory, OPENAI_API_KEY for OpenAI, or ANTHROPIC_API_KEY for Claude, then restart the endpoint.",
     "BioNeMo model tools additionally use BIONEMO_MCP_API_KEY for the default Cerebrium MCP gateway; an NVIDIA key alone enables the direct hosted-NIM adapters.",
     "Optional: set TAVILY_API_KEY for web search. No credential is stored in the image.",
   ].join(" ");

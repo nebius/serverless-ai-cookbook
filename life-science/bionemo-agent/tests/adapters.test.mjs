@@ -156,7 +156,10 @@ test("artifact store stays below its root and never serves manifests or symlinks
   t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
   const store = await new ArtifactStore(root).initialize();
   const run = await store.createRun({ kind: "skill", id: "evo2" });
-  await store.save(run, "result.fasta", ">q\nACGT\n");
+  const saved = await store.save(run, "result.fasta", ">q\nACGT\n");
+  assert.equal(saved.downloadPath, path.join(root, run.runId, "result.fasta"));
+  assert.equal(path.isAbsolute(saved.downloadPath), true);
+  assert.equal(saved.downloadPath.startsWith(`${root}${path.sep}`), true);
   const opened = await store.openArtifact(run.runId, "result.fasta");
   assert.equal(opened.size, 8);
   await opened.handle.close();
@@ -171,4 +174,21 @@ test("artifact store stays below its root and never serves manifests or symlinks
 
   const manifest = JSON.parse(await readFile(path.join(run.directory, "manifest.json"), "utf8"));
   assert.equal(JSON.stringify(manifest).includes("nvapi-"), false);
+});
+
+test("structure artifacts expose a one-click viewer capability without persisting it", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-viewer-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  const store = await new ArtifactStore(root).initialize();
+  const run = await store.createRun({ kind: "skill", id: "openfold2" });
+  await store.save(run, "ranked-1.pdb", "ATOM      1  CA  ALA A   1\n");
+  const [presented] = store.presentArtifacts(run);
+  assert.match(presented.viewerUrl, new RegExp(`^/plugins/bionemo/view/${run.runId}/ranked-1\\.pdb\\?access=`));
+  const access = new URL(presented.viewerUrl, "https://example.test").searchParams.get("access");
+  const opened = await store.openViewerArtifact(run.runId, "ranked-1.pdb", access);
+  await opened.handle.close();
+  await assert.rejects(() => store.openViewerArtifact(run.runId, "ranked-1.pdb", "wrong-capability-value-000000"), /invalid structure viewer capability/u);
+  const persisted = await readFile(path.join(run.directory, "manifest.json"), "utf8");
+  assert.equal(persisted.includes(access), false);
+  assert.equal(JSON.stringify(await store.listRuns()).includes("structureCapabilityDigest"), false);
 });

@@ -13,7 +13,7 @@ if ((${#AUTH_TOKEN} < 24)); then
   exit 2
 fi
 
-IMAGE="${IMAGE:-bionemo-agent:3.0.1-local}"
+IMAGE="${IMAGE:-bionemo-agent:3.1.0-local}"
 PORT="${PORT:-18789}"
 STATE_VOLUME="${STATE_VOLUME:-bionemo-agent-state}"
 ARTIFACT_VOLUME="${ARTIFACT_VOLUME:-bionemo-agent-artifacts}"
@@ -25,7 +25,7 @@ docker run --rm --name bionemo-agent-local \
   --security-opt=no-new-privileges \
   --tmpfs /tmp:rw,noexec,nosuid,size=128m \
   --volume "$STATE_VOLUME:/workspace/state" \
-  --volume "$ARTIFACT_VOLUME:/workspace/artifacts" \
+  --volume "$ARTIFACT_VOLUME:/workspace/agent/artifacts" \
   --publish "127.0.0.1:${PORT}:18789" \
   --env NEBIUS_API_KEY \
   --env NVIDIA_API_KEY \

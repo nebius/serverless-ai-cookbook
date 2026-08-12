@@ -108,7 +108,7 @@ async function main() {
   const devicePairingRequired = parseBoolean(runtimeEnv.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
   process.stdout.write(`BioNeMo browser authentication: gateway token${devicePairingRequired ? " plus one-time device approval" : " only; per-browser device approval disabled"}.\n`);
   await prepareClients(runtimeEnv);
-  const setupServer = capabilityState.reasoningProvider === "setup" ? await startSetupServer(setupPort) : null;
+  const setupServer = await startSetupServer(setupPort);
   process.stdout.write(`BioNeMo capability mode: reasoning=${capabilityState.reasoningProvider}, models=${capabilityState.modelBackend}, mcp=${capabilityState.mcp ? "configured" : "not configured"}, tavily=${capabilityState.tavily ? "configured" : "not configured"}\n`);
   if (!capabilityState.reasoning || capabilityState.modelBackend === "unavailable") {
     process.stdout.write("BioNeMo setup is incomplete; the browser remains available and will explain which optional credential is missing.\n");
