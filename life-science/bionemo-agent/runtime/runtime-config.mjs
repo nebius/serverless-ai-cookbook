@@ -84,7 +84,7 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   config.models = { mode: "merge", providers: {} };
   const setupBaseUrl = `http://127.0.0.1:${setupPort}/v1`;
   const modelId = (provider, fallback) => state.reasoningProvider === provider && state.env.AGENT_MODEL ? state.env.AGENT_MODEL : fallback;
-  const compatibleProvider = ({ configured, baseUrl, apiKey, api, models, agentRuntime }) => {
+  const compatibleProvider = ({ configured, baseUrl, apiKey, api, models, agentRuntime, timeoutSeconds }) => {
     const definitions = models.map(({ id, name = id, contextWindow = 262144, maxTokens = 8192, reasoning = true, compat }) => {
       const definition = { id, name: `${name}${configured ? "" : " (requires API key)"}`, reasoning: configured && reasoning, input: ["text"], contextWindow, maxTokens: configured ? maxTokens : 1024 };
       if (agentRuntime) definition.agentRuntime = agentRuntime;
@@ -96,6 +96,7 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
       apiKey: configured ? apiKey : "setup-required",
       api: configured ? api : "openai-completions",
       authHeader: true,
+      ...(timeoutSeconds ? { timeoutSeconds } : {}),
       models: definitions,
     };
   };
@@ -114,6 +115,11 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     baseUrl: state.reasoningProvider === "nvidia" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://integrate.api.nvidia.com/v1",
     apiKey: "${NVIDIA_API_KEY}",
     api: "openai-completions",
+    // NVIDIA Build can occasionally take more than OpenClaw's 120-second
+    // provider idle default to begin the post-tool narration. Keep the overall
+    // agent ceiling at 30 minutes, but give this hosted provider a bounded
+    // four-minute first-byte window so a completed NIM result is not discarded.
+    timeoutSeconds: 240,
     models: [{
       id: nvidiaModel,
       name: `${nvidiaModel} via NVIDIA Build`,

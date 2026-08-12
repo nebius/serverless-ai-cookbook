@@ -52,6 +52,9 @@ matching NVIDIA's documented OpenClaw default. Release probes showed structured
 function calls from Ultra, while the smaller NVIDIA-hosted Nano returned raw
 tool-call JSON as assistant text in six of six direct probes (including three
 with `tool_choice=required`). Nano is therefore not the NVIDIA event default.
+The NVIDIA provider uses a bounded 240-second idle timeout: hosted Ultra can
+occasionally take longer than OpenClaw's 120-second provider default to begin a
+post-tool response, even when the BioNeMo NIM itself has already completed.
 
 Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
@@ -104,7 +107,7 @@ images.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.2.4` |
+| Workbench | `3.2.5` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -146,7 +149,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.2.4"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.2.5"
 ./scripts/build_image.sh
 ```
 
@@ -167,7 +170,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.2.4-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.2.5-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -238,8 +241,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.2.4-test .
-docker run --rm bionemo-agent:3.2.4-test doctor
+docker build -t bionemo-agent:3.2.5-test .
+docker run --rm bionemo-agent:3.2.5-test doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`

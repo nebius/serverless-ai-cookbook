@@ -287,6 +287,8 @@ test("NVIDIA defaults to the tool-reliable Ultra profile", () => {
   assert.equal(ultra.contextWindow, 1_000_000);
   assert.equal(ultra.maxTokens, 16_384);
   assert.equal(ultra.params, undefined);
+  assert.equal(config.models.providers.nvidia.timeoutSeconds, 240);
+  assert.equal(config.models.providers.tokenfactory.timeoutSeconds, undefined);
   assert.deepEqual(config.agents.defaults.models["nvidia/nvidia/nemotron-3-ultra-550b-a55b"].params, {
     chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true },
   });
