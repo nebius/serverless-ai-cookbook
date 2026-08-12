@@ -33,6 +33,14 @@ test("plugin registers exactly the manifest-declared 13 tools", () => {
   assert.equal(api.captured.hooks.length, 1);
 });
 
+test("model-facing OpenFold2 schema exposes only the reliable sequence argument", () => {
+  const api = fakeApi();
+  plugin.register(api);
+  const tool = api.captured.tools.find((item) => item.name === "bionemo_openfold2");
+  assert.deepEqual(tool.parameters.required, ["sequence"]);
+  assert.deepEqual(Object.keys(tool.parameters.properties), ["sequence"]);
+});
+
 test("dashboard data and artifacts are gateway-authenticated while readiness is public", () => {
   const api = fakeApi();
   plugin.register(api);
