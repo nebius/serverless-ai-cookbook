@@ -8,7 +8,7 @@ import { NimClient, __test as clientInternals } from "../openclaw-plugin/src/cli
 import { EXACT_TOOL_NAMES, NVIDIA_HOST, SKILLS } from "../openclaw-plugin/src/catalog.mjs";
 import { publicError, redactSecrets, redactText } from "../openclaw-plugin/src/errors.mjs";
 import { resolveSkillInput, resolveWorkflowInput } from "../openclaw-plugin/src/samples.mjs";
-import { LIMITS, VALIDATORS } from "../openclaw-plugin/src/validation.mjs";
+import { LIMITS, VALIDATORS, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
 
 const PDB = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\nATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n";
 const PROTEIN = "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ";
@@ -67,6 +67,22 @@ test("event bounds reject oversized and unsafe requests", () => {
   assert.throws(() => VALIDATORS.boltz2({ polymers: VALID_INPUTS.boltz2.polymers, diffusion_samples: 4 }), /between/u);
   assert.throws(() => VALIDATORS.rfdiffusion({ ...VALID_INPUTS.rfdiffusion, contigs: "80; curl attacker" }), /unsupported characters/u);
   assert.throws(() => VALIDATORS.msa_search({ sequence: PROTEIN, sequences: [PROTEIN, PROTEIN] }), /exactly one/u);
+});
+
+test("drug discovery rejects invented SAFE labels before calling GenMol", async () => {
+  const vendorRoot = path.resolve(new URL("../vendor/bionemo-agent-toolkit", import.meta.url).pathname);
+  const validMask = await resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", safe_notation: "[*{5-10}]" }, { vendorRoot });
+  assert.doesNotThrow(() => validateWorkflowInput("drug_discovery", validMask));
+  const invalidLabel = await resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", safe_notation: "SAFE_1" }, { vendorRoot });
+  assert.throws(
+    () => validateWorkflowInput("drug_discovery", invalidLabel),
+    /GenMol de novo SAFE mask/u,
+  );
+  const descendingBounds = await resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", safe_notation: "[*{10-5}]" }, { vendorRoot });
+  assert.throws(
+    () => validateWorkflowInput("drug_discovery", descendingBounds),
+    /bounds must increase/u,
+  );
 });
 
 test("NIM client uses only the fixed HTTPS NVIDIA route and redacts credentials", async () => {

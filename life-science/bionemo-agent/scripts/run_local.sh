@@ -13,7 +13,7 @@ if ((${#AUTH_TOKEN} < 24)); then
   exit 2
 fi
 
-IMAGE="${IMAGE:-bionemo-agent:3.1.2-local}"
+IMAGE="${IMAGE:-bionemo-agent:3.1.3-local}"
 PORT="${PORT:-18789}"
 STATE_VOLUME="${STATE_VOLUME:-bionemo-agent-state}"
 ARTIFACT_VOLUME="${ARTIFACT_VOLUME:-bionemo-agent-artifacts}"
@@ -31,5 +31,6 @@ docker run --rm --name bionemo-agent-local \
   --env NVIDIA_API_KEY \
   --env NGC_API_KEY \
   --env AUTH_TOKEN \
+  --env BIONEMO_HTTPS_MODE=local \
   --env BIONEMO_ENABLE_HTTPS_TUNNEL=false \
   "$IMAGE"

@@ -20,7 +20,7 @@ PRESET="${PRESET:-4vcpu-16gb}"
 DISK_SIZE="${DISK_SIZE:-30Gi}"
 PROFILE="${PROFILE:-sandbox}"
 BIONEMO_MCP_URL="${BIONEMO_MCP_URL:-https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp}"
-HTTPS_MODE="${BIONEMO_HTTPS_MODE:-cloudflare}"
+HTTPS_MODE="${BIONEMO_HTTPS_MODE:-nebius}"
 DEVICE_PAIRING="${BIONEMO_REQUIRE_DEVICE_PAIRING:-false}"
 
 if [[ "$HTTPS_MODE" != "cloudflare" && "$HTTPS_MODE" != "nebius" ]]; then
@@ -96,8 +96,7 @@ else
 
 The endpoint uses the Nebius-managed HTTPS URL, with no Cloudflare tunnel, no
 public VM IP, and no Serverless bearer-auth layer. OpenClaw still requires the
-MysteryBox AUTH_TOKEN and verifies that browser Origin.host exactly matches the
-managed request Host.
+rate-limited MysteryBox AUTH_TOKEN as the single browser login.
 
 Inspect the endpoint and obtain its managed browser URL:
   ENDPOINT_ID=\$(nebius --profile "$PROFILE" ai endpoint get-by-name --name "$ENDPOINT_NAME" --format jsonpath='{.metadata.id}')

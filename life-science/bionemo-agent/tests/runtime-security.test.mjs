@@ -121,7 +121,7 @@ test("launcher validates an explicitly supplied native Nebius managed HTTPS orig
   assert.throws(() => launcher.nebiusManagedOrigin("https://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud.evil.test", 18789), /must match/u);
 });
 
-test("dynamic native Nebius mode enables only OpenClaw's continuous same-origin Host check", async (t) => {
+test("dynamic native Nebius mode accepts its post-create browser origin without Host fallback", async (t) => {
   const managed = "https://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud";
   const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-nebius-origin-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -131,8 +131,8 @@ test("dynamic native Nebius mode enables only OpenClaw's continuous same-origin 
   await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
   await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["http://127.0.0.1:18789"], env: { BIONEMO_HTTPS_MODE: "nebius" } });
   const dynamic = JSON.parse(await readFile(configPath, "utf8"));
-  assert.equal(dynamic.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, true);
-  assert.deepEqual(dynamic.gateway.controlUi.allowedOrigins, ["http://127.0.0.1:18789"]);
+  assert.equal(dynamic.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, false);
+  assert.deepEqual(dynamic.gateway.controlUi.allowedOrigins, ["*"]);
 
   await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: [managed], env: { BIONEMO_HTTPS_MODE: "nebius", BIONEMO_PUBLIC_ORIGIN: managed } });
   const explicit = JSON.parse(await readFile(configPath, "utf8"));
@@ -153,6 +153,7 @@ test("Serverless launch binds exactly one matching NVIDIA MysteryBox payload", a
   assert.match(script, /ANTHROPIC_API_KEY_SECRET/u);
   assert.match(script, /BIONEMO_REQUIRE_DEVICE_PAIRING/u);
   assert.match(script, /BIONEMO_HTTPS_MODE/u);
+  assert.match(script, /HTTPS_MODE="\$\{BIONEMO_HTTPS_MODE:-nebius\}"/u);
   assert.match(script, /CREATE_CMD\+=\(--public --auth token --token-secret "\$AUTH_TOKEN_SECRET"/u);
   assert.match(script, /Native Nebius browser mode requires BIONEMO_REQUIRE_DEVICE_PAIRING=false/u);
   assert.match(script, /no Cloudflare tunnel, no\s+public VM IP, and no Serverless bearer-auth layer/u);

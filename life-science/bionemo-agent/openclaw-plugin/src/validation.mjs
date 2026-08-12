@@ -80,6 +80,17 @@ function proteinSequence(value, label = "sequence") {
   string(value, label, { min: 2, max: LIMITS.sequenceLength, pattern: PROTEIN });
 }
 
+function safeGenerationMask(value, label = "safe_notation") {
+  if (typeof value !== "string" || value.length < 1 || value.length > 32) {
+    throw new InputError(`${label} must be a GenMol de novo SAFE mask such as [*{5-10}], not a label or SMILES`);
+  }
+  const match = value.match(/^\[\*\{([1-9][0-9]{0,2})-([1-9][0-9]{0,2})\}\]$/u);
+  if (!match) throw new InputError(`${label} must be a GenMol de novo SAFE mask such as [*{5-10}], not a label or SMILES`);
+  const minimum = Number(match[1]);
+  const maximum = Number(match[2]);
+  if (minimum > maximum || maximum > 100) throw new InputError(`${label} fragment bounds must increase and stay between 1 and 100`);
+}
+
 function assertRequestSize(value) {
   const bytes = Buffer.byteLength(JSON.stringify(value), "utf8");
   if (bytes > LIMITS.requestBytes) throw new InputError(`request exceeds ${LIMITS.requestBytes} bytes`);
@@ -296,7 +307,7 @@ export function validateWorkflowInput(workflowId, input) {
     required(value, ["protein_pdb", "protein_sequence", "safe_notation"]);
     inlinePdb(value.protein_pdb, "protein_pdb");
     proteinSequence(value.protein_sequence, "protein_sequence");
-    string(value.safe_notation, "safe_notation", { min: 1, max: 2_048 });
+    safeGenerationMask(value.safe_notation);
     optional(value, "generated_molecules", (item) => number(item, "generated_molecules", { min: 1, max: 20, integer: true }));
     optional(value, "dock_candidates", (item) => number(item, "dock_candidates", { min: 1, max: 5, integer: true }));
     optional(value, "affinity_candidates", (item) => number(item, "affinity_candidates", { min: 1, max: 3, integer: true }));
@@ -338,7 +349,7 @@ export const JSON_SCHEMAS = Object.freeze({
   openfold3: { type: "object", additionalProperties: false, required: ["inputs"], properties: { inputs: { type: "array", minItems: 1, maxItems: 1 } } },
   proteinmpnn: { type: "object", additionalProperties: false, properties: { input_pdb: { type: "string" }, input_pdb_sample: { type: "string", enum: ["egfr_kinase_public"] }, input_pdb_chains: { type: "array", items: { type: "string" } }, ca_only: { type: "boolean" }, use_soluble_model: { type: "boolean" }, random_seed: { type: "integer" }, num_seq_per_target: { type: "integer" }, sampling_temp: { type: "array", items: { type: "number" } }, fixed_positions_jsonl: { type: "string" }, omit_AAs: { type: "array", items: { type: "string" } } } },
   rfdiffusion: { type: "object", additionalProperties: false, required: ["contigs"], properties: { input_pdb: { type: "string" }, input_pdb_sample: { type: "string", enum: ["egfr_kinase_public"] }, contigs: { type: "string" }, hotspot_res: { type: "array", items: { type: "string" } }, diffusion_steps: { type: "integer" }, random_seed: { type: "integer" } } },
-  drug_discovery: { type: "object", additionalProperties: false, required: ["safe_notation"], properties: { protein_pdb: { type: "string" }, protein_sequence: { type: "string" }, protein_sample: { type: "string", enum: ["egfr_kinase_public"] }, safe_notation: { type: "string" }, generated_molecules: { type: "integer", minimum: 1, maximum: 20 }, dock_candidates: { type: "integer", minimum: 1, maximum: 5 }, affinity_candidates: { type: "integer", minimum: 1, maximum: 3 } } },
+  drug_discovery: { type: "object", additionalProperties: false, required: ["safe_notation"], properties: { protein_pdb: { type: "string" }, protein_sequence: { type: "string" }, protein_sample: { type: "string", enum: ["egfr_kinase_public"], description: "Use the bundled full EGFR kinase PDB and matching 312-aa sequence; do not combine this with protein_pdb or protein_sequence." }, safe_notation: { type: "string", pattern: "^\\[\\*\\{[1-9][0-9]{0,2}-[1-9][0-9]{0,2}\\}\\]$", description: "GenMol de novo SAFE mask, for example [*{5-10}]. Never invent a label such as SAFE_1." }, generated_molecules: { type: "integer", minimum: 1, maximum: 20 }, dock_candidates: { type: "integer", minimum: 1, maximum: 5 }, affinity_candidates: { type: "integer", minimum: 1, maximum: 3 } } },
   msa_to_structure: { type: "object", additionalProperties: false, required: ["sequence"], properties: { sequence: { type: "string" }, max_msa_sequences: { type: "integer", minimum: 1, maximum: 500 }, output_format: { type: "string", enum: ["pdb", "cif"] } } },
   protein_binder_design: { type: "object", additionalProperties: false, required: ["contigs", "binder_chain"], properties: { target_pdb: { type: "string" }, target_sequence: { type: "string" }, target_sample: { type: "string", enum: ["egfr_kinase_public"] }, contigs: { type: "string" }, hotspot_res: { type: "array", items: { type: "string" } }, binder_chain: { type: "string" }, validation_model: { type: "string", enum: ["openfold3", "boltz2"] }, sampling_temperature: { type: "number" } } },
 });

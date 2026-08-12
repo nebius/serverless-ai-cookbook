@@ -85,8 +85,9 @@ async function startQuickTunnel(port, { spawnImpl = spawn, timeoutMs = 45_000 } 
 
 async function writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env = process.env, setupPort = 18790 }) {
   const config = JSON.parse(await readFile(templatePath, "utf8"));
-  config.gateway.controlUi.allowedOrigins = [...new Set(origins)];
-  config.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback = exposureMode(env) === "nebius" && !env.BIONEMO_PUBLIC_ORIGIN;
+  const dynamicNebiusOrigin = exposureMode(env) === "nebius" && !env.BIONEMO_PUBLIC_ORIGIN;
+  config.gateway.controlUi.allowedOrigins = dynamicNebiusOrigin ? ["*"] : [...new Set(origins)];
+  config.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback = false;
   const devicePairingRequired = parseBoolean(env.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
   config.gateway.controlUi.dangerouslyDisableDeviceAuth = !devicePairingRequired;
   const capabilityState = configureOpenClaw(config, env, setupPort);
@@ -128,7 +129,7 @@ async function main() {
   } else if (mode === "nebius") {
     if (runtimeEnv.BIONEMO_PUBLIC_ORIGIN) publicOrigin = nebiusManagedOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN, port);
     if (publicOrigin) process.stdout.write(`BioNeMo native Nebius HTTPS browser URL: ${publicOrigin}\n`);
-    else process.stdout.write("BioNeMo native Nebius HTTPS mode: use the managed https:// URL from the endpoint's public_endpoints status. Browser WebSockets require exact same-origin Host matching plus the OpenClaw gateway token. This mode requires no public VM IP and no Serverless bearer-auth layer.\n");
+    else process.stdout.write("BioNeMo native Nebius HTTPS mode: use the managed https:// URL from the endpoint's public_endpoints status. The event Control UI accepts that post-create browser origin and still requires the rate-limited OpenClaw gateway token. This mode requires no public VM IP and no Serverless bearer-auth layer.\n");
   } else if (mode === "external") {
     publicOrigin = safeOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN);
   } else {

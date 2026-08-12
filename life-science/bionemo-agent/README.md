@@ -84,7 +84,7 @@ images.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.1.2` |
+| Workbench | `3.1.3` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -126,7 +126,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.1.2"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.1.3"
 ./scripts/build_image.sh
 ```
 
@@ -147,7 +147,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.1.2-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.1.3-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -163,48 +163,32 @@ export ENDPOINT_NAME="bionemo-agent-workbench-3"
 ./scripts/run_serverless_endpoint.sh
 ```
 
-The defaults create a regular public `cpu-d3` / `4vcpu-16gb` Cloudflare-mode
-endpoint with a 30 GiB disk and container port `18789`. In that compatibility
-mode, Serverless token authentication and the OpenClaw gateway both use the
-same `AUTH_TOKEN` MysteryBox payload. Do not put secret values in plain `--env`
-arguments or URLs.
+The defaults create a regular `cpu-d3` / `4vcpu-16gb` endpoint with a 30 GiB
+disk and container port `18789`. Open the HTTPS URL managed by Nebius
+Serverless directly; there is no Cloudflare hop or custom reverse proxy.
+Do not put secret values in plain `--env` arguments or URLs.
 
-The launcher starts a supervised Cloudflare quick tunnel by default and prints
-an `https://*.trycloudflare.com` browser URL to endpoint logs. Quick tunnels are
-best-effort and route demo traffic through Cloudflare. For a managed ingress,
-set `BIONEMO_PUBLIC_ORIGIN=https://agent.example` and
-`BIONEMO_ENABLE_HTTPS_TUNNEL=false`.
+Nebius assigns the browser URL only after the endpoint is created, so it cannot
+be put in OpenClaw's static origin allowlist at image startup, and the
+Serverless edge presents an internal Host header to the container. In the
+default event-oriented mode, the Control UI accepts any browser origin while
+the rate-limited OpenClaw `AUTH_TOKEN` remains mandatory. If an exact origin is
+known in advance, set it as `BIONEMO_PUBLIC_ORIGIN`; the launcher then uses that
+static allowlist instead.
 
-Set `BIONEMO_HTTPS_MODE=nebius` to use the HTTPS URL managed by Nebius
-Serverless without Cloudflare. Nebius assigns this URL only after the endpoint
-is created, so it cannot be put in OpenClaw's static origin allowlist at image
-startup. In this mode only, OpenClaw's same-origin Host check is enabled: every
-browser WebSocket must have `Origin.host` exactly equal to its request `Host`.
-There is no first-request origin lock and no wildcard origin. If the managed URL
-is known in advance, also set it as `BIONEMO_PUBLIC_ORIGIN`; the launcher then
-uses a static exact allowlist and leaves Host fallback disabled.
-
-For native mode, expose only the Nebius managed HTTPS endpoint: omit `--public`
+Expose only the Nebius-managed HTTPS endpoint: omit `--public`
 so the container has no directly reachable public IP. Also omit Serverless
 endpoint token authentication, because a normal browser navigation cannot add
-its Bearer header; the separate OpenClaw `AUTH_TOKEN` remains required. This is
-the same application-level exposure as the default outbound Cloudflare path,
-where Cloudflare also reaches OpenClaw without passing through Serverless token
-authentication. The bundled `run_serverless_endpoint.sh` remains the existing
-Cloudflare-mode recipe by default. To create a native endpoint instead, run:
-
-```bash
-export BIONEMO_HTTPS_MODE=nebius
-export BIONEMO_REQUIRE_DEVICE_PAIRING=false
-./scripts/run_serverless_endpoint.sh
-```
-
-The script deliberately omits both `--public` and Serverless `--auth token` in
-this mode. Do not add either back: a public IP makes caller-controlled Host
+its Bearer header; the separate OpenClaw `AUTH_TOKEN` remains required. The
+script deliberately omits both `--public` and Serverless `--auth token`. Do not
+add either back: a public IP makes caller-controlled Host
 traffic reach the container directly, while Serverless bearer authentication
 cannot be completed by an ordinary browser navigation. The managed HTTPS edge
 remains the only network path and OpenClaw's rate-limited token authentication
 remains active.
+
+For compatibility, `BIONEMO_HTTPS_MODE=cloudflare` explicitly enables the
+older Cloudflare quick-tunnel path and Serverless token authentication.
 
 ## Environment-variable reference
 
@@ -224,7 +208,7 @@ remains active.
 | `AGENT_BASE_URL` | no | no | Override the selected provider's API base |
 | `BIONEMO_BACKEND` | no | no | `auto`, `mcp`, or `nvidia` |
 | `BIONEMO_REQUIRE_DEVICE_PAIRING` | no | no | `false` for token-only event login; `true` adds browser approval |
-| `BIONEMO_HTTPS_MODE` | no | no | `cloudflare` (default), `nebius`, `external`, or `local` |
+| `BIONEMO_HTTPS_MODE` | no | no | `nebius` (Serverless script default), `cloudflare`, `external`, or `local`; the generic image stays local unless selected |
 | `BIONEMO_PUBLIC_ORIGIN` | no | no | Exact HTTPS origin for `external`, or optional known managed origin for `nebius` |
 | `BIONEMO_ENABLE_HTTPS_TUNNEL` | no | no | Legacy Cloudflare boolean used only when `BIONEMO_HTTPS_MODE` is unset |
 
@@ -234,11 +218,12 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.1.2-test .
-docker run --rm bionemo-agent:3.1.2-test doctor
+docker build -t bionemo-agent:3.1.3-test .
+docker run --rm bionemo-agent:3.1.3-test doctor
 ```
 
-For a running endpoint, get the tunnel URL from logs and check:
+For a running endpoint, obtain its managed URL from `status.public_endpoints`
+and check:
 
 ```bash
 curl -fsS "${BROWSER_URL}/healthz"
