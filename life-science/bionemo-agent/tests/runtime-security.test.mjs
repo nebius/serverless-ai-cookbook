@@ -107,6 +107,39 @@ test("launcher validates secrets without printing values and parses only safe or
   assert.match("https://bounded-name.trycloudflare.com", new RegExp(launcher.CLOUDFLARED_URL_PATTERN));
 });
 
+test("launcher validates an explicitly supplied native Nebius managed HTTPS origin", () => {
+  const managed = "https://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud";
+  assert.equal(launcher.exposureMode({}), "cloudflare");
+  assert.equal(launcher.exposureMode({ BIONEMO_ENABLE_HTTPS_TUNNEL: "false" }), "local");
+  assert.equal(launcher.exposureMode({ BIONEMO_ENABLE_HTTPS_TUNNEL: "false", BIONEMO_PUBLIC_ORIGIN: "https://proxy.example" }), "external");
+  assert.equal(launcher.exposureMode({ BIONEMO_HTTPS_MODE: "nebius" }), "nebius");
+  assert.throws(() => launcher.exposureMode({ BIONEMO_HTTPS_MODE: "external" }), /requires BIONEMO_PUBLIC_ORIGIN/u);
+  assert.throws(() => launcher.exposureMode({ BIONEMO_HTTPS_MODE: "wildcard" }), /cloudflare, nebius, external, or local/u);
+  assert.equal(launcher.nebiusManagedOrigin(managed, 18789), managed);
+  assert.throws(() => launcher.nebiusManagedOrigin("http://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud", 18789), /must match/u);
+  assert.throws(() => launcher.nebiusManagedOrigin("https://port8000-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud", 18789), /must match/u);
+  assert.throws(() => launcher.nebiusManagedOrigin("https://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud.evil.test", 18789), /must match/u);
+});
+
+test("dynamic native Nebius mode enables only OpenClaw's continuous same-origin Host check", async (t) => {
+  const managed = "https://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud";
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-nebius-origin-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const templatePath = path.join(root, "template.json");
+  const configPath = path.join(root, "state", "openclaw.json");
+  const stateDir = path.join(root, "state");
+  await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["http://127.0.0.1:18789"], env: { BIONEMO_HTTPS_MODE: "nebius" } });
+  const dynamic = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(dynamic.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, true);
+  assert.deepEqual(dynamic.gateway.controlUi.allowedOrigins, ["http://127.0.0.1:18789"]);
+
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: [managed], env: { BIONEMO_HTTPS_MODE: "nebius", BIONEMO_PUBLIC_ORIGIN: managed } });
+  const explicit = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(explicit.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, false);
+  assert.deepEqual(explicit.gateway.controlUi.allowedOrigins, [managed]);
+});
+
 test("Serverless launch binds exactly one matching NVIDIA MysteryBox payload", async () => {
   const script = await readFile(new URL("../scripts/run_serverless_endpoint.sh", import.meta.url), "utf8");
   assert.match(script, /Set only one of NVIDIA_API_KEY_SECRET or NGC_API_KEY_SECRET/u);
@@ -119,6 +152,12 @@ test("Serverless launch binds exactly one matching NVIDIA MysteryBox payload", a
   assert.match(script, /OPENAI_API_KEY_SECRET/u);
   assert.match(script, /ANTHROPIC_API_KEY_SECRET/u);
   assert.match(script, /BIONEMO_REQUIRE_DEVICE_PAIRING/u);
+  assert.match(script, /BIONEMO_HTTPS_MODE/u);
+  assert.match(script, /CREATE_CMD\+=\(--public --auth token --token-secret "\$AUTH_TOKEN_SECRET"/u);
+  assert.match(script, /Native Nebius browser mode requires BIONEMO_REQUIRE_DEVICE_PAIRING=false/u);
+  assert.match(script, /no Cloudflare tunnel, no\s+public VM IP, and no Serverless bearer-auth layer/u);
+  assert.equal((script.match(/--public/g) || []).length, 1);
+  assert.equal((script.match(/--auth token/g) || []).length, 1);
   assert.equal(script.includes(": \"${NEBIUS_API_KEY_SECRET:?"), false);
 });
 
@@ -138,6 +177,7 @@ test("runtime config and exec approvals persist placeholders, never secret value
   assert.equal(config.includes("secret-value"), false);
   assert.equal(config.includes("mcp-secret"), false);
   assert.equal(parsedConfig.gateway.controlUi.dangerouslyDisableDeviceAuth, true);
+  assert.equal(parsedConfig.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, false);
   assert.deepEqual(approvals.defaults, { security: "deny", ask: "off", askFallback: "deny", autoAllowSkills: false });
   assert.deepEqual(approvals.agents.bionemo.allowlist, []);
 });

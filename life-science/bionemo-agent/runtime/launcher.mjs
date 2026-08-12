@@ -6,6 +6,7 @@ import { prepareClients } from "./prepare-clients.mjs";
 import { startSetupServer } from "./setup-server.mjs";
 
 export const CLOUDFLARED_URL_PATTERN = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/iu;
+const EXPOSURE_MODES = new Set(["cloudflare", "nebius", "external", "local"]);
 
 function requireEnvironment(env) {
   const missing = [];
@@ -29,6 +30,28 @@ function safeOrigin(value) {
     throw new Error("BIONEMO_PUBLIC_ORIGIN must be an http(s) origin without credentials, path, query, or fragment");
   }
   return url.origin;
+}
+
+function exposureMode(env) {
+  const explicit = String(env.BIONEMO_HTTPS_MODE || "").trim().toLowerCase();
+  if (explicit) {
+    if (!EXPOSURE_MODES.has(explicit)) throw new Error("BIONEMO_HTTPS_MODE must be cloudflare, nebius, external, or local");
+    if (explicit === "external" && !env.BIONEMO_PUBLIC_ORIGIN) throw new Error("BIONEMO_HTTPS_MODE=external requires BIONEMO_PUBLIC_ORIGIN");
+    return explicit;
+  }
+  if (parseBoolean(env.BIONEMO_ENABLE_HTTPS_TUNNEL, true)) return "cloudflare";
+  return env.BIONEMO_PUBLIC_ORIGIN ? "external" : "local";
+}
+
+function nebiusManagedOrigin(value, port) {
+  const origin = safeOrigin(value);
+  const url = new URL(origin);
+  const escapedPort = String(port).replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const hostnamePattern = new RegExp(`^port${escapedPort}-[a-z0-9]{8,64}\\.tunnel\\.applications\\.[a-z0-9-]{3,40}\\.nebius\\.cloud$`, "u");
+  if (url.protocol !== "https:" || url.port || !hostnamePattern.test(url.hostname)) {
+    throw new Error(`Nebius managed origin must match https://port${port}-<id>.tunnel.applications.<region>.nebius.cloud`);
+  }
+  return origin;
 }
 
 async function startQuickTunnel(port, { spawnImpl = spawn, timeoutMs = 45_000 } = {}) {
@@ -63,6 +86,7 @@ async function startQuickTunnel(port, { spawnImpl = spawn, timeoutMs = 45_000 } 
 async function writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env = process.env, setupPort = 18790 }) {
   const config = JSON.parse(await readFile(templatePath, "utf8"));
   config.gateway.controlUi.allowedOrigins = [...new Set(origins)];
+  config.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback = exposureMode(env) === "nebius" && !env.BIONEMO_PUBLIC_ORIGIN;
   const devicePairingRequired = parseBoolean(env.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
   config.gateway.controlUi.dangerouslyDisableDeviceAuth = !devicePairingRequired;
   const capabilityState = configureOpenClaw(config, env, setupPort);
@@ -90,19 +114,27 @@ async function main() {
   const configPath = runtimeEnv.OPENCLAW_CONFIG_PATH || path.join(stateDir, "openclaw.json");
   const templatePath = runtimeEnv.BIONEMO_CONFIG_TEMPLATE || "/opt/bionemo/config/openclaw.template.json";
   const setupPort = Number(runtimeEnv.BIONEMO_SETUP_PORT || 18790);
-  const tunnelEnabled = parseBoolean(runtimeEnv.BIONEMO_ENABLE_HTTPS_TUNNEL, true);
+  const mode = exposureMode(runtimeEnv);
   let tunnel = null;
+  let publicOrigin = null;
   const origins = [`http://127.0.0.1:${port}`, `http://localhost:${port}`];
-  if (runtimeEnv.BIONEMO_PUBLIC_ORIGIN) origins.push(safeOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN));
 
-  if (tunnelEnabled) {
+  if (mode === "cloudflare") {
+    if (runtimeEnv.BIONEMO_PUBLIC_ORIGIN) origins.push(safeOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN));
     tunnel = await startQuickTunnel(port);
-    origins.push(tunnel.origin);
-    process.stdout.write(`BioNeMo authenticated HTTPS browser URL: ${tunnel.origin}\n`);
+    publicOrigin = tunnel.origin;
+    process.stdout.write(`BioNeMo authenticated HTTPS browser URL: ${publicOrigin}\n`);
     process.stdout.write("Open the URL and enter the MysteryBox AUTH_TOKEN in OpenClaw; the token is never placed in the URL.\n");
-  } else if (!runtimeEnv.BIONEMO_PUBLIC_ORIGIN) {
-    process.stdout.write("HTTPS tunnel disabled; only local browser origins are configured. Set BIONEMO_PUBLIC_ORIGIN for a supervised external HTTPS proxy.\n");
+  } else if (mode === "nebius") {
+    if (runtimeEnv.BIONEMO_PUBLIC_ORIGIN) publicOrigin = nebiusManagedOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN, port);
+    if (publicOrigin) process.stdout.write(`BioNeMo native Nebius HTTPS browser URL: ${publicOrigin}\n`);
+    else process.stdout.write("BioNeMo native Nebius HTTPS mode: use the managed https:// URL from the endpoint's public_endpoints status. Browser WebSockets require exact same-origin Host matching plus the OpenClaw gateway token. This mode requires no public VM IP and no Serverless bearer-auth layer.\n");
+  } else if (mode === "external") {
+    publicOrigin = safeOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN);
+  } else {
+    process.stdout.write("External HTTPS exposure disabled; only local browser origins are configured.\n");
   }
+  if (publicOrigin) origins.push(publicOrigin);
 
   const capabilityState = await writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env: runtimeEnv, setupPort });
   const devicePairingRequired = parseBoolean(runtimeEnv.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
@@ -115,8 +147,7 @@ async function main() {
   }
   const childEnv = { ...runtimeEnv, OPENCLAW_GATEWAY_TOKEN: gatewayToken, OPENCLAW_GATEWAY_PORT: String(port), OPENCLAW_STATE_DIR: stateDir, OPENCLAW_CONFIG_PATH: configPath };
   delete childEnv.AUTH_TOKEN;
-  if (tunnel?.origin) childEnv.BIONEMO_PUBLIC_URL = tunnel.origin;
-  else if (runtimeEnv.BIONEMO_PUBLIC_ORIGIN) childEnv.BIONEMO_PUBLIC_URL = safeOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN);
+  if (publicOrigin) childEnv.BIONEMO_PUBLIC_URL = publicOrigin;
   const gateway = spawn("node", ["/app/openclaw.mjs", "gateway", "run", "--port", String(port), "--bind", "lan"], {
     stdio: "inherit",
     env: childEnv,
@@ -148,4 +179,4 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   });
 }
 
-export const __test = { CLOUDFLARED_URL_PATTERN, requireEnvironment, parseBoolean, safeOrigin, startQuickTunnel, writeRuntimeFiles };
+export const __test = { CLOUDFLARED_URL_PATTERN, requireEnvironment, parseBoolean, safeOrigin, exposureMode, nebiusManagedOrigin, startQuickTunnel, writeRuntimeFiles };

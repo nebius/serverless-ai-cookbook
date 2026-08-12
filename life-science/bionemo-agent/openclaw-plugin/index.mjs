@@ -7,7 +7,7 @@ import { createUiHandlers } from "./src/ui.mjs";
 import { JSON_SCHEMAS, VALIDATORS } from "./src/validation.mjs";
 import { WorkflowRunner } from "./src/workflows.mjs";
 
-export const PLUGIN_VERSION = "3.1.1";
+export const PLUGIN_VERSION = "3.1.2";
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };
