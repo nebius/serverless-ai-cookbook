@@ -21,6 +21,17 @@ const CONTENT_TYPES = Object.freeze({
   ".csv": "text/csv; charset=utf-8",
 });
 
+function normalizedPublicOrigin(value) {
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.pathname !== "/" || url.search || url.hash) return "";
+    return url.origin;
+  } catch {
+    return "";
+  }
+}
+
 function safeName(value, fallback = "artifact") {
   const cleaned = String(value).replace(/[^A-Za-z0-9._-]+/gu, "-").replace(/^[.-]+/u, "").slice(0, 96);
   return cleaned || fallback;
@@ -95,8 +106,9 @@ export function extractArtifacts(skillId, data) {
 }
 
 export class ArtifactStore {
-  constructor(root = process.env.BIONEMO_ARTIFACT_ROOT || "/workspace/agent/artifacts") {
+  constructor(root = process.env.BIONEMO_ARTIFACT_ROOT || "/workspace/agent/artifacts", { publicBaseUrl = process.env.BIONEMO_PUBLIC_URL || process.env.BIONEMO_PUBLIC_ORIGIN } = {}) {
     this.root = path.resolve(root);
+    this.publicBaseUrl = normalizedPublicOrigin(publicBaseUrl);
   }
 
   async initialize() {
@@ -166,9 +178,10 @@ export class ArtifactStore {
   presentArtifacts(run) {
     return run.manifest.artifacts.map((artifact) => {
       if (!STRUCTURE_EXTENSIONS.has(path.extname(artifact.name).toLowerCase())) return artifact;
+      const viewerPath = `/plugins/bionemo/view/${run.runId}/${encodeURIComponent(artifact.name)}?access=${encodeURIComponent(run.viewerCapability)}`;
       return {
         ...artifact,
-        viewerUrl: `/plugins/bionemo/view/${run.runId}/${encodeURIComponent(artifact.name)}?access=${encodeURIComponent(run.viewerCapability)}`,
+        viewerUrl: this.publicBaseUrl ? new URL(viewerPath, `${this.publicBaseUrl}/`).toString() : viewerPath,
       };
     });
   }
@@ -212,4 +225,4 @@ export class ArtifactStore {
   }
 }
 
-export const __test = { safeName, RUN_ID, FILE_NAME, STRUCTURE_EXTENSIONS, moleculeRows };
+export const __test = { safeName, RUN_ID, FILE_NAME, STRUCTURE_EXTENSIONS, moleculeRows, normalizedPublicOrigin };

@@ -192,3 +192,14 @@ test("structure artifacts expose a one-click viewer capability without persistin
   assert.equal(persisted.includes(access), false);
   assert.equal(JSON.stringify(await store.listRuns()).includes("structureCapabilityDigest"), false);
 });
+
+test("structure viewer URLs use only a validated configured public origin", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-viewer-origin-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  const store = await new ArtifactStore(root, { publicBaseUrl: "https://agent.example.test" }).initialize();
+  const run = await store.createRun({ kind: "skill", id: "openfold2" });
+  await store.save(run, "ranked-1.pdb", "ATOM      1  CA  ALA A   1\n");
+  assert.match(store.presentArtifacts(run)[0].viewerUrl, /^https:\/\/agent\.example\.test\/plugins\/bionemo\/view\//u);
+  const relativeStore = await new ArtifactStore(root, { publicBaseUrl: "https://user:password@example.test/path" }).initialize();
+  assert.match(relativeStore.presentArtifacts(run)[0].viewerUrl, /^\/plugins\/bionemo\/view\//u);
+});

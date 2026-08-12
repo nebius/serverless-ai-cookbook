@@ -116,6 +116,7 @@ async function main() {
   const childEnv = { ...runtimeEnv, OPENCLAW_GATEWAY_TOKEN: gatewayToken, OPENCLAW_GATEWAY_PORT: String(port), OPENCLAW_STATE_DIR: stateDir, OPENCLAW_CONFIG_PATH: configPath };
   delete childEnv.AUTH_TOKEN;
   if (tunnel?.origin) childEnv.BIONEMO_PUBLIC_URL = tunnel.origin;
+  else if (runtimeEnv.BIONEMO_PUBLIC_ORIGIN) childEnv.BIONEMO_PUBLIC_URL = safeOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN);
   const gateway = spawn("node", ["/app/openclaw.mjs", "gateway", "run", "--port", String(port), "--bind", "lan"], {
     stdio: "inherit",
     env: childEnv,

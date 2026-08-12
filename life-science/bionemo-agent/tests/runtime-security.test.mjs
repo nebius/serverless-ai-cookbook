@@ -24,13 +24,14 @@ function fakeApi() {
   };
 }
 
-test("plugin registers exactly the manifest-declared 13 tools", () => {
+test("plugin registers exactly the manifest-declared 13 tools", async () => {
   const api = fakeApi();
   plugin.register(api);
   assert.deepEqual(api.captured.tools.map((tool) => tool.name), EXACT_TOOL_NAMES);
   assert.deepEqual(manifest.contracts.tools, EXACT_TOOL_NAMES);
   assert.equal(api.captured.tools.every((tool) => tool.parameters.additionalProperties === false), true);
   assert.equal(api.captured.hooks.length, 1);
+  assert.match((await api.captured.hooks[0].handler()).prependSystemContext, /MEDIA:<downloadPath>/u);
 });
 
 test("model-facing OpenFold2 schema exposes only the reliable sequence argument", () => {

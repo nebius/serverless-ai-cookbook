@@ -108,7 +108,7 @@ export default {
       requiredScopes: ["operator.read"],
     });
     api.on("before_prompt_build", async () => ({
-      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. Never ask for or reveal credentials. When a structure artifact has viewerUrl, always give the user a normal Markdown link labeled View structure in 3D in addition to the downloadable local artifact. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
+      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. Never ask for or reveal credentials. When a structure artifact has viewerUrl, use that exact absolute URL in a normal Markdown link labeled View structure in 3D; never invent or rewrite its host. Attach the top-ranked structure by emitting its exact absolute downloadPath as MEDIA:<downloadPath> on its own line in the final reply. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
     }));
     api.logger.info?.(`BioNeMo Agent Toolkit ${PLUGIN_VERSION} registered ${PUBLIC_CATALOG.skills.length} skills and ${PUBLIC_CATALOG.workflows.length} workflows`);
   },
