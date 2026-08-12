@@ -267,7 +267,12 @@ test("static OpenClaw policy denies every general-purpose capability", async () 
 test("all pins and model identity are immutable in the shipped configuration", async () => {
   const dockerfile = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
   const config = await readFile(new URL("../config/openclaw.template.json", import.meta.url), "utf8");
+  const packageManifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const pluginPackageManifest = JSON.parse(await readFile(new URL("../openclaw-plugin/package.json", import.meta.url), "utf8"));
+  const pluginManifest = JSON.parse(await readFile(new URL("../openclaw-plugin/openclaw.plugin.json", import.meta.url), "utf8"));
+  const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
   assert.match(dockerfile, /openclaw:2026\.7\.1-2@sha256:8789721d/u);
+  assert.match(dockerfile, /org\.opencontainers\.image\.version="3\.2\.6"/u);
   assert.match(dockerfile, /CLOUDFLARED_VERSION="2026\.7\.3"/u);
   assert.match(dockerfile, new RegExp(TOOLKIT_COMMIT));
   assert.match(dockerfile, /libgnutls30=3\.7\.9-2\+deb12u7/u);
@@ -275,6 +280,9 @@ test("all pins and model identity are immutable in the shipped configuration", a
   assert.match(dockerfile, /CODEX_VERSION="0\.147\.0"/u);
   assert.match(dockerfile, /CLAUDE_CODE_VERSION="2\.1\.228"/u);
   assert.match(config, /setup\/setup-required/u);
+  assert.deepEqual([packageManifest.version, pluginPackageManifest.version, pluginManifest.version], ["3.2.6", "3.2.6", "3.2.6"]);
+  assert.match(readme, /^# BioNeMo Agent Workbench 3\.2\.6 on Nebius Serverless$/mu);
+  assert.match(uiInternals.dashboardHtml("test-nonce"), /BioNeMo Agent Workbench 3\.2\.6/u);
   assert.equal((await readFile(new URL("../vendor/bionemo-agent-toolkit/UPSTREAM_COMMIT", import.meta.url), "utf8")).trim(), TOOLKIT_COMMIT);
 });
 

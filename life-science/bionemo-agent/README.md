@@ -1,4 +1,4 @@
-# BioNeMo Agent Workbench 3.1 on Nebius Serverless
+# BioNeMo Agent Workbench 3.2.6 on Nebius Serverless
 
 This recipe packages a ready-to-start life-science agent environment for a
 Nebius Serverless CPU endpoint. The image contains:
