@@ -87,7 +87,7 @@ export const SKILLS = Object.freeze({
     label: "ProteinMPNN",
     route: "/v1/biology/ipd/proteinmpnn/predict",
     timeoutMs: 600_000,
-    description: "Design protein sequences for an inline backbone PDB with ProteinMPNN.",
+    description: "Design protein sequences from a bundled public sample or inline backbone PDB with ProteinMPNN.",
     artifactTypes: ["FASTA", "JSON"],
   }),
   rfdiffusion: skill({

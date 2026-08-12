@@ -98,7 +98,7 @@ images.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.2.3` |
+| Workbench | `3.2.4` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -140,7 +140,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.2.3"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.2.4"
 ./scripts/build_image.sh
 ```
 
@@ -161,7 +161,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.2.3-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.2.4-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -232,8 +232,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.2.3-test .
-docker run --rm bionemo-agent:3.2.3-test doctor
+docker build -t bionemo-agent:3.2.4-test .
+docker run --rm bionemo-agent:3.2.4-test doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`
@@ -256,6 +256,17 @@ MolMIM, MSA Search, OpenFold2, OpenFold3, ProteinMPNN, and RFdiffusion. It also
 includes bounded drug-discovery, MSA-to-structure, and protein-binder-design
 workflows. The broader 31-skill NVIDIA bundle remains available to Codex and
 Claude for authenticated interactive use.
+
+Direct MolMIM requests send explicit hosted defaults of 10 output molecules
+and 20 particles when omitted, and reject a particle population smaller than
+the effective output count before contacting NVIDIA. Direct ProteinMPNN calls
+must select exactly one backbone source: the bundled `egfr_kinase_public`
+sample or an inline PDB.
+
+DiffDock is kept to one bounded hosted request. A generic hosted HTTP 500 is
+reported as an upstream NVIDIA failure without inventing a result or
+automatically resubmitting compute; a retry must be a fresh, explicit user
+action.
 
 ## Cleanup
 

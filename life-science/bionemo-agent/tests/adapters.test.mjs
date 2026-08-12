@@ -9,7 +9,7 @@ import { EXACT_TOOL_NAMES, NVIDIA_HOST, SKILLS } from "../openclaw-plugin/src/ca
 import { publicError, redactSecrets, redactText } from "../openclaw-plugin/src/errors.mjs";
 import { resolveSkillInput, resolveWorkflowInput } from "../openclaw-plugin/src/samples.mjs";
 import { createRuntime } from "../openclaw-plugin/index.mjs";
-import { LIMITS, VALIDATORS, normalizeDirectSkillInput, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
+import { JSON_SCHEMAS, LIMITS, VALIDATORS, normalizeDirectSkillInput, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
 
 const PDB = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\nATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n";
 const PROTEIN = "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ";
@@ -19,7 +19,7 @@ const VALID_INPUTS = Object.freeze({
   diffdock: { protein: PDB, ligand: "CCO", ligand_file_type: "txt", num_poses: 2, save_trajectory: false },
   evo2: { sequence: "ACGTACGT", num_tokens: 8, random_seed: 7 },
   genmol: { smiles: "[*{5-10}]", num_molecules: 2, scoring: "QED", temperature: "1.0", noise: "1.0" },
-  molmim: { smi: "CCO", algorithm: "CMA-ES", num_molecules: 2, num_iterations: 2, property_name: "QED" },
+  molmim: { smi: "CCO", algorithm: "CMA-ES", num_molecules: 2, num_iterations: 2, property_name: "QED", particles: 2 },
   msa_search: { sequence: PROTEIN, databases: ["Uniref30_2302"], output_alignment_formats: ["a3m"] },
   openfold2: { sequence: PROTEIN, input_id: "public-example", selected_models: [1] },
   openfold3: { inputs: [{ input_id: "public-example", output_format: "pdb", molecules: [{ type: "protein", sequence: PROTEIN, diffusion_samples: 1 }] }] },
@@ -54,11 +54,50 @@ test("pinned public sample resolution accepts only an enum and never a path", as
   const diffdock = await resolveSkillInput("diffdock", { protein_sample: "egfr_kinase_public", ligand: "CCO" }, { vendorRoot });
   assert.match(diffdock.protein, /(?:^|\n)ATOM\s/u);
   assert.equal("protein_sample" in diffdock, false);
+  const proteinmpnn = await resolveSkillInput("proteinmpnn", { input_pdb_sample: "egfr_kinase_public", num_seq_per_target: 1 }, { vendorRoot });
+  assert.match(proteinmpnn.input_pdb, /(?:^|\n)ATOM\s/u);
+  assert.equal("input_pdb_sample" in proteinmpnn, false);
+  assert.doesNotThrow(() => VALIDATORS.proteinmpnn(proteinmpnn));
   const workflow = await resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", safe_notation: "[*{5-10}]" }, { vendorRoot });
   assert.equal(workflow.protein_sequence.length, 312);
   assert.match(workflow.protein_pdb, /(?:^|\n)ATOM\s/u);
   await assert.rejects(() => resolveSkillInput("diffdock", { protein_sample: "../../etc/passwd", ligand: "CCO" }, { vendorRoot }), /must be one of/u);
+  await assert.rejects(() => resolveSkillInput("proteinmpnn", { input_pdb: PDB, input_pdb_sample: "egfr_kinase_public" }, { vendorRoot }), /exactly one/u);
   await assert.rejects(() => resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", protein_pdb: PDB, safe_notation: "x" }, { vendorRoot }), /do not combine/u);
+});
+
+test("MolMIM aligns effective output and population defaults before upstream compute", async () => {
+  assert.deepEqual(VALIDATORS.molmim({ smi: "CCO" }), { smi: "CCO", num_molecules: 10, particles: 20 });
+  assert.deepEqual(VALIDATORS.molmim({ smi: "CCO", num_molecules: 2, particles: 2 }), { smi: "CCO", num_molecules: 2, particles: 2 });
+  assert.throws(() => VALIDATORS.molmim({ smi: "CCO", particles: 2 }), /greater than or equal to num_molecules/u);
+  assert.throws(() => VALIDATORS.molmim({ smi: "CCO", num_molecules: 21 }), /greater than or equal to num_molecules/u);
+  assert.deepEqual(JSON_SCHEMAS.molmim.required, ["smi", "num_molecules"]);
+  assert.equal(JSON_SCHEMAS.molmim.properties.num_molecules.default, 10);
+  assert.equal(JSON_SCHEMAS.molmim.properties.particles.default, 20);
+  assert.match(JSON_SCHEMAS.molmim.properties.particles.description, /greater than or equal/u);
+
+  const forwarded = [];
+  const client = new NimClient({
+    env: { NVIDIA_API_KEY: "unit-test-key" },
+    logger: { info() {} },
+    retries: 0,
+    fetchImpl: async (_url, init) => {
+      forwarded.push(JSON.parse(init.body));
+      return new Response("{}", { status: 200 });
+    },
+  });
+  await client.call("molmim", { smi: "CCO" });
+  assert.deepEqual(forwarded, [{ smi: "CCO", num_molecules: 10, particles: 20 }]);
+  await assert.rejects(() => client.call("molmim", { smi: "CCO", particles: 2 }), /greater than or equal to num_molecules/u);
+  assert.equal(forwarded.length, 1);
+});
+
+test("ProteinMPNN model schema requires exactly one backbone source", () => {
+  assert.deepEqual(JSON_SCHEMAS.proteinmpnn.oneOf, [
+    { required: ["input_pdb"] },
+    { required: ["input_pdb_sample"] },
+  ]);
+  assert.deepEqual(JSON_SCHEMAS.proteinmpnn.properties.input_pdb_sample.enum, ["egfr_kinase_public"]);
 });
 
 test("event bounds reject oversized and unsafe requests", () => {

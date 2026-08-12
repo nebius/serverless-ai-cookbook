@@ -15,6 +15,8 @@ const CHAIN = /^[A-Za-z0-9]{1,4}$/u;
 const HOTSPOT = /^[A-Za-z0-9][1-9][0-9]{0,5}$/u;
 const CONTIG = /^[A-Za-z0-9\-\/ .]+$/u;
 const AMINO_ACID = /^[ACDEFGHIKLMNPQRSTVWY]$/u;
+const MOLMIM_DEFAULT_NUM_MOLECULES = 10;
+const MOLMIM_DEFAULT_PARTICLES = 20;
 
 function assertObject(value, label = "request") {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -216,17 +218,22 @@ export function validateGenMol(input) {
 }
 
 export function validateMolMim(input) {
-  const value = assertObject(input);
+  const value = structuredClone(assertObject(input));
   onlyKeys(value, ["smi", "algorithm", "num_molecules", "num_iterations", "property_name", "minimize", "min_similarity", "particles", "radius"]);
   required(value, ["smi"]);
   string(value.smi, "smi", { min: 1, max: 2_048 });
+  if (value.num_molecules === undefined) value.num_molecules = MOLMIM_DEFAULT_NUM_MOLECULES;
+  if (value.particles === undefined) value.particles = MOLMIM_DEFAULT_PARTICLES;
   optional(value, "algorithm", (item) => enumeration(item, "algorithm", ["CMA-ES", "none"]));
-  optional(value, "num_molecules", (item) => number(item, "num_molecules", { min: 1, max: 100, integer: true }));
+  number(value.num_molecules, "num_molecules", { min: 1, max: 100, integer: true });
   optional(value, "num_iterations", (item) => number(item, "num_iterations", { min: 1, max: 100, integer: true }));
   optional(value, "property_name", (item) => enumeration(item, "property_name", ["QED", "plogP"]));
   optional(value, "minimize", (item) => bool(item, "minimize"));
   optional(value, "min_similarity", (item) => number(item, "min_similarity", { min: 0, max: 1 }));
-  optional(value, "particles", (item) => number(item, "particles", { min: 2, max: 100, integer: true }));
+  number(value.particles, "particles", { min: 2, max: 100, integer: true });
+  if (value.particles < value.num_molecules) {
+    throw new InputError("particles must be greater than or equal to num_molecules");
+  }
   optional(value, "radius", (item) => number(item, "radius", { min: 0, max: 2 }));
   return final(value);
 }
@@ -371,14 +378,45 @@ export const JSON_SCHEMAS = Object.freeze({
   diffdock: { type: "object", additionalProperties: false, required: ["ligand"], properties: { protein: { type: "string" }, protein_sample: { type: "string", enum: ["egfr_kinase_public"] }, ligand: { type: "string" }, ligand_file_type: { type: "string", enum: ["txt", "sdf", "mol2"] }, num_poses: { type: "integer", minimum: 1, maximum: 20 }, time_divisions: { type: "integer" }, steps: { type: "integer" }, save_trajectory: { type: "boolean", const: false } } },
   evo2: { type: "object", additionalProperties: false, required: ["sequence"], properties: { sequence: { type: "string" }, num_tokens: { type: "integer", minimum: 1, maximum: 512 }, temperature: { type: "number" }, top_k: { type: "integer" }, top_p: { type: "number" }, random_seed: { type: "integer" } } },
   genmol: { type: "object", additionalProperties: false, required: ["smiles"], properties: { smiles: { type: "string", description: "SAFE notation (upstream field name is smiles)." }, num_molecules: { type: "integer", minimum: 1, maximum: 100 }, scoring: { type: "string", enum: ["QED", "LogP"] }, unique: { type: "boolean" }, temperature: { type: "string" }, noise: { type: "string" }, step_size: { type: "integer" } } },
-  molmim: { type: "object", additionalProperties: false, required: ["smi"], properties: { smi: { type: "string" }, algorithm: { type: "string", enum: ["CMA-ES", "none"] }, num_molecules: { type: "integer" }, num_iterations: { type: "integer" }, property_name: { type: "string", enum: ["QED", "plogP"] }, minimize: { type: "boolean" }, min_similarity: { type: "number" }, particles: { type: "integer" }, radius: { type: "number" } } },
+  molmim: {
+    type: "object",
+    additionalProperties: false,
+    required: ["smi", "num_molecules"],
+    properties: {
+      smi: { type: "string", description: "Seed molecule as a SMILES string." },
+      algorithm: { type: "string", enum: ["CMA-ES", "none"], default: "CMA-ES" },
+      num_molecules: { type: "integer", minimum: 1, maximum: 100, default: MOLMIM_DEFAULT_NUM_MOLECULES, description: "Requested output count. Always pass the user's requested count." },
+      num_iterations: { type: "integer", minimum: 1, maximum: 100 },
+      property_name: { type: "string", enum: ["QED", "plogP"], default: "QED" },
+      minimize: { type: "boolean", default: false },
+      min_similarity: { type: "number", minimum: 0, maximum: 1, default: 0.7 },
+      particles: { type: "integer", minimum: 2, maximum: 100, default: MOLMIM_DEFAULT_PARTICLES, description: "Population size; must be greater than or equal to num_molecules." },
+      radius: { type: "number", minimum: 0, maximum: 2, default: 1 },
+    },
+  },
   msa_search: { type: "object", additionalProperties: false, properties: { sequence: { type: "string" }, sequences: { type: "array", items: { type: "string" } }, databases: { type: "array", items: { type: "string" } }, e_value: { type: "number" }, iterations: { type: "integer" }, max_msa_sequences: { type: "integer" }, output_alignment_formats: { type: "array", items: { type: "string", enum: ["a3m", "fasta"] } } } },
   // Keep the model-facing OpenFold2 contract deliberately small. Compatibility
   // envelope recovery exists only inside the executor and is not advertised to
   // the model, so it cannot reinforce confusion with remote MCP contracts.
   openfold2: { type: "object", additionalProperties: false, required: ["sequence"], properties: { sequence: { type: "string", description: "Protein amino-acid sequence to fold directly. Do not wrap or stringify it." } } },
   openfold3: { type: "object", additionalProperties: false, required: ["inputs"], properties: { inputs: { type: "array", minItems: 1, maxItems: 1 } } },
-  proteinmpnn: { type: "object", additionalProperties: false, properties: { input_pdb: { type: "string" }, input_pdb_sample: { type: "string", enum: ["egfr_kinase_public"] }, input_pdb_chains: { type: "array", items: { type: "string" } }, ca_only: { type: "boolean" }, use_soluble_model: { type: "boolean" }, random_seed: { type: "integer" }, num_seq_per_target: { type: "integer" }, sampling_temp: { type: "array", items: { type: "number" } }, fixed_positions_jsonl: { type: "string" }, omit_AAs: { type: "array", items: { type: "string" } } } },
+  proteinmpnn: {
+    type: "object",
+    additionalProperties: false,
+    oneOf: [{ required: ["input_pdb"] }, { required: ["input_pdb_sample"] }],
+    properties: {
+      input_pdb: { type: "string", description: "Inline backbone PDB. Do not combine with input_pdb_sample." },
+      input_pdb_sample: { type: "string", enum: ["egfr_kinase_public"], description: "Bundled public EGFR backbone. Do not combine with input_pdb." },
+      input_pdb_chains: { type: "array", items: { type: "string" } },
+      ca_only: { type: "boolean" },
+      use_soluble_model: { type: "boolean" },
+      random_seed: { type: "integer" },
+      num_seq_per_target: { type: "integer" },
+      sampling_temp: { type: "array", items: { type: "number" } },
+      fixed_positions_jsonl: { type: "string" },
+      omit_AAs: { type: "array", items: { type: "string" } },
+    },
+  },
   rfdiffusion: { type: "object", additionalProperties: false, required: ["contigs"], properties: { input_pdb: { type: "string" }, input_pdb_sample: { type: "string", enum: ["egfr_kinase_public"] }, contigs: { type: "string" }, hotspot_res: { type: "array", items: { type: "string" } }, diffusion_steps: { type: "integer" }, random_seed: { type: "integer" } } },
   drug_discovery: { type: "object", additionalProperties: false, required: ["safe_notation"], properties: { protein_pdb: { type: "string" }, protein_sequence: { type: "string" }, protein_sample: { type: "string", enum: ["egfr_kinase_public"], description: "Use the bundled full EGFR kinase PDB and matching 312-aa sequence; do not combine this with protein_pdb or protein_sequence." }, safe_notation: { type: "string", pattern: "^\\[\\*\\{[1-9][0-9]{0,2}-[1-9][0-9]{0,2}\\}\\]$", description: "GenMol de novo SAFE mask, for example [*{5-10}]. Never invent a label such as SAFE_1." }, generated_molecules: { type: "integer", minimum: 1, maximum: 20 }, dock_candidates: { type: "integer", minimum: 1, maximum: 5 }, affinity_candidates: { type: "integer", minimum: 1, maximum: 3 } } },
   msa_to_structure: { type: "object", additionalProperties: false, required: ["sequence"], properties: { sequence: { type: "string" }, max_msa_sequences: { type: "integer", minimum: 1, maximum: 500 }, output_format: { type: "string", enum: ["pdb", "cif"] } } },
