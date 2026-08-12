@@ -208,16 +208,38 @@ function maybeParseStructuredString(value, schema, label) {
   throw new McpAdapterInputError(`${label} must be a native JSON ${expected}, not a string`);
 }
 
+function uniquelyMatchingStructuredBranch(schema, value) {
+  if (!plainObject(schema)) return schema;
+  const branches = Array.isArray(schema.anyOf) ? schema.anyOf : Array.isArray(schema.oneOf) ? schema.oneOf : null;
+  if (!branches || (!plainObject(value) && !Array.isArray(value))) return schema;
+  const expectedType = Array.isArray(value) ? "array" : "object";
+  const candidates = branches.filter((branch) => {
+    if (!plainObject(branch) || schemaType(branch) !== expectedType) return false;
+    if (expectedType === "array") return true;
+    const properties = plainObject(branch.properties) ? branch.properties : {};
+    if (Array.isArray(branch.required) && !branch.required.every((key) => Object.hasOwn(value, key))) return false;
+    if (branch.additionalProperties === false && Object.keys(value).some((key) => !Object.hasOwn(properties, key))) return false;
+    return Object.entries(properties).every(([key, property]) => (
+      !Object.hasOwn(value, key)
+      || !plainObject(property)
+      || !Object.hasOwn(property, "const")
+      || value[key] === property.const
+    ));
+  });
+  return candidates.length === 1 ? candidates[0] : schema;
+}
+
 function coerceStructuredValue(value, schema, label, toolName) {
   if (value === undefined && plainObject(schema) && Object.hasOwn(schema, "default")) {
     value = clone(schema.default);
   }
   if (value === undefined) return value;
+  const effectiveSchema = uniquelyMatchingStructuredBranch(schema, value);
   const wasSerialized = typeof value === "string";
-  const parsed = maybeParseStructuredString(value, schema, label);
+  const parsed = maybeParseStructuredString(value, effectiveSchema, label);
   if (Array.isArray(parsed)) {
     let items = parsed;
-    if (wasSerialized && toolName === "clawbio_esm2_embed" && label === "sequences" && schemaType(schema?.items) === "string") {
+    if (wasSerialized && toolName === "clawbio_esm2_embed" && label === "sequences" && schemaType(effectiveSchema?.items) === "string") {
       items = parsed.map((item, index) => {
         if (typeof item === "string") return item;
         if (plainObject(item) && typeof item.sequence === "string") {
@@ -230,14 +252,14 @@ function coerceStructuredValue(value, schema, label, toolName) {
         throw new McpAdapterInputError(`sequences[${index}] must be a protein sequence string`);
       });
     }
-    return items.map((item, index) => coerceStructuredValue(item, schema?.items, `${label}[${index}]`, toolName));
+    return items.map((item, index) => coerceStructuredValue(item, effectiveSchema?.items, `${label}[${index}]`, toolName));
   }
-  if (plainObject(parsed) && plainObject(schema?.properties)) {
+  if (plainObject(parsed) && plainObject(effectiveSchema?.properties)) {
     const normalized = Object.fromEntries(Object.entries(parsed).map(([key, item]) => [
       key,
-      coerceStructuredValue(item, schema.properties[key], `${label}.${key}`, toolName),
+      coerceStructuredValue(item, effectiveSchema.properties[key], `${label}.${key}`, toolName),
     ]));
-    for (const [key, propertySchema] of Object.entries(schema.properties)) {
+    for (const [key, propertySchema] of Object.entries(effectiveSchema.properties)) {
       if (!Object.hasOwn(normalized, key) && plainObject(propertySchema) && Object.hasOwn(propertySchema, "default")) {
         normalized[key] = coerceStructuredValue(undefined, propertySchema, `${label}.${key}`, toolName);
       }
@@ -332,19 +354,21 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
 
 function adaptRequestPayload(payload, catalog, options) {
   if (!Array.isArray(payload)) {
-    return { payload: adaptToolCallPayload(payload, catalog, options), localErrors: [] };
+    return { payload: adaptToolCallPayload(payload, catalog, options), localErrors: [], suppressedNotifications: 0 };
   }
   const forwarded = [];
   const localErrors = [];
+  let suppressedNotifications = 0;
   for (const member of payload) {
     try {
       forwarded.push(adaptToolCallPayload(member, catalog, options));
     } catch (error) {
       if (!(error instanceof McpAdapterInputError)) throw error;
-      localErrors.push(jsonRpcInvalidParams(member, error.message));
+      if (plainObject(member) && Object.hasOwn(member, "id")) localErrors.push(jsonRpcInvalidParams(member, error.message));
+      else suppressedNotifications += 1;
     }
   }
-  return { payload: forwarded, localErrors };
+  return { payload: forwarded, localErrors, suppressedNotifications };
 }
 
 function jsonRpcInvalidParams(payload, message) {
@@ -433,6 +457,7 @@ export function startMcpSchemaAdapter({
 
     let requestPayload = null;
     let localErrors = [];
+    let suppressedNotifications = 0;
     let requestBody;
     try {
       requestBody = req.method === "POST" ? await readRequestBody(req, maxRequestBytes) : undefined;
@@ -454,14 +479,15 @@ export function startMcpSchemaAdapter({
         });
         requestPayload = adapted.payload;
         localErrors = adapted.localErrors;
-        if (Array.isArray(requestPayload) && requestPayload.length === 0 && localErrors.length > 0) {
+        suppressedNotifications = adapted.suppressedNotifications;
+        if (Array.isArray(requestPayload) && requestPayload.length === 0 && (localErrors.length > 0 || suppressedNotifications > 0)) {
           const responseBody = Buffer.from(JSON.stringify(localErrors));
-          res.writeHead(200, {
+          res.writeHead(localErrors.length > 0 ? 200 : 202, {
             "Content-Type": "application/json",
             "Cache-Control": "no-store",
-            "Content-Length": String(responseBody.length),
+            "Content-Length": localErrors.length > 0 ? String(responseBody.length) : "0",
           });
-          res.end(responseBody);
+          res.end(localErrors.length > 0 ? responseBody : undefined);
           return;
         }
         requestBody = Buffer.from(JSON.stringify(requestPayload));

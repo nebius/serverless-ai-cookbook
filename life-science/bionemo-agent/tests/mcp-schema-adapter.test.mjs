@@ -24,7 +24,7 @@ const ACKNOWLEDGEMENTS = {
   type: "object",
 };
 
-function wrappedTool(name, requestName, requestSchema) {
+function wrappedTool(name, requestName, requestSchema, extraDefinitions = {}) {
   return {
     name,
     description: `Test ${name}`,
@@ -36,7 +36,7 @@ function wrappedTool(name, requestName, requestSchema) {
         idempotency_key: { type: "string" },
       },
       required: ["request", "acknowledgements", "idempotency_key"],
-      $defs: { Acknowledgements: ACKNOWLEDGEMENTS, [requestName]: requestSchema },
+      $defs: { Acknowledgements: ACKNOWLEDGEMENTS, ...extraDefinitions, [requestName]: requestSchema },
     },
   };
 }
@@ -60,6 +60,62 @@ const ESM2 = wrappedTool("clawbio_esm2_embed", "ESM2Request", {
   },
   required: ["sequences"],
 });
+
+const INPUT_REFERENCE = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    local_path: { anyOf: [{ type: "string" }, { type: "null" }], default: null },
+    text: { anyOf: [{ type: "string" }, { type: "null" }], default: null },
+    base64_data: { anyOf: [{ type: "string" }, { type: "null" }], default: null },
+    job_id: { anyOf: [{ type: "string", pattern: "^[0-9a-f]{32}$" }, { type: "null" }], default: null },
+    artifact_id: { anyOf: [{ type: "string", pattern: "^[0-9a-f]{32}$" }, { type: "null" }], default: null },
+    filename: { anyOf: [{ type: "string", maxLength: 200 }, { type: "null" }], default: null },
+    media_type: { anyOf: [{ type: "string", maxLength: 100 }, { type: "null" }], default: null },
+    expected_sha256: { anyOf: [{ type: "string", pattern: "^[0-9a-fA-F]{64}$" }, { type: "null" }], default: null },
+    encoding: { type: "string", enum: ["binary", "text", "base64", "json"], default: "binary" },
+  },
+};
+
+const DIFFDOCK = wrappedTool("clawbio_diffdock_dock", "DiffDockRequest", {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    protein: { anyOf: [{ type: "string" }, { type: "null" }], default: null },
+    protein_input: { anyOf: [{ $ref: "#/$defs/InputReference" }, { type: "null" }], default: null },
+    ligand: { type: "string" },
+    ligand_file_type: { type: "string", enum: ["mol2", "sdf", "txt"], default: "txt" },
+    num_poses: { type: "integer", default: 1 },
+  },
+  required: ["ligand"],
+}, { InputReference: INPUT_REFERENCE });
+
+const PARABRICKS_INPUT_SOURCE = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    filename: { type: "string" },
+    url: { anyOf: [{ type: "string" }, { type: "null" }], default: null },
+    artifact: { anyOf: [{ type: "string" }, { type: "null" }], default: null },
+    mcp_input: { anyOf: [{ $ref: "#/$defs/InputReference" }, { type: "null" }], default: null },
+    sha256: { anyOf: [{ type: "string" }, { type: "null" }], default: null },
+  },
+  required: ["filename"],
+};
+
+const DEEPVARIANT = wrappedTool("clawbio_deepvariant_call", "ParabricksDeepVariantRequest", {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    sample_id: { type: "string" },
+    reference: { $ref: "#/$defs/ParabricksInputSource" },
+    reference_index: { $ref: "#/$defs/ParabricksInputSource" },
+    reads: { $ref: "#/$defs/ParabricksInputSource" },
+    reads_index: { $ref: "#/$defs/ParabricksInputSource" },
+    mode: { type: "string", enum: ["shortread", "pacbio", "ont"], default: "shortread" },
+  },
+  required: ["sample_id", "reference", "reference_index", "reads", "reads_index"],
+}, { InputReference: INPUT_REFERENCE, ParabricksInputSource: PARABRICKS_INPUT_SOURCE });
 
 const TOOLS_LIST = { jsonrpc: "2.0", id: 1, result: { tools: [OPENFOLD2, ESM2] } };
 
@@ -145,6 +201,74 @@ test("schema defaults and internal turn identity normalize before hashing and fo
     id: 12,
     params: { ...base.params, arguments: { ...base.params.arguments, [MCP_TURN_ID_FIELD]: "bad value with spaces" } },
   }, catalog), /__bionemo_agent_run_id is invalid/u);
+});
+
+test("real optional anyOf input references normalize nested defaults before hashing", () => {
+  const catalog = new Map();
+  adaptToolsListPayload({ jsonrpc: "2.0", id: 1, result: { tools: [DIFFDOCK, DEEPVARIANT] } }, catalog);
+  const runId = "turn-nested-defaults-12345678";
+  const common = {
+    jsonrpc: "2.0",
+    method: "tools/call",
+  };
+  const diffdockArguments = {
+    protein_input: { text: "ATOM      1  CA  ALA A   1" },
+    ligand: "CCO",
+    ack_research_only: true,
+    ack_no_safety_or_therapeutic_claims: true,
+    [MCP_TURN_ID_FIELD]: runId,
+  };
+  const diffdockOmitted = adaptToolCallPayload({
+    ...common,
+    id: 31,
+    params: { name: DIFFDOCK.name, arguments: diffdockArguments },
+  }, catalog);
+  const diffdockExplicit = adaptToolCallPayload({
+    ...common,
+    id: 32,
+    params: {
+      name: DIFFDOCK.name,
+      arguments: { ...diffdockArguments, protein_input: { ...diffdockArguments.protein_input, encoding: "binary" } },
+    },
+  }, catalog);
+  assert.deepEqual(diffdockOmitted.params.arguments.request, diffdockExplicit.params.arguments.request);
+  assert.equal(diffdockOmitted.params.arguments.request.protein_input.encoding, "binary");
+  assert.equal(diffdockOmitted.params.arguments.request.protein_input.filename, null);
+  assert.equal(diffdockOmitted.params.arguments.idempotency_key, diffdockExplicit.params.arguments.idempotency_key);
+
+  const remoteSource = (filename, url) => ({ filename, url });
+  const deepvariantArguments = {
+    sample_id: "sample-1",
+    reference: { filename: "reference.fa", mcp_input: { text: ">chr1\nACGT" } },
+    reference_index: remoteSource("reference.fa.fai", "https://example.test/reference.fa.fai"),
+    reads: remoteSource("reads.bam", "https://example.test/reads.bam"),
+    reads_index: remoteSource("reads.bam.bai", "https://example.test/reads.bam.bai"),
+    ack_research_only: true,
+    ack_non_clinical: true,
+    [MCP_TURN_ID_FIELD]: runId,
+  };
+  const deepvariantOmitted = adaptToolCallPayload({
+    ...common,
+    id: 33,
+    params: { name: DEEPVARIANT.name, arguments: deepvariantArguments },
+  }, catalog);
+  const deepvariantExplicit = adaptToolCallPayload({
+    ...common,
+    id: 34,
+    params: {
+      name: DEEPVARIANT.name,
+      arguments: {
+        ...deepvariantArguments,
+        reference: {
+          ...deepvariantArguments.reference,
+          mcp_input: { ...deepvariantArguments.reference.mcp_input, encoding: "binary" },
+        },
+      },
+    },
+  }, catalog);
+  assert.deepEqual(deepvariantOmitted.params.arguments.request, deepvariantExplicit.params.arguments.request);
+  assert.equal(deepvariantOmitted.params.arguments.request.reference.mcp_input.encoding, "binary");
+  assert.equal(deepvariantOmitted.params.arguments.idempotency_key, deepvariantExplicit.params.arguments.idempotency_key);
 });
 
 test("the exact stringified ESM2 failure shape is canonicalized before upstream forwarding", () => {
@@ -251,6 +375,14 @@ test("JSON-RPC batches forward valid members and return invalid-params per rejec
         arguments: { sequences: ["MISSINGACK"] },
       },
     },
+    {
+      jsonrpc: "2.0",
+      method: "tools/call",
+      params: {
+        name: "clawbio_esm2_embed",
+        arguments: { sequences: ["INVALID-NOTIFICATION-MISSING-ACK"] },
+      },
+    },
   ];
   const response = await fetch(adapter.url, {
     method: "POST",
@@ -265,6 +397,7 @@ test("JSON-RPC batches forward valid members and return invalid-params per rejec
   assert.equal(upstreamPayloads.length, 2);
   assert.equal(upstreamPayloads[1].length, 1, "the invalid member must never reach Cerebrium");
   assert.equal(upstreamPayloads[1][0].id, 20);
+  assert.equal(members.some(({ id }) => id === null), false, "an invalid notification must not produce a JSON-RPC response member");
 
   const allInvalidResponse = await fetch(adapter.url, {
     method: "POST",
@@ -274,6 +407,15 @@ test("JSON-RPC batches forward valid members and return invalid-params per rejec
   assert.equal(allInvalidResponse.status, 200);
   assert.deepEqual((await allInvalidResponse.json()).map(({ id }) => id), [21, 22]);
   assert.equal(upstreamPayloads.length, 2, "an all-invalid batch must be answered locally");
+
+  const invalidNotificationResponse = await fetch(adapter.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Mcp-Session-Id": "batch-session" },
+    body: JSON.stringify([batch[2]]),
+  });
+  assert.equal(invalidNotificationResponse.status, 202);
+  assert.equal(await invalidNotificationResponse.text(), "");
+  assert.equal(upstreamPayloads.length, 2, "an invalid notification must be suppressed without reaching upstream");
 });
 
 test("union request schemas also become a consistent flat top-level contract", () => {
