@@ -36,6 +36,13 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 | `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
 | none | local setup-required responder | no external model |
 
+The Token Factory picker exposes a curated agent-capable catalog: Nemotron 3
+Nano, Nemotron 3.5 Lightning, Nemotron 3 Super, Nemotron 3 Ultra, GPT-OSS 120B,
+Qwen3 32B, GLM 5.1, and DeepSeek V4 Pro. Nano remains the default because its
+262K context window is the safest fit for the workbench's tool schemas. The
+Lightning, Super, and Ultra routes currently advertise 8K context windows, so
+prefer them for bounded event demonstrations rather than long tool sessions.
+
 Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
 `AGENT_BASE_URL`.
@@ -77,7 +84,7 @@ images.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.1.0` |
+| Workbench | `3.1.1` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -119,7 +126,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.1.0"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.1.1"
 ./scripts/build_image.sh
 ```
 
@@ -140,7 +147,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.1.0-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.1.1-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -192,8 +199,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.1.0-test .
-docker run --rm bionemo-agent:3.1.0-test doctor
+docker build -t bionemo-agent:3.1.1-test .
+docker run --rm bionemo-agent:3.1.1-test doctor
 ```
 
 For a running endpoint, get the tunnel URL from logs and check:

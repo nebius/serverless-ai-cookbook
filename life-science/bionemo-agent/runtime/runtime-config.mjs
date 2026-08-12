@@ -6,6 +6,16 @@ export const NVIDIA_MODEL = "nvidia/nemotron-3-nano-30b-a3b";
 export const NEBIUS_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
+export const TOKEN_FACTORY_MODELS = Object.freeze([
+  Object.freeze({ id: NEBIUS_MODEL, alias: "Nemotron 3 Nano", contextWindow: 262144, maxTokens: 8192 }),
+  Object.freeze({ id: "nvidia/Nemotron-3_5-Lightning", alias: "Nemotron 3.5 Lightning", contextWindow: 8000, maxTokens: 4096 }),
+  Object.freeze({ id: "nvidia/nemotron-3-super-120b-a12b", alias: "Nemotron 3 Super", contextWindow: 8000, maxTokens: 4096 }),
+  Object.freeze({ id: "nvidia/Nemotron-3-Ultra-550b-a55b", alias: "Nemotron 3 Ultra", contextWindow: 8000, maxTokens: 4096 }),
+  Object.freeze({ id: "openai/gpt-oss-120b", alias: "GPT-OSS 120B", contextWindow: 131072, maxTokens: 8192 }),
+  Object.freeze({ id: "Qwen/Qwen3-32B", alias: "Qwen3 32B", contextWindow: 40960, maxTokens: 8192 }),
+  Object.freeze({ id: "zai-org/GLM-5.1", alias: "GLM 5.1", contextWindow: 202752, maxTokens: 8192 }),
+  Object.freeze({ id: "deepseek-ai/DeepSeek-V4-Pro", alias: "DeepSeek V4 Pro", contextWindow: 1048576, maxTokens: 8192 }),
+]);
 
 export function parseBoolean(value, fallback = false) {
   if (value === undefined || value === "") return fallback;
@@ -70,25 +80,33 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   config.models = { mode: "merge", providers: {} };
   const setupBaseUrl = `http://127.0.0.1:${setupPort}/v1`;
   const modelId = (provider, fallback) => state.reasoningProvider === provider && state.env.AGENT_MODEL ? state.env.AGENT_MODEL : fallback;
-  const compatibleProvider = ({ configured, baseUrl, apiKey, api, model, name, contextWindow = 262144, agentRuntime }) => {
-    const definition = { id: model, name: `${name}${configured ? "" : " (requires API key)"}`, reasoning: configured, input: ["text"], contextWindow, maxTokens: configured ? 8192 : 1024 };
-    if (agentRuntime) definition.agentRuntime = agentRuntime;
+  const compatibleProvider = ({ configured, baseUrl, apiKey, api, models, agentRuntime }) => {
+    const definitions = models.map(({ id, name = id, contextWindow = 262144, maxTokens = 8192, reasoning = true }) => {
+      const definition = { id, name: `${name}${configured ? "" : " (requires API key)"}`, reasoning: configured && reasoning, input: ["text"], contextWindow, maxTokens: configured ? maxTokens : 1024 };
+      if (agentRuntime) definition.agentRuntime = agentRuntime;
+      return definition;
+    });
     return {
       baseUrl: configured ? baseUrl : setupBaseUrl,
       apiKey: configured ? apiKey : "setup-required",
       api: configured ? api : "openai-completions",
       authHeader: true,
-      models: [definition],
+      models: definitions,
     };
   };
   const nvidiaModel = modelId("nvidia", NVIDIA_MODEL);
-  const nebiusModel = modelId("nebius", NEBIUS_MODEL);
+  const requestedNebiusModel = modelId("nebius", NEBIUS_MODEL);
+  const knownNebiusModel = TOKEN_FACTORY_MODELS.find(({ id }) => id.toLowerCase() === requestedNebiusModel.toLowerCase());
+  const nebiusModel = knownNebiusModel?.id || requestedNebiusModel;
+  const tokenFactoryModels = knownNebiusModel
+    ? TOKEN_FACTORY_MODELS
+    : Object.freeze([...TOKEN_FACTORY_MODELS, Object.freeze({ id: nebiusModel, contextWindow: 262144, maxTokens: 8192 })]);
   const openaiModel = modelId("openai", OPENAI_MODEL);
   const anthropicModel = modelId("anthropic", ANTHROPIC_MODEL);
-  config.models.providers.nvidia = compatibleProvider({ configured: state.nvidia, baseUrl: state.reasoningProvider === "nvidia" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://integrate.api.nvidia.com/v1", apiKey: "${NVIDIA_API_KEY}", api: "openai-completions", model: nvidiaModel, name: `${nvidiaModel} via NVIDIA Build` });
-  config.models.providers.tokenfactory = compatibleProvider({ configured: state.nebius, baseUrl: state.reasoningProvider === "nebius" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.tokenfactory.nebius.com/v1", apiKey: "${NEBIUS_API_KEY}", api: "openai-completions", model: nebiusModel, name: `${nebiusModel} via Nebius Token Factory` });
-  config.models.providers.openai = compatibleProvider({ configured: state.openai, baseUrl: state.reasoningProvider === "openai" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.openai.com/v1", apiKey: "${OPENAI_API_KEY}", api: "openai-responses", model: openaiModel, name: `${openaiModel} via OpenAI`, agentRuntime: { id: "openclaw" } });
-  config.models.providers.claude = compatibleProvider({ configured: state.anthropic, baseUrl: state.reasoningProvider === "anthropic" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.anthropic.com", apiKey: "${ANTHROPIC_API_KEY}", api: "anthropic-messages", model: anthropicModel, name: `${anthropicModel} via Anthropic Claude`, contextWindow: 200000 });
+  config.models.providers.nvidia = compatibleProvider({ configured: state.nvidia, baseUrl: state.reasoningProvider === "nvidia" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://integrate.api.nvidia.com/v1", apiKey: "${NVIDIA_API_KEY}", api: "openai-completions", models: [{ id: nvidiaModel, name: `${nvidiaModel} via NVIDIA Build` }] });
+  config.models.providers.tokenfactory = compatibleProvider({ configured: state.nebius, baseUrl: state.reasoningProvider === "nebius" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.tokenfactory.nebius.com/v1", apiKey: "${NEBIUS_API_KEY}", api: "openai-completions", models: tokenFactoryModels.map((model) => ({ ...model, name: `${model.alias || model.id} via Nebius Token Factory` })) });
+  config.models.providers.openai = compatibleProvider({ configured: state.openai, baseUrl: state.reasoningProvider === "openai" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.openai.com/v1", apiKey: "${OPENAI_API_KEY}", api: "openai-responses", models: [{ id: openaiModel, name: `${openaiModel} via OpenAI` }], agentRuntime: { id: "openclaw" } });
+  config.models.providers.claude = compatibleProvider({ configured: state.anthropic, baseUrl: state.reasoningProvider === "anthropic" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.anthropic.com", apiKey: "${ANTHROPIC_API_KEY}", api: "anthropic-messages", models: [{ id: anthropicModel, name: `${anthropicModel} via Anthropic Claude`, contextWindow: 200000 }] });
   config.models.providers.setup = {
     baseUrl: setupBaseUrl, apiKey: "setup-required", api: "openai-completions",
     models: [{ id: "setup-required", name: "Setup required", reasoning: false, input: ["text"], contextWindow: 262144, maxTokens: 1024 }],
@@ -103,7 +121,7 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   config.agents.defaults.model.primary = primaryModels[state.reasoningProvider];
   config.agents.defaults.models = {
     [`nvidia/${nvidiaModel}`]: {},
-    [`tokenfactory/${nebiusModel}`]: {},
+    ...Object.fromEntries(tokenFactoryModels.map(({ id, alias }) => [`tokenfactory/${id}`, alias ? { alias } : {}])),
     [`openai/${openaiModel}`]: {},
     [`claude/${anthropicModel}`]: {},
   };

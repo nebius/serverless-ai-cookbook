@@ -9,7 +9,7 @@ import manifest from "../openclaw-plugin/openclaw.plugin.json" with { type: "jso
 import { EXACT_TOOL_NAMES, TOOLKIT_COMMIT } from "../openclaw-plugin/src/catalog.mjs";
 import { createUiHandlers, __test as uiInternals } from "../openclaw-plugin/src/ui.mjs";
 import { __test as launcher } from "../runtime/launcher.mjs";
-import { capabilities, configureOpenClaw, DEFAULT_MCP_URL } from "../runtime/runtime-config.mjs";
+import { capabilities, configureOpenClaw, DEFAULT_MCP_URL, TOKEN_FACTORY_MODELS } from "../runtime/runtime-config.mjs";
 import { prepareClients } from "../runtime/prepare-clients.mjs";
 
 function fakeApi() {
@@ -31,7 +31,9 @@ test("plugin registers exactly the manifest-declared 13 tools", async () => {
   assert.deepEqual(manifest.contracts.tools, EXACT_TOOL_NAMES);
   assert.equal(api.captured.tools.every((tool) => tool.parameters.additionalProperties === false), true);
   assert.equal(api.captured.hooks.length, 1);
-  assert.match((await api.captured.hooks[0].handler()).prependSystemContext, /MEDIA:<downloadPath>/u);
+  const systemContext = (await api.captured.hooks[0].handler()).prependSystemContext;
+  assert.match(systemContext, /MEDIA:<downloadPath>/u);
+  assert.match(systemContext, /When clawbio_\* MCP tools are available/u);
 });
 
 test("model-facing OpenFold2 schema exposes only the reliable sequence argument", () => {
@@ -218,12 +220,33 @@ test("OpenClaw enables only configured remote MCP servers and keeps credential p
   assert.equal(config.models.providers.openai.baseUrl, "http://127.0.0.1:18790/v1");
   assert.equal(config.models.providers.claude.baseUrl, "http://127.0.0.1:18790/v1");
   assert.deepEqual(config.models.providers.openai.models[0].agentRuntime, { id: "openclaw" });
-  assert.deepEqual(Object.keys(config.agents.defaults.models), [
-    "nvidia/nvidia/nemotron-3-nano-30b-a3b",
-    "tokenfactory/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
-    "openai/gpt-5.6",
-    "claude/claude-sonnet-5",
-  ]);
+  assert.equal(config.models.providers.tokenfactory.baseUrl, "http://127.0.0.1:18790/v1");
+  assert.equal(config.models.providers.tokenfactory.apiKey, "setup-required");
+  assert.equal(config.models.providers.tokenfactory.api, "openai-completions");
+  assert.equal(config.models.providers.tokenfactory.models.every((model) => model.name.endsWith(" (requires API key)") && model.reasoning === false && model.maxTokens === 1024), true);
+  assert.deepEqual(config.models.providers.tokenfactory.models.map(({ id, contextWindow }) => ({ id, contextWindow })), TOKEN_FACTORY_MODELS.map(({ id, contextWindow }) => ({ id, contextWindow })));
+  const allowedModels = config.agents.defaults.models;
+  assert.deepEqual([...new Set(Object.keys(allowedModels).map((key) => key.slice(0, key.indexOf("/"))))], ["nvidia", "tokenfactory", "openai", "claude"]);
+  assert.deepEqual(Object.keys(allowedModels).filter((key) => key.startsWith("tokenfactory/")), TOKEN_FACTORY_MODELS.map(({ id }) => `tokenfactory/${id}`));
+  assert.deepEqual(Object.values(allowedModels).filter(({ alias }) => alias).map(({ alias }) => alias), TOKEN_FACTORY_MODELS.map(({ alias }) => alias));
+});
+
+test("Token Factory models retain aliases, credential placeholders, and AGENT_MODEL overrides", () => {
+  const configured = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(configured, { AGENT_PROVIDER: "nebius", NEBIUS_API_KEY: "do-not-persist", AGENT_MODEL: "nvidia/nemotron-3_5-lightning" });
+  assert.equal(configured.agents.defaults.model.primary, "tokenfactory/nvidia/Nemotron-3_5-Lightning");
+  assert.equal(configured.models.providers.tokenfactory.baseUrl, "https://api.tokenfactory.nebius.com/v1");
+  assert.equal(configured.models.providers.tokenfactory.apiKey, "${NEBIUS_API_KEY}");
+  assert.equal(configured.models.providers.tokenfactory.models.every((model) => !model.name.includes("requires API key") && model.reasoning === true), true);
+  assert.deepEqual(configured.models.providers.tokenfactory.models.map(({ id, contextWindow, maxTokens }) => ({ id, contextWindow, maxTokens })), TOKEN_FACTORY_MODELS.map(({ id, contextWindow, maxTokens }) => ({ id, contextWindow, maxTokens })));
+  assert.equal(JSON.stringify(configured).includes("do-not-persist"), false);
+
+  const custom = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(custom, { AGENT_PROVIDER: "nebius", NEBIUS_API_KEY: "another-secret", AGENT_MODEL: "example/Custom-Agent-1" });
+  assert.equal(custom.agents.defaults.model.primary, "tokenfactory/example/Custom-Agent-1");
+  assert.equal(custom.models.providers.tokenfactory.models.filter(({ id }) => id === "example/Custom-Agent-1").length, 1);
+  assert.deepEqual(custom.agents.defaults.models["tokenfactory/example/Custom-Agent-1"], {});
+  assert.equal(JSON.stringify(custom).includes("another-secret"), false);
 });
 
 test("OpenAI and Claude use environment placeholders only when authorized", () => {

@@ -7,7 +7,7 @@ import { createUiHandlers } from "./src/ui.mjs";
 import { JSON_SCHEMAS, VALIDATORS } from "./src/validation.mjs";
 import { WorkflowRunner } from "./src/workflows.mjs";
 
-export const PLUGIN_VERSION = "3.1.0";
+export const PLUGIN_VERSION = "3.1.1";
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };
@@ -108,7 +108,7 @@ export default {
       requiredScopes: ["operator.read"],
     });
     api.on("before_prompt_build", async () => ({
-      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. Never ask for or reveal credentials. When a structure artifact has viewerUrl, use that exact absolute URL in a normal Markdown link labeled View structure in 3D; never invent or rewrite its host. Attach the top-ranked structure by emitting its exact absolute downloadPath as MEDIA:<downloadPath> on its own line in the final reply. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
+      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. When clawbio_* MCP tools are available, use them for BioNeMo model work and do not call the direct bionemo_* adapters; use direct bionemo_* only when the MCP tools are absent. Never ask for or reveal credentials. When a structure artifact has viewerUrl, use that exact absolute URL in a normal Markdown link labeled View structure in 3D; never invent or rewrite its host. Attach the top-ranked structure by emitting its exact absolute downloadPath as MEDIA:<downloadPath> on its own line in the final reply. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
     }));
     api.logger.info?.(`BioNeMo Agent Toolkit ${PLUGIN_VERSION} registered ${PUBLIC_CATALOG.skills.length} skills and ${PUBLIC_CATALOG.workflows.length} workflows`);
   },
