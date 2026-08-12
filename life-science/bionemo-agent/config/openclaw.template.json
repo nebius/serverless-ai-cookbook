@@ -21,6 +21,7 @@
     },
     "controlUi": {
       "enabled": true,
+      "root": "/opt/bionemo/control-ui",
       "embedSandbox": "strict",
       "allowExternalEmbedUrls": false,
       "allowedOrigins": []

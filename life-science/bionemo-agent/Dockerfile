@@ -11,7 +11,7 @@ ARG THREEDMOL_VERSION="2.5.5"
 LABEL org.opencontainers.image.title="Nebius BioNeMo Agent Workbench" \
       org.opencontainers.image.description="Authenticated BioNeMo browser agent plus unauthenticated Codex and Claude Code CLIs with NVIDIA BioNeMo skills and MCP" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook/tree/main/life-science/bionemo-agent" \
-      org.opencontainers.image.version="3.1.3" \
+      org.opencontainers.image.version="3.2.0" \
       org.opencontainers.image.licenses="Apache-2.0 AND CC-BY-4.0 AND BSD-3-Clause" \
       io.nebius.bionemo.toolkit.commit="${BIONEMO_TOOLKIT_COMMIT}" \
       io.nebius.openclaw.version="2026.7.1-2" \
@@ -49,7 +49,11 @@ COPY --chmod=0755 runtime/bionemo-agent /usr/local/bin/bionemo-agent
 COPY --chown=node:node workspace /workspace/agent
 COPY --chown=node:node vendor /opt/bionemo/vendor
 
-RUN install -d -o node -g node -m 0700 \
+RUN node /opt/bionemo/runtime/prepare-control-ui.mjs \
+      /app/dist/control-ui \
+      /opt/bionemo/control-ui \
+      /opt/bionemo/runtime/control-ui-default-session.js \
+    && install -d -o node -g node -m 0700 \
       /workspace/agent/artifacts /workspace/state /home/node/.claude/skills \
     && install -d -o root -g root -m 0755 /etc/codex/skills \
     && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /etc/codex/skills/ \

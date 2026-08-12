@@ -4,10 +4,10 @@ import { PUBLIC_CATALOG, SKILLS, TOOLKIT_COMMIT, WORKFLOWS } from "./src/catalog
 import { publicError } from "./src/errors.mjs";
 import { resolveSkillInput, resolveWorkflowInput } from "./src/samples.mjs";
 import { createUiHandlers } from "./src/ui.mjs";
-import { JSON_SCHEMAS, VALIDATORS } from "./src/validation.mjs";
+import { JSON_SCHEMAS, VALIDATORS, normalizeDirectSkillInput } from "./src/validation.mjs";
 import { WorkflowRunner } from "./src/workflows.mjs";
 
-export const PLUGIN_VERSION = "3.1.3";
+export const PLUGIN_VERSION = "3.2.0";
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };
@@ -35,7 +35,8 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
   const client = new NimClient({ fetchImpl, env, logger });
 
   async function runSkill(skillId, rawInput) {
-    const input = VALIDATORS[skillId](await resolveSkillInput(skillId, rawInput));
+    const normalizedInput = normalizeDirectSkillInput(skillId, rawInput);
+    const input = VALIDATORS[skillId](await resolveSkillInput(skillId, normalizedInput));
     const run = await store.createRun({ kind: "skill", id: skillId, inputSummary: summaryForSkill(skillId, input) });
     try {
       const result = await client.call(skillId, input);
@@ -108,7 +109,7 @@ export default {
       requiredScopes: ["operator.read"],
     });
     api.on("before_prompt_build", async () => ({
-      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. When clawbio_* MCP tools are available, use them for BioNeMo model work and do not call the direct bionemo_* adapters; use direct bionemo_* only when the MCP tools are absent. Never ask for or reveal credentials. When a structure artifact has viewerUrl, use that exact absolute URL in a normal Markdown link labeled View structure in 3D; never invent or rewrite its host. Attach the top-ranked structure by emitting its exact absolute downloadPath as MEDIA:<downloadPath> on its own line in the final reply. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
+      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. When clawbio_* MCP tools are available, use them for BioNeMo model work and do not call the direct bionemo_* adapters; use direct bionemo_* only when the MCP tools are absent. Follow every displayed tool schema exactly. Pass direct bionemo_* arguments as one flat JSON object. Adapted clawbio_* submission arguments are also flat: pass request fields at the top level as native JSON values plus only the displayed ack_* booleans after explicit user acceptance. Never send request, acknowledgements, or idempotency_key envelope fields, and never stringify an array or object. Never ask for or reveal credentials. When a structure artifact has viewerUrl, use that exact absolute URL in a normal Markdown link labeled View structure in 3D; never invent or rewrite its host. Attach the top-ranked structure by emitting its exact absolute downloadPath as MEDIA:<downloadPath> on its own line in the final reply. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
     }));
     api.logger.info?.(`BioNeMo Agent Toolkit ${PLUGIN_VERSION} registered ${PUBLIC_CATALOG.skills.length} skills and ${PUBLIC_CATALOG.workflows.length} workflows`);
   },

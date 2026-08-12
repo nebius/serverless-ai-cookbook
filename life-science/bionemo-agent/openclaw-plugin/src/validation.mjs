@@ -96,6 +96,39 @@ function assertRequestSize(value) {
   if (bytes > LIMITS.requestBytes) throw new InputError(`request exceeds ${LIMITS.requestBytes} bytes`);
 }
 
+function parsedJsonObject(value, label) {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value !== "string" || value.length > LIMITS.requestBytes) {
+    throw new InputError(`${label} must be a JSON object, not a serialized scalar`);
+  }
+  try {
+    return assertObject(JSON.parse(value), label);
+  } catch (error) {
+    if (error instanceof InputError) throw error;
+    throw new InputError(`${label} must contain a valid JSON object`);
+  }
+}
+
+// Recovery for a known small-model failure mode: the model sometimes applies
+// the remote Cerebrium MCP envelope to the direct OpenFold2 tool and serializes
+// its nested objects. The compatibility envelope is stripped before sample
+// resolution and the normal strict OpenFold2 validator still owns the payload.
+export function normalizeDirectSkillInput(skillId, input) {
+  if (skillId !== "openfold2" || !input || typeof input !== "object" || Array.isArray(input) || !Object.hasOwn(input, "request")) return input;
+  assertRequestSize(input);
+  const envelope = assertObject(input);
+  onlyKeys(envelope, ["request", "acknowledgements", "idempotency_key"], "OpenFold2 compatibility envelope");
+  required(envelope, ["request"], "OpenFold2 compatibility envelope");
+  const request = parsedJsonObject(envelope.request, "request");
+  if (envelope.acknowledgements !== undefined) {
+    const acknowledgements = parsedJsonObject(envelope.acknowledgements, "acknowledgements");
+    onlyKeys(acknowledgements, ["research_only", "non_clinical", "non_commercial", "aup_accepted", "biosafety_review_required", "no_safety_or_therapeutic_claims"], "acknowledgements");
+    for (const [key, value] of Object.entries(acknowledgements)) bool(value, `acknowledgements.${key}`);
+  }
+  optional(envelope, "idempotency_key", (item) => string(item, "idempotency_key", { min: 1, max: 256 }));
+  return request;
+}
+
 function final(value) {
   assertRequestSize(value);
   return structuredClone(value);
@@ -340,12 +373,10 @@ export const JSON_SCHEMAS = Object.freeze({
   genmol: { type: "object", additionalProperties: false, required: ["smiles"], properties: { smiles: { type: "string", description: "SAFE notation (upstream field name is smiles)." }, num_molecules: { type: "integer", minimum: 1, maximum: 100 }, scoring: { type: "string", enum: ["QED", "LogP"] }, unique: { type: "boolean" }, temperature: { type: "string" }, noise: { type: "string" }, step_size: { type: "integer" } } },
   molmim: { type: "object", additionalProperties: false, required: ["smi"], properties: { smi: { type: "string" }, algorithm: { type: "string", enum: ["CMA-ES", "none"] }, num_molecules: { type: "integer" }, num_iterations: { type: "integer" }, property_name: { type: "string", enum: ["QED", "plogP"] }, minimize: { type: "boolean" }, min_similarity: { type: "number" }, particles: { type: "integer" }, radius: { type: "number" } } },
   msa_search: { type: "object", additionalProperties: false, properties: { sequence: { type: "string" }, sequences: { type: "array", items: { type: "string" } }, databases: { type: "array", items: { type: "string" } }, e_value: { type: "number" }, iterations: { type: "integer" }, max_msa_sequences: { type: "integer" }, output_alignment_formats: { type: "array", items: { type: "string", enum: ["a3m", "fasta"] } } } },
-  // Keep the model-facing OpenFold2 contract deliberately small. Nemotron is
-  // reliable with the single required sequence, while exposing every optional
-  // upstream field can make it serialize several parameters into one malformed
-  // tool argument. The runtime validator still supports the full bounded
-  // OpenFold2 input for direct/programmatic calls.
-  openfold2: { type: "object", additionalProperties: false, required: ["sequence"], properties: { sequence: { type: "string", description: "Protein amino-acid sequence to fold." } } },
+  // Keep the model-facing OpenFold2 contract deliberately small. Compatibility
+  // envelope recovery exists only inside the executor and is not advertised to
+  // the model, so it cannot reinforce confusion with remote MCP contracts.
+  openfold2: { type: "object", additionalProperties: false, required: ["sequence"], properties: { sequence: { type: "string", description: "Protein amino-acid sequence to fold directly. Do not wrap or stringify it." } } },
   openfold3: { type: "object", additionalProperties: false, required: ["inputs"], properties: { inputs: { type: "array", minItems: 1, maxItems: 1 } } },
   proteinmpnn: { type: "object", additionalProperties: false, properties: { input_pdb: { type: "string" }, input_pdb_sample: { type: "string", enum: ["egfr_kinase_public"] }, input_pdb_chains: { type: "array", items: { type: "string" } }, ca_only: { type: "boolean" }, use_soluble_model: { type: "boolean" }, random_seed: { type: "integer" }, num_seq_per_target: { type: "integer" }, sampling_temp: { type: "array", items: { type: "number" } }, fixed_positions_jsonl: { type: "string" }, omit_AAs: { type: "array", items: { type: "string" } } } },
   rfdiffusion: { type: "object", additionalProperties: false, required: ["contigs"], properties: { input_pdb: { type: "string" }, input_pdb_sample: { type: "string", enum: ["egfr_kinase_public"] }, contigs: { type: "string" }, hotspot_res: { type: "array", items: { type: "string" } }, diffusion_steps: { type: "integer" }, random_seed: { type: "integer" } } },

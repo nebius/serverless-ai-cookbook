@@ -19,6 +19,12 @@ Safety and execution boundaries:
 - Direct tools call fixed NVIDIA-hosted NIM routes. MCP tools call the configured
   remote BioNeMo service. Do not claim that this image itself runs a NIM
   container, model weight, GPU, Forge workload, or Nebius resource.
+- Use the BioNeMo backend whose tools are actually available; never substitute a
+  hidden direct tool for an MCP tool or vice versa. Both tool families expose
+  flat arguments. For `clawbio_*` submissions, put request fields at the top
+  level, keep arrays and objects as native JSON, and set only the displayed
+  `ack_*` fields after explicit user acceptance. Never construct or stringify
+  the upstream `request`, `acknowledgements`, or `idempotency_key` envelope.
 - Do not offer to create, change, or delete Nebius resources. Participant
   deployment is an operator-run runbook outside the agent.
 - Keep requests event-sized. Ask for confirmation before the binder workflow

@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { configureOpenClaw, normalizedEnvironment } from "./runtime-config.mjs";
+import { capabilities, configureOpenClaw, normalizedEnvironment } from "./runtime-config.mjs";
+import { startMcpSchemaAdapter } from "./mcp-schema-adapter.mjs";
 import { prepareClients } from "./prepare-clients.mjs";
 import { startSetupServer } from "./setup-server.mjs";
 
@@ -115,8 +116,13 @@ async function main() {
   const configPath = runtimeEnv.OPENCLAW_CONFIG_PATH || path.join(stateDir, "openclaw.json");
   const templatePath = runtimeEnv.BIONEMO_CONFIG_TEMPLATE || "/opt/bionemo/config/openclaw.template.json";
   const setupPort = Number(runtimeEnv.BIONEMO_SETUP_PORT || 18790);
+  const mcpAdapterPort = Number(runtimeEnv.BIONEMO_MCP_ADAPTER_PORT || 18791);
+  if (!Number.isInteger(setupPort) || setupPort < 1024 || setupPort > 65535) throw new Error("BIONEMO_SETUP_PORT must be an integer between 1024 and 65535");
+  if (!Number.isInteger(mcpAdapterPort) || mcpAdapterPort < 1024 || mcpAdapterPort > 65535) throw new Error("BIONEMO_MCP_ADAPTER_PORT must be an integer between 1024 and 65535");
+  if (new Set([port, setupPort, mcpAdapterPort]).size !== 3) throw new Error("Gateway, setup, and MCP adapter ports must be distinct");
   const mode = exposureMode(runtimeEnv);
   let tunnel = null;
+  let mcpAdapter = null;
   let publicOrigin = null;
   const origins = [`http://127.0.0.1:${port}`, `http://localhost:${port}`];
 
@@ -136,6 +142,25 @@ async function main() {
     process.stdout.write("External HTTPS exposure disabled; only local browser origins are configured.\n");
   }
   if (publicOrigin) origins.push(publicOrigin);
+
+  const initialCapabilities = capabilities(runtimeEnv);
+  if (initialCapabilities.modelBackend === "mcp") {
+    mcpAdapter = await startMcpSchemaAdapter({
+      upstreamUrl: initialCapabilities.mcpUrl,
+      apiKey: runtimeEnv.BIONEMO_MCP_API_KEY,
+      port: mcpAdapterPort,
+    });
+    // The browser workbench consumes the flattened loopback MCP contract. The
+    // adapter alone holds and forwards the upstream credential.
+    mcpAdapter.server.unref();
+    runtimeEnv.BIONEMO_MCP_URL = mcpAdapter.url;
+    runtimeEnv.BIONEMO_ALLOW_INSECURE_MCP = "true";
+    // Any client prepared inside this launcher process must retain the same
+    // adapter URL rather than restoring the raw upstream wrapper schemas.
+    process.env.BIONEMO_MCP_URL = mcpAdapter.url;
+    process.env.BIONEMO_ALLOW_INSECURE_MCP = "true";
+    process.stdout.write("BioNeMo MCP schema adapter: active on loopback; remote request envelopes are normalized locally.\n");
+  }
 
   const capabilityState = await writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env: runtimeEnv, setupPort });
   const devicePairingRequired = parseBoolean(runtimeEnv.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
@@ -160,6 +185,7 @@ async function main() {
     stopping = true;
     if (!gateway.killed) gateway.kill(signal);
     if (tunnel && !tunnel.child.killed) tunnel.child.kill(signal);
+    mcpAdapter?.server.close();
     setupServer?.close();
   };
   process.on("SIGTERM", () => stop("SIGTERM"));

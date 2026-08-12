@@ -1,16 +1,20 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { EXACT_TOOL_NAMES } from "../openclaw-plugin/src/catalog.mjs";
 
 export const DEFAULT_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
 export const NVIDIA_MODEL = "nvidia/nemotron-3-nano-30b-a3b";
 export const NEBIUS_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
+// Token Factory's /v1/models catalog currently under-reports Lightning, Super,
+// and Ultra as 8K. These are the serving limits returned by live request
+// validation on 2026-08-12; using 8K makes OpenClaw compact on ordinary prompts.
 export const TOKEN_FACTORY_MODELS = Object.freeze([
   Object.freeze({ id: NEBIUS_MODEL, alias: "Nemotron 3 Nano", contextWindow: 262144, maxTokens: 8192 }),
-  Object.freeze({ id: "nvidia/Nemotron-3_5-Lightning", alias: "Nemotron 3.5 Lightning", contextWindow: 8000, maxTokens: 4096 }),
-  Object.freeze({ id: "nvidia/nemotron-3-super-120b-a12b", alias: "Nemotron 3 Super", contextWindow: 8000, maxTokens: 4096 }),
-  Object.freeze({ id: "nvidia/Nemotron-3-Ultra-550b-a55b", alias: "Nemotron 3 Ultra", contextWindow: 8000, maxTokens: 4096 }),
+  Object.freeze({ id: "nvidia/Nemotron-3_5-Lightning", alias: "Nemotron 3.5 Lightning", contextWindow: 1048576, maxTokens: 4096 }),
+  Object.freeze({ id: "nvidia/nemotron-3-super-120b-a12b", alias: "Nemotron 3 Super", contextWindow: 262144, maxTokens: 4096, compat: Object.freeze({ maxTokensField: "max_tokens" }) }),
+  Object.freeze({ id: "nvidia/Nemotron-3-Ultra-550b-a55b", alias: "Nemotron 3 Ultra", contextWindow: 1048576, maxTokens: 4096 }),
   Object.freeze({ id: "openai/gpt-oss-120b", alias: "GPT-OSS 120B", contextWindow: 131072, maxTokens: 8192 }),
   Object.freeze({ id: "Qwen/Qwen3-32B", alias: "Qwen3 32B", contextWindow: 40960, maxTokens: 8192 }),
   Object.freeze({ id: "zai-org/GLM-5.1", alias: "GLM 5.1", contextWindow: 202752, maxTokens: 8192 }),
@@ -81,9 +85,10 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   const setupBaseUrl = `http://127.0.0.1:${setupPort}/v1`;
   const modelId = (provider, fallback) => state.reasoningProvider === provider && state.env.AGENT_MODEL ? state.env.AGENT_MODEL : fallback;
   const compatibleProvider = ({ configured, baseUrl, apiKey, api, models, agentRuntime }) => {
-    const definitions = models.map(({ id, name = id, contextWindow = 262144, maxTokens = 8192, reasoning = true }) => {
+    const definitions = models.map(({ id, name = id, contextWindow = 262144, maxTokens = 8192, reasoning = true, compat }) => {
       const definition = { id, name: `${name}${configured ? "" : " (requires API key)"}`, reasoning: configured && reasoning, input: ["text"], contextWindow, maxTokens: configured ? maxTokens : 1024 };
       if (agentRuntime) definition.agentRuntime = agentRuntime;
+      if (compat) definition.compat = { ...compat };
       return definition;
     });
     return {
@@ -127,7 +132,8 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   };
 
   config.mcp = { sessionIdleTtlMs: 600000, servers: {} };
-  if (state.mcp) {
+  const useClawBioMcp = state.modelBackend === "mcp";
+  if (useClawBioMcp) {
     config.mcp.servers.clawbio_models = {
       url: state.mcpUrl, transport: "streamable-http", timeout: 900,
       headers: { Authorization: "Bearer ${BIONEMO_MCP_API_KEY}" },
@@ -139,9 +145,20 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
       headers: { Authorization: "Bearer ${TAVILY_API_KEY}", DEFAULT_PARAMETERS: "{\"search_depth\":\"basic\",\"max_results\":5,\"include_raw_content\":false,\"include_images\":false}" },
     };
   }
-  if (state.mcp || state.tavily) {
+  if (useClawBioMcp || state.tavily) {
     config.tools.deny = config.tools.deny.filter((name) => name !== "bundle-mcp");
     if (!config.tools.alsoAllow.includes("bundle-mcp")) config.tools.alsoAllow.push("bundle-mcp");
+  }
+  if (useClawBioMcp) {
+    // Never show two incompatible contracts for the same BioNeMo operation.
+    // The remote MCP adapter is the selected backend, so hide the direct NIM
+    // plugin tools instead of asking the reasoning model to choose between a
+    // flat direct schema and an enveloped remote schema.
+    const directTools = new Set(EXACT_TOOL_NAMES);
+    config.tools.alsoAllow = config.tools.alsoAllow.filter((name) => !directTools.has(name));
+    for (const name of EXACT_TOOL_NAMES) {
+      if (!config.tools.deny.includes(name)) config.tools.deny.push(name);
+    }
   }
   return state;
 }

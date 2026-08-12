@@ -8,7 +8,8 @@ import { NimClient, __test as clientInternals } from "../openclaw-plugin/src/cli
 import { EXACT_TOOL_NAMES, NVIDIA_HOST, SKILLS } from "../openclaw-plugin/src/catalog.mjs";
 import { publicError, redactSecrets, redactText } from "../openclaw-plugin/src/errors.mjs";
 import { resolveSkillInput, resolveWorkflowInput } from "../openclaw-plugin/src/samples.mjs";
-import { LIMITS, VALIDATORS, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
+import { createRuntime } from "../openclaw-plugin/index.mjs";
+import { LIMITS, VALIDATORS, normalizeDirectSkillInput, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
 
 const PDB = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\nATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n";
 const PROTEIN = "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ";
@@ -85,6 +86,34 @@ test("drug discovery rejects invented SAFE labels before calling GenMol", async 
   );
 });
 
+test("direct OpenFold2 recovers the exact accidental stringified MCP envelope", async (t) => {
+  const accidentalEnvelope = {
+    request: "{\"sequence\": \"MKTIIALSYIFCLVFADALKL\"}",
+    acknowledgements: "{\"research_only\": true, \"non_clinical\": true, \"non_commercial\": true, \"aup_accepted\": true}",
+    idempotency_key: "openfold2-demo-1422",
+  };
+  assert.deepEqual(normalizeDirectSkillInput("openfold2", accidentalEnvelope), { sequence: "MKTIIALSYIFCLVFADALKL" });
+  assert.throws(
+    () => normalizeDirectSkillInput("openfold2", { ...accidentalEnvelope, sequence: PROTEIN }),
+    /unsupported fields: sequence/u,
+  );
+
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-openfold-envelope-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  let forwarded;
+  const runtime = createRuntime({
+    artifactRoot: root,
+    env: { NVIDIA_API_KEY: "unit-test-key" },
+    logger: { info() {} },
+    fetchImpl: async (_url, init) => {
+      forwarded = JSON.parse(init.body);
+      return new Response(JSON.stringify({ result: { structure: "ATOM      1  CA  ALA A   1", format: "pdb" } }), { status: 200 });
+    },
+  });
+  await runtime.runSkill("openfold2", accidentalEnvelope);
+  assert.deepEqual(forwarded, { sequence: "MKTIIALSYIFCLVFADALKL" });
+});
+
 test("NIM client uses only the fixed HTTPS NVIDIA route and redacts credentials", async () => {
   const calls = [];
   const logs = [];
@@ -136,7 +165,10 @@ test("NIM client surfaces auth, rate limit, output limit, and missing-key errors
 
   const largeClient = new NimClient({ env: { NVIDIA_API_KEY: "secret" }, retries: 0, fetchImpl: async () => new Response("{}", { status: 200, headers: { "content-length": String(LIMITS.responseBytes + 1) } }) });
   await assert.rejects(() => largeClient.call("evo2", VALID_INPUTS.evo2), /response exceeds/u);
-  await assert.rejects(() => new NimClient({ env: {}, retries: 0, fetchImpl: async () => new Response("{}") }).call("evo2", VALID_INPUTS.evo2), /not configured/u);
+  await assert.rejects(
+    () => new NimClient({ env: {}, retries: 0, fetchImpl: async () => new Response("{}") }).call("evo2", VALID_INPUTS.evo2),
+    (error) => publicError(error).code === "missing_nvidia_key" && /not configured/u.test(publicError(error).message),
+  );
 });
 
 test("URL constructor rejects every host/path escape", () => {

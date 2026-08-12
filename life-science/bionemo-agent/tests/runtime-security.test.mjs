@@ -205,6 +205,7 @@ test("static OpenClaw policy denies every general-purpose capability", async () 
   assert.equal(config.tools.exec.mode, "deny");
   assert.equal(config.tools.elevated.enabled, false);
   assert.equal(config.gateway.terminal.enabled, false);
+  assert.equal(config.gateway.controlUi.root, "/opt/bionemo/control-ui");
   assert.equal(config.gateway.auth.mode, "token");
   assert.equal(config.gateway.auth.token, "${OPENCLAW_GATEWAY_TOKEN}");
   assert.deepEqual(config.gateway.tools.deny, ["*"]);
@@ -255,6 +256,8 @@ test("OpenClaw enables only configured remote MCP servers and keeps credential p
   assert.equal(config.mcp.servers.tavily.headers.Authorization, "Bearer ${TAVILY_API_KEY}");
   assert.ok(config.tools.alsoAllow.includes("bundle-mcp"));
   assert.equal(config.tools.deny.includes("bundle-mcp"), false);
+  assert.equal(config.tools.alsoAllow.some((name) => EXACT_TOOL_NAMES.includes(name)), false);
+  assert.equal(EXACT_TOOL_NAMES.every((name) => config.tools.deny.includes(name)), true);
   assert.deepEqual(Object.keys(config.models.providers), ["nvidia", "tokenfactory", "openai", "claude", "setup"]);
   assert.match(config.models.providers.openai.models[0].name, /requires API key/u);
   assert.match(config.models.providers.claude.models[0].name, /Anthropic Claude.*requires API key/u);
@@ -270,6 +273,19 @@ test("OpenClaw enables only configured remote MCP servers and keeps credential p
   assert.deepEqual([...new Set(Object.keys(allowedModels).map((key) => key.slice(0, key.indexOf("/"))))], ["nvidia", "tokenfactory", "openai", "claude"]);
   assert.deepEqual(Object.keys(allowedModels).filter((key) => key.startsWith("tokenfactory/")), TOKEN_FACTORY_MODELS.map(({ id }) => `tokenfactory/${id}`));
   assert.deepEqual(Object.values(allowedModels).filter(({ alias }) => alias).map(({ alias }) => alias), TOKEN_FACTORY_MODELS.map(({ alias }) => alias));
+});
+
+test("an explicit NVIDIA BioNeMo backend does not also expose the incompatible MCP contracts", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [...EXACT_TOOL_NAMES], deny: ["bundle-mcp"] } };
+  const state = configureOpenClaw(config, {
+    BIONEMO_BACKEND: "nvidia",
+    NVIDIA_API_KEY: "n",
+    BIONEMO_MCP_API_KEY: "m",
+  });
+  assert.equal(state.modelBackend, "nvidia");
+  assert.deepEqual(config.mcp.servers, {});
+  assert.deepEqual(config.tools.alsoAllow, EXACT_TOOL_NAMES);
+  assert.equal(config.tools.deny.includes("bundle-mcp"), true);
 });
 
 test("Token Factory models retain aliases, credential placeholders, and AGENT_MODEL overrides", () => {

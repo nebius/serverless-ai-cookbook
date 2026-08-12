@@ -46,7 +46,10 @@ export function publicError(error) {
   let message = redactText(error?.message || "Unexpected BioNeMo adapter error");
   let code = error?.code || "internal_error";
 
-  if (status === 401 || status === 403) {
+  if ((status === 401 || status === 403) && error?.code === "missing_nvidia_key") {
+    code = "missing_nvidia_key";
+    message = "NVIDIA_API_KEY or NGC_API_KEY is not configured through the endpoint secret environment.";
+  } else if (status === 401 || status === 403) {
     code = "nvidia_auth_or_entitlement";
     message = "NVIDIA rejected the request. Verify the participant NVIDIA API key and NIM entitlement.";
   } else if (status === 404) {

@@ -40,8 +40,12 @@ The Token Factory picker exposes a curated agent-capable catalog: Nemotron 3
 Nano, Nemotron 3.5 Lightning, Nemotron 3 Super, Nemotron 3 Ultra, GPT-OSS 120B,
 Qwen3 32B, GLM 5.1, and DeepSeek V4 Pro. Nano remains the default because its
 262K context window is the safest fit for the workbench's tool schemas. The
-Lightning, Super, and Ultra routes currently advertise 8K context windows, so
-prefer them for bounded event demonstrations rather than long tool sessions.
+live service accepts 1,048,576-token contexts for Lightning and Ultra and a
+262,144-token context for Super even though the model catalog currently
+under-reports those three as 8K. The image supplies the verified limits so
+OpenClaw does not compact ordinary sessions prematurely. It also sends
+`max_tokens` specifically for Super, whose route rejects
+`max_completion_tokens`.
 
 Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
@@ -50,14 +54,24 @@ model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
 All four external providers remain visible in the model selector when their
 credentials are absent. An unavailable selection is routed to the local setup
 responder, which explains the exact environment key to add instead of sending
-an unauthorized request upstream. `auto` prefers NVIDIA, then Token Factory,
-OpenAI, and Claude in that order.
+an unauthorized request upstream. The image-owned Control UI opens the
+canonical BioNeMo session before the first authenticated connection, so the
+complete provider and model catalog is populated without a reload or a visit
+to the debug page. Explicit session links and non-chat routes are preserved.
+`auto` prefers NVIDIA, then Token Factory, OpenAI, and Claude in that order.
 
 BioNeMo model tools use `BIONEMO_BACKEND=auto`:
 
 - `BIONEMO_MCP_API_KEY` selects the configured MCP server;
 - otherwise an NVIDIA key selects the direct hosted-NIM adapters; and
 - otherwise tools report that model access is unavailable.
+
+Only the selected BioNeMo backend is exposed to the reasoning model. In MCP
+mode, a loopback schema adapter flattens Cerebrium's transport envelope and
+hides the duplicate direct tools; in NVIDIA mode, the direct tools remain
+visible and the Cerebrium catalog is absent. This keeps one unambiguous tool
+contract per operation for the browser workbench. The bundled Codex and Claude
+clients remain available for separately authenticated interactive use.
 
 The default MCP endpoint is:
 
@@ -84,7 +98,7 @@ images.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.1.3` |
+| Workbench | `3.2.0` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -126,7 +140,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.1.3"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.2.0"
 ./scripts/build_image.sh
 ```
 
@@ -147,7 +161,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.1.3-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.2.0-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -218,8 +232,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.1.3-test .
-docker run --rm bionemo-agent:3.1.3-test doctor
+docker build -t bionemo-agent:3.2.0-test .
+docker run --rm bionemo-agent:3.2.0-test doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`

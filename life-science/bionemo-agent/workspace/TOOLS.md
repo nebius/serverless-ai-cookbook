@@ -1,6 +1,6 @@
 # Tool boundary
 
-This agent has exactly thirteen scientific tools:
+The direct NVIDIA backend has exactly thirteen scientific tools:
 
 - Atomic NIM tools: `bionemo_boltz2`, `bionemo_diffdock`, `bionemo_evo2`,
   `bionemo_genmol`, `bionemo_molmim`, `bionemo_msa_search`,
@@ -12,3 +12,9 @@ This agent has exactly thirteen scientific tools:
 All requests are validated by task-owned adapters, sent only to
 `https://health.api.nvidia.com`, bounded by timeout and size limits, and saved
 under an isolated artifact root. No general-purpose execution tool is enabled.
+
+When the `clawbio_*` MCP tools are present, they are the selected BioNeMo
+backend and the direct tools above are hidden. Follow their displayed flat
+schemas: pass request fields at the top level, use native JSON arrays and
+objects, and include only required `ack_*` booleans after explicit acceptance.
+The local adapter creates the remote request envelope and idempotency key.
