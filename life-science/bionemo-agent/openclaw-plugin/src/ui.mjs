@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { PUBLIC_CATALOG } from "./catalog.mjs";
+import { VIEWER_ROUTE_PREFIX } from "./artifacts.mjs";
 import { publicError, redactSecrets } from "./errors.mjs";
 import { capabilities } from "../../runtime/runtime-config.mjs";
 
@@ -77,7 +78,8 @@ export function createUiHandlers({ store, env = process.env, runtimeVersion }) {
     async viewer(req, res) {
       try {
         const url = new URL(req.url || "/", "http://localhost");
-        const match = url.pathname.match(/^\/plugins\/bionemo\/view\/([a-f0-9-]{36})\/([A-Za-z0-9][A-Za-z0-9._-]{0,127})$/u);
+        const escapedPrefix = VIEWER_ROUTE_PREFIX.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+        const match = url.pathname.match(new RegExp(`^${escapedPrefix}/([a-f0-9-]{36})/([A-Za-z0-9][A-Za-z0-9._-]{0,127})$`, "u"));
         if (req.method !== "GET" || !match) { sendJson(res, 404, { code: "not_found", message: "Unknown BioNeMo viewer route" }); return true; }
         const artifact = await store.openViewerArtifact(match[1], match[2], url.searchParams.get("access"));
         let structure;

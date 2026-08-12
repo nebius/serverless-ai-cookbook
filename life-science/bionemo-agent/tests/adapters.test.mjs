@@ -231,7 +231,7 @@ test("structure artifacts expose a one-click viewer capability without persistin
   const run = await store.createRun({ kind: "skill", id: "openfold2" });
   await store.save(run, "ranked-1.pdb", "ATOM      1  CA  ALA A   1\n");
   const [presented] = store.presentArtifacts(run);
-  assert.match(presented.viewerUrl, new RegExp(`^/plugins/bionemo/view/${run.runId}/ranked-1\\.pdb\\?access=`));
+  assert.match(presented.viewerUrl, new RegExp(`^/bionemo/view/${run.runId}/ranked-1\\.pdb\\?access=`));
   const access = new URL(presented.viewerUrl, "https://example.test").searchParams.get("access");
   const opened = await store.openViewerArtifact(run.runId, "ranked-1.pdb", access);
   await opened.handle.close();
@@ -247,7 +247,7 @@ test("structure viewer URLs use only a validated configured public origin", asyn
   const store = await new ArtifactStore(root, { publicBaseUrl: "https://agent.example.test" }).initialize();
   const run = await store.createRun({ kind: "skill", id: "openfold2" });
   await store.save(run, "ranked-1.pdb", "ATOM      1  CA  ALA A   1\n");
-  assert.match(store.presentArtifacts(run)[0].viewerUrl, /^https:\/\/agent\.example\.test\/plugins\/bionemo\/view\//u);
+  assert.match(store.presentArtifacts(run)[0].viewerUrl, /^https:\/\/agent\.example\.test\/bionemo\/view\//u);
   const relativeStore = await new ArtifactStore(root, { publicBaseUrl: "https://user:password@example.test/path" }).initialize();
-  assert.match(relativeStore.presentArtifacts(run)[0].viewerUrl, /^\/plugins\/bionemo\/view\//u);
+  assert.match(relativeStore.presentArtifacts(run)[0].viewerUrl, /^\/bionemo\/view\//u);
 });

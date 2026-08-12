@@ -8,6 +8,11 @@ import { InputError, redactSecrets } from "./errors.mjs";
 const RUN_ID = /^[a-f0-9-]{36}$/u;
 const FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
 const STRUCTURE_EXTENSIONS = new Set([".cif", ".mmcif", ".pdb"]);
+// OpenClaw 2026.7.1 treats root-relative /plugins/* Markdown links as
+// documentation paths and rewrites them onto docs.openclaw.ai. Keep the
+// capability URL on an application-owned top-level route so the Control UI
+// preserves it as a same-origin link on dynamically assigned Nebius URLs.
+export const VIEWER_ROUTE_PREFIX = "/bionemo/view";
 const CONTENT_TYPES = Object.freeze({
   ".json": "application/json; charset=utf-8",
   ".cif": "chemical/x-mmcif",
@@ -178,7 +183,7 @@ export class ArtifactStore {
   presentArtifacts(run) {
     return run.manifest.artifacts.map((artifact) => {
       if (!STRUCTURE_EXTENSIONS.has(path.extname(artifact.name).toLowerCase())) return artifact;
-      const viewerPath = `/plugins/bionemo/view/${run.runId}/${encodeURIComponent(artifact.name)}?access=${encodeURIComponent(run.viewerCapability)}`;
+      const viewerPath = `${VIEWER_ROUTE_PREFIX}/${run.runId}/${encodeURIComponent(artifact.name)}?access=${encodeURIComponent(run.viewerCapability)}`;
       return {
         ...artifact,
         viewerUrl: this.publicBaseUrl ? new URL(viewerPath, `${this.publicBaseUrl}/`).toString() : viewerPath,

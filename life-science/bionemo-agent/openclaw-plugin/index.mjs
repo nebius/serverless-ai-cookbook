@@ -1,4 +1,4 @@
-import { ArtifactStore } from "./src/artifacts.mjs";
+import { ArtifactStore, VIEWER_ROUTE_PREFIX } from "./src/artifacts.mjs";
 import { NimClient } from "./src/client.mjs";
 import { PUBLIC_CATALOG, SKILLS, TOOLKIT_COMMIT, WORKFLOWS } from "./src/catalog.mjs";
 import { publicError } from "./src/errors.mjs";
@@ -7,7 +7,7 @@ import { createUiHandlers } from "./src/ui.mjs";
 import { JSON_SCHEMAS, VALIDATORS, normalizeDirectSkillInput } from "./src/validation.mjs";
 import { WorkflowRunner } from "./src/workflows.mjs";
 
-export const PLUGIN_VERSION = "3.2.2";
+export const PLUGIN_VERSION = "3.2.3";
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };
@@ -94,7 +94,7 @@ export default {
     const handlers = createUiHandlers({ store: runtime.store, runtimeVersion: PLUGIN_VERSION });
     api.registerHttpRoute({ path: "/plugins/bionemo/readiness", auth: "plugin", match: "exact", handler: handlers.readiness });
     api.registerHttpRoute({ path: "/plugins/bionemo/assets/3dmol.min.js", auth: "plugin", match: "exact", handler: handlers.viewerAsset });
-    api.registerHttpRoute({ path: "/plugins/bionemo/view", auth: "plugin", match: "prefix", handler: handlers.viewer });
+    api.registerHttpRoute({ path: VIEWER_ROUTE_PREFIX, auth: "plugin", match: "prefix", handler: handlers.viewer });
     api.registerHttpRoute({ path: "/plugins/bionemo", auth: "plugin", match: "exact", handler: handlers.dashboard });
     api.registerHttpRoute({ path: "/plugins/bionemo/api", auth: "gateway", match: "prefix", handler: handlers.api });
     api.session.controls.registerControlUiDescriptor({

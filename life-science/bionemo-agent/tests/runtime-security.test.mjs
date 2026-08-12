@@ -54,6 +54,9 @@ test("dashboard data and artifacts are gateway-authenticated while readiness is 
   assert.equal(route("/plugins/bionemo/api").auth, "gateway");
   assert.equal(route("/plugins/bionemo").auth, "plugin");
   assert.equal(route("/plugins/bionemo/readiness").auth, "plugin");
+  assert.equal(route("/bionemo/view").auth, "plugin");
+  assert.equal(route("/bionemo/view").match, "prefix");
+  assert.equal(route("/plugins/bionemo/view"), undefined);
   assert.equal(api.captured.controls[0].path, "/plugins/bionemo");
   assert.deepEqual(api.captured.controls[0].requiredScopes, ["operator.read"]);
 });
