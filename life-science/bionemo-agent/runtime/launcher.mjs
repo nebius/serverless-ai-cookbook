@@ -1,13 +1,14 @@
 import { spawn } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { configureOpenClaw, normalizedEnvironment } from "./runtime-config.mjs";
+import { prepareClients } from "./prepare-clients.mjs";
+import { startSetupServer } from "./setup-server.mjs";
 
 export const CLOUDFLARED_URL_PATTERN = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/iu;
 
 function requireEnvironment(env) {
   const missing = [];
-  if (!env.NEBIUS_API_KEY) missing.push("NEBIUS_API_KEY");
-  if (!(env.NVIDIA_API_KEY || env.NGC_API_KEY)) missing.push("NVIDIA_API_KEY (or NGC_API_KEY)");
   if (!(env.AUTH_TOKEN || env.OPENCLAW_GATEWAY_TOKEN)) missing.push("AUTH_TOKEN (or OPENCLAW_GATEWAY_TOKEN)");
   if (missing.length) throw new Error(`Missing required MysteryBox-backed environment values: ${missing.join(", ")}`);
   const gatewayToken = env.OPENCLAW_GATEWAY_TOKEN || env.AUTH_TOKEN;
@@ -59,9 +60,10 @@ async function startQuickTunnel(port, { spawnImpl = spawn, timeoutMs = 45_000 } 
   return { child, origin };
 }
 
-async function writeRuntimeFiles({ templatePath, configPath, stateDir, origins }) {
+async function writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env = process.env, setupPort = 18790 }) {
   const config = JSON.parse(await readFile(templatePath, "utf8"));
   config.gateway.controlUi.allowedOrigins = [...new Set(origins)];
+  const capabilityState = configureOpenClaw(config, env, setupPort);
   await mkdir(path.dirname(configPath), { recursive: true, mode: 0o700 });
   await mkdir(stateDir, { recursive: true, mode: 0o700 });
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
@@ -74,31 +76,40 @@ async function writeRuntimeFiles({ templatePath, configPath, stateDir, origins }
   const approvalsPath = path.join(stateDir, "exec-approvals.json");
   await writeFile(approvalsPath, `${JSON.stringify(approvals, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   await chmod(approvalsPath, 0o600);
+  return capabilityState;
 }
 
 async function main() {
-  const gatewayToken = requireEnvironment(process.env);
-  const port = Number(process.env.PORT || process.env.OPENCLAW_GATEWAY_PORT || 18789);
+  const runtimeEnv = normalizedEnvironment(process.env);
+  const gatewayToken = requireEnvironment(runtimeEnv);
+  const port = Number(runtimeEnv.PORT || runtimeEnv.OPENCLAW_GATEWAY_PORT || 18789);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("PORT must be an integer between 1024 and 65535");
-  const stateDir = process.env.OPENCLAW_STATE_DIR || "/workspace/state";
-  const configPath = process.env.OPENCLAW_CONFIG_PATH || path.join(stateDir, "openclaw.json");
-  const templatePath = process.env.BIONEMO_CONFIG_TEMPLATE || "/opt/bionemo/config/openclaw.template.json";
-  const tunnelEnabled = parseBoolean(process.env.BIONEMO_ENABLE_HTTPS_TUNNEL, true);
+  const stateDir = runtimeEnv.OPENCLAW_STATE_DIR || "/workspace/state";
+  const configPath = runtimeEnv.OPENCLAW_CONFIG_PATH || path.join(stateDir, "openclaw.json");
+  const templatePath = runtimeEnv.BIONEMO_CONFIG_TEMPLATE || "/opt/bionemo/config/openclaw.template.json";
+  const setupPort = Number(runtimeEnv.BIONEMO_SETUP_PORT || 18790);
+  const tunnelEnabled = parseBoolean(runtimeEnv.BIONEMO_ENABLE_HTTPS_TUNNEL, true);
   let tunnel = null;
   const origins = [`http://127.0.0.1:${port}`, `http://localhost:${port}`];
-  if (process.env.BIONEMO_PUBLIC_ORIGIN) origins.push(safeOrigin(process.env.BIONEMO_PUBLIC_ORIGIN));
+  if (runtimeEnv.BIONEMO_PUBLIC_ORIGIN) origins.push(safeOrigin(runtimeEnv.BIONEMO_PUBLIC_ORIGIN));
 
   if (tunnelEnabled) {
     tunnel = await startQuickTunnel(port);
     origins.push(tunnel.origin);
     process.stdout.write(`BioNeMo authenticated HTTPS browser URL: ${tunnel.origin}\n`);
     process.stdout.write("Open the URL and enter the MysteryBox AUTH_TOKEN in OpenClaw; the token is never placed in the URL.\n");
-  } else if (!process.env.BIONEMO_PUBLIC_ORIGIN) {
+  } else if (!runtimeEnv.BIONEMO_PUBLIC_ORIGIN) {
     process.stdout.write("HTTPS tunnel disabled; only local browser origins are configured. Set BIONEMO_PUBLIC_ORIGIN for a supervised external HTTPS proxy.\n");
   }
 
-  await writeRuntimeFiles({ templatePath, configPath, stateDir, origins });
-  const childEnv = { ...process.env, OPENCLAW_GATEWAY_TOKEN: gatewayToken, OPENCLAW_GATEWAY_PORT: String(port), OPENCLAW_STATE_DIR: stateDir, OPENCLAW_CONFIG_PATH: configPath };
+  const capabilityState = await writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env: runtimeEnv, setupPort });
+  await prepareClients(runtimeEnv);
+  const setupServer = capabilityState.reasoningProvider === "setup" ? await startSetupServer(setupPort) : null;
+  process.stdout.write(`BioNeMo capability mode: reasoning=${capabilityState.reasoningProvider}, models=${capabilityState.modelBackend}, mcp=${capabilityState.mcp ? "configured" : "not configured"}, tavily=${capabilityState.tavily ? "configured" : "not configured"}\n`);
+  if (!capabilityState.reasoning || capabilityState.modelBackend === "unavailable") {
+    process.stdout.write("BioNeMo setup is incomplete; the browser remains available and will explain which optional credential is missing.\n");
+  }
+  const childEnv = { ...runtimeEnv, OPENCLAW_GATEWAY_TOKEN: gatewayToken, OPENCLAW_GATEWAY_PORT: String(port), OPENCLAW_STATE_DIR: stateDir, OPENCLAW_CONFIG_PATH: configPath };
   delete childEnv.AUTH_TOKEN;
   if (tunnel?.origin) childEnv.BIONEMO_PUBLIC_URL = tunnel.origin;
   const gateway = spawn("node", ["/app/openclaw.mjs", "gateway", "run", "--port", String(port), "--bind", "lan"], {
@@ -112,6 +123,7 @@ async function main() {
     stopping = true;
     if (!gateway.killed) gateway.kill(signal);
     if (tunnel && !tunnel.child.killed) tunnel.child.kill(signal);
+    setupServer?.close();
   };
   process.on("SIGTERM", () => stop("SIGTERM"));
   process.on("SIGINT", () => stop("SIGINT"));

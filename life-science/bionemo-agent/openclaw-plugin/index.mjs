@@ -7,7 +7,7 @@ import { createUiHandlers } from "./src/ui.mjs";
 import { JSON_SCHEMAS, VALIDATORS } from "./src/validation.mjs";
 import { WorkflowRunner } from "./src/workflows.mjs";
 
-export const PLUGIN_VERSION = "2.1.0";
+export const PLUGIN_VERSION = "3.0.0";
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };
@@ -67,7 +67,7 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
 export default {
   id: "bionemo-agent-toolkit",
   name: "BioNeMo Agent Toolkit",
-  description: "Bounded adapters for ten NVIDIA hosted BioNeMo NIM skills and three research workflows.",
+  description: "Bounded NVIDIA hosted-NIM adapters plus a preconfigured remote BioNeMo MCP gateway.",
   version: PLUGIN_VERSION,
   register(api) {
     const runtime = createRuntime({ logger: api.logger });
@@ -106,7 +106,7 @@ export default {
       requiredScopes: ["operator.read"],
     });
     api.on("before_prompt_build", async () => ({
-      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the 13 bionemo_* typed tools listed in the pinned skills. Never ask for or reveal credentials. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Hosted NVIDIA NIM routes only; do not claim that this application runs NIM containers or can create Nebius resources.`,
+      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. Never ask for or reveal credentials. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
     }));
     api.logger.info?.(`BioNeMo Agent Toolkit ${PLUGIN_VERSION} registered ${PUBLIC_CATALOG.skills.length} skills and ${PUBLIC_CATALOG.workflows.length} workflows`);
   },

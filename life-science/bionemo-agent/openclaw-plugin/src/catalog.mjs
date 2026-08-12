@@ -1,6 +1,6 @@
 import { PUBLIC_SAMPLES } from "./samples.mjs";
 
-export const TOOLKIT_COMMIT = "38a63ada35f57770fe49e633d3461d4110746b26";
+export const TOOLKIT_COMMIT = "23d483511e0b42221bdafd7259ff43c05220ee86";
 export const NVIDIA_HOST = "health.api.nvidia.com";
 export const NVIDIA_ORIGIN = `https://${NVIDIA_HOST}`;
 

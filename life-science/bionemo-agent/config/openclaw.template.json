@@ -37,7 +37,7 @@
     "defaults": {
       "workspace": "/workspace/agent",
       "model": {
-        "primary": "tokenfactory/zai-org/GLM-5.1",
+        "primary": "setup/setup-required",
         "fallbacks": []
       },
       "skills": [
@@ -100,36 +100,8 @@
       }
     ]
   },
-  "models": {
-    "mode": "merge",
-    "providers": {
-      "tokenfactory": {
-        "baseUrl": "https://api.tokenfactory.nebius.com/v1",
-        "apiKey": "${NEBIUS_API_KEY}",
-        "api": "openai-completions",
-        "authHeader": true,
-        "models": [
-          {
-            "id": "zai-org/GLM-5.1",
-            "name": "GLM 5.1 via Nebius TokenFactory",
-            "reasoning": true,
-            "input": ["text"],
-            "cost": {
-              "input": 0,
-              "output": 0,
-              "cacheRead": 0,
-              "cacheWrite": 0
-            },
-            "contextWindow": 202752,
-            "maxTokens": 8192,
-            "compat": {
-              "requiresStringContent": true
-            }
-          }
-        ]
-      }
-    }
-  },
+  "models": { "mode": "merge", "providers": {} },
+  "mcp": { "sessionIdleTtlMs": 600000, "servers": {} },
   "tools": {
     "profile": "minimal",
     "alsoAllow": [

@@ -1,8 +1,8 @@
 {
   "id": "bionemo-agent-toolkit",
   "name": "BioNeMo Agent Toolkit",
-  "description": "Bounded NVIDIA-hosted BioNeMo NIM skills and composed research workflows.",
-  "version": "2.1.0",
+  "description": "Bounded hosted BioNeMo tools with an optional remote MCP backend.",
+  "version": "3.0.0",
   "activation": {
     "onStartup": true,
     "onRoutes": ["/plugins/bionemo", "/plugins/bionemo/readiness"]

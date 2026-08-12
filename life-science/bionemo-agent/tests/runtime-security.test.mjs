@@ -9,6 +9,8 @@ import manifest from "../openclaw-plugin/openclaw.plugin.json" with { type: "jso
 import { EXACT_TOOL_NAMES, TOOLKIT_COMMIT } from "../openclaw-plugin/src/catalog.mjs";
 import { createUiHandlers, __test as uiInternals } from "../openclaw-plugin/src/ui.mjs";
 import { __test as launcher } from "../runtime/launcher.mjs";
+import { capabilities, configureOpenClaw, DEFAULT_MCP_URL } from "../runtime/runtime-config.mjs";
+import { prepareClients } from "../runtime/prepare-clients.mjs";
 
 function fakeApi() {
   const captured = { tools: [], routes: [], controls: [], hooks: [] };
@@ -57,7 +59,7 @@ test("dashboard CSP is nonce-based and token never enters URL or persistent stor
   assert.doesNotThrow(() => new vm.Script(script));
 });
 
-test("readiness reveals only credential presence", async () => {
+test("readiness reveals only capability presence", async () => {
   const store = { async initialize() {} };
   const handlers = createUiHandlers({ store, env: { NVIDIA_API_KEY: "nvidia-secret", NEBIUS_API_KEY: "nebius-secret", OPENCLAW_GATEWAY_TOKEN: "gateway-secret" }, runtimeVersion: "test" });
   const chunks = [];
@@ -68,13 +70,22 @@ test("readiness reveals only credential presence", async () => {
   assert.equal(body.includes("nvidia-secret"), false);
   assert.equal(body.includes("nebius-secret"), false);
   assert.equal(body.includes("gateway-secret"), false);
-  assert.deepEqual(JSON.parse(body).configured, { nvidia: true, llm: true, gateway: true });
+  assert.deepEqual(JSON.parse(body).configured, { reasoning: true, reasoningProvider: "nvidia", modelBackend: "nvidia", nvidia: true, nebius: true, mcp: false, tavily: false, gateway: true });
+});
+
+test("readiness stays healthy in keyless setup-required mode", async () => {
+  const handlers = createUiHandlers({ store: { async initialize() {} }, env: { OPENCLAW_GATEWAY_TOKEN: "gateway-secret" }, runtimeVersion: "test" });
+  const chunks = [];
+  const res = { writeHead(status) { this.status = status; }, end(value) { if (value) chunks.push(value); } };
+  await handlers.readiness({}, res);
+  assert.equal(res.status, 200);
+  assert.equal(JSON.parse(Buffer.concat(chunks)).status, "setup_required");
 });
 
 test("launcher validates secrets without printing values and parses only safe origins", () => {
   assert.equal(launcher.requireEnvironment({ NEBIUS_API_KEY: "n", NVIDIA_API_KEY: "v", AUTH_TOKEN: "a".repeat(24) }), "a".repeat(24));
   assert.equal(launcher.requireEnvironment({ NEBIUS_API_KEY: "n", NGC_API_KEY: "v", AUTH_TOKEN: "a".repeat(24) }), "a".repeat(24));
-  assert.throws(() => launcher.requireEnvironment({}), /NEBIUS_API_KEY.*NVIDIA_API_KEY.*AUTH_TOKEN/u);
+  assert.throws(() => launcher.requireEnvironment({}), /AUTH_TOKEN/u);
   assert.throws(() => launcher.requireEnvironment({ NEBIUS_API_KEY: "secret-one", NVIDIA_API_KEY: "secret-two", AUTH_TOKEN: "short" }), /at least 24/u);
   assert.equal(launcher.safeOrigin("https://example.test"), "https://example.test");
   assert.throws(() => launcher.safeOrigin("https://user:pass@example.test"), /without credentials/u);
@@ -89,6 +100,9 @@ test("Serverless launch binds exactly one matching NVIDIA MysteryBox payload", a
   assert.match(script, /--env-secret "NGC_API_KEY=\$NGC_API_KEY_SECRET"/u);
   assert.equal(script.includes("--env \"NVIDIA_API_KEY="), false);
   assert.equal(script.includes("--env \"NGC_API_KEY="), false);
+  assert.match(script, /BIONEMO_MCP_API_KEY_SECRET/u);
+  assert.match(script, /TAVILY_API_KEY_SECRET/u);
+  assert.equal(script.includes(": \"${NEBIUS_API_KEY_SECRET:?"), false);
 });
 
 test("runtime config and exec approvals persist placeholders, never secret values", async (t) => {
@@ -97,12 +111,14 @@ test("runtime config and exec approvals persist placeholders, never secret value
   const templatePath = path.join(root, "template.json");
   const configPath = path.join(root, "state", "openclaw.json");
   const stateDir = path.join(root, "state");
-  await (await import("node:fs/promises")).writeFile(templatePath, JSON.stringify({ gateway: { controlUi: { allowedOrigins: [] } }, models: { providers: { tokenfactory: { apiKey: "${NEBIUS_API_KEY}" } } } }));
-  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://example.test"] });
+  await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://example.test"], env: { NVIDIA_API_KEY: "secret-value", BIONEMO_MCP_API_KEY: "mcp-secret" } });
   const config = await readFile(configPath, "utf8");
   const approvals = JSON.parse(await readFile(path.join(stateDir, "exec-approvals.json"), "utf8"));
-  assert.match(config, /\$\{NEBIUS_API_KEY\}/u);
+  assert.match(config, /\$\{NVIDIA_API_KEY\}/u);
+  assert.match(config, /\$\{BIONEMO_MCP_API_KEY\}/u);
   assert.equal(config.includes("secret-value"), false);
+  assert.equal(config.includes("mcp-secret"), false);
   assert.deepEqual(approvals.defaults, { security: "deny", ask: "off", askFallback: "deny", autoAllowSkills: false });
   assert.deepEqual(approvals.agents.bionemo.allowlist, []);
 });
@@ -121,7 +137,8 @@ test("static OpenClaw policy denies every general-purpose capability", async () 
   assert.equal(config.gateway.auth.token, "${OPENCLAW_GATEWAY_TOKEN}");
   assert.deepEqual(config.gateway.tools.deny, ["*"]);
   assert.deepEqual(config.plugins.allow, ["bionemo-agent-toolkit"]);
-  assert.equal(config.models.providers.tokenfactory.apiKey, "${NEBIUS_API_KEY}");
+  assert.deepEqual(config.models.providers, {});
+  assert.equal(config.agents.defaults.model.primary, "setup/setup-required");
   assert.equal(config.update.checkOnStart, false);
   assert.equal(config.update.auto.enabled, false);
 });
@@ -134,6 +151,60 @@ test("all pins and model identity are immutable in the shipped configuration", a
   assert.match(dockerfile, new RegExp(TOOLKIT_COMMIT));
   assert.match(dockerfile, /libgnutls30=3\.7\.9-2\+deb12u7/u);
   assert.match(dockerfile, /\/usr\/local\/lib\/node_modules\/npm/u);
-  assert.match(config, /tokenfactory\/zai-org\/GLM-5\.1/u);
+  assert.match(dockerfile, /CODEX_VERSION="0\.147\.0"/u);
+  assert.match(dockerfile, /CLAUDE_CODE_VERSION="2\.1\.228"/u);
+  assert.match(config, /setup\/setup-required/u);
   assert.equal((await readFile(new URL("../vendor/bionemo-agent-toolkit/UPSTREAM_COMMIT", import.meta.url), "utf8")).trim(), TOOLKIT_COMMIT);
+});
+
+test("credential resolution supports NVIDIA-only, Nebius, MCP override, and keyless modes", () => {
+  const nvidia = capabilities({ NVIDIA_API_KEY: "n" });
+  assert.deepEqual([nvidia.reasoningProvider, nvidia.modelBackend, nvidia.nvidia, nvidia.nebius], ["nvidia", "nvidia", true, false]);
+  const nebius = capabilities({ NEBIUS_API_KEY: "n" });
+  assert.deepEqual([nebius.reasoningProvider, nebius.modelBackend, nebius.nvidia, nebius.nebius], ["nebius", "unavailable", false, true]);
+  const mcp = capabilities({ NEBIUS_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", BIONEMO_MCP_URL: "https://private.example/mcp" });
+  assert.equal(mcp.reasoningProvider, "nebius");
+  assert.equal(mcp.modelBackend, "mcp");
+  assert.equal(mcp.mcpUrl, "https://private.example/mcp");
+  const keyless = capabilities({});
+  assert.equal(keyless.reasoningProvider, "setup");
+  assert.equal(keyless.modelBackend, "unavailable");
+  assert.equal(keyless.mcpUrl, DEFAULT_MCP_URL);
+});
+
+test("OpenClaw enables only configured remote MCP servers and keeps credential placeholders", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  const state = configureOpenClaw(config, { NVIDIA_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", TAVILY_API_KEY: "t" });
+  assert.equal(state.reasoningProvider, "nvidia");
+  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio_models", "tavily"]);
+  assert.equal(config.mcp.servers.clawbio_models.headers.Authorization, "Bearer ${BIONEMO_MCP_API_KEY}");
+  assert.equal(config.mcp.servers.tavily.headers.Authorization, "Bearer ${TAVILY_API_KEY}");
+  assert.ok(config.tools.alsoAllow.includes("bundle-mcp"));
+  assert.equal(config.tools.deny.includes("bundle-mcp"), false);
+});
+
+test("Codex and Claude configs contain placeholders and all packaged skills without auth caches", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-clients-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const workspace = path.join(root, "workspace");
+  await prepareClients({ HOME: root, BIONEMO_CLIENT_WORKSPACE: workspace, BIONEMO_MCP_API_KEY: "never-write-this", TAVILY_API_KEY: "also-secret" });
+  const codex = await readFile(path.join(root, ".codex", "config.toml"), "utf8");
+  const claude = await readFile(path.join(workspace, ".mcp.json"), "utf8");
+  assert.match(codex, /bearer_token_env_var = "BIONEMO_MCP_API_KEY"/u);
+  assert.match(claude, /\$\{BIONEMO_MCP_API_KEY\}/u);
+  assert.equal(codex.includes("never-write-this"), false);
+  assert.equal(claude.includes("also-secret"), false);
+});
+
+test("Codex and Claude retain the BioNeMo MCP URL when credentials are absent", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-keyless-clients-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const workspace = path.join(root, "workspace");
+  await prepareClients({ HOME: root, BIONEMO_CLIENT_WORKSPACE: workspace });
+  const codex = await readFile(path.join(root, ".codex", "config.toml"), "utf8");
+  const claude = await readFile(path.join(workspace, ".mcp.json"), "utf8");
+  assert.match(codex, new RegExp(DEFAULT_MCP_URL));
+  assert.match(claude, new RegExp(DEFAULT_MCP_URL));
+  assert.equal(codex.includes("bearer_token_env_var"), false);
+  assert.equal(claude.includes("Authorization"), false);
 });
