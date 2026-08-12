@@ -114,13 +114,27 @@ test("runtime config and exec approvals persist placeholders, never secret value
   await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
   await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://example.test"], env: { NVIDIA_API_KEY: "secret-value", BIONEMO_MCP_API_KEY: "mcp-secret" } });
   const config = await readFile(configPath, "utf8");
+  const parsedConfig = JSON.parse(config);
   const approvals = JSON.parse(await readFile(path.join(stateDir, "exec-approvals.json"), "utf8"));
   assert.match(config, /\$\{NVIDIA_API_KEY\}/u);
   assert.match(config, /\$\{BIONEMO_MCP_API_KEY\}/u);
   assert.equal(config.includes("secret-value"), false);
   assert.equal(config.includes("mcp-secret"), false);
+  assert.equal(parsedConfig.gateway.controlUi.dangerouslyDisableDeviceAuth, true);
   assert.deepEqual(approvals.defaults, { security: "deny", ask: "off", askFallback: "deny", autoAllowSkills: false });
   assert.deepEqual(approvals.agents.bionemo.allowlist, []);
+});
+
+test("private deployments can require one-time Control UI device pairing", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-device-pairing-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const templatePath = path.join(root, "template.json");
+  const configPath = path.join(root, "state", "openclaw.json");
+  const stateDir = path.join(root, "state");
+  await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://private.example"], env: { BIONEMO_REQUIRE_DEVICE_PAIRING: "true" } });
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(config.gateway.controlUi.dangerouslyDisableDeviceAuth, false);
 });
 
 test("static OpenClaw policy denies every general-purpose capability", async () => {

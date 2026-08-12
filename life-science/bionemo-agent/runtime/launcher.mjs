@@ -16,11 +16,11 @@ function requireEnvironment(env) {
   return gatewayToken;
 }
 
-function parseBoolean(value, fallback = true) {
+function parseBoolean(value, fallback = true, name = "BIONEMO_ENABLE_HTTPS_TUNNEL") {
   if (value === undefined || value === "") return fallback;
   if (["1", "true", "yes", "on"].includes(String(value).toLowerCase())) return true;
   if (["0", "false", "no", "off"].includes(String(value).toLowerCase())) return false;
-  throw new Error("BIONEMO_ENABLE_HTTPS_TUNNEL must be true or false");
+  throw new Error(`${name} must be true or false`);
 }
 
 function safeOrigin(value) {
@@ -63,6 +63,8 @@ async function startQuickTunnel(port, { spawnImpl = spawn, timeoutMs = 45_000 } 
 async function writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env = process.env, setupPort = 18790 }) {
   const config = JSON.parse(await readFile(templatePath, "utf8"));
   config.gateway.controlUi.allowedOrigins = [...new Set(origins)];
+  const devicePairingRequired = parseBoolean(env.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
+  config.gateway.controlUi.dangerouslyDisableDeviceAuth = !devicePairingRequired;
   const capabilityState = configureOpenClaw(config, env, setupPort);
   await mkdir(path.dirname(configPath), { recursive: true, mode: 0o700 });
   await mkdir(stateDir, { recursive: true, mode: 0o700 });
@@ -103,6 +105,8 @@ async function main() {
   }
 
   const capabilityState = await writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env: runtimeEnv, setupPort });
+  const devicePairingRequired = parseBoolean(runtimeEnv.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
+  process.stdout.write(`BioNeMo browser authentication: gateway token${devicePairingRequired ? " plus one-time device approval" : " only; per-browser device approval disabled"}.\n`);
   await prepareClients(runtimeEnv);
   const setupServer = capabilityState.reasoningProvider === "setup" ? await startSetupServer(setupPort) : null;
   process.stdout.write(`BioNeMo capability mode: reasoning=${capabilityState.reasoningProvider}, models=${capabilityState.modelBackend}, mcp=${capabilityState.mcp ? "configured" : "not configured"}, tavily=${capabilityState.tavily ? "configured" : "not configured"}\n`);

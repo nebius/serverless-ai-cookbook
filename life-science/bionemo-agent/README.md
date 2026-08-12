@@ -3,7 +3,7 @@
 This recipe packages a ready-to-start life-science agent environment for a
 Nebius Serverless CPU endpoint. The image contains:
 
-- an authenticated OpenClaw browser agent;
+- a single-step, token-authenticated OpenClaw browser agent;
 - Codex CLI `0.147.0` and Claude Code `2.1.228`, installed without auth caches;
 - all 31 skills from NVIDIA's pinned BioNeMo Agent Toolkit plugin;
 - the public Cerebrium BioNeMo MCP URL in all three clients;
@@ -68,7 +68,7 @@ images.
 | Cloudflared | `2026.7.3` with pinned Linux amd64 SHA-256 |
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
-| Workbench | `3.0.0` |
+| Workbench | `3.0.1` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -80,7 +80,16 @@ client files contain only endpoint URLs and environment-variable placeholders.
 The browser gateway requires `AUTH_TOKEN` with at least 24 characters. The
 token is passed to OpenClaw in memory as `OPENCLAW_GATEWAY_TOKEN`; it is not
 written into the generated configuration. The public readiness routes reveal
-only capability presence.
+only capability presence. The event-workbench default disables OpenClaw's
+additional per-browser device approval, so entering the gateway token is the
+only interactive login step. Set `BIONEMO_REQUIRE_DEVICE_PAIRING=true` for a
+private deployment that should require both the token and explicit one-time
+approval of every browser.
+
+Token-only mode is a deliberate security/usability tradeoff for the bounded
+event image. Keep the token secret: anyone who has it can use the Control UI.
+Terminal, exec, general filesystem/network tools, subagents, and unbounded
+OpenClaw capabilities remain disabled.
 
 OpenClaw uses the minimal tool profile. General runtime, filesystem, arbitrary
 network, browser, automation, session, node, agent, messaging, and media tool
@@ -94,7 +103,7 @@ redact credentials.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.0.0"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.0.1"
 ./scripts/build_image.sh
 ```
 
@@ -115,7 +124,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.0.0-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.0.1-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -155,6 +164,7 @@ set `BIONEMO_PUBLIC_ORIGIN=https://agent.example` and
 | `AGENT_MODEL` | no | no | Override the selected provider's model ID |
 | `AGENT_BASE_URL` | no | no | Override the selected provider's API base |
 | `BIONEMO_BACKEND` | no | no | `auto`, `mcp`, or `nvidia` |
+| `BIONEMO_REQUIRE_DEVICE_PAIRING` | no | no | `false` for token-only event login; `true` adds browser approval |
 
 ## Verification
 
@@ -162,8 +172,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.0.0-test .
-docker run --rm bionemo-agent:3.0.0-test doctor
+docker build -t bionemo-agent:3.0.1-test .
+docker run --rm bionemo-agent:3.0.1-test doctor
 ```
 
 For a running endpoint, get the tunnel URL from logs and check:
