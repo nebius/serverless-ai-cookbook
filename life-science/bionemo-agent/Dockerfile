@@ -12,7 +12,7 @@ LABEL org.opencontainers.image.title="Nebius BioNeMo Agent Workbench" \
       org.opencontainers.image.description="Authenticated BioNeMo browser agent plus unauthenticated Codex and Claude Code CLIs with NVIDIA BioNeMo skills and MCP" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook/tree/main/life-science/bionemo-agent" \
       org.opencontainers.image.version="3.1.0" \
-      org.opencontainers.image.licenses="Apache-2.0 AND CC-BY-4.0" \
+      org.opencontainers.image.licenses="Apache-2.0 AND CC-BY-4.0 AND BSD-3-Clause" \
       io.nebius.bionemo.toolkit.commit="${BIONEMO_TOOLKIT_COMMIT}" \
       io.nebius.openclaw.version="2026.7.1-2" \
       io.nebius.cloudflared.version="${CLOUDFLARED_VERSION}" \
@@ -28,8 +28,13 @@ RUN apt-get update \
       "@openai/codex@${CODEX_VERSION}" \
       "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
       "3dmol@${THREEDMOL_VERSION}" \
+    && install -d -o node -g node -m 0700 /opt/bionemo/assets /opt/bionemo/licenses \
+    && install -o node -g node -m 0400 /usr/local/lib/node_modules/3dmol/build/3Dmol-min.js /opt/bionemo/assets/3Dmol-min.js \
+    && install -o node -g node -m 0400 /usr/local/lib/node_modules/3dmol/LICENSE /opt/bionemo/licenses/3dmol-LICENSE \
     && rm -rf /var/lib/apt/lists/* \
+      /root/.npm \
       /usr/local/lib/node_modules/npm \
+      /usr/local/lib/node_modules/3dmol \
       /usr/local/share/corepack \
       /app/node_modules/@vitest \
       /app/node_modules/vitest
@@ -59,7 +64,7 @@ ENV PORT=18789 \
     OPENCLAW_CONFIG_PATH=/workspace/state/openclaw.json \
     BIONEMO_CONFIG_TEMPLATE=/opt/bionemo/config/openclaw.template.json \
     BIONEMO_ARTIFACT_ROOT=/workspace/agent/artifacts \
-    BIONEMO_3DMOL_PATH=/usr/local/lib/node_modules/3dmol/build/3Dmol-min.js \
+    BIONEMO_3DMOL_PATH=/opt/bionemo/assets/3Dmol-min.js \
     BIONEMO_VENDOR_ROOT=/opt/bionemo/vendor/bionemo-agent-toolkit \
     BIONEMO_MCP_URL=https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp \
     BIONEMO_ENABLE_HTTPS_TUNNEL=true \

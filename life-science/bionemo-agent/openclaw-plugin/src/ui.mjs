@@ -68,7 +68,7 @@ export function createUiHandlers({ store, env = process.env, runtimeVersion }) {
     dashboard(_req, res) { sendHtml(res); return true; },
     async viewerAsset(_req, res) {
       try {
-        const body = await readFile(env.BIONEMO_3DMOL_PATH || "/usr/local/lib/node_modules/3dmol/build/3Dmol-min.js");
+        const body = await readFile(env.BIONEMO_3DMOL_PATH || "/opt/bionemo/assets/3Dmol-min.js");
         res.writeHead(200, { "Cache-Control": "public, max-age=31536000, immutable", "Content-Type": "text/javascript; charset=utf-8", "Content-Length": body.length, "X-Content-Type-Options": "nosniff" });
         res.end(body);
       } catch { sendJson(res, 503, { code: "viewer_unavailable", message: "Bundled 3D viewer asset is unavailable" }); }
