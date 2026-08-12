@@ -421,6 +421,18 @@ export function startMcpSchemaAdapter({
         return;
       }
       const body = await readResponseBody(upstream, maxResponseBytes);
+      // Streamable HTTP notifications (for example
+      // notifications/initialized) are acknowledged with 202 and an empty
+      // application/json body. Preserve that valid response instead of
+      // attempting to parse an absent JSON-RPC payload.
+      if (body.length === 0) {
+        res.writeHead(upstream.status, {
+          ...responseHeaders(upstream, false),
+          "Content-Length": "0",
+        });
+        res.end();
+        return;
+      }
       let transformed;
       if (contentType.includes("application/json")) {
         transformed = Buffer.from(JSON.stringify(adaptToolsListPayload(JSON.parse(body.toString("utf8")), catalog)));

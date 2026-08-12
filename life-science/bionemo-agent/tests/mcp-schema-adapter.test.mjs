@@ -172,6 +172,11 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
     for await (const chunk of req) chunks.push(chunk);
     const payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     upstreamCalls.push({ authorization: req.headers.authorization, payload });
+    if (payload.method === "notifications/initialized") {
+      res.writeHead(202, { "Content-Type": "application/json", "Content-Length": "0" });
+      res.end();
+      return;
+    }
     const response = payload.method === "tools/list"
       ? { ...TOOLS_LIST, id: payload.id }
       : { jsonrpc: "2.0", id: payload.id, result: { content: [{ type: "text", text: "queued" }] } };
@@ -237,4 +242,13 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
     upstreamCalls[2].payload.params.arguments.idempotency_key,
     "idempotency keys must not collide across MCP sessions",
   );
+
+  const notificationResponse = await fetch(adapter.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
+    body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
+  });
+  assert.equal(notificationResponse.status, 202);
+  assert.equal(notificationResponse.headers.get("content-length"), "0");
+  assert.equal(await notificationResponse.text(), "");
 });
