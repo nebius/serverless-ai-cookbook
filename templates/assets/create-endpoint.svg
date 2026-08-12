@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="138" height="20" role="img" aria-label="Create Endpoint">
+  <title>Create Endpoint</title>
+  <rect width="138" height="20" rx="3" fill="#e0ff4f"/>
+  <rect width="32" height="20" rx="3" fill="#052b42"/>
+  <rect x="28" width="4" height="20" fill="#052b42"/>
+  <g transform="translate(8.5,3.5) scale(0.0751) translate(-72,-68)">
+    <path fill="#e0ff4f" d="M203.9,187.7h0l-36.6-84.5c-6-13.7-15.8-21.4-29.7-21.4s-23.4,11.3-23.4,23.3c0,0,17.5-2.4,26.8,18.9l36.6,84.5c6,13.7,15.8,21.4,29.7,21.4s23.4-11.3,23.4-23.3c0,0-17.5,2.4-26.8-18.9Z"/>
+    <path fill="#e0ff4f" d="M85.2,140.3v87.5h29.1v-122.7s-29.1,1.8-29.1,35.2Z"/>
+    <path fill="#e0ff4f" d="M230.7,206.7s29.1-1.8,29.1-35.2v-87.5h-29.1v122.7Z"/>
+  </g>
+  <text x="85" y="14" font-family="Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif" font-size="11" font-weight="600" fill="#052b42" text-anchor="middle">Create Endpoint</text>
+</svg>
