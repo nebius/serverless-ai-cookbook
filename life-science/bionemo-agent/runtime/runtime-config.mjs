@@ -35,8 +35,8 @@ export function normalizedEnvironment(env = process.env) {
 export function capabilities(env = process.env) {
   const normalized = normalizedEnvironment(env);
   const explicitProvider = String(normalized.AGENT_PROVIDER || "auto").toLowerCase();
-  if (!["auto", "nvidia", "nebius", "openai", "anthropic", "setup"].includes(explicitProvider)) throw new Error("AGENT_PROVIDER must be auto, nvidia, nebius, openai, anthropic, or setup");
-  let reasoningProvider = explicitProvider;
+  if (!["auto", "nvidia", "nebius", "openai", "anthropic", "claude", "setup"].includes(explicitProvider)) throw new Error("AGENT_PROVIDER must be auto, nvidia, nebius, openai, anthropic (or claude), or setup");
+  let reasoningProvider = explicitProvider === "claude" ? "anthropic" : explicitProvider;
   if (reasoningProvider === "auto") reasoningProvider = normalized.NVIDIA_API_KEY ? "nvidia" : normalized.NEBIUS_API_KEY ? "nebius" : normalized.OPENAI_API_KEY ? "openai" : normalized.ANTHROPIC_API_KEY ? "anthropic" : "setup";
   if (reasoningProvider === "nvidia" && !normalized.NVIDIA_API_KEY) reasoningProvider = "setup";
   if (reasoningProvider === "nebius" && !normalized.NEBIUS_API_KEY) reasoningProvider = "setup";
@@ -70,21 +70,25 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   config.models = { mode: "merge", providers: {} };
   const setupBaseUrl = `http://127.0.0.1:${setupPort}/v1`;
   const modelId = (provider, fallback) => state.reasoningProvider === provider && state.env.AGENT_MODEL ? state.env.AGENT_MODEL : fallback;
-  const compatibleProvider = ({ configured, baseUrl, apiKey, api, model, name, contextWindow = 262144 }) => ({
-    baseUrl: configured ? baseUrl : setupBaseUrl,
-    apiKey: configured ? apiKey : "setup-required",
-    api: configured ? api : "openai-completions",
-    authHeader: true,
-    models: [{ id: model, name: `${name}${configured ? "" : " (requires API key)"}`, reasoning: configured, input: ["text"], contextWindow, maxTokens: configured ? 8192 : 1024 }],
-  });
+  const compatibleProvider = ({ configured, baseUrl, apiKey, api, model, name, contextWindow = 262144, agentRuntime }) => {
+    const definition = { id: model, name: `${name}${configured ? "" : " (requires API key)"}`, reasoning: configured, input: ["text"], contextWindow, maxTokens: configured ? 8192 : 1024 };
+    if (agentRuntime) definition.agentRuntime = agentRuntime;
+    return {
+      baseUrl: configured ? baseUrl : setupBaseUrl,
+      apiKey: configured ? apiKey : "setup-required",
+      api: configured ? api : "openai-completions",
+      authHeader: true,
+      models: [definition],
+    };
+  };
   const nvidiaModel = modelId("nvidia", NVIDIA_MODEL);
   const nebiusModel = modelId("nebius", NEBIUS_MODEL);
   const openaiModel = modelId("openai", OPENAI_MODEL);
   const anthropicModel = modelId("anthropic", ANTHROPIC_MODEL);
   config.models.providers.nvidia = compatibleProvider({ configured: state.nvidia, baseUrl: state.reasoningProvider === "nvidia" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://integrate.api.nvidia.com/v1", apiKey: "${NVIDIA_API_KEY}", api: "openai-completions", model: nvidiaModel, name: `${nvidiaModel} via NVIDIA Build` });
   config.models.providers.tokenfactory = compatibleProvider({ configured: state.nebius, baseUrl: state.reasoningProvider === "nebius" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.tokenfactory.nebius.com/v1", apiKey: "${NEBIUS_API_KEY}", api: "openai-completions", model: nebiusModel, name: `${nebiusModel} via Nebius Token Factory` });
-  config.models.providers.openai = compatibleProvider({ configured: state.openai, baseUrl: state.reasoningProvider === "openai" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.openai.com/v1", apiKey: "${OPENAI_API_KEY}", api: "openai-responses", model: openaiModel, name: `${openaiModel} via OpenAI` });
-  config.models.providers.anthropic = compatibleProvider({ configured: state.anthropic, baseUrl: state.reasoningProvider === "anthropic" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.anthropic.com", apiKey: "${ANTHROPIC_API_KEY}", api: "anthropic-messages", model: anthropicModel, name: `${anthropicModel} via Anthropic Claude`, contextWindow: 200000 });
+  config.models.providers.openai = compatibleProvider({ configured: state.openai, baseUrl: state.reasoningProvider === "openai" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.openai.com/v1", apiKey: "${OPENAI_API_KEY}", api: "openai-responses", model: openaiModel, name: `${openaiModel} via OpenAI`, agentRuntime: { id: "openclaw" } });
+  config.models.providers.claude = compatibleProvider({ configured: state.anthropic, baseUrl: state.reasoningProvider === "anthropic" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.anthropic.com", apiKey: "${ANTHROPIC_API_KEY}", api: "anthropic-messages", model: anthropicModel, name: `${anthropicModel} via Anthropic Claude`, contextWindow: 200000 });
   config.models.providers.setup = {
     baseUrl: setupBaseUrl, apiKey: "setup-required", api: "openai-completions",
     models: [{ id: "setup-required", name: "Setup required", reasoning: false, input: ["text"], contextWindow: 262144, maxTokens: 1024 }],
@@ -93,12 +97,16 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     nvidia: `nvidia/${nvidiaModel}`,
     nebius: `tokenfactory/${nebiusModel}`,
     openai: `openai/${openaiModel}`,
-    anthropic: `anthropic/${anthropicModel}`,
+    anthropic: `claude/${anthropicModel}`,
     setup: "setup/setup-required",
   };
   config.agents.defaults.model.primary = primaryModels[state.reasoningProvider];
-  config.agents.defaults.models ||= {};
-  config.agents.defaults.models[`openai/${openaiModel}`] = { agentRuntime: { id: "openclaw" } };
+  config.agents.defaults.models = {
+    [`nvidia/${nvidiaModel}`]: {},
+    [`tokenfactory/${nebiusModel}`]: {},
+    [`openai/${openaiModel}`]: {},
+    [`claude/${anthropicModel}`]: {},
+  };
 
   config.mcp = { sessionIdleTtlMs: 600000, servers: {} };
   if (state.mcp) {

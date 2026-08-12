@@ -203,12 +203,18 @@ test("OpenClaw enables only configured remote MCP servers and keeps credential p
   assert.equal(config.mcp.servers.tavily.headers.Authorization, "Bearer ${TAVILY_API_KEY}");
   assert.ok(config.tools.alsoAllow.includes("bundle-mcp"));
   assert.equal(config.tools.deny.includes("bundle-mcp"), false);
-  assert.deepEqual(Object.keys(config.models.providers), ["nvidia", "tokenfactory", "openai", "anthropic", "setup"]);
+  assert.deepEqual(Object.keys(config.models.providers), ["nvidia", "tokenfactory", "openai", "claude", "setup"]);
   assert.match(config.models.providers.openai.models[0].name, /requires API key/u);
-  assert.match(config.models.providers.anthropic.models[0].name, /Anthropic Claude.*requires API key/u);
+  assert.match(config.models.providers.claude.models[0].name, /Anthropic Claude.*requires API key/u);
   assert.equal(config.models.providers.openai.baseUrl, "http://127.0.0.1:18790/v1");
-  assert.equal(config.models.providers.anthropic.baseUrl, "http://127.0.0.1:18790/v1");
-  assert.deepEqual(config.agents.defaults.models["openai/gpt-5.6"], { agentRuntime: { id: "openclaw" } });
+  assert.equal(config.models.providers.claude.baseUrl, "http://127.0.0.1:18790/v1");
+  assert.deepEqual(config.models.providers.openai.models[0].agentRuntime, { id: "openclaw" });
+  assert.deepEqual(Object.keys(config.agents.defaults.models), [
+    "nvidia/nvidia/nemotron-3-nano-30b-a3b",
+    "tokenfactory/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+    "openai/gpt-5.6",
+    "claude/claude-sonnet-5",
+  ]);
 });
 
 test("OpenAI and Claude use environment placeholders only when authorized", () => {
@@ -217,7 +223,7 @@ test("OpenAI and Claude use environment placeholders only when authorized", () =
   const serialized = JSON.stringify(config);
   assert.equal(config.agents.defaults.model.primary, "openai/gpt-5.6");
   assert.equal(config.models.providers.openai.apiKey, "${OPENAI_API_KEY}");
-  assert.equal(config.models.providers.anthropic.apiKey, "${ANTHROPIC_API_KEY}");
+  assert.equal(config.models.providers.claude.apiKey, "${ANTHROPIC_API_KEY}");
   assert.equal(serialized.includes("do-not-persist"), false);
   assert.equal(serialized.includes("also-do-not-persist"), false);
 });

@@ -36,7 +36,7 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 | `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
 | none | local setup-required responder | no external model |
 
-Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|setup`, the
+Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
 `AGENT_BASE_URL`.
 
@@ -180,7 +180,7 @@ set `BIONEMO_PUBLIC_ORIGIN=https://agent.example` and
 | `BIONEMO_MCP_API_KEY` | yes | no | Cerebrium or private BioNeMo MCP bearer |
 | `TAVILY_API_KEY` | yes | no | Tavily MCP search |
 | `BIONEMO_MCP_URL` | no | no | Override the default live Cerebrium gateway |
-| `AGENT_PROVIDER` | no | no | `auto`, `nvidia`, `nebius`, `openai`, `anthropic`, or `setup` |
+| `AGENT_PROVIDER` | no | no | `auto`, `nvidia`, `nebius`, `openai`, `anthropic`/`claude`, or `setup` |
 | `AGENT_MODEL` | no | no | Override the selected provider's model ID |
 | `AGENT_BASE_URL` | no | no | Override the selected provider's API base |
 | `BIONEMO_BACKEND` | no | no | `auto`, `mcp`, or `nvidia` |
