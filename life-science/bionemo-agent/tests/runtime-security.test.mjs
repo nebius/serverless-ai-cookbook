@@ -34,6 +34,9 @@ test("plugin registers exactly the manifest-declared 13 tools", async () => {
   const systemContext = (await api.captured.hooks[0].handler()).prependSystemContext;
   assert.match(systemContext, /MEDIA:<downloadPath>/u);
   assert.match(systemContext, /When clawbio_\* MCP tools are available/u);
+  assert.match(systemContext, /viewerUrl, use that exact value/u);
+  assert.match(systemContext, /same-origin path beginning with \/; preserve it verbatim/u);
+  assert.doesNotMatch(systemContext, /viewerUrl, use that exact absolute URL/u);
 });
 
 test("model-facing OpenFold2 schema exposes only the reliable sequence argument", () => {

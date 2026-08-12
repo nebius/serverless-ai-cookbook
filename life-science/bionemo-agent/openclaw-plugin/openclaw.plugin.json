@@ -2,7 +2,7 @@
   "id": "bionemo-agent-toolkit",
   "name": "BioNeMo Agent Toolkit",
   "description": "Bounded hosted BioNeMo tools with an optional remote MCP backend.",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "activation": {
     "onStartup": true,
     "onRoutes": ["/plugins/bionemo", "/plugins/bionemo/readiness"]
