@@ -11,6 +11,7 @@ import { createUiHandlers, __test as uiInternals } from "../openclaw-plugin/src/
 import { __test as launcher } from "../runtime/launcher.mjs";
 import { capabilities, configureOpenClaw, DEFAULT_MCP_URL, TOKEN_FACTORY_MODELS } from "../runtime/runtime-config.mjs";
 import { prepareClients } from "../runtime/prepare-clients.mjs";
+import { MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
 
 function fakeApi() {
   const captured = { tools: [], routes: [], controls: [], hooks: [] };
@@ -30,13 +31,37 @@ test("plugin registers exactly the manifest-declared 13 tools", async () => {
   assert.deepEqual(api.captured.tools.map((tool) => tool.name), EXACT_TOOL_NAMES);
   assert.deepEqual(manifest.contracts.tools, EXACT_TOOL_NAMES);
   assert.equal(api.captured.tools.every((tool) => tool.parameters.additionalProperties === false), true);
-  assert.equal(api.captured.hooks.length, 1);
-  const systemContext = (await api.captured.hooks[0].handler()).prependSystemContext;
+  assert.deepEqual(api.captured.hooks.map(({ event }) => event), ["before_tool_call", "before_prompt_build"]);
+  const promptHook = api.captured.hooks.find(({ event }) => event === "before_prompt_build");
+  const systemContext = (await promptHook.handler()).prependSystemContext;
   assert.match(systemContext, /MEDIA:<downloadPath>/u);
   assert.match(systemContext, /When clawbio_\* MCP tools are available/u);
   assert.match(systemContext, /viewerUrl, use that exact value/u);
   assert.match(systemContext, /same-origin path beginning with \/; preserve it verbatim/u);
   assert.doesNotMatch(systemContext, /viewerUrl, use that exact absolute URL/u);
+  assert.match(systemContext, /submission tool may be called only once per user request/u);
+  assert.match(systemContext, /poll only clawbio_job_status for that exact ID, at most four times/u);
+  assert.match(systemContext, /never resubmit or call jobs-list\/model-fetch discovery/u);
+});
+
+test("plugin injects trusted per-turn identity only into compute-submitting MCP tools", async () => {
+  const api = fakeApi();
+  plugin.register(api);
+  const hook = api.captured.hooks.find(({ event }) => event === "before_tool_call").handler;
+  const runId = "d9fd641b-f6ae-42c6-aeed-f18b2f770299";
+  const event = {
+    toolName: "clawbio_models__clawbio_esm2_embed",
+    params: { sequences: ["MKTII"], ack_research_only: true, ack_non_clinical: true },
+  };
+  const injected = await hook(event, { runId });
+  assert.equal(injected.params[MCP_TURN_ID_FIELD], runId);
+  assert.deepEqual(event.params, { sequences: ["MKTII"], ack_research_only: true, ack_non_clinical: true });
+
+  assert.equal(await hook({ toolName: "clawbio_models__clawbio_job_status", params: { job_id: "job" } }, { runId }), undefined);
+  assert.equal(await hook({ toolName: "bionemo_openfold2", params: { sequence: "MKTII" } }, { runId }), undefined);
+  const missing = await hook(event, {});
+  assert.equal(missing.block, true);
+  assert.match(missing.blockReason, /trusted per-turn identity is unavailable/u);
 });
 
 test("model-facing OpenFold2 schema exposes only the reliable sequence argument", () => {

@@ -49,7 +49,8 @@ COPY --chmod=0755 runtime/bionemo-agent /usr/local/bin/bionemo-agent
 COPY --chown=node:node workspace /workspace/agent
 COPY --chown=node:node vendor /opt/bionemo/vendor
 
-RUN node /opt/bionemo/runtime/prepare-control-ui.mjs \
+RUN node /opt/bionemo/runtime/patch-openclaw-mcp-turn-context.mjs /app/dist \
+    && node /opt/bionemo/runtime/prepare-control-ui.mjs \
       /app/dist/control-ui \
       /opt/bionemo/control-ui \
       /opt/bionemo/runtime/control-ui-default-session.js \

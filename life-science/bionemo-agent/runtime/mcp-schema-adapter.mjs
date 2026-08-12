@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import http from "node:http";
 import { Readable } from "node:stream";
+import { MCP_TURN_ID_FIELD, validMcpTurnId } from "./mcp-submission-policy.mjs";
 
 const DEFAULT_MAX_REQUEST_BYTES = 2_500_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 25_000_000;
@@ -141,7 +142,7 @@ function requestSchemaVariants(inputSchema) {
 
 function toolDescription(description) {
   const prefix = typeof description === "string" && description.trim() ? `${description.trim()} ` : "";
-  return `${prefix}Arguments use one flat JSON object. Arrays and objects must be native JSON values, not strings. The local adapter supplies the upstream request envelope and idempotency key.`;
+  return `${prefix}Arguments use one flat JSON object. Arrays and objects must be native JSON values, not strings. The local adapter supplies the upstream request envelope and idempotency key. This submits one compute job: call it at most once per user request. After a job ID is returned, poll only clawbio_job_status for that exact ID, at most four times. Never resubmit, call clawbio_jobs_list, or call clawbio_model_fetch while waiting; if the job is still nonterminal, report its exact ID and status.`;
 }
 
 export function adaptMcpToolDefinition(tool) {
@@ -208,6 +209,10 @@ function maybeParseStructuredString(value, schema, label) {
 }
 
 function coerceStructuredValue(value, schema, label, toolName) {
+  if (value === undefined && plainObject(schema) && Object.hasOwn(schema, "default")) {
+    value = clone(schema.default);
+  }
+  if (value === undefined) return value;
   const wasSerialized = typeof value === "string";
   const parsed = maybeParseStructuredString(value, schema, label);
   if (Array.isArray(parsed)) {
@@ -228,17 +233,38 @@ function coerceStructuredValue(value, schema, label, toolName) {
     return items.map((item, index) => coerceStructuredValue(item, schema?.items, `${label}[${index}]`, toolName));
   }
   if (plainObject(parsed) && plainObject(schema?.properties)) {
-    return Object.fromEntries(Object.entries(parsed).map(([key, item]) => [
+    const normalized = Object.fromEntries(Object.entries(parsed).map(([key, item]) => [
       key,
       coerceStructuredValue(item, schema.properties[key], `${label}.${key}`, toolName),
     ]));
+    for (const [key, propertySchema] of Object.entries(schema.properties)) {
+      if (!Object.hasOwn(normalized, key) && plainObject(propertySchema) && Object.hasOwn(propertySchema, "default")) {
+        normalized[key] = coerceStructuredValue(undefined, propertySchema, `${label}.${key}`, toolName);
+      }
+    }
+    return normalized;
   }
   return parsed;
 }
 
-function generatedIdempotencyKey(toolName, jsonRpcId, argumentsValue, namespace = "") {
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue);
+  if (plainObject(value)) {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+  }
+  return value;
+}
+
+function generatedIdempotencyKey(toolName, jsonRpcId, argumentsValue, { turnId, fallbackNamespace = "" } = {}) {
+  // A trusted OpenClaw run ID is one user turn. Within it, semantic retries
+  // replay one compute job. Without that marker, retain per-RPC identity so an
+  // adapter cannot accidentally suppress a legitimate later request merely
+  // because a long-lived MCP session reused the same biological input.
+  const scope = validMcpTurnId(turnId)
+    ? ["turn", turnId]
+    : ["rpc", fallbackNamespace, jsonRpcId ?? null];
   const digest = crypto.createHash("sha256")
-    .update(JSON.stringify([namespace, toolName, jsonRpcId ?? null, argumentsValue]))
+    .update(JSON.stringify([scope, toolName, canonicalValue(argumentsValue)]))
     .digest("hex")
     .slice(0, 32);
   return `bionemo-agent-${digest}`;
@@ -250,7 +276,12 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
   const toolName = payload.params.name;
   const mapping = catalog.get(toolName);
   if (!mapping || mapping.mode !== "flat-request") return clone(payload);
-  const supplied = plainObject(payload.params.arguments) ? payload.params.arguments : {};
+  const rawSupplied = plainObject(payload.params.arguments) ? payload.params.arguments : {};
+  const turnId = rawSupplied[MCP_TURN_ID_FIELD];
+  if (turnId !== undefined && !validMcpTurnId(turnId)) {
+    throw new McpAdapterInputError(`${toolName}.${MCP_TURN_ID_FIELD} is invalid`);
+  }
+  const supplied = Object.fromEntries(Object.entries(rawSupplied).filter(([key]) => key !== MCP_TURN_ID_FIELD));
   let requestSchema;
   if (mapping.requestSchemas.length === 1) requestSchema = mapping.requestSchemas[0];
   else if (mapping.discriminatorProperty) {
@@ -271,8 +302,12 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
 
   const request = {};
   for (const key of requestKeys) {
-    if (!Object.hasOwn(supplied, key)) continue;
-    request[key] = coerceStructuredValue(supplied[key], requestSchema.properties[key], key, toolName);
+    const propertySchema = requestSchema.properties[key];
+    if (Object.hasOwn(supplied, key)) {
+      request[key] = coerceStructuredValue(supplied[key], propertySchema, key, toolName);
+    } else if (plainObject(propertySchema) && Object.hasOwn(propertySchema, "default")) {
+      request[key] = coerceStructuredValue(undefined, propertySchema, key, toolName);
+    }
   }
   for (const key of requestSchema.required || []) {
     if (!Object.hasOwn(request, key)) throw new McpAdapterInputError(`${toolName} is missing required field: ${key}`);
@@ -290,9 +325,26 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
   next.params.arguments = {
     request,
     acknowledgements,
-    idempotency_key: idempotencyKeyFactory(toolName, payload.id, supplied),
+    idempotency_key: idempotencyKeyFactory(toolName, payload.id, { request, acknowledgements }, { turnId }),
   };
   return next;
+}
+
+function adaptRequestPayload(payload, catalog, options) {
+  if (!Array.isArray(payload)) {
+    return { payload: adaptToolCallPayload(payload, catalog, options), localErrors: [] };
+  }
+  const forwarded = [];
+  const localErrors = [];
+  for (const member of payload) {
+    try {
+      forwarded.push(adaptToolCallPayload(member, catalog, options));
+    } catch (error) {
+      if (!(error instanceof McpAdapterInputError)) throw error;
+      localErrors.push(jsonRpcInvalidParams(member, error.message));
+    }
+  }
+  return { payload: forwarded, localErrors };
 }
 
 function jsonRpcInvalidParams(payload, message) {
@@ -380,6 +432,7 @@ export function startMcpSchemaAdapter({
     }
 
     let requestPayload = null;
+    let localErrors = [];
     let requestBody;
     try {
       requestBody = req.method === "POST" ? await readRequestBody(req, maxRequestBytes) : undefined;
@@ -388,14 +441,29 @@ export function startMcpSchemaAdapter({
         const sessionId = Array.isArray(req.headers["mcp-session-id"])
           ? req.headers["mcp-session-id"][0]
           : req.headers["mcp-session-id"];
-        requestPayload = adaptToolCallPayload(requestPayload, catalog, {
-          idempotencyKeyFactory: (toolName, jsonRpcId, argumentsValue) => generatedIdempotencyKey(
+        const adapted = adaptRequestPayload(requestPayload, catalog, {
+          idempotencyKeyFactory: (toolName, jsonRpcId, argumentsValue, { turnId } = {}) => generatedIdempotencyKey(
             toolName,
             jsonRpcId,
             argumentsValue,
-            `${adapterInstanceId}:${sessionId || "no-session"}`,
+            {
+              turnId,
+              fallbackNamespace: `${adapterInstanceId}:${sessionId || "no-session"}`,
+            },
           ),
         });
+        requestPayload = adapted.payload;
+        localErrors = adapted.localErrors;
+        if (Array.isArray(requestPayload) && requestPayload.length === 0 && localErrors.length > 0) {
+          const responseBody = Buffer.from(JSON.stringify(localErrors));
+          res.writeHead(200, {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+            "Content-Length": String(responseBody.length),
+          });
+          res.end(responseBody);
+          return;
+        }
         requestBody = Buffer.from(JSON.stringify(requestPayload));
       }
     } catch (error) {
@@ -425,7 +493,7 @@ export function startMcpSchemaAdapter({
       // notifications/initialized) are acknowledged with 202 and an empty
       // application/json body. Preserve that valid response instead of
       // attempting to parse an absent JSON-RPC payload.
-      if (body.length === 0) {
+      if (body.length === 0 && localErrors.length === 0) {
         res.writeHead(upstream.status, {
           ...responseHeaders(upstream, false),
           "Content-Length": "0",
@@ -434,13 +502,23 @@ export function startMcpSchemaAdapter({
         return;
       }
       let transformed;
-      if (contentType.includes("application/json")) {
-        transformed = Buffer.from(JSON.stringify(adaptToolsListPayload(JSON.parse(body.toString("utf8")), catalog)));
+      let responseStatus = upstream.status;
+      let transformedContentType = contentType;
+      if (body.length === 0) {
+        transformed = Buffer.from(JSON.stringify(localErrors));
+        responseStatus = 200;
+        transformedContentType = "application/json";
+      } else if (contentType.includes("application/json")) {
+        const adaptedResponse = adaptToolsListPayload(JSON.parse(body.toString("utf8")), catalog);
+        const members = Array.isArray(adaptedResponse) ? adaptedResponse : [adaptedResponse];
+        transformed = Buffer.from(JSON.stringify(localErrors.length > 0 ? [...members, ...localErrors] : adaptedResponse));
       } else {
-        transformed = Buffer.from(transformEventStream(body.toString("utf8"), catalog));
+        const errorEvents = localErrors.map((error) => `data: ${JSON.stringify(error)}\n\n`).join("");
+        transformed = Buffer.from(`${transformEventStream(body.toString("utf8"), catalog)}${errorEvents}`);
       }
-      res.writeHead(upstream.status, {
+      res.writeHead(responseStatus, {
         ...responseHeaders(upstream, true),
+        "content-type": transformedContentType,
         "Content-Length": String(transformed.length),
       });
       res.end(transformed);
@@ -467,6 +545,8 @@ export function startMcpSchemaAdapter({
 export const __test = {
   ACKNOWLEDGEMENT_FIELDS,
   REQUIRED_ACKNOWLEDGEMENTS,
+  adaptRequestPayload,
+  canonicalValue,
   dereferenceSchema,
   generatedIdempotencyKey,
 };

@@ -25,6 +25,10 @@ Safety and execution boundaries:
   level, keep arrays and objects as native JSON, and set only the displayed
   `ack_*` fields after explicit user acceptance. Never construct or stringify
   the upstream `request`, `acknowledgements`, or `idempotency_key` envelope.
+- Call a `clawbio_*` submission tool only once per user request. After it
+  returns a job ID, poll only `clawbio_job_status` for that exact ID, at most
+  four times. Never resubmit or use jobs-list/model-fetch discovery while
+  waiting. If it remains nonterminal, report its exact ID and current status.
 - Do not offer to create, change, or delete Nebius resources. Participant
   deployment is an operator-run runbook outside the agent.
 - Keep requests event-sized. Ask for confirmation before the binder workflow

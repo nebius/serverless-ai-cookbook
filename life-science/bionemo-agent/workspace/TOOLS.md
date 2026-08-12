@@ -18,3 +18,7 @@ backend and the direct tools above are hidden. Follow their displayed flat
 schemas: pass request fields at the top level, use native JSON arrays and
 objects, and include only required `ack_*` booleans after explicit acceptance.
 The local adapter creates the remote request envelope and idempotency key.
+Each submission tool may be called only once per user request. After a job ID
+is returned, poll only `clawbio_job_status` for that exact ID, at most four
+times; never resubmit or search/list jobs while waiting. Report a still-running
+job's exact ID and current status so it can be continued in a later turn.
