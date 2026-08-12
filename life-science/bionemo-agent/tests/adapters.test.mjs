@@ -271,12 +271,14 @@ test("structure artifacts expose a one-click viewer capability without persistin
   await store.save(run, "ranked-1.pdb", "ATOM      1  CA  ALA A   1\n");
   const [presented] = store.presentArtifacts(run);
   assert.match(presented.viewerUrl, new RegExp(`^/bionemo/view/${run.runId}/ranked-1\\.pdb\\?access=`));
+  assert.equal(presented.viewerMarkdown, `[View structure in 3D](<${presented.viewerUrl}>)`);
   const access = new URL(presented.viewerUrl, "https://example.test").searchParams.get("access");
   const opened = await store.openViewerArtifact(run.runId, "ranked-1.pdb", access);
   await opened.handle.close();
   await assert.rejects(() => store.openViewerArtifact(run.runId, "ranked-1.pdb", "wrong-capability-value-000000"), /invalid structure viewer capability/u);
   const persisted = await readFile(path.join(run.directory, "manifest.json"), "utf8");
   assert.equal(persisted.includes(access), false);
+  assert.equal(persisted.includes("viewerMarkdown"), false);
   assert.equal(JSON.stringify(await store.listRuns()).includes("structureCapabilityDigest"), false);
 });
 
@@ -286,7 +288,11 @@ test("structure viewer URLs use only a validated configured public origin", asyn
   const store = await new ArtifactStore(root, { publicBaseUrl: "https://agent.example.test" }).initialize();
   const run = await store.createRun({ kind: "skill", id: "openfold2" });
   await store.save(run, "ranked-1.pdb", "ATOM      1  CA  ALA A   1\n");
-  assert.match(store.presentArtifacts(run)[0].viewerUrl, /^https:\/\/agent\.example\.test\/bionemo\/view\//u);
+  const absolute = store.presentArtifacts(run)[0];
+  assert.match(absolute.viewerUrl, /^https:\/\/agent\.example\.test\/bionemo\/view\//u);
+  assert.equal(absolute.viewerMarkdown, `[View structure in 3D](<${absolute.viewerUrl}>)`);
   const relativeStore = await new ArtifactStore(root, { publicBaseUrl: "https://user:password@example.test/path" }).initialize();
-  assert.match(relativeStore.presentArtifacts(run)[0].viewerUrl, /^\/bionemo\/view\//u);
+  const relative = relativeStore.presentArtifacts(run)[0];
+  assert.match(relative.viewerUrl, /^\/bionemo\/view\//u);
+  assert.equal(relative.viewerMarkdown, `[View structure in 3D](<${relative.viewerUrl}>)`);
 });

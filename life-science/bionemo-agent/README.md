@@ -30,7 +30,7 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 
 | Available credential | Reasoning provider | Default model |
 |---|---|---|
-| `NVIDIA_API_KEY` or `NGC_API_KEY` | NVIDIA Build | `nvidia/nemotron-3-ultra-550b-a55b` |
+| `NVIDIA_API_KEY` or `NGC_API_KEY` | NVIDIA Build | `nvidia/nemotron-3-super-120b-a12b` |
 | `NEBIUS_API_KEY` | Nebius Token Factory | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` |
 | `OPENAI_API_KEY` | OpenAI | `gpt-5.6` using the OpenClaw runtime |
 | `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
@@ -47,14 +47,14 @@ OpenClaw does not compact ordinary sessions prematurely. It also sends
 `max_tokens` specifically for Super, whose route rejects
 `max_completion_tokens`.
 
-The NVIDIA Build profile uses Nemotron 3 Ultra with template thinking disabled,
-matching NVIDIA's documented OpenClaw default. Release probes showed structured
-function calls from Ultra, while the smaller NVIDIA-hosted Nano returned raw
-tool-call JSON as assistant text in six of six direct probes (including three
-with `tool_choice=required`). Nano is therefore not the NVIDIA event default.
-The NVIDIA provider uses a bounded 240-second idle timeout: hosted Ultra can
-occasionally take longer than OpenClaw's 120-second provider default to begin a
-post-tool response, even when the BioNeMo NIM itself has already completed.
+The NVIDIA Build profile uses Nemotron 3 Super with template thinking disabled.
+Release acceptance produced one structured flat OpenFold2 call, five PDB
+artifacts, and a completed post-tool response. Hosted Ultra had less reliable
+tail latency in the same workbench, while the smaller NVIDIA-hosted Nano
+returned raw tool-call JSON as assistant text in six of six direct probes
+(including three with `tool_choice=required`). The NVIDIA provider keeps a
+bounded 240-second idle timeout so a slow hosted response does not discard an
+already completed BioNeMo NIM result.
 
 Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
@@ -107,7 +107,7 @@ images.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.2.5` |
+| Workbench | `3.2.6` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -149,7 +149,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.2.5"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.2.6"
 ./scripts/build_image.sh
 ```
 
@@ -170,7 +170,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.2.5-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.2.6-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -241,8 +241,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.2.5-test .
-docker run --rm bionemo-agent:3.2.5-test doctor
+docker build -t bionemo-agent:3.2.6-test .
+docker run --rm bionemo-agent:3.2.6-test doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`

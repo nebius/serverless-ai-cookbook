@@ -3,7 +3,7 @@ import path from "node:path";
 import { EXACT_TOOL_NAMES } from "../openclaw-plugin/src/catalog.mjs";
 
 export const DEFAULT_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
-export const NVIDIA_MODEL = "nvidia/nemotron-3-ultra-550b-a55b";
+export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 export const NEBIUS_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
@@ -124,7 +124,13 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
       id: nvidiaModel,
       name: `${nvidiaModel} via NVIDIA Build`,
       contextWindow: nvidiaUsesDefault ? 1_000_000 : 262_144,
-      maxTokens: nvidiaUsesDefault ? 16_384 : 8_192,
+      maxTokens: 8_192,
+      // The pinned OpenClaw release otherwise assumes max_completion_tokens
+      // for a configured non-OpenAI endpoint. NVIDIA's hosted Super route uses
+      // max_tokens and expects string content across tool-result turns.
+      compat: nvidiaUsesDefault
+        ? { maxTokensField: "max_tokens", requiresStringContent: true }
+        : undefined,
     }],
   });
   config.models.providers.tokenfactory = compatibleProvider({ configured: state.nebius, baseUrl: state.reasoningProvider === "nebius" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.tokenfactory.nebius.com/v1", apiKey: "${NEBIUS_API_KEY}", api: "openai-completions", models: tokenFactoryModels.map((model) => ({ ...model, name: `${model.alias || model.id} via Nebius Token Factory` })) });
@@ -143,9 +149,9 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   };
   config.agents.defaults.model.primary = primaryModels[state.reasoningProvider];
   config.agents.defaults.models = {
-    // NVIDIA's documented OpenClaw default. Disabling template thinking
-    // keeps normal answers visible and produced structured tool_calls in
-    // the release matrix; Nano emitted raw tool JSON in 6/6 probes.
+    // Disabling template thinking keeps normal answers visible and produced
+    // structured tool_calls with Super in the release matrix; Nano emitted
+    // raw tool JSON in 6/6 probes.
     [`nvidia/${nvidiaModel}`]: nvidiaUsesDefault
       ? { params: { chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true } } }
       : {},

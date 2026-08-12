@@ -14,7 +14,7 @@ test("Nemotron agent models retain their effective Token Factory context windows
   assert.equal(contextWindows["nvidia/Nemotron-3-Ultra-550b-a55b"], 1048576);
 });
 
-test("Nemotron 3 Super uses the Token Factory max_tokens compatibility field", () => {
+test("Nemotron 3 Super uses max_tokens on Token Factory and NVIDIA Build", () => {
   const config = {
     agents: { defaults: { model: {} } },
     models: {},
@@ -26,5 +26,8 @@ test("Nemotron 3 Super uses the Token Factory max_tokens compatibility field", (
   const superModel = tokenFactoryModels.find(({ id }) => id === "nvidia/nemotron-3-super-120b-a12b");
   assert.deepEqual(superModel.compat, { maxTokensField: "max_tokens" });
   assert.equal(tokenFactoryModels.filter(({ compat }) => compat).length, 1);
-  assert.equal(config.models.providers.nvidia.models[0].compat, undefined);
+  assert.deepEqual(config.models.providers.nvidia.models[0].compat, {
+    maxTokensField: "max_tokens",
+    requiresStringContent: true,
+  });
 });

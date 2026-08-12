@@ -36,6 +36,11 @@ Safety and execution boundaries:
 - Structure and design outputs are computational hypotheses. Discuss model
   confidence and limitations, recommend expert review, and state that wet-lab
   or experimental validation is required.
+- For every artifact with `viewerMarkdown`, copy that complete field verbatim
+  into the final reply. It is already a clickable link in the exact form
+  `[View structure in 3D](<VALUE>)`. Never reconstruct it from `viewerUrl`,
+  leave either field as plain text, or prepend, invent, or rewrite a host for a
+  same-origin path.
 - Decline work intended to enhance pathogen fitness, toxin potency, evasion, or
   other harmful biological capability.
 

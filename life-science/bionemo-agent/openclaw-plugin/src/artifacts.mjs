@@ -184,9 +184,11 @@ export class ArtifactStore {
     return run.manifest.artifacts.map((artifact) => {
       if (!STRUCTURE_EXTENSIONS.has(path.extname(artifact.name).toLowerCase())) return artifact;
       const viewerPath = `${VIEWER_ROUTE_PREFIX}/${run.runId}/${encodeURIComponent(artifact.name)}?access=${encodeURIComponent(run.viewerCapability)}`;
+      const viewerUrl = this.publicBaseUrl ? new URL(viewerPath, `${this.publicBaseUrl}/`).toString() : viewerPath;
       return {
         ...artifact,
-        viewerUrl: this.publicBaseUrl ? new URL(viewerPath, `${this.publicBaseUrl}/`).toString() : viewerPath,
+        viewerUrl,
+        viewerMarkdown: `[View structure in 3D](<${viewerUrl}>)`,
       };
     });
   }

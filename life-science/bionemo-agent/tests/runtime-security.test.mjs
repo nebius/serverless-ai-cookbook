@@ -36,12 +36,29 @@ test("plugin registers exactly the manifest-declared 13 tools", async () => {
   const systemContext = (await promptHook.handler()).prependSystemContext;
   assert.match(systemContext, /MEDIA:<downloadPath>/u);
   assert.match(systemContext, /When clawbio_\* MCP tools are available/u);
-  assert.match(systemContext, /viewerUrl, use that exact value/u);
+  assert.match(systemContext, /For every artifact that has viewerMarkdown/u);
   assert.match(systemContext, /same-origin path beginning with \/; preserve it verbatim/u);
   assert.doesNotMatch(systemContext, /viewerUrl, use that exact absolute URL/u);
   assert.match(systemContext, /submission tool may be called only once per user request/u);
   assert.match(systemContext, /poll only clawbio_job_status for that exact ID, at most four times/u);
   assert.match(systemContext, /never resubmit or call jobs-list\/model-fetch discovery/u);
+});
+
+test("agent instructions require exact clickable viewer links", async () => {
+  const api = fakeApi();
+  plugin.register(api);
+  const promptHook = api.captured.hooks.find(({ event }) => event === "before_prompt_build");
+  const systemContext = (await promptHook.handler()).prependSystemContext;
+  const expectedLink = "[View structure in 3D](<VALUE>)";
+  assert.equal(systemContext.includes(expectedLink), true);
+  assert.match(systemContext, /copy that complete viewerMarkdown field verbatim/u);
+  assert.match(systemContext, /Do not reconstruct it from viewerUrl/u);
+  assert.match(systemContext, /do not leave either field as plain text/u);
+
+  const workspaceInstructions = await readFile(new URL("../workspace/AGENTS.md", import.meta.url), "utf8");
+  assert.equal(workspaceInstructions.includes(`\`${expectedLink}\``), true);
+  assert.match(workspaceInstructions, /copy that complete field verbatim/u);
+  assert.match(workspaceInstructions, /Never reconstruct it from `viewerUrl`/u);
 });
 
 test("plugin injects trusted per-turn identity only into compute-submitting MCP tools", async () => {
@@ -278,18 +295,19 @@ test("credential resolution supports all reasoning providers, MCP override, and 
   assert.equal(keyless.mcpUrl, DEFAULT_MCP_URL);
 });
 
-test("NVIDIA defaults to the tool-reliable Ultra profile", () => {
+test("NVIDIA defaults to the tool-reliable Super profile", () => {
   const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
   configureOpenClaw(config, { AGENT_PROVIDER: "nvidia", NVIDIA_API_KEY: "do-not-persist" });
-  const [ultra] = config.models.providers.nvidia.models;
-  assert.equal(config.agents.defaults.model.primary, "nvidia/nvidia/nemotron-3-ultra-550b-a55b");
-  assert.equal(ultra.id, "nvidia/nemotron-3-ultra-550b-a55b");
-  assert.equal(ultra.contextWindow, 1_000_000);
-  assert.equal(ultra.maxTokens, 16_384);
-  assert.equal(ultra.params, undefined);
+  const [superModel] = config.models.providers.nvidia.models;
+  assert.equal(config.agents.defaults.model.primary, "nvidia/nvidia/nemotron-3-super-120b-a12b");
+  assert.equal(superModel.id, "nvidia/nemotron-3-super-120b-a12b");
+  assert.equal(superModel.contextWindow, 1_000_000);
+  assert.equal(superModel.maxTokens, 8_192);
+  assert.deepEqual(superModel.compat, { maxTokensField: "max_tokens", requiresStringContent: true });
+  assert.equal(superModel.params, undefined);
   assert.equal(config.models.providers.nvidia.timeoutSeconds, 240);
   assert.equal(config.models.providers.tokenfactory.timeoutSeconds, undefined);
-  assert.deepEqual(config.agents.defaults.models["nvidia/nvidia/nemotron-3-ultra-550b-a55b"].params, {
+  assert.deepEqual(config.agents.defaults.models["nvidia/nvidia/nemotron-3-super-120b-a12b"].params, {
     chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true },
   });
   assert.equal(JSON.stringify(config).includes("do-not-persist"), false);
@@ -298,6 +316,7 @@ test("NVIDIA defaults to the tool-reliable Ultra profile", () => {
   configureOpenClaw(custom, { AGENT_PROVIDER: "nvidia", NVIDIA_API_KEY: "do-not-persist", AGENT_MODEL: "example/custom" });
   assert.equal(custom.models.providers.nvidia.models[0].contextWindow, 262_144);
   assert.equal(custom.models.providers.nvidia.models[0].maxTokens, 8_192);
+  assert.equal(custom.models.providers.nvidia.models[0].compat, undefined);
   assert.deepEqual(custom.agents.defaults.models["nvidia/example/custom"], {});
 });
 
