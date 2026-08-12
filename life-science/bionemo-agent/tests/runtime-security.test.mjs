@@ -102,6 +102,7 @@ test("Serverless launch binds exactly one matching NVIDIA MysteryBox payload", a
   assert.equal(script.includes("--env \"NGC_API_KEY="), false);
   assert.match(script, /BIONEMO_MCP_API_KEY_SECRET/u);
   assert.match(script, /TAVILY_API_KEY_SECRET/u);
+  assert.match(script, /BIONEMO_REQUIRE_DEVICE_PAIRING/u);
   assert.equal(script.includes(": \"${NEBIUS_API_KEY_SECRET:?"), false);
 });
 
