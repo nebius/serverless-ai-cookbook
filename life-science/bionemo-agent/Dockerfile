@@ -54,7 +54,7 @@ RUN install -d -o node -g node -m 0700 \
     && install -d -o root -g root -m 0755 /etc/codex/skills \
     && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /etc/codex/skills/ \
     && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /home/node/.claude/skills/ \
-    && chown -R node:node /home/node/.claude \
+    && chown -R node:node /opt/bionemo /home/node/.claude \
     && chmod -R a-w /etc/codex/skills /home/node/.claude/skills \
     && chmod -R go-rwx /opt/bionemo /workspace/agent
 
