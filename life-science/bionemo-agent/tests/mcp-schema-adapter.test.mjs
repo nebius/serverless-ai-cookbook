@@ -3,6 +3,8 @@ import http from "node:http";
 import test from "node:test";
 import {
   McpAdapterInputError,
+  MODELS_LIST_ALIAS,
+  MODELS_LIST_UPSTREAM_NAME,
   __test as adapterTest,
   adaptMcpToolDefinition,
   adaptToolCallPayload,
@@ -118,6 +120,37 @@ const DEEPVARIANT = wrappedTool("clawbio_deepvariant_call", "ParabricksDeepVaria
 }, { InputReference: INPUT_REFERENCE, ParabricksInputSource: PARABRICKS_INPUT_SOURCE });
 
 const TOOLS_LIST = { jsonrpc: "2.0", id: 1, result: { tools: [OPENFOLD2, ESM2] } };
+
+test("the read-only model catalog uses one stable short alias and reverses it upstream", () => {
+  const catalog = new Map();
+  const original = {
+    jsonrpc: "2.0",
+    id: 1,
+    result: {
+      tools: [{
+        name: MODELS_LIST_UPSTREAM_NAME,
+        description: "List available BioNeMo models",
+        inputSchema: { type: "object", additionalProperties: false, properties: {} },
+      }],
+    },
+  };
+  const adapted = adaptToolsListPayload(original, catalog);
+  assert.equal(adapted.result.tools[0].name, MODELS_LIST_ALIAS);
+  assert.equal(original.result.tools[0].name, MODELS_LIST_UPSTREAM_NAME);
+  assert.deepEqual(catalog.get(MODELS_LIST_ALIAS), {
+    mode: "tool-alias",
+    upstreamName: MODELS_LIST_UPSTREAM_NAME,
+  });
+
+  const call = adaptToolCallPayload({
+    jsonrpc: "2.0",
+    id: 2,
+    method: "tools/call",
+    params: { name: MODELS_LIST_ALIAS, arguments: {} },
+  }, catalog);
+  assert.equal(call.params.name, MODELS_LIST_UPSTREAM_NAME);
+  assert.deepEqual(call.params.arguments, {});
+});
 
 test("Cerebrium wrapper schemas become flat, dereferenced model-facing schemas", () => {
   const catalog = new Map();

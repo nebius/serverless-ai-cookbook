@@ -51,6 +51,7 @@ COPY --chown=node:node vendor /opt/bionemo/vendor
 
 RUN node /opt/bionemo/runtime/patch-openclaw-mcp-turn-context.mjs /app/dist \
     && node /opt/bionemo/runtime/patch-openclaw-final-presentation.mjs /app/dist \
+    && node /opt/bionemo/runtime/patch-openclaw-super-followup.mjs /app/dist \
     && node /opt/bionemo/runtime/prepare-control-ui.mjs \
       /app/dist/control-ui \
       /opt/bionemo/control-ui \

@@ -4,10 +4,14 @@ import path from "node:path";
 
 export const NOTEBOOK_ROUTE_PREFIX = "/plugins/bionemo/notebooks";
 export const NOTEBOOK_MAX_BYTES = 256 * 1024;
-export const NOTEBOOK_CHAT_PATH = "/chat?session=agent%3Abionemo%3Amain";
+export const NOTEBOOK_SESSION_PREFIX = "agent:bionemo:dashboard:";
 
 function notebook(entry) {
-  return Object.freeze({ ...entry, steps: Object.freeze([...entry.steps]) });
+  return Object.freeze({
+    ...entry,
+    sessionKey: `${NOTEBOOK_SESSION_PREFIX}${entry.slug}`,
+    steps: Object.freeze([...entry.steps]),
+  });
 }
 
 export const NOTEBOOK_CATALOG = Object.freeze([
@@ -15,6 +19,7 @@ export const NOTEBOOK_CATALOG = Object.freeze([
     slug: "egfr-research-drug-demo",
     file: "01-egfr-research-drug-demo.ipynb",
     title: "Research-first EGFR drug discovery demo",
+    sessionLabel: "Example 1 · Research-first EGFR",
     description: "Optional Tavily evidence gathering followed by a bounded, cross-backend structure and molecule workflow.",
     steps: ["Optionally research current public EGFR/gefitinib evidence with Tavily", "Characterize the fixed public EGFR kinase sequence with OpenFold2", "Optimize two gefitinib-derived candidates with MolMIM", "Model the selected candidate with the same EGFR sequence using OpenFold3", "Review citations, confidence summaries, artifacts, and limitations"],
     prompt: "Run the backend-neutral research-first EGFR demo. Call bionemo_research_drug_demo exactly once with use_tavily=true, ack_research_only=true, ack_non_clinical=true, ack_non_commercial=true, ack_aup_accepted=true, and ack_no_safety_or_therapeutic_claims=true. I explicitly accept those five research-only acknowledgements. Do not call its Tavily, OpenFold2, MolMIM, or OpenFold3 steps separately. Report whether optional Tavily research ran, cite its sources if present, summarize every model step and confidence value, include every artifact viewerMarkdown link verbatim, and state the scientific limitations.",
@@ -24,6 +29,7 @@ export const NOTEBOOK_CATALOG = Object.freeze([
     slug: "compare-protein-structures",
     file: "02-compare-protein-structures.ipynb",
     title: "Compare protein structure predictions",
+    sessionLabel: "Example 2 · Compare protein structures",
     description: "Compare two provider-neutral structure predictions for the same public protein target.",
     steps: ["Load the fixed public crambin sequence", "Predict one structure with OpenFold2", "Independently predict the same sequence with OpenFold3", "Compare scalar confidence summaries and structure artifacts", "Review limitations and experimental-validation requirements"],
     prompt: "Run the backend-neutral public crambin structure-comparison demo. Call bionemo_compare_protein_structures exactly once with ack_research_only=true, ack_non_clinical=true, ack_non_commercial=true, ack_aup_accepted=true, and ack_no_safety_or_therapeutic_claims=true. I explicitly accept those five research-only acknowledgements. Do not call OpenFold2 or OpenFold3 separately. Compare the two independent predictions using only returned scalar confidence summaries and artifact links; do not treat either prediction as experimental ground truth. Include every artifact viewerMarkdown link verbatim and state the scientific limitations.",
@@ -33,6 +39,7 @@ export const NOTEBOOK_CATALOG = Object.freeze([
     slug: "optimize-ligand-complex",
     file: "03-optimize-ligand-complex.ipynb",
     title: "Optimize a ligand and model its complex",
+    sessionLabel: "Example 3 · Optimize ligand complex",
     description: "Generate a bounded molecule set and model the selected molecule with its public protein target.",
     steps: ["Load the fixed public EGFR target and gefitinib seed", "Generate two bounded candidates with MolMIM", "Select one candidate deterministically from returned scores", "Model the selected ligand with the same EGFR sequence using OpenFold3", "Review artifacts, confidence, chemistry, and limitations"],
     prompt: "Run the backend-neutral fixed EGFR/gefitinib ligand-optimization demo. Call bionemo_optimize_ligand_complex exactly once with ack_research_only=true, ack_non_clinical=true, ack_non_commercial=true, ack_aup_accepted=true, and ack_no_safety_or_therapeutic_claims=true. I explicitly accept those five research-only acknowledgements. Do not call MolMIM or OpenFold3 separately. Summarize both generated candidates, identify the deterministically selected candidate and returned optimization score, explain the handoff into OpenFold3, include every artifact viewerMarkdown link verbatim, and make no binding, safety, efficacy, or clinical claim.",
@@ -42,6 +49,7 @@ export const NOTEBOOK_CATALOG = Object.freeze([
     slug: "bulk-openfold2-five-proteins",
     file: "04-bulk-openfold2-five-proteins.ipynb",
     title: "Batch-fold five public proteins",
+    sessionLabel: "Example 4 · Batch-fold five proteins",
     description: "A bounded five-protein workbook with sequential execution and explicit per-item results.",
     steps: ["Read and validate the fixed five-record public FASTA fixture", "Fold each protein sequentially with OpenFold2", "Retain per-record success or durable failure status", "Collect confidence summaries, artifacts, and viewer links", "Review batch counts, limitations, and validation requirements"],
     prompt: "Run the backend-neutral fixed five-protein batch-folding demo. Call bionemo_batch_fold_demo exactly once with input_file=notebooks/data/five-proteins.fasta, ack_research_only=true, ack_non_clinical=true, ack_non_commercial=true, ack_aup_accepted=true, and ack_no_safety_or_therapeutic_claims=true. I explicitly accept those five research-only acknowledgements. Do not call OpenFold2 separately or submit duplicate concurrent jobs. Report exactly the five fixture record IDs in source order with per-record status, elapsed time or remote job ID when available, scalar confidence summaries, and every successful artifact viewerMarkdown link verbatim. Preserve and report successful records if another record fails, then state the scientific limitations.",
@@ -59,8 +67,8 @@ export function notebookDownloadPath(slug) {
   return `${notebookViewPath(slug)}.ipynb`;
 }
 
-export function notebookChatPath(prompt) {
-  return `${NOTEBOOK_CHAT_PATH}&draft=${encodeURIComponent(prompt)}`;
+export function notebookChatPath(definition) {
+  return `/chat?session=${encodeURIComponent(definition.sessionKey)}&draft=${encodeURIComponent(definition.prompt)}`;
 }
 
 export function publicNotebookCatalog() {
@@ -68,7 +76,7 @@ export function publicNotebookCatalog() {
     ...definition,
     viewPath: notebookViewPath(definition.slug),
     downloadPath: notebookDownloadPath(definition.slug),
-    chatPath: notebookChatPath(definition.prompt),
+    chatPath: notebookChatPath(definition),
   })));
 }
 
@@ -167,7 +175,7 @@ async function loadNotebook(definition, root) {
 
 function notebookHtml(nonce, definition, parsed) {
   const { notebook: value, metadata } = parsed;
-  const chatHref = notebookChatPath(metadata.prompt);
+  const chatHref = notebookChatPath({ ...definition, prompt: metadata.prompt });
   const downloadHref = notebookDownloadPath(definition.slug);
   const cells = value.cells.map((cell, index) => {
     const kind = cell.cell_type;

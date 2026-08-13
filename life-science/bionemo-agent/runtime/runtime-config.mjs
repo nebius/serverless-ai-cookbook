@@ -7,12 +7,23 @@ export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 export const NEBIUS_MODEL = "deepseek-ai/DeepSeek-V4-Pro";
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
+const NEMOTRON_SUPER_PARAMS = Object.freeze({
+  chat_template_kwargs: Object.freeze({ enable_thinking: false, force_nonempty_content: true }),
+});
+const NEMOTRON_SUPER_COMPAT = Object.freeze({
+  maxTokensField: "max_tokens",
+  requiresStringContent: true,
+});
 // Keep all eight evaluated candidates here so known failures remain blocked
 // even when an operator supplies their exact id through AGENT_MODEL.
 export const TOKEN_FACTORY_QUALIFICATION = Object.freeze([
   Object.freeze({ id: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", alias: "Nemotron 3 Nano", qualified: false, reason: "truncated the optimized-ligand notebook after successful compute and omitted the OpenFold3 result, artifact links, and limitations" }),
   Object.freeze({ id: "nvidia/Nemotron-3_5-Lightning", alias: "Nemotron 3.5 Lightning", qualified: false, reason: "emitted string sentinels for nullable structured fields and attempted false consent acknowledgements" }),
-  Object.freeze({ id: "nvidia/nemotron-3-super-120b-a12b", alias: "Nemotron 3 Super", qualified: false, reason: "made two structured calls to nonexistent MCP tool names before its third successful catalog call" }),
+  // Token Factory currently advertises 8k through /models, but its hosted
+  // Super route accepted bounded 12k and 25k prompt probes. Use NVIDIA's
+  // conservative 256k default deployment profile rather than the model's 1M
+  // native maximum so OpenClaw can retain its required 20k recovery reserve.
+  Object.freeze({ id: NVIDIA_MODEL, alias: "Nemotron 3 Super", contextWindow: 262144, maxTokens: 8192, compat: NEMOTRON_SUPER_COMPAT, params: NEMOTRON_SUPER_PARAMS }),
   Object.freeze({ id: "nvidia/Nemotron-3-Ultra-550b-a55b", alias: "Nemotron 3 Ultra", qualified: false, reason: "returned an unrelated workflow instead of the requested exact response in clean endpoint acceptance" }),
   Object.freeze({ id: "openai/gpt-oss-120b", alias: "GPT-OSS 120B", qualified: false, reason: "attempted model submissions without every required user acknowledgement" }),
   Object.freeze({ id: "Qwen/Qwen3-32B", alias: "Qwen3 32B", qualified: false, reason: "emitted visible provider-side reasoning tags and did not meet the presentation gate" }),
@@ -165,7 +176,10 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     [`nvidia/${nvidiaModel}`]: nvidiaUsesDefault
       ? { params: { chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true } } }
       : {},
-    ...Object.fromEntries(tokenFactoryModels.map(({ id, alias }) => [`tokenfactory/${id}`, alias ? { alias } : {}])),
+    ...Object.fromEntries(tokenFactoryModels.map(({ id, alias, params }) => [
+      `tokenfactory/${id}`,
+      { ...(alias ? { alias } : {}), ...(params ? { params: structuredClone(params) } : {}) },
+    ])),
     [`openai/${openaiModel}`]: {},
     [`claude/${anthropicModel}`]: {},
   };

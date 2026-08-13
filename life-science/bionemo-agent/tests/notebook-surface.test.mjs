@@ -9,9 +9,9 @@ import plugin from "../openclaw-plugin/index.mjs";
 import {
   createNotebookHandler,
   NOTEBOOK_CATALOG,
-  NOTEBOOK_CHAT_PATH,
   NOTEBOOK_MAX_BYTES,
   NOTEBOOK_ROUTE_PREFIX,
+  notebookChatPath,
   publicNotebookCatalog,
   __test as notebookInternals,
 } from "../openclaw-plugin/src/notebooks.mjs";
@@ -50,6 +50,9 @@ test("four fixed image-baked notebooks are nbformat 4, empty-output, bounded, an
   assert.equal(NOTEBOOK_CATALOG.length, 4);
   assert.equal(new Set(NOTEBOOK_CATALOG.map(({ slug }) => slug)).size, 4);
   assert.equal(new Set(NOTEBOOK_CATALOG.map(({ file }) => file)).size, 4);
+  assert.equal(new Set(NOTEBOOK_CATALOG.map(({ sessionKey }) => sessionKey)).size, 4);
+  assert.equal(new Set(NOTEBOOK_CATALOG.map(({ sessionLabel }) => sessionLabel)).size, 4);
+  assert.equal(NOTEBOOK_CATALOG.every(({ sessionKey }) => sessionKey.startsWith("agent:bionemo:dashboard:")), true);
   assert.equal(NOTEBOOK_CATALOG.filter(({ optionalTavily }) => optionalTavily).length, 1);
   assert.equal(NOTEBOOK_CATALOG.at(-1).slug, "bulk-openfold2-five-proteins");
 
@@ -111,7 +114,7 @@ test("notebook viewer escapes cells, omits execution, and links exact download a
     assert.doesNotMatch(res.headers["Content-Security-Policy"], /script-src/u);
     assert.match(html, /Read-only guided notebook/u);
     assert.match(html, /Cells are not executed in this page/u);
-    assert.ok(html.includes(`${NOTEBOOK_CHAT_PATH}&#38;draft=${encodeURIComponent(definition.prompt)}`));
+    assert.ok(html.includes(notebookChatPath(definition).replaceAll("&", "&#38;")));
     assert.ok(html.includes(`${NOTEBOOK_ROUTE_PREFIX}/${definition.slug}.ipynb`));
     assert.doesNotMatch(html, /<script/iu);
     assert.doesNotMatch(html, /<iframe/iu);

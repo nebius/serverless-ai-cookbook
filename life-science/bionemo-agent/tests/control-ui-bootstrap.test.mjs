@@ -5,7 +5,8 @@ import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
-import { CONTROL_UI_BOOTSTRAP_NAME, prepareControlUi } from "../runtime/prepare-control-ui.mjs";
+import { EXAMPLE_SESSIONS } from "../runtime/example-sessions.mjs";
+import { CONTROL_UI_BOOTSTRAP_NAME, prepareControlUi, renderExampleSessionPrelude } from "../runtime/prepare-control-ui.mjs";
 
 const bootstrapUrl = new URL("../runtime/control-ui-default-session.js", import.meta.url);
 const defaultDemoPrompt = NOTEBOOK_CATALOG[0].prompt;
@@ -17,8 +18,14 @@ test("startup draft is the exact Tavily-enabled first notebook prompt", async ()
   assert.match(defaultDemoPrompt, /use_tavily=true/u);
 });
 
-async function runBootstrap(href) {
-  const source = await readFile(bootstrapUrl, "utf8");
+function composerStorageKey(href) {
+  const url = new URL(href);
+  const gatewayUrl = `${url.protocol === "https:" ? "wss:" : "ws:"}//${url.host}`;
+  return `openclaw.control.chatComposer.v1:${encodeURIComponent(gatewayUrl).slice(0, 240)}`;
+}
+
+async function runBootstrap(href, { storage = new Map(), failWrites = false } = {}) {
+  const source = `${renderExampleSessionPrelude()}${await readFile(bootstrapUrl, "utf8")}`;
   const location = new URL(href);
   const calls = [];
   const history = {
@@ -27,12 +34,20 @@ async function runBootstrap(href) {
       calls.push({ state, title, next });
     },
   };
-  vm.runInNewContext(source, { URL, window: { location, history } });
-  return calls;
+  const localStorage = {
+    getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+    setItem(key, value) {
+      if (failWrites) throw new Error("quota");
+      storage.set(key, String(value));
+    },
+    removeItem(key) { storage.delete(key); },
+  };
+  vm.runInNewContext(source, { URL, window: { location, history, localStorage } });
+  return { calls, storage };
 }
 
 test("default-session bootstrap canonicalizes only first-entry BioNeMo routes", async () => {
-  const rootCalls = await runBootstrap("https://workbench.example/");
+  const { calls: rootCalls } = await runBootstrap("https://workbench.example/");
   assert.equal(rootCalls.length, 1);
   assert.deepEqual(rootCalls[0].state, { retained: true });
   assert.equal(rootCalls[0].title, "");
@@ -41,7 +56,7 @@ test("default-session bootstrap canonicalizes only first-entry BioNeMo routes", 
   assert.equal(rootUrl.searchParams.get("session"), "agent:bionemo:main");
   assert.equal(rootUrl.searchParams.get("draft"), defaultDemoPrompt);
 
-  const themedCalls = await runBootstrap("https://workbench.example/?theme=dark#token=kept");
+  const { calls: themedCalls } = await runBootstrap("https://workbench.example/?theme=dark#token=kept");
   assert.equal(themedCalls.length, 1);
   const themedUrl = new URL(themedCalls[0].next, "https://workbench.example");
   assert.equal(themedUrl.pathname, "/chat");
@@ -50,17 +65,17 @@ test("default-session bootstrap canonicalizes only first-entry BioNeMo routes", 
   assert.equal(themedUrl.searchParams.get("draft"), defaultDemoPrompt);
   assert.equal(themedUrl.hash, "#token=kept");
 
-  const legacyCalls = await runBootstrap("https://workbench.example/chat?session=main");
+  const { calls: legacyCalls } = await runBootstrap("https://workbench.example/chat?session=main");
   assert.equal(legacyCalls.length, 1);
   const legacyUrl = new URL(legacyCalls[0].next, "https://workbench.example");
   assert.equal(legacyUrl.pathname, "/chat");
   assert.equal(legacyUrl.searchParams.get("session"), "agent:bionemo:main");
   assert.equal(legacyUrl.searchParams.get("draft"), defaultDemoPrompt);
 
-  assert.deepEqual(await runBootstrap("https://workbench.example/chat?session=main&draft=kept"), [
+  assert.deepEqual((await runBootstrap("https://workbench.example/chat?session=main&draft=kept")).calls, [
     { state: { retained: true }, title: "", next: "/chat?session=agent%3Abionemo%3Amain&draft=kept" },
   ]);
-  assert.deepEqual(await runBootstrap("https://workbench.example/?draft=kept&theme=light"), [
+  assert.deepEqual((await runBootstrap("https://workbench.example/?draft=kept&theme=light")).calls, [
     { state: { retained: true }, title: "", next: "/chat?draft=kept&theme=light&session=agent%3Abionemo%3Amain" },
   ]);
 });
@@ -72,8 +87,52 @@ test("default-session bootstrap preserves explicit sessions and non-default rout
     "https://workbench.example/chat?session=agent:bionemo:research",
     "https://workbench.example/debug?session=main",
   ]) {
-    assert.deepEqual(await runBootstrap(href), [], href);
+    assert.deepEqual((await runBootstrap(href)).calls, [], href);
   }
+});
+
+test("Control UI seeds four ready per-session drafts once without queues or sends", async () => {
+  const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
+  const storage = new Map();
+  const first = await runBootstrap(href, { storage });
+  assert.deepEqual(first.calls, []);
+  const storageKey = composerStorageKey(href);
+  const parsed = JSON.parse(storage.get(storageKey));
+  assert.equal(parsed.version, 1);
+  assert.equal(Object.keys(parsed.sessions).length, 4);
+  for (const definition of EXAMPLE_SESSIONS) {
+    const entry = parsed.sessions[`${definition.key}\u0000agent:bionemo`];
+    assert.equal(entry.draft, definition.prompt);
+    assert.equal(Object.hasOwn(entry, "queue"), false);
+  }
+  assert.equal(storage.get(storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:")), "1");
+
+  const serialized = storage.get(storageKey);
+  await runBootstrap(href, { storage });
+  assert.equal(storage.get(storageKey), serialized, "a reload must not replace user-owned composer state");
+});
+
+test("Control UI draft seeding preserves existing edits and queues and fails closed on storage errors", async () => {
+  const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:compare-protein-structures";
+  const storageKey = composerStorageKey(href);
+  const firstKey = `${EXAMPLE_SESSIONS[0].key}\u0000agent:bionemo`;
+  const storage = new Map([[storageKey, JSON.stringify({
+    version: 1,
+    sessions: {
+      [firstKey]: { draft: "user edit", queue: [{ id: "preserved" }], updatedAt: 1 },
+      "agent:bionemo:main\u0000agent:bionemo": { draft: "unrelated", updatedAt: 2 },
+    },
+  })]]);
+  await runBootstrap(href, { storage });
+  const parsed = JSON.parse(storage.get(storageKey));
+  assert.equal(parsed.sessions[firstKey].draft, "user edit");
+  assert.deepEqual(parsed.sessions[firstKey].queue, [{ id: "preserved" }]);
+  assert.equal(parsed.sessions["agent:bionemo:main\u0000agent:bionemo"].draft, "unrelated");
+
+  const malformed = new Map([[storageKey, "not-json"]]);
+  await assert.doesNotReject(() => runBootstrap(href, { storage: malformed }));
+  assert.equal(Object.keys(JSON.parse(malformed.get(storageKey)).sessions).length, 4);
+  await assert.doesNotReject(() => runBootstrap(href, { failWrites: true }));
 });
 
 test("Control UI preparation owns an unminified bootstrap loaded before OpenClaw", async (t) => {
@@ -91,5 +150,9 @@ test("Control UI preparation owns an unminified bootstrap loaded before OpenClaw
   assert.ok(html.indexOf(`src="./${CONTROL_UI_BOOTSTRAP_NAME}"`) < html.indexOf('type="module"'));
   assert.equal((html.match(new RegExp(CONTROL_UI_BOOTSTRAP_NAME, "gu")) || []).length, 1);
   assert.equal(await readFile(path.join(targetRoot, "assets", "upstream.js"), "utf8"), "export {};\n");
-  assert.equal(await readFile(path.join(targetRoot, CONTROL_UI_BOOTSTRAP_NAME), "utf8"), await readFile(bootstrapUrl, "utf8"));
+  const preparedBootstrap = await readFile(path.join(targetRoot, CONTROL_UI_BOOTSTRAP_NAME), "utf8");
+  assert.equal(preparedBootstrap, `${renderExampleSessionPrelude()}${await readFile(bootstrapUrl, "utf8")}`);
+  assert.match(preparedBootstrap, /__BIONEMO_EXAMPLE_SESSIONS__/u);
+  assert.doesNotMatch(preparedBootstrap, /tvly-[A-Za-z0-9]/u);
+  assert.doesNotThrow(() => new vm.Script(preparedBootstrap));
 });

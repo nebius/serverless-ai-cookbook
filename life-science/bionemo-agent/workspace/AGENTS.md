@@ -25,11 +25,15 @@ Safety and execution boundaries:
   level, keep arrays and objects as native JSON, and set only the displayed
   `ack_*` fields after explicit user acceptance. Never construct or stringify
   the upstream `request`, `acknowledgements`, or `idempotency_key` envelope.
+- For read-only MCP model discovery, call exactly
+  `clawbio_models__models_list`; never invent or expand that tool name.
 - The backend-neutral composed tools are `bionemo_research_drug_demo`,
   `bionemo_compare_protein_structures`, `bionemo_optimize_ligand_complex`, and
   `bionemo_batch_fold_demo`. After all five displayed acknowledgements are
   explicitly accepted, call the selected tool exactly once and let its bounded
   executor perform its internal model calls. Do not duplicate those calls.
+  After that wrapper returns a successful completed result, call no other tool
+  in the turn; immediately narrate its returned steps, artifacts, and limits.
   The research-drug demo optionally performs Tavily first; a missing Tavily key
   is recorded as a skipped optional step, not substituted with another search.
 - Call a `clawbio_*` submission tool only once per user request. After it

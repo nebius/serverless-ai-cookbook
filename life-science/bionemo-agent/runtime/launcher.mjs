@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { capabilities, configureOpenClaw, normalizedEnvironment, validatedRemoteUrl } from "./runtime-config.mjs";
+import { pinAndVerifyExampleSessions, seedExampleSessions } from "./example-sessions.mjs";
 import { startMcpSchemaAdapter } from "./mcp-schema-adapter.mjs";
 import { prepareClients } from "./prepare-clients.mjs";
 import { startSetupServer } from "./setup-server.mjs";
@@ -149,6 +150,8 @@ async function main() {
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("PORT must be an integer between 1024 and 65535");
   const stateDir = runtimeEnv.OPENCLAW_STATE_DIR || "/workspace/state";
   const configPath = runtimeEnv.OPENCLAW_CONFIG_PATH || path.join(stateDir, "openclaw.json");
+  process.env.OPENCLAW_STATE_DIR = stateDir;
+  process.env.OPENCLAW_CONFIG_PATH = configPath;
   const templatePath = runtimeEnv.BIONEMO_CONFIG_TEMPLATE || "/opt/bionemo/config/openclaw.template.json";
   const setupPort = Number(runtimeEnv.BIONEMO_SETUP_PORT || 18790);
   const mcpAdapterPort = Number(runtimeEnv.BIONEMO_MCP_ADAPTER_PORT || 18791);
@@ -198,6 +201,8 @@ async function main() {
   }
 
   const capabilityState = await writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env: runtimeEnv, setupPort });
+  const seededSessions = await seedExampleSessions({ configPath });
+  process.stdout.write(`BioNeMo ready example sessions: ${seededSessions.length} native empty sessions seeded; no workflow was started.\n`);
   const devicePairingRequired = parseBoolean(runtimeEnv.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
   process.stdout.write(`BioNeMo browser authentication: gateway token${devicePairingRequired ? " plus one-time device approval" : " only; per-browser device approval disabled"}.\n`);
   await prepareClients(runtimeEnv);
@@ -212,6 +217,7 @@ async function main() {
     stdio: "inherit",
     env: childEnv,
   });
+  const gatewayExit = new Promise((resolve) => gateway.once("exit", (code, signal) => resolve(code ?? (signal ? 128 : 1))));
 
   let stopping = false;
   const stop = (signal = "SIGTERM") => {
@@ -228,7 +234,14 @@ async function main() {
   tunnel?.child.once("exit", (code) => {
     if (!stopping) { process.stderr.write(`HTTPS tunnel stopped unexpectedly (code ${code}); shutting down gateway.\n`); stop(); }
   });
-  const exitCode = await new Promise((resolve) => gateway.once("exit", (code, signal) => resolve(code ?? (signal ? 128 : 1))));
+  try {
+    await pinAndVerifyExampleSessions({ port, token: gatewayToken });
+    process.stdout.write(`BioNeMo ready example sessions: ${seededSessions.length} visible and pinned in the Sessions sidebar.\n`);
+  } catch (error) {
+    stop();
+    throw error;
+  }
+  const exitCode = await gatewayExit;
   stop();
   process.exitCode = exitCode;
 }

@@ -1,10 +1,16 @@
-import { copyFile, cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { EXAMPLE_SESSIONS } from "./example-sessions.mjs";
 
 export const CONTROL_UI_BOOTSTRAP_NAME = "bionemo-default-session.js";
 const MODULE_SCRIPT_MARKER = '    <script type="module"';
 const BOOTSTRAP_SCRIPT_TAG = `    <script src="./${CONTROL_UI_BOOTSTRAP_NAME}"></script>\n`;
+
+export function renderExampleSessionPrelude(examples = EXAMPLE_SESSIONS) {
+  const publicDefinitions = examples.map(({ key, agentId, label, prompt }) => ({ key, agentId, label, prompt }));
+  return `(function(){"use strict";var definitions=${JSON.stringify(publicDefinitions)}.map(function(entry){return Object.freeze(entry);});Object.defineProperty(globalThis,"__BIONEMO_EXAMPLE_SESSIONS__",{value:Object.freeze(definitions),configurable:false,enumerable:false,writable:false});})();\n`;
+}
 
 export async function prepareControlUi({ sourceRoot, targetRoot, bootstrapPath }) {
   if (!sourceRoot || !targetRoot || !bootstrapPath) {
@@ -13,7 +19,12 @@ export async function prepareControlUi({ sourceRoot, targetRoot, bootstrapPath }
 
   await mkdir(path.dirname(targetRoot), { recursive: true });
   await cp(sourceRoot, targetRoot, { recursive: true, force: true });
-  await copyFile(bootstrapPath, path.join(targetRoot, CONTROL_UI_BOOTSTRAP_NAME));
+  const bootstrap = await readFile(bootstrapPath, "utf8");
+  await writeFile(
+    path.join(targetRoot, CONTROL_UI_BOOTSTRAP_NAME),
+    `${renderExampleSessionPrelude()}${bootstrap}`,
+    "utf8",
+  );
 
   const indexPath = path.join(targetRoot, "index.html");
   const original = await readFile(indexPath, "utf8");

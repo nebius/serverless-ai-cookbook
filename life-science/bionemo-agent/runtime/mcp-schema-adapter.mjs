@@ -14,6 +14,13 @@ const ACKNOWLEDGEMENT_FIELDS = Object.freeze([
   "no_safety_or_therapeutic_claims",
 ]);
 
+// The upstream name repeats both the MCP server namespace and the tool
+// purpose once OpenClaw qualifies it (clawbio_models__clawbio_models_list).
+// Expose one shorter, read-only compatibility name to the model and translate
+// it back at the adapter boundary. Compute-tool names remain untouched.
+export const MODELS_LIST_ALIAS = "models_list";
+export const MODELS_LIST_UPSTREAM_NAME = "clawbio_models_list";
+
 // These requirements are part of the public clawbio_models_list contract. They
 // are deliberately model-facing: the adapter never fabricates user consent.
 const REQUIRED_ACKNOWLEDGEMENTS = Object.freeze({
@@ -189,6 +196,12 @@ export function adaptToolsListPayload(payload, catalog = new Map()) {
   if (!plainObject(payload) || !Array.isArray(payload.result?.tools)) return clone(payload);
   const next = clone(payload);
   next.result.tools = payload.result.tools.map((tool) => {
+    if (plainObject(tool) && tool.name === MODELS_LIST_UPSTREAM_NAME) {
+      const aliased = clone(tool);
+      aliased.name = MODELS_LIST_ALIAS;
+      catalog.set(MODELS_LIST_ALIAS, { mode: "tool-alias", upstreamName: MODELS_LIST_UPSTREAM_NAME });
+      return aliased;
+    }
     const adapted = adaptMcpToolDefinition(tool);
     if (adapted.mapping) catalog.set(tool.name, adapted.mapping);
     return adapted.tool;
@@ -297,6 +310,11 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
   if (!plainObject(payload) || payload.method !== "tools/call" || !plainObject(payload.params)) return clone(payload);
   const toolName = payload.params.name;
   const mapping = catalog.get(toolName);
+  if (mapping?.mode === "tool-alias" && typeof mapping.upstreamName === "string") {
+    const next = clone(payload);
+    next.params.name = mapping.upstreamName;
+    return next;
+  }
   if (!mapping || mapping.mode !== "flat-request") return clone(payload);
   const rawSupplied = plainObject(payload.params.arguments) ? payload.params.arguments : {};
   const turnId = rawSupplied[MCP_TURN_ID_FIELD];

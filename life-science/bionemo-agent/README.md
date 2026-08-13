@@ -39,16 +39,16 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 | `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
 | none | local setup-required responder | no external model |
 
-The Token Factory picker exposes only DeepSeek V4 Pro. It is the sole model from
-the eight-model qualification matrix that completed a clean deployed OpenClaw
-MCP catalog turn and the full notebook workflow gate without malformed,
-duplicate, truncated, or missing tool behavior.
+The Token Factory picker exposes DeepSeek V4 Pro by default and Nemotron 3
+Super as a qualified alternative. Super uses a conservative 262,144-token
+OpenClaw profile, `max_tokens`, string tool-result content, and template
+thinking disabled. A stable read-only MCP catalog alias avoids the repeated
+namespace that caused its earlier invalid catalog calls.
 
 The same gate tested all eight previously exposed models. Nano was removed after
 its optimized-ligand notebook response truncated before the OpenFold3 result and
-artifacts; Super made two structured calls to nonexistent MCP tools before a
-third successful call; GLM failed the deployed MCP turn without a callable tool
-or final answer. Lightning, GPT-OSS, Qwen3, and Ultra retain their previously
+artifacts; GLM failed the deployed MCP turn without a callable tool or final
+answer. Lightning, GPT-OSS, Qwen3, and Ultra retain their previously
 documented schema, consent, presentation, and response failures. Those known-
 failing IDs are rejected even when supplied through `AGENT_MODEL`; arbitrary
 operator models remain available as explicit custom overrides.
@@ -63,8 +63,9 @@ bounded 240-second idle timeout so a slow hosted response does not discard an
 already completed BioNeMo NIM result.
 
 OpenClaw reserves at least 20,000 tokens for compaction recovery. This keeps
-long NVIDIA Super and Token Factory DeepSeek tool sessions out of the unrecoverable
-low-buffer state identified by OpenClaw's compaction warning.
+long NVIDIA Super, Token Factory Super, and Token Factory DeepSeek tool sessions
+out of the unrecoverable low-buffer state identified by OpenClaw's compaction
+warning.
 
 Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
@@ -111,8 +112,12 @@ Claude; credentials remain runtime-only and are never part of the skill.
 The BioNeMo dashboard opens with four visible guided notebooks. They are real,
 clean nbformat 4 files baked under `/workspace/agent/notebooks`, available as a
 safe read-only preview, an exact `.ipynb` download, and a one-click launch into
-the canonical `agent:bionemo:main` chat. They do not contain credentials,
-executed output, or a Python kernel:
+its own ready example chat. At startup, OpenClaw's native session lifecycle
+creates and pins four stable, distinctly labelled empty sessions in the
+Sessions sidebar. Their reviewed prompts are drafts only: opening the page or a
+session never sends a model request, starts a tool, or runs scientific compute.
+They do not contain credentials, fake assistant output, executed output, or a
+Python kernel:
 
 1. an optional Tavily-first EGFR/gefitinib research workflow using OpenFold2,
    MolMIM, and OpenFold3;

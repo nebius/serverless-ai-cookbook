@@ -59,6 +59,8 @@ test("plugin registers exactly the manifest-declared 17 tools", async () => {
   assert.match(systemContext, /submission tool may be called only once per user request/u);
   assert.match(systemContext, /poll only clawbio_job_status for that exact ID, at most four times/u);
   assert.match(systemContext, /never resubmit or call jobs-list\/model-fetch discovery/u);
+  assert.match(systemContext, /call exactly clawbio_models__models_list; never invent or expand that name/u);
+  assert.match(systemContext, /wrapper returns a successful completed result, call no other tool in the turn/u);
 });
 
 test("completed composed workflows register a run-scoped final presentation synchronously", async () => {
@@ -684,6 +686,14 @@ test("Token Factory models retain aliases, credential placeholders, and AGENT_MO
   assert.equal(configured.models.providers.tokenfactory.apiKey, "${NEBIUS_API_KEY}");
   assert.equal(configured.models.providers.tokenfactory.models.every((model) => !model.name.includes("requires API key") && model.reasoning === true), true);
   assert.deepEqual(configured.models.providers.tokenfactory.models.map(({ id, contextWindow, maxTokens }) => ({ id, contextWindow, maxTokens })), TOKEN_FACTORY_MODELS.map(({ id, contextWindow, maxTokens }) => ({ id, contextWindow, maxTokens })));
+  const superModel = configured.models.providers.tokenfactory.models.find(({ id }) => id === "nvidia/nemotron-3-super-120b-a12b");
+  assert.deepEqual(superModel.compat, { maxTokensField: "max_tokens", requiresStringContent: true });
+  assert.equal(superModel.contextWindow, 262_144);
+  assert.equal(superModel.maxTokens, 8_192);
+  assert.deepEqual(configured.agents.defaults.models["tokenfactory/nvidia/nemotron-3-super-120b-a12b"], {
+    alias: "Nemotron 3 Super",
+    params: { chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true } },
+  });
   assert.equal(JSON.stringify(configured).includes("do-not-persist"), false);
 
   const custom = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
