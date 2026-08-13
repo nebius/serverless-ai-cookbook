@@ -284,7 +284,7 @@ test("all pins and model identity are immutable in the shipped configuration", a
   const pluginManifest = JSON.parse(await readFile(new URL("../openclaw-plugin/openclaw.plugin.json", import.meta.url), "utf8"));
   const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
   assert.match(dockerfile, /openclaw:2026\.7\.1-2@sha256:8789721d/u);
-  assert.match(dockerfile, /org\.opencontainers\.image\.version="3\.3\.0"/u);
+  assert.match(dockerfile, /org\.opencontainers\.image\.version="3\.3\.1"/u);
   assert.match(dockerfile, /CLOUDFLARED_VERSION="2026\.7\.3"/u);
   assert.match(dockerfile, new RegExp(TOOLKIT_COMMIT));
   assert.match(dockerfile, /libgnutls30=3\.7\.9-2\+deb12u7/u);
@@ -294,9 +294,9 @@ test("all pins and model identity are immutable in the shipped configuration", a
   assert.match(dockerfile, /chmod -R a-w \/workspace\/agent\/notebooks/u);
   assert.match(dockerfile, /BIONEMO_NOTEBOOK_ROOT=\/workspace\/agent\/notebooks/u);
   assert.match(config, /setup\/setup-required/u);
-  assert.deepEqual([packageManifest.version, pluginPackageManifest.version, pluginManifest.version], ["3.3.0", "3.3.0", "3.3.0"]);
-  assert.match(readme, /^# BioNeMo Agent Workbench 3\.3\.0 on Nebius Serverless$/mu);
-  assert.match(uiInternals.dashboardHtml("test-nonce"), /BioNeMo Agent Workbench 3\.3\.0/u);
+  assert.deepEqual([packageManifest.version, pluginPackageManifest.version, pluginManifest.version], ["3.3.1", "3.3.1", "3.3.1"]);
+  assert.match(readme, /^# BioNeMo Agent Workbench 3\.3\.1 on Nebius Serverless$/mu);
+  assert.match(uiInternals.dashboardHtml("test-nonce"), /BioNeMo Agent Workbench 3\.3\.1/u);
   assert.equal((await readFile(new URL("../vendor/bionemo-agent-toolkit/UPSTREAM_COMMIT", import.meta.url), "utf8")).trim(), TOOLKIT_COMMIT);
 });
 
@@ -346,9 +346,11 @@ test("OpenClaw enables only configured remote MCP servers and keeps credential p
   const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
   const state = configureOpenClaw(config, { NVIDIA_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", TAVILY_API_KEY: "t" });
   assert.equal(state.reasoningProvider, "nvidia");
-  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio_models", "tavily"]);
+  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio_models", "tavily_web"]);
   assert.equal(config.mcp.servers.clawbio_models.headers.Authorization, "Bearer ${BIONEMO_MCP_API_KEY}");
-  assert.equal(config.mcp.servers.tavily.headers.Authorization, "Bearer ${TAVILY_API_KEY}");
+  assert.equal(config.mcp.servers.tavily_web.headers.Authorization, "Bearer ${BIONEMO_TAVILY_API_KEY}");
+  assert.equal(config.mcp.servers.tavily, undefined);
+  assert.equal(capabilities({ BIONEMO_TAVILY_API_KEY: "private-alias" }).tavily, true);
   assert.ok(config.tools.alsoAllow.includes("bundle-mcp"));
   assert.equal(config.tools.deny.includes("bundle-mcp"), false);
   assert.equal(config.tools.alsoAllow.includes("bionemo_research_drug_demo"), true);
@@ -371,6 +373,23 @@ test("OpenClaw enables only configured remote MCP servers and keeps credential p
   assert.deepEqual([...new Set(Object.keys(allowedModels).map((key) => key.slice(0, key.indexOf("/"))))], ["nvidia", "tokenfactory", "openai", "claude"]);
   assert.deepEqual(Object.keys(allowedModels).filter((key) => key.startsWith("tokenfactory/")), TOKEN_FACTORY_MODELS.map(({ id }) => `tokenfactory/${id}`));
   assert.deepEqual(Object.values(allowedModels).filter(({ alias }) => alias).map(({ alias }) => alias), TOKEN_FACTORY_MODELS.map(({ alias }) => alias));
+});
+
+test("gateway child hides OpenClaw's reserved Tavily auto-install trigger", () => {
+  const child = launcher.gatewayChildEnvironment({
+    AUTH_TOKEN: "do-not-forward",
+    TAVILY_API_KEY: "tavily-secret",
+    NVIDIA_API_KEY: "nvidia-secret",
+  }, "gateway-secret", {
+    port: 18789,
+    stateDir: "/workspace/state",
+    configPath: "/workspace/state/openclaw.json",
+  });
+  assert.equal(child.AUTH_TOKEN, undefined);
+  assert.equal(child.TAVILY_API_KEY, undefined);
+  assert.equal(child.BIONEMO_TAVILY_API_KEY, "tavily-secret");
+  assert.equal(child.OPENCLAW_GATEWAY_TOKEN, "gateway-secret");
+  assert.equal(child.NVIDIA_API_KEY, "nvidia-secret");
 });
 
 test("launcher keeps the flattened adapter URL distinct from the private native MCP workflow upstream", async (t) => {
@@ -468,7 +487,10 @@ test("Codex and Claude configs contain placeholders and all packaged skills with
   const codex = await readFile(path.join(root, ".codex", "config.toml"), "utf8");
   const claude = await readFile(path.join(workspace, ".mcp.json"), "utf8");
   assert.match(codex, /bearer_token_env_var = "BIONEMO_MCP_API_KEY"/u);
+  assert.match(codex, /\[mcp_servers\.tavily_web\]/u);
   assert.match(claude, /\$\{BIONEMO_MCP_API_KEY\}/u);
+  assert.match(claude, /"tavily_web"/u);
+  assert.doesNotMatch(claude, /"tavily"\s*:/u);
   assert.equal(codex.includes("never-write-this"), false);
   assert.equal(claude.includes("also-secret"), false);
 });

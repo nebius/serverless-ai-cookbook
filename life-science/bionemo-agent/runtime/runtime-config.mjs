@@ -81,7 +81,7 @@ export function capabilities(env = process.env) {
     openai: Boolean(normalized.OPENAI_API_KEY),
     anthropic: Boolean(normalized.ANTHROPIC_API_KEY),
     mcp: Boolean(normalized.BIONEMO_MCP_API_KEY),
-    tavily: Boolean(normalized.TAVILY_API_KEY),
+    tavily: Boolean(normalized.BIONEMO_TAVILY_API_KEY || normalized.TAVILY_API_KEY),
     mcpUrl: normalized.BIONEMO_MCP_URL,
   };
 }
@@ -180,9 +180,13 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     };
   }
   if (state.tavily) {
-    config.mcp.servers.tavily = {
+    // Avoid the reserved official-plugin id `tavily`: OpenClaw otherwise
+    // attempts a runtime npm install of @openclaw/tavily-plugin. This image
+    // intentionally ships without a package manager, so use the generic
+    // Streamable HTTP MCP transport under a distinct stable alias.
+    config.mcp.servers.tavily_web = {
       url: "https://mcp.tavily.com/mcp/", transport: "streamable-http", timeout: 120,
-      headers: { Authorization: "Bearer ${TAVILY_API_KEY}", DEFAULT_PARAMETERS: "{\"search_depth\":\"basic\",\"max_results\":5,\"include_raw_content\":false,\"include_images\":false}" },
+      headers: { Authorization: "Bearer ${BIONEMO_TAVILY_API_KEY}", DEFAULT_PARAMETERS: "{\"search_depth\":\"basic\",\"max_results\":5,\"include_raw_content\":false,\"include_images\":false}" },
     };
   }
   if (useClawBioMcp || state.tavily) {

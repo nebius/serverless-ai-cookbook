@@ -10,7 +10,7 @@ import { JSON_SCHEMAS, VALIDATORS, normalizeDirectSkillInput } from "./src/valid
 import { ResearchDrugDemoRunner, WorkflowRunner } from "./src/workflows.mjs";
 import { MCP_TURN_ID_FIELD, submissionToolBaseName, validMcpTurnId } from "../runtime/mcp-submission-policy.mjs";
 
-export const PLUGIN_VERSION = "3.3.0";
+export const PLUGIN_VERSION = "3.3.1";
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };

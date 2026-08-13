@@ -1,4 +1,4 @@
-# BioNeMo Agent Workbench 3.3.0 on Nebius Serverless
+# BioNeMo Agent Workbench 3.3.1 on Nebius Serverless
 
 This recipe packages a ready-to-start life-science agent environment for a
 Nebius Serverless CPU endpoint. The image contains:
@@ -140,7 +140,7 @@ pipeline without search or a Tavily credential.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.3.0` |
+| Workbench | `3.3.1` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -183,7 +183,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.0"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.1"
 ./scripts/build_image.sh
 ```
 
@@ -204,7 +204,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.3.0-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.3.1-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -275,8 +275,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.3.0-test .
-docker run --rm bionemo-agent:3.3.0-test doctor
+docker build -t bionemo-agent:3.3.1-test .
+docker run --rm bionemo-agent:3.3.1-test doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`

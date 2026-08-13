@@ -5,7 +5,7 @@ import { LIMITS } from "./validation.mjs";
 export const TAVILY_SEARCH_URL = "https://api.tavily.com/search";
 export const DEFAULT_CEREBRIUM_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
 export const TAVILY_EGFR_QUERY = "EGFR gefitinib resistance mechanism medicinal chemistry current public research evidence";
-export const RESEARCH_DEMO_USER_AGENT = "nebius-bionemo-agent/3.3.0";
+export const RESEARCH_DEMO_USER_AGENT = "nebius-bionemo-agent/3.3.1";
 export const TAVILY_PRIMARY_DOMAINS = Object.freeze([
   "pubmed.ncbi.nlm.nih.gov",
   "pmc.ncbi.nlm.nih.gov",
@@ -114,7 +114,7 @@ export class TavilySearchClient {
   constructor({ fetchImpl = globalThis.fetch, env = process.env, timeoutMs = 30_000 } = {}) {
     if (typeof fetchImpl !== "function") throw new TypeError("fetch implementation is required");
     this.fetchImpl = fetchImpl;
-    this.apiKey = env.TAVILY_API_KEY;
+    this.apiKey = env.BIONEMO_TAVILY_API_KEY || env.TAVILY_API_KEY;
     this.timeoutMs = Math.max(1_000, Math.min(Number(timeoutMs) || 30_000, 120_000));
   }
 

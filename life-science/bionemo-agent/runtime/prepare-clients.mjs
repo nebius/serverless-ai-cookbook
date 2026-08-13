@@ -21,8 +21,8 @@ export async function prepareClients(env = process.env) {
     claude.mcpServers.clawbio_models.headers = { Authorization: "Bearer ${BIONEMO_MCP_API_KEY}" };
   }
   if (state.tavily) {
-    codex.push("", "[mcp_servers.tavily]", 'url = "https://mcp.tavily.com/mcp/"', 'bearer_token_env_var = "TAVILY_API_KEY"', "tool_timeout_sec = 120");
-    claude.mcpServers.tavily = { type: "http", url: "https://mcp.tavily.com/mcp/", headers: { Authorization: "Bearer ${TAVILY_API_KEY}" } };
+    codex.push("", "[mcp_servers.tavily_web]", 'url = "https://mcp.tavily.com/mcp/"', 'bearer_token_env_var = "TAVILY_API_KEY"', "tool_timeout_sec = 120");
+    claude.mcpServers.tavily_web = { type: "http", url: "https://mcp.tavily.com/mcp/", headers: { Authorization: "Bearer ${TAVILY_API_KEY}" } };
   }
   const home = env.HOME || "/home/node";
   await atomicWrite(path.join(home, ".codex", "config.toml"), `${codex.join("\n")}\n`);

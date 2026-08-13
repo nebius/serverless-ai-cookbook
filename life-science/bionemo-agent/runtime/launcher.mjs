@@ -123,6 +123,25 @@ function configureMcpAdapterEnvironment(runtimeEnv, { upstreamUrl, adapterUrl, p
   return runtimeEnv;
 }
 
+function gatewayChildEnvironment(runtimeEnv, gatewayToken, { port, stateDir, configPath }) {
+  const childEnv = {
+    ...runtimeEnv,
+    OPENCLAW_GATEWAY_TOKEN: gatewayToken,
+    OPENCLAW_GATEWAY_PORT: String(port),
+    OPENCLAW_STATE_DIR: stateDir,
+    OPENCLAW_CONFIG_PATH: configPath,
+  };
+  delete childEnv.AUTH_TOKEN;
+  // OpenClaw treats TAVILY_API_KEY as an opt-in to its separately packaged
+  // official plugin and otherwise attempts an npm install during startup.
+  // Keep the injected public env name for Codex/Claude preparation, but give
+  // the hardened browser child only a private alias used by our remote MCP
+  // transport and composed workflow client.
+  if (childEnv.TAVILY_API_KEY) childEnv.BIONEMO_TAVILY_API_KEY = childEnv.TAVILY_API_KEY;
+  delete childEnv.TAVILY_API_KEY;
+  return childEnv;
+}
+
 async function main() {
   const runtimeEnv = normalizedEnvironment(process.env);
   const gatewayToken = requireEnvironment(runtimeEnv);
@@ -187,8 +206,7 @@ async function main() {
   if (!capabilityState.reasoning || capabilityState.modelBackend === "unavailable") {
     process.stdout.write("BioNeMo setup is incomplete; the browser remains available and will explain which optional credential is missing.\n");
   }
-  const childEnv = { ...runtimeEnv, OPENCLAW_GATEWAY_TOKEN: gatewayToken, OPENCLAW_GATEWAY_PORT: String(port), OPENCLAW_STATE_DIR: stateDir, OPENCLAW_CONFIG_PATH: configPath };
-  delete childEnv.AUTH_TOKEN;
+  const childEnv = gatewayChildEnvironment(runtimeEnv, gatewayToken, { port, stateDir, configPath });
   if (publicOrigin) childEnv.BIONEMO_PUBLIC_URL = publicOrigin;
   const gateway = spawn("node", ["/app/openclaw.mjs", "gateway", "run", "--port", String(port), "--bind", "lan"], {
     stdio: "inherit",
@@ -222,4 +240,4 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   });
 }
 
-export const __test = { CLOUDFLARED_URL_PATTERN, requireEnvironment, parseBoolean, safeOrigin, exposureMode, nebiusManagedOrigin, startQuickTunnel, writeRuntimeFiles, configureMcpAdapterEnvironment };
+export const __test = { CLOUDFLARED_URL_PATTERN, requireEnvironment, parseBoolean, safeOrigin, exposureMode, nebiusManagedOrigin, startQuickTunnel, writeRuntimeFiles, configureMcpAdapterEnvironment, gatewayChildEnvironment };
