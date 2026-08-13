@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { ArtifactStore } from "../openclaw-plugin/src/artifacts.mjs";
-import { createRuntime } from "../openclaw-plugin/index.mjs";
+import { createRuntime, NVIDIA_BATCH_INTER_REQUEST_DELAY_MS } from "../openclaw-plugin/index.mjs";
 import {
   CerebriumMcpModelClient,
   TAVILY_PRIMARY_DOMAINS,
@@ -471,13 +471,38 @@ test("NVIDIA batch pacing waits between exactly-once submissions without retryin
     store,
     backend: "nvidia",
     batchProteinLoader: async () => BATCH_PROTEIN_RECORDS,
-    batchInterRequestDelayMs: 2_000,
+    batchInterRequestDelayMs: NVIDIA_BATCH_INTER_REQUEST_DELAY_MS,
     sleepImpl: async (ms) => { delays.push(ms); },
   });
   const output = await runner.run("batch_fold_demo", executionInput("turn-batch-paced-12345678"));
   assert.equal(calls.length, 5);
-  assert.deepEqual(delays, [2_000, 2_000, 2_000, 2_000]);
-  assert.match(output.summary.execution, /2000 ms pacing/u);
+  assert.ok(NVIDIA_BATCH_INTER_REQUEST_DELAY_MS >= 5_000);
+  assert.deepEqual(delays, [5_000, 5_000, 5_000, 5_000]);
+  assert.match(output.summary.execution, /5000 ms pacing/u);
+});
+
+test("production runtime applies conservative pacing only to direct NVIDIA batch submissions", async (t) => {
+  const directRoot = await mkdtemp(path.join(os.tmpdir(), "bionemo-runtime-direct-pacing-"));
+  const mcpRoot = await mkdtemp(path.join(os.tmpdir(), "bionemo-runtime-mcp-pacing-"));
+  t.after(() => Promise.all([
+    rm(directRoot, { recursive: true, force: true }),
+    rm(mcpRoot, { recursive: true, force: true }),
+  ]));
+  const direct = createRuntime({
+    artifactRoot: directRoot,
+    env: { NVIDIA_API_KEY: "nvidia-test", BIONEMO_BACKEND: "nvidia" },
+    logger: { info() {} },
+    fetchImpl: async () => { throw new Error("not called"); },
+  });
+  const mcp = createRuntime({
+    artifactRoot: mcpRoot,
+    env: { BIONEMO_MCP_API_KEY: "mcp-test", BIONEMO_BACKEND: "mcp" },
+    logger: { info() {} },
+    fetchImpl: async () => { throw new Error("not called"); },
+  });
+  assert.ok(direct.researchDemoRunner.batchInterRequestDelayMs >= 5_000);
+  assert.equal(direct.researchDemoRunner.batchInterRequestDelayMs, NVIDIA_BATCH_INTER_REQUEST_DELAY_MS);
+  assert.equal(mcp.researchDemoRunner.batchInterRequestDelayMs, 0);
 });
 
 test("MCP batch uses one stable submission key per FASTA record and retains a failed job without resubmission", async (t) => {

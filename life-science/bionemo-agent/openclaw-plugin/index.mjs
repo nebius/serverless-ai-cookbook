@@ -12,6 +12,7 @@ import { ResearchDrugDemoRunner, WorkflowRunner } from "./src/workflows.mjs";
 import { MCP_TURN_ID_FIELD, submissionToolBaseName, validMcpTurnId } from "../runtime/mcp-submission-policy.mjs";
 
 export const PLUGIN_VERSION = "3.3.2";
+export const NVIDIA_BATCH_INTER_REQUEST_DELAY_MS = 5_000;
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };
@@ -286,7 +287,7 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
     tavilyClient,
     store,
     backend: researchBackend,
-    batchInterRequestDelayMs: researchBackend === "nvidia" ? 2_000 : 0,
+    batchInterRequestDelayMs: researchBackend === "nvidia" ? NVIDIA_BATCH_INTER_REQUEST_DELAY_MS : 0,
     onProgress: async () => {},
   });
   const researchDemoExecutions = new Map();
