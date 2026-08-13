@@ -40,6 +40,18 @@ case "$VARIANT" in
     ;;
 esac
 
+SUBNET_PROJECT=""
+if [[ -n "${SUBNET_ID:-}" ]]; then
+  if ! SUBNET_PROJECT="$(nebius vpc subnet get "$SUBNET_ID" --format "jsonpath={.metadata.parent_id}")"; then
+    echo "Could not resolve SUBNET_ID through the active Nebius CLI profile." >&2
+    exit 2
+  fi
+  if [[ ! "$SUBNET_PROJECT" =~ ^project-[a-z0-9]+$ ]]; then
+    echo "SUBNET_ID did not resolve to a valid Nebius project ID." >&2
+    exit 2
+  fi
+fi
+
 CREATE_CMD=(
   nebius ai endpoint create
   --name "$ENDPOINT_NAME"
@@ -56,9 +68,12 @@ CREATE_CMD=(
   --env "BIONEMO_HTTPS_MODE=nebius"
 )
 
-# A subnet is genuinely deployment-specific, but Serverless can select one
-# from the active Nebius profile when this is omitted.
-if [[ -n "${SUBNET_ID:-}" ]]; then CREATE_CMD+=(--subnet-id "$SUBNET_ID"); fi
+# A subnet is genuinely deployment-specific. Its read-only metadata lookup
+# also pins the create to the subnet's project, independent of a stale CLI
+# profile default. Without SUBNET_ID, Serverless uses the active profile.
+if [[ -n "${SUBNET_ID:-}" ]]; then
+  CREATE_CMD+=(--parent-id "$SUBNET_PROJECT" --subnet-id "$SUBNET_ID")
+fi
 if [[ -n "${TAVILY_SECRET:-}" ]]; then CREATE_CMD+=(--env-secret "TAVILY_API_KEY=$TAVILY_SECRET"); fi
 
 echo "Creating '$ENDPOINT_NAME' ($VARIANT) on native Nebius HTTPS from $IMAGE."
@@ -66,11 +81,20 @@ echo "Creating '$ENDPOINT_NAME' ($VARIANT) on native Nebius HTTPS from $IMAGE."
 
 cat <<EOF
 
-The active Nebius CLI profile supplies the project automatically. The managed
-endpoint has no public VM IP or second authentication layer; OpenClaw requires
-the rate-limited AUTH_TOKEN as its single browser login.
+The managed endpoint has no public VM IP or second authentication layer;
+OpenClaw requires the rate-limited AUTH_TOKEN as its single browser login.
 
 Inspect the endpoint and obtain its browser URL:
+EOF
+if [[ -n "$SUBNET_PROJECT" ]]; then
+  cat <<EOF
+  ENDPOINT_ID=\$(nebius ai endpoint get-by-name --name "$ENDPOINT_NAME" --parent-id "$SUBNET_PROJECT" --format jsonpath='{.metadata.id}')
+EOF
+else
+  cat <<EOF
   ENDPOINT_ID=\$(nebius ai endpoint get-by-name --name "$ENDPOINT_NAME" --format jsonpath='{.metadata.id}')
-  nebius ai endpoint get "\$ENDPOINT_ID" --format json
+EOF
+fi
+cat <<'EOF'
+  nebius ai endpoint get "$ENDPOINT_ID" --format json
 EOF

@@ -17,7 +17,14 @@ async function fakeCli() {
   const crane = path.join(bin, "crane");
   const nebius = path.join(bin, "nebius");
   await writeFile(crane, "#!/bin/sh\nprintf '%s\\n' 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'\n", { mode: 0o700 });
-  await writeFile(nebius, "#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$BIONEMO_TEST_CAPTURE\"\n", { mode: 0o700 });
+  await writeFile(nebius, `#!/bin/sh
+if [ "\${1:-}" = vpc ] && [ "\${2:-}" = subnet ] && [ "\${3:-}" = get ]; then
+  if [ "\${BIONEMO_TEST_SUBNET_FAIL:-0}" = 1 ]; then exit 17; fi
+  printf '%s\\n' "\${BIONEMO_TEST_SUBNET_PARENT:-project-e00testparent}"
+  exit 0
+fi
+printf '%s\\n' "$@" > "$BIONEMO_TEST_CAPTURE"
+`, { mode: 0o700 });
   await chmod(crane, 0o700);
   await chmod(nebius, 0o700);
   return { root, bin, capture };
@@ -75,7 +82,7 @@ test("invalid roles and missing selectors fail before invoking a cloud command",
 test("NVIDIA role derives every fixed runtime setting and pins the friendly image tag", async () => {
   const fixture = await fakeCli();
   try {
-    await execFileAsync(scriptPath.pathname, ["nvidia"], {
+    const { stdout } = await execFileAsync(scriptPath.pathname, ["nvidia"], {
       env: {
         PATH: `${fixture.bin}:/usr/bin:/bin`,
         BIONEMO_TEST_CAPTURE: fixture.capture,
@@ -97,7 +104,11 @@ test("NVIDIA role derives every fixed runtime setting and pins the friendly imag
     assert.deepEqual(argumentValues(lines, "--env"), [
       "BIONEMO_HTTPS_MODE=nebius",
     ]);
+    assert.deepEqual(argumentValues(lines, "--parent-id"), ["project-e00testparent"]);
     assert.deepEqual(argumentValues(lines, "--subnet-id"), ["subnet-id"]);
+    assert.match(stdout, /get-by-name --name "nvidia-demo" --parent-id "project-e00testparent"/u);
+    assert.match(stdout, /nebius ai endpoint get "\$ENDPOINT_ID"/u);
+    assert.equal(stdout.includes("\\$ENDPOINT_ID"), false);
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
   }
@@ -107,7 +118,7 @@ test("Token Factory role maps one combined provider secret to reasoning and MCP"
   const fixture = await fakeCli();
   try {
     const digest = "cr.eu-north1.nebius.cloud/example/ba@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-    await execFileAsync(scriptPath.pathname, ["tokenfactory"], {
+    const { stdout } = await execFileAsync(scriptPath.pathname, ["tokenfactory"], {
       env: {
         PATH: `${fixture.bin}:/usr/bin:/bin`,
         BIONEMO_TEST_CAPTURE: fixture.capture,
@@ -124,8 +135,35 @@ test("Token Factory role maps one combined provider secret to reasoning and MCP"
       "BIONEMO_MCP_API_KEY=combined-selector",
     ]);
     assert.deepEqual(argumentValues(lines, "--env"), ["BIONEMO_HTTPS_MODE=nebius"]);
+    assert.deepEqual(argumentValues(lines, "--parent-id"), []);
     assert.deepEqual(argumentValues(lines, "--subnet-id"), []);
+    assert.equal(stdout.includes("--parent-id"), false);
   } finally {
     await rm(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test("invalid subnet metadata fails before endpoint creation", async () => {
+  for (const extraEnv of [
+    { BIONEMO_TEST_SUBNET_FAIL: "1" },
+    { BIONEMO_TEST_SUBNET_PARENT: "folder-wrong-parent" },
+  ]) {
+    const fixture = await fakeCli();
+    try {
+      await assert.rejects(() => execFileAsync(scriptPath.pathname, ["nvidia"], {
+        env: {
+          PATH: `${fixture.bin}:/usr/bin:/bin`,
+          BIONEMO_TEST_CAPTURE: fixture.capture,
+          AUTH_TOKEN_SECRET: "auth-selector",
+          MODEL_CREDENTIALS_SECRET: "nvidia-selector",
+          IMAGE: "cr.eu-north1.nebius.cloud/example/ba@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          SUBNET_ID: "subnet-id",
+          ...extraEnv,
+        },
+      }));
+      await assert.rejects(() => readFile(fixture.capture, "utf8"));
+    } finally {
+      await rm(fixture.root, { recursive: true, force: true });
+    }
   }
 });

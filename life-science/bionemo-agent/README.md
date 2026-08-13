@@ -206,7 +206,6 @@ Tavily is optional. Set `TAVILY_SECRET` to a selector containing
 records that research was skipped and continues the scientific workflow.
 
 ```bash
-# The active Nebius CLI profile supplies the project automatically.
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 export MODEL_CREDENTIALS_SECRET="<selector-for-this-backend>"
 export TAVILY_SECRET="<optional-selector-with-TAVILY_API_KEY>"
@@ -218,8 +217,11 @@ export TAVILY_SECRET="<optional-selector-with-TAVILY_API_KEY>"
 
 The script defaults to the public `ba:latest` image and resolves it to an
 immutable digest before creating the endpoint. `IMAGE`, `ENDPOINT_NAME`, and
-`SUBNET_ID` remain optional escape hatches; normally none is needed. A
-MysteryBox selector may be a secret name, secret ID, version ID, or
+`SUBNET_ID` remain optional escape hatches; normally none is needed. Without a
+subnet, the active Nebius CLI profile supplies the project. When `SUBNET_ID` is
+set, the script reads the subnet metadata and explicitly creates the endpoint
+in that subnet's project, so a stale profile default cannot select a different
+project. A MysteryBox selector may be a secret name, secret ID, version ID, or
 `SECRET_ID@VERSION_ID`.
 
 The release fixes the non-choice settings in the script: native Nebius HTTPS,
