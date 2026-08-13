@@ -79,7 +79,7 @@ const FIXTURE_RECORDS = Object.freeze([
   ["1CRN", "TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN"],
   ["1UBQ", "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG"],
   ["1PGA", "MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE"],
-  ["1L2Y", "NLYIQWLKDGGPSSGRPPPS"],
+  ["2CI2", "SSVEKKPEGVNTGAGDRHNLKTEWPELVGKSVEEAKKVILQDKPEAQIIVLPVGTIVTMEYRIDRVRLFVDKLDNIAEVPRVG"],
   ["1VII", "MLSDEDFKAVFGMTRSAFANLPLWKQQNLKKEKGLF"],
 ]);
 
@@ -175,6 +175,6 @@ test("batch notebook fixture contains exactly the five pinned public sequences i
   assert.match(cellText(batch), /exactly five unique IDs/u);
   for (const [id, sequence] of FIXTURE_RECORDS) {
     assert.match(cellText(batch), new RegExp(`\\b${id}\\b`, "u"));
-    assert.equal(sequence.length >= 20 && sequence.length <= 76, true);
+    assert.equal(sequence.length >= 36 && sequence.length <= 83, true);
   }
 });

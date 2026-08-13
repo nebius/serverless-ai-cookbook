@@ -31,7 +31,7 @@ export const BATCH_PROTEIN_RECORDS = Object.freeze([
   CRAMBIN_PUBLIC_INPUT,
   Object.freeze({ id: "1UBQ", name: "Ubiquitin", sequence: "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG", source: "https://www.rcsb.org/structure/1UBQ" }),
   Object.freeze({ id: "1PGA", name: "Protein G B1 domain", sequence: "MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE", source: "https://www.rcsb.org/structure/1PGA" }),
-  Object.freeze({ id: "1L2Y", name: "Trp-cage miniprotein", sequence: "NLYIQWLKDGGPSSGRPPPS", source: "https://www.rcsb.org/structure/1L2Y" }),
+  Object.freeze({ id: "2CI2", name: "Chymotrypsin inhibitor 2", sequence: "SSVEKKPEGVNTGAGDRHNLKTEWPELVGKSVEEAKKVILQDKPEAQIIVLPVGTIVTMEYRIDRVRLFVDKLDNIAEVPRVG", source: "https://www.rcsb.org/structure/2CI2" }),
   Object.freeze({ id: "1VII", name: "Villin headpiece subdomain", sequence: "MLSDEDFKAVFGMTRSAFANLPLWKQQNLKKEKGLF", source: "https://www.rcsb.org/structure/1VII" }),
 ]);
 
