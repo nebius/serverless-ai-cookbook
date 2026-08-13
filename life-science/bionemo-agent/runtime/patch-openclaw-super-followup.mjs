@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v2";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v3";
 export const BIONEMO_SUPER_CATALOG_PROMPT = "Call exactly clawbio_models__models_list once with no arguments. Do not call any other tool. After it succeeds, call no more tools and briefly summarize which BioNeMo models are available.";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
@@ -138,10 +138,16 @@ const STREAM_OPTIONS_ANCHOR = `\t\t\t\tawait processOpenAICompletionsStream(resp
 const STREAM_OPTIONS_REPLACEMENT = `\t\t\t\tawait processOpenAICompletionsStream(responseStream, output, model, stream, {\n\t\t\t\t\tsignal: options?.signal,\n\t\t\t\t\tbionemoSuperInitialTool,\n\t\t\t\t\tbionemoSuperFinalText: bionemoSuperDeterministicFinalText(model, context),\n\t\t\t\t\temitReasoning,`;
 const STREAM_INIT_ANCHOR = `\tconst emitReasoning = options?.emitReasoning ?? true;\n\tconst compat = getCompat(model);`;
 const STREAM_INIT_REPLACEMENT = `\tconst emitReasoning = options?.emitReasoning ?? true;\n\tconst bionemoSuperInitialTool = options?.bionemoSuperInitialTool && typeof options.bionemoSuperInitialTool === "object" ? options.bionemoSuperInitialTool : undefined;\n\tconst bionemoSuperFinalText = typeof options?.bionemoSuperFinalText === "string" ? options.bionemoSuperFinalText : "";\n\tconst compat = getCompat(model);`;
+const CONTENT_ANCHOR = `\t\tif (choiceDelta.content) {`;
+const CONTENT_REPLACEMENT = `\t\tif (choiceDelta.content && !bionemoSuperFinalText && !bionemoSuperInitialTool) {`;
+const REFUSAL_ANCHOR = `\t\tif (refusalText) {`;
+const REFUSAL_REPLACEMENT = `\t\tif (refusalText && !bionemoSuperFinalText && !bionemoSuperInitialTool) {`;
+const REASONING_ANCHOR = `\t\tfor (const reasoningDelta of reasoningDeltas) {`;
+const REASONING_REPLACEMENT = `\t\tfor (const reasoningDelta of bionemoSuperFinalText || bionemoSuperInitialTool ? [] : reasoningDeltas) {`;
 const TOOL_CALL_ANCHOR = `\t\tif (choiceDelta.tool_calls && choiceDelta.tool_calls.length > 0) {`;
 const TOOL_CALL_REPLACEMENT = `\t\tif (!bionemoSuperFinalText && !bionemoSuperInitialTool && choiceDelta.tool_calls && choiceDelta.tool_calls.length > 0) {`;
 const FALLBACK_ANCHOR = `\tconst hasToolCalls = output.content.some((block) => block.type === "toolCall");\n\tconst hasVisibleText = output.content.some((block) => block.type === "text" && typeof block.text === "string" && block.text.trim().length > 0);`;
-const FALLBACK_REPLACEMENT = `\tconst hasToolCalls = output.content.some((block) => block.type === "toolCall");\n\tlet hasVisibleText = output.content.some((block) => block.type === "text" && typeof block.text === "string" && block.text.trim().length > 0);\n\tif (bionemoSuperFinalText && !hasVisibleText) {\n\t\tappendTextDelta(bionemoSuperFinalText);\n\t\thasVisibleText = true;\n\t}`;
+const FALLBACK_REPLACEMENT = `\tconst hasToolCalls = output.content.some((block) => block.type === "toolCall");\n\tlet hasVisibleText = output.content.some((block) => block.type === "text" && typeof block.text === "string" && block.text.trim().length > 0);\n\tif (bionemoSuperFinalText) {\n\t\toutput.content = output.content.filter((block) => block.type !== "text" && block.type !== "thinking");\n\t\tcurrentBlock = null;\n\t\tappendTextDelta(bionemoSuperFinalText);\n\t\thasVisibleText = true;\n\t}`;
 const INITIAL_REPAIR_ANCHOR = `\tfinishAllToolCallBlocks();\n\tcurrentBlock = null;`;
 const INITIAL_REPAIR_REPLACEMENT = `\tfinishAllToolCallBlocks();\n\tif (bionemoSuperInitialTool) {\n\t\toutput.content = output.content.filter((item) => item?.type !== "toolCall");\n\t\tconst block = { type: "toolCall", id: \`call_bionemo_super_\${randomUUID()}\`, name: bionemoSuperInitialTool.name, arguments: { ...bionemoSuperInitialTool.params }, partialArgs: JSON.stringify(bionemoSuperInitialTool.params) };\n\t\toutput.content.push(block);\n\t\ttoolCallBlockIndices.set(block, output.content.length - 1);\n\t\tpushStreamEvent({ type: "toolcall_start", contentIndex: output.content.length - 1, partial: output });\n\t\tpushStreamEvent({ type: "toolcall_delta", contentIndex: output.content.length - 1, delta: block.partialArgs, partial: output });\n\t\toutput.stopReason = "toolUse";\n\t}\n\tcurrentBlock = null;`;
 
@@ -172,6 +178,9 @@ export async function patchOpenClawSuperFollowup(distRoot) {
   source = replaceExactlyOnce(source, PAYLOAD_ANCHOR, PAYLOAD_REPLACEMENT, "post-payload tool guard");
   source = replaceExactlyOnce(source, STREAM_OPTIONS_ANCHOR, STREAM_OPTIONS_REPLACEMENT, "final-only stream option");
   source = replaceExactlyOnce(source, STREAM_INIT_ANCHOR, STREAM_INIT_REPLACEMENT, "final-only stream state");
+  source = replaceExactlyOnce(source, CONTENT_ANCHOR, CONTENT_REPLACEMENT, "final-only content suppression");
+  source = replaceExactlyOnce(source, REFUSAL_ANCHOR, REFUSAL_REPLACEMENT, "final-only refusal suppression");
+  source = replaceExactlyOnce(source, REASONING_ANCHOR, REASONING_REPLACEMENT, "final-only reasoning suppression");
   source = replaceExactlyOnce(source, TOOL_CALL_ANCHOR, TOOL_CALL_REPLACEMENT, "final-only tool suppression");
   source = replaceExactlyOnce(source, INITIAL_REPAIR_ANCHOR, INITIAL_REPAIR_REPLACEMENT, "initial notebook tool repair");
   source = replaceExactlyOnce(source, FALLBACK_ANCHOR, FALLBACK_REPLACEMENT, "deterministic final fallback");

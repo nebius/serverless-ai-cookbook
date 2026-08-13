@@ -99,7 +99,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v2/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v3/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperShouldFinalizeWithoutTools(model, context))");
@@ -108,6 +108,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   assert.match(source, /delete params\.tools;\s*params\.tool_choice = "none";/su);
   assert.match(source, /bionemoSuperFinalText: bionemoSuperDeterministicFinalText\(model, context\)/u);
   assert.match(source, /if \(!bionemoSuperFinalText && !bionemoSuperInitialTool && choiceDelta\.tool_calls/u);
+  assert.match(source, /if \(choiceDelta\.content && !bionemoSuperFinalText && !bionemoSuperInitialTool\)/u);
   assert.match(source, /appendTextDelta\(bionemoSuperFinalText\)/u);
   assert.match(source, /params\.tool_choice = \{ type: "function", function: \{ name: bionemoSuperInitialTool\.name \} \}/u);
   await execFileAsync(process.execPath, ["--check", path.join(distRoot, file)]);
@@ -125,12 +126,13 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     const model = ${JSON.stringify({ ...superModel, api: "openai-completions", baseUrl: "https://example.invalid/v1", reasoning: true, input: ["text"], contextWindow: 262_144, maxTokens: 8_192, compat: { maxTokensField: "max_tokens", requiresStringContent: true } })};
     const expectedInitial = ${JSON.stringify({ name: expectedInitial.name, params: { ...expectedInitial.params } })};
     const output = () => ({ role: "assistant", content: [], api: model.api, provider: model.provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: Date.now() });
-    const chunks = () => (async function* providerChunks() { yield { id: "response-1", choices: [{ index: 0, delta: { tool_calls: [{ index: 0, id: "provider-call", type: "function", function: { name: "babel", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }; }());
+    const chunks = () => (async function* providerChunks() { yield { id: "response-1", choices: [{ index: 0, delta: { content: "<tool_call><function=read><parameter=path>artifact.pdb</parameter></function></tool_call>", tool_calls: [{ index: 0, id: "provider-call", type: "function", function: { name: "babel", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }; }());
     const initialOutput = output();
     const initialEvents = [];
     await patched.__bionemoProcessOpenAICompletionsStream(chunks(), initialOutput, model, { push: (event) => initialEvents.push(structuredClone(event)) }, { emitReasoning: false, bionemoSuperInitialTool: expectedInitial });
     assert.equal(initialOutput.stopReason, "toolUse");
     assert.deepEqual(initialOutput.content.filter(({ type }) => type === "toolCall").map(({ name, arguments: args }) => ({ name, args })), [{ name: expectedInitial.name, args: expectedInitial.params }]);
+    assert.equal(initialOutput.content.some(({ type }) => type === "text"), false);
     assert.deepEqual(initialEvents.filter(({ type }) => type === "toolcall_start").map(({ partial }) => partial.content.at(-1).name), [expectedInitial.name]);
     assert.equal(initialEvents.filter(({ type }) => type === "toolcall_delta").length, 1);
     const finalOutput = output();
@@ -139,6 +141,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.equal(finalOutput.stopReason, "stop");
     assert.equal(finalOutput.content.some(({ type }) => type === "toolCall"), false);
     assert.equal(finalOutput.content.filter(({ type }) => type === "text").map(({ text }) => text).join(""), "Deterministic completed result.");
+    assert.equal(JSON.stringify(finalOutput).includes("<tool_call>"), false);
     assert.equal(finalEvents.some(({ type }) => type.startsWith("toolcall_")), false);
   `;
   await execFileAsync("docker", [
