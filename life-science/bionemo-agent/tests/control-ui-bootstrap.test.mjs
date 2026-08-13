@@ -46,6 +46,61 @@ async function runBootstrap(href, { storage = new Map(), failWrites = false } = 
   return { calls, storage };
 }
 
+async function runInteractiveBootstrap(href, { storage = new Map(), initialValue = "", sessionKey } = {}) {
+  const source = `${renderExampleSessionPrelude()}${await readFile(bootstrapUrl, "utf8")}`;
+  const location = new URL(href);
+  const inputEvents = [];
+  const listeners = new Map();
+  const observerCallbacks = [];
+  class FakeTextArea {
+    constructor() { this.value = initialValue; }
+    dispatchEvent(event) {
+      inputEvents.push({ type: event.type, bubbles: event.bubbles, composed: event.composed, value: this.value });
+      return true;
+    }
+  }
+  class FakeEvent {
+    constructor(type, options = {}) { this.type = type; this.bubbles = options.bubbles === true; this.composed = options.composed === true; }
+  }
+  class FakeMutationObserver {
+    constructor(callback) { observerCallbacks.push(callback); }
+    observe() {}
+  }
+  const textarea = new FakeTextArea();
+  const pane = {
+    state: { sessionKey: sessionKey || location.searchParams.get("session") },
+    querySelector(selector) { return selector === ".agent-chat__composer-combobox > textarea" ? textarea : null; },
+  };
+  const document = {
+    documentElement: {},
+    querySelector(selector) { return selector === "openclaw-chat-pane" ? pane : null; },
+  };
+  const history = {
+    state: null,
+    pushState(_state, _title, next) { if (next) location.href = new URL(next, location).href; },
+    replaceState(_state, _title, next) { if (next) location.href = new URL(next, location).href; },
+  };
+  const localStorage = {
+    getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+    setItem(key, value) { storage.set(key, String(value)); },
+    removeItem(key) { storage.delete(key); },
+  };
+  const window = {
+    location,
+    history,
+    localStorage,
+    document,
+    MutationObserver: FakeMutationObserver,
+    HTMLTextAreaElement: FakeTextArea,
+    Event: FakeEvent,
+    queueMicrotask(callback) { callback(); },
+    setTimeout(callback) { callback(); },
+    addEventListener(type, callback) { listeners.set(type, callback); },
+  };
+  vm.runInNewContext(source, { URL, window });
+  return { inputEvents, observerCallbacks, pane, storage, textarea };
+}
+
 test("default-session bootstrap canonicalizes only first-entry BioNeMo routes", async () => {
   const { calls: rootCalls } = await runBootstrap("https://workbench.example/");
   assert.equal(rootCalls.length, 1);
@@ -133,6 +188,38 @@ test("Control UI draft seeding preserves existing edits and queues and fails clo
   await assert.doesNotReject(() => runBootstrap(href, { storage: malformed }));
   assert.equal(Object.keys(JSON.parse(malformed.get(storageKey)).sessions).length, 4);
   await assert.doesNotReject(() => runBootstrap(href, { failWrites: true }));
+});
+
+test("Control UI bridges a stored example draft through one native input event", async () => {
+  const example = EXAMPLE_SESSIONS[0];
+  const href = `https://workbench.example/chat?session=${encodeURIComponent(example.key)}`;
+  const result = await runInteractiveBootstrap(href);
+  assert.equal(result.textarea.value, example.prompt);
+  assert.deepEqual(result.inputEvents, [{ type: "input", bubbles: true, composed: true, value: example.prompt }]);
+  result.observerCallbacks[0]();
+  assert.equal(result.inputEvents.length, 1, "subsequent UI mutations must not reapply the draft");
+});
+
+test("Control UI bridge preserves live edits and never resurrects removed or unrelated drafts", async () => {
+  const example = EXAMPLE_SESSIONS[1];
+  const href = `https://workbench.example/chat?session=${encodeURIComponent(example.key)}`;
+  const edited = await runInteractiveBootstrap(href, { initialValue: "live user edit" });
+  assert.equal(edited.textarea.value, "live user edit");
+  assert.equal(edited.inputEvents.length, 0);
+
+  const storageKey = composerStorageKey(href);
+  const markerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:");
+  const clearedStorage = new Map([
+    [storageKey, JSON.stringify({ version: 1, sessions: {} })],
+    [markerKey, "1"],
+  ]);
+  const cleared = await runInteractiveBootstrap(href, { storage: clearedStorage });
+  assert.equal(cleared.textarea.value, "");
+  assert.equal(cleared.inputEvents.length, 0);
+
+  const unrelated = await runInteractiveBootstrap("https://workbench.example/chat?session=agent:other:main");
+  assert.equal(unrelated.textarea.value, "");
+  assert.equal(unrelated.inputEvents.length, 0);
 });
 
 test("Control UI preparation owns an unminified bootstrap loaded before OpenClaw", async (t) => {

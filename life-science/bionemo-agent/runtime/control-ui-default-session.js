@@ -54,7 +54,92 @@
     }
   }
 
+  // The pinned Control UI normally restores these native composer records when
+  // switching sessions. Its SPA route transition currently reads the correct
+  // record but can leave the textarea empty. Bridge that narrow integration
+  // gap through the native input contract: never send, queue, or overwrite an
+  // existing composer value, and never resurrect a draft the user removed
+  // from native storage.
+  function installExampleDraftBridge() {
+    if (!examples.length || !window.document || typeof window.MutationObserver !== "function") return;
+    var restored = new Set();
+    var scheduled = false;
+
+    function storedDraft(example) {
+      if (!window.localStorage) return "";
+      try {
+        var storageKey = `openclaw.control.chatComposer.v1:${encodeURIComponent(gatewayUrlForPage().trim() || "default").slice(0, 240)}`;
+        var stored = window.localStorage.getItem(storageKey);
+        if (!stored) return "";
+        var parsed = JSON.parse(stored);
+        var entry = parsed && parsed.version === 1 && parsed.sessions
+          ? parsed.sessions[`${example.key}\u0000agent:${example.agentId}`]
+          : null;
+        return entry && typeof entry.draft === "string" && entry.draft.trim() ? entry.draft : "";
+      } catch {
+        return "";
+      }
+    }
+
+    function restoreRequestedExample() {
+      var current = new URL(window.location.href);
+      var requested = current.pathname === "/chat" ? current.searchParams.get("session") : "";
+      var example = examples.find(function findExample(entry) { return entry.key === requested; });
+      if (!example || restored.has(example.key)) return;
+      var pane = window.document.querySelector("openclaw-chat-pane");
+      if (!pane || !pane.state || pane.state.sessionKey !== example.key) return;
+      var textarea = pane.querySelector(".agent-chat__composer-combobox > textarea");
+      if (!textarea) return;
+      if (typeof textarea.value === "string" && textarea.value.length > 0) {
+        restored.add(example.key);
+        return;
+      }
+      var draft = storedDraft(example);
+      if (!draft) return;
+      var descriptor = window.HTMLTextAreaElement
+        ? Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")
+        : null;
+      if (descriptor && typeof descriptor.set === "function") descriptor.set.call(textarea, draft);
+      else textarea.value = draft;
+      textarea.dispatchEvent(new window.Event("input", { bubbles: true, composed: true }));
+      restored.add(example.key);
+    }
+
+    function scheduleRestore() {
+      if (scheduled) return;
+      scheduled = true;
+      var enqueue = typeof window.queueMicrotask === "function"
+        ? window.queueMicrotask.bind(window)
+        : function enqueueFallback(callback) { window.setTimeout(callback, 0); };
+      enqueue(function runRestore() {
+        scheduled = false;
+        restoreRequestedExample();
+      });
+    }
+
+    function startObserver() {
+      if (!window.document.documentElement) return;
+      var observer = new window.MutationObserver(scheduleRestore);
+      observer.observe(window.document.documentElement, { attributes: true, childList: true, subtree: true });
+      window.addEventListener("popstate", scheduleRestore);
+      ["pushState", "replaceState"].forEach(function wrapHistory(method) {
+        var original = window.history && window.history[method];
+        if (typeof original !== "function") return;
+        window.history[method] = function bridgedHistory() {
+          var result = original.apply(this, arguments);
+          scheduleRestore();
+          return result;
+        };
+      });
+      scheduleRestore();
+    }
+
+    if (window.document.documentElement) startObserver();
+    else window.addEventListener("DOMContentLoaded", startObserver, { once: true });
+  }
+
   seedComposerDrafts();
+  installExampleDraftBridge();
 
   var defaultDemoPrompt = examples[0] && examples[0].prompt;
   var requestedSession = url.searchParams.get("session");
