@@ -1,4 +1,5 @@
 .git
+.playwright-cli
 .task-output
 coverage
 node_modules

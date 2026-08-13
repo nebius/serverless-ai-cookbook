@@ -17,6 +17,20 @@ const CONTIG = /^[A-Za-z0-9\-\/ .]+$/u;
 const AMINO_ACID = /^[ACDEFGHIKLMNPQRSTVWY]$/u;
 const MOLMIM_DEFAULT_NUM_MOLECULES = 10;
 const MOLMIM_DEFAULT_PARTICLES = 20;
+export const RESEARCH_DEMO_ACK_FIELDS = Object.freeze([
+  "ack_research_only",
+  "ack_non_clinical",
+  "ack_non_commercial",
+  "ack_aup_accepted",
+  "ack_no_safety_or_therapeutic_claims",
+]);
+export const BATCH_DEMO_INPUT_FILE = "notebooks/data/five-proteins.fasta";
+export const CROSS_BACKEND_WORKFLOW_IDS = Object.freeze([
+  "research_drug_demo",
+  "compare_protein_structures",
+  "optimize_ligand_complex",
+  "batch_fold_demo",
+]);
 
 function assertObject(value, label = "request") {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -267,9 +281,10 @@ export function validateOpenFold2(input) {
 
 function validateOpenFoldMolecule(molecule, index) {
   assertObject(molecule, `molecules[${index}]`);
-  onlyKeys(molecule, ["type", "sequence", "smiles", "ccd", "diffusion_samples", "msa", "paired_msa"], `molecules[${index}]`);
+  onlyKeys(molecule, ["type", "id", "sequence", "smiles", "ccd", "diffusion_samples", "msa", "paired_msa"], `molecules[${index}]`);
   required(molecule, ["type"], `molecules[${index}]`);
   enumeration(molecule.type, `molecules[${index}].type`, ["protein", "dna", "rna", "ligand"]);
+  optional(molecule, "id", (item) => string(item, `molecules[${index}].id`, { min: 1, max: 4, pattern: CHAIN }));
   if (molecule.type === "ligand") {
     if (Boolean(molecule.smiles) === Boolean(molecule.ccd)) throw new InputError(`molecules[${index}] ligand must set exactly one of smiles or ccd`);
     optional(molecule, "smiles", (item) => string(item, `molecules[${index}].smiles`, { min: 1, max: 2_048 }));
@@ -341,8 +356,25 @@ export const VALIDATORS = Object.freeze({
 });
 
 export function validateWorkflowInput(workflowId, input) {
-  const value = assertObject(input);
-  if (workflowId === "drug_discovery") {
+  const value = structuredClone(assertObject(input));
+  if (CROSS_BACKEND_WORKFLOW_IDS.includes(workflowId)) {
+    const extraFields = workflowId === "research_drug_demo" ? ["use_tavily"] : workflowId === "batch_fold_demo" ? ["input_file"] : [];
+    onlyKeys(value, [...RESEARCH_DEMO_ACK_FIELDS, ...extraFields]);
+    required(value, RESEARCH_DEMO_ACK_FIELDS);
+    for (const key of RESEARCH_DEMO_ACK_FIELDS) {
+      bool(value[key], key);
+      if (value[key] !== true) throw new InputError(`${key} must be true after explicit user acceptance`);
+    }
+    if (workflowId === "research_drug_demo") {
+      if (value.use_tavily === undefined) value.use_tavily = true;
+      bool(value.use_tavily, "use_tavily");
+    }
+    if (workflowId === "batch_fold_demo") {
+      if (value.input_file === undefined) value.input_file = BATCH_DEMO_INPUT_FILE;
+      string(value.input_file, "input_file", { min: 1, max: 256 });
+      if (value.input_file !== BATCH_DEMO_INPUT_FILE) throw new InputError(`input_file must be exactly ${BATCH_DEMO_INPUT_FILE}`);
+    }
+  } else if (workflowId === "drug_discovery") {
     onlyKeys(value, ["protein_pdb", "protein_sequence", "safe_notation", "generated_molecules", "dock_candidates", "affinity_candidates"]);
     required(value, ["protein_pdb", "protein_sequence", "safe_notation"]);
     inlinePdb(value.protein_pdb, "protein_pdb");
@@ -418,6 +450,56 @@ export const JSON_SCHEMAS = Object.freeze({
     },
   },
   rfdiffusion: { type: "object", additionalProperties: false, required: ["contigs"], properties: { input_pdb: { type: "string" }, input_pdb_sample: { type: "string", enum: ["egfr_kinase_public"] }, contigs: { type: "string" }, hotspot_res: { type: "array", items: { type: "string" } }, diffusion_steps: { type: "integer" }, random_seed: { type: "integer" } } },
+  research_drug_demo: {
+    type: "object",
+    additionalProperties: false,
+    required: [...RESEARCH_DEMO_ACK_FIELDS],
+    properties: {
+      ack_research_only: { type: "boolean", const: true, description: "The user explicitly accepts research-only use." },
+      ack_non_clinical: { type: "boolean", const: true, description: "The user explicitly accepts non-clinical use." },
+      ack_non_commercial: { type: "boolean", const: true, description: "The user explicitly accepts non-commercial use for this event demo." },
+      ack_aup_accepted: { type: "boolean", const: true, description: "The user explicitly accepts the applicable model acceptable-use and license terms." },
+      ack_no_safety_or_therapeutic_claims: { type: "boolean", const: true, description: "The user explicitly accepts that the workflow makes no safety, therapeutic, efficacy, or affinity claim." },
+      use_tavily: { type: "boolean", default: true, description: "Run the fixed, bounded Tavily research step before the model steps. Set false to run without Tavily or a Tavily key." },
+    },
+  },
+  compare_protein_structures: {
+    type: "object",
+    additionalProperties: false,
+    required: [...RESEARCH_DEMO_ACK_FIELDS],
+    properties: {
+      ack_research_only: { type: "boolean", const: true },
+      ack_non_clinical: { type: "boolean", const: true },
+      ack_non_commercial: { type: "boolean", const: true },
+      ack_aup_accepted: { type: "boolean", const: true },
+      ack_no_safety_or_therapeutic_claims: { type: "boolean", const: true },
+    },
+  },
+  optimize_ligand_complex: {
+    type: "object",
+    additionalProperties: false,
+    required: [...RESEARCH_DEMO_ACK_FIELDS],
+    properties: {
+      ack_research_only: { type: "boolean", const: true },
+      ack_non_clinical: { type: "boolean", const: true },
+      ack_non_commercial: { type: "boolean", const: true },
+      ack_aup_accepted: { type: "boolean", const: true },
+      ack_no_safety_or_therapeutic_claims: { type: "boolean", const: true },
+    },
+  },
+  batch_fold_demo: {
+    type: "object",
+    additionalProperties: false,
+    required: [...RESEARCH_DEMO_ACK_FIELDS],
+    properties: {
+      ack_research_only: { type: "boolean", const: true },
+      ack_non_clinical: { type: "boolean", const: true },
+      ack_non_commercial: { type: "boolean", const: true },
+      ack_aup_accepted: { type: "boolean", const: true },
+      ack_no_safety_or_therapeutic_claims: { type: "boolean", const: true },
+      input_file: { type: "string", const: BATCH_DEMO_INPUT_FILE, default: BATCH_DEMO_INPUT_FILE, description: "Fixed image-bundled five-protein FASTA; arbitrary paths are not accepted." },
+    },
+  },
   drug_discovery: { type: "object", additionalProperties: false, required: ["safe_notation"], properties: { protein_pdb: { type: "string" }, protein_sequence: { type: "string" }, protein_sample: { type: "string", enum: ["egfr_kinase_public"], description: "Use the bundled full EGFR kinase PDB and matching 312-aa sequence; do not combine this with protein_pdb or protein_sequence." }, safe_notation: { type: "string", pattern: "^\\[\\*\\{[1-9][0-9]{0,2}-[1-9][0-9]{0,2}\\}\\]$", description: "GenMol de novo SAFE mask, for example [*{5-10}]. Never invent a label such as SAFE_1." }, generated_molecules: { type: "integer", minimum: 1, maximum: 20 }, dock_candidates: { type: "integer", minimum: 1, maximum: 5 }, affinity_candidates: { type: "integer", minimum: 1, maximum: 3 } } },
   msa_to_structure: { type: "object", additionalProperties: false, required: ["sequence"], properties: { sequence: { type: "string" }, max_msa_sequences: { type: "integer", minimum: 1, maximum: 500 }, output_format: { type: "string", enum: ["pdb", "cif"] } } },
   protein_binder_design: { type: "object", additionalProperties: false, required: ["contigs", "binder_chain"], properties: { target_pdb: { type: "string" }, target_sequence: { type: "string" }, target_sample: { type: "string", enum: ["egfr_kinase_public"] }, contigs: { type: "string" }, hotspot_res: { type: "array", items: { type: "string" } }, binder_chain: { type: "string" }, validation_model: { type: "string", enum: ["openfold3", "boltz2"] }, sampling_temperature: { type: "number" } } },

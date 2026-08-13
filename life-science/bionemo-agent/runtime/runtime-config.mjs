@@ -1,25 +1,32 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { EXACT_TOOL_NAMES } from "../openclaw-plugin/src/catalog.mjs";
+import { CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES } from "../openclaw-plugin/src/catalog.mjs";
 
 export const DEFAULT_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 export const NEBIUS_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
-// Token Factory's /v1/models catalog currently under-reports Lightning, Super,
-// and Ultra as 8K. These are the serving limits returned by live request
-// validation on 2026-08-12; using 8K makes OpenClaw compact on ordinary prompts.
-export const TOKEN_FACTORY_MODELS = Object.freeze([
+// Token Factory's /v1/models catalog currently under-reports Super as 8K. The
+// serving limit below was returned by live request validation on 2026-08-12;
+// using 8K makes OpenClaw compact on ordinary BioNeMo tool prompts.
+export const TOKEN_FACTORY_QUALIFICATION = Object.freeze([
   Object.freeze({ id: NEBIUS_MODEL, alias: "Nemotron 3 Nano", contextWindow: 262144, maxTokens: 8192 }),
-  Object.freeze({ id: "nvidia/Nemotron-3_5-Lightning", alias: "Nemotron 3.5 Lightning", contextWindow: 1048576, maxTokens: 4096 }),
+  Object.freeze({ id: "nvidia/Nemotron-3_5-Lightning", alias: "Nemotron 3.5 Lightning", qualified: false, reason: "emitted string sentinels for nullable structured fields and attempted false consent acknowledgements" }),
   Object.freeze({ id: "nvidia/nemotron-3-super-120b-a12b", alias: "Nemotron 3 Super", contextWindow: 262144, maxTokens: 4096, compat: Object.freeze({ maxTokensField: "max_tokens" }) }),
-  Object.freeze({ id: "nvidia/Nemotron-3-Ultra-550b-a55b", alias: "Nemotron 3 Ultra", contextWindow: 1048576, maxTokens: 4096 }),
-  Object.freeze({ id: "openai/gpt-oss-120b", alias: "GPT-OSS 120B", contextWindow: 131072, maxTokens: 8192 }),
-  Object.freeze({ id: "Qwen/Qwen3-32B", alias: "Qwen3 32B", contextWindow: 40960, maxTokens: 8192 }),
+  Object.freeze({ id: "nvidia/Nemotron-3-Ultra-550b-a55b", alias: "Nemotron 3 Ultra", qualified: false, reason: "returned an unrelated workflow instead of the requested exact response in clean endpoint acceptance" }),
+  Object.freeze({ id: "openai/gpt-oss-120b", alias: "GPT-OSS 120B", qualified: false, reason: "attempted model submissions without every required user acknowledgement" }),
+  Object.freeze({ id: "Qwen/Qwen3-32B", alias: "Qwen3 32B", qualified: false, reason: "emitted visible provider-side reasoning tags and did not meet the presentation gate" }),
   Object.freeze({ id: "zai-org/GLM-5.1", alias: "GLM 5.1", contextWindow: 202752, maxTokens: 8192 }),
   Object.freeze({ id: "deepseek-ai/DeepSeek-V4-Pro", alias: "DeepSeek V4 Pro", contextWindow: 1048576, maxTokens: 8192 }),
 ]);
+
+export const TOKEN_FACTORY_MODELS = Object.freeze(
+  TOKEN_FACTORY_QUALIFICATION.filter(({ qualified }) => qualified !== false),
+);
+export const TOKEN_FACTORY_REJECTED_MODELS = Object.freeze(
+  TOKEN_FACTORY_QUALIFICATION.filter(({ qualified }) => qualified === false),
+);
 
 export function parseBoolean(value, fallback = false) {
   if (value === undefined || value === "") return fallback;
@@ -103,6 +110,10 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   const nvidiaModel = modelId("nvidia", NVIDIA_MODEL);
   const nvidiaUsesDefault = nvidiaModel.toLowerCase() === NVIDIA_MODEL.toLowerCase();
   const requestedNebiusModel = modelId("nebius", NEBIUS_MODEL);
+  const rejectedNebiusModel = TOKEN_FACTORY_REJECTED_MODELS.find(({ id }) => id.toLowerCase() === requestedNebiusModel.toLowerCase());
+  if (rejectedNebiusModel) {
+    throw new Error(`AGENT_MODEL ${rejectedNebiusModel.id} is not available because it failed the BioNeMo workflow qualification gate: ${rejectedNebiusModel.reason}`);
+  }
   const knownNebiusModel = TOKEN_FACTORY_MODELS.find(({ id }) => id.toLowerCase() === requestedNebiusModel.toLowerCase());
   const nebiusModel = knownNebiusModel?.id || requestedNebiusModel;
   const tokenFactoryModels = knownNebiusModel
@@ -183,11 +194,15 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     // The remote MCP adapter is the selected backend, so hide the direct NIM
     // plugin tools instead of asking the reasoning model to choose between a
     // flat direct schema and an enveloped remote schema.
-    const directTools = new Set(EXACT_TOOL_NAMES);
+    const directTools = new Set(DIRECT_ONLY_TOOL_NAMES);
     config.tools.alsoAllow = config.tools.alsoAllow.filter((name) => !directTools.has(name));
-    for (const name of EXACT_TOOL_NAMES) {
+    for (const name of CROSS_BACKEND_TOOL_NAMES) {
+      if (!config.tools.alsoAllow.includes(name)) config.tools.alsoAllow.push(name);
+    }
+    for (const name of DIRECT_ONLY_TOOL_NAMES) {
       if (!config.tools.deny.includes(name)) config.tools.deny.push(name);
     }
+    config.tools.deny = config.tools.deny.filter((name) => !CROSS_BACKEND_TOOL_NAMES.includes(name));
   }
   return state;
 }

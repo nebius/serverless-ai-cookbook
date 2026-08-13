@@ -1,16 +1,98 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { InputError } from "./errors.mjs";
+import { BATCH_DEMO_INPUT_FILE } from "./validation.mjs";
 
 export const SAMPLE_IDS = Object.freeze(["egfr_kinase_public"]);
-const EGFR_SEQUENCE = "GEAPNQALLRILKETEFKKIKVLGSGAFGTVYKGLWIPEGEKVKIPVAIKELREATSPKANKEILDEAYVMASVDNPHVCRLLGICLTSTVQLITQLMPFGCLLDYVREHKDNIGSQYLLNWCVQIAKGMNYLEDRRLVHRDLAARNVLVKTPQHVKITDFGLAKLLGAEEKEYHAEGGKVPIKWMALESILHRIYTHQSDVWSYGVTVWELMTFGSKPYDGIPASEISSILEKGERLPQPPICTIDVYMIMVKCWMIDADSRPKFRELIIEFSKMARDPQRYLVIQGDERMHLMDEEDMDDVVDADEYLIP";
+export const EGFR_KINASE_SEQUENCE = "GEAPNQALLRILKETEFKKIKVLGSGAFGTVYKGLWIPEGEKVKIPVAIKELREATSPKANKEILDEAYVMASVDNPHVCRLLGICLTSTVQLITQLMPFGCLLDYVREHKDNIGSQYLLNWCVQIAKGMNYLEDRRLVHRDLAARNVLVKTPQHVKITDFGLAKLLGAEEKEYHAEGGKVPIKWMALESILHRIYTHQSDVWSYGVTVWELMTFGSKPYDGIPASEISSILEKGERLPQPPICTIDVYMIMVKCWMIDADSRPKFRELIIEFSKMARDPQRYLVIQGDERMHLMDEEDMDDVVDADEYLIP";
+export const GEFITINIB_SMILES = "COc1cc2ncnc(Nc3ccc(F)c(Cl)c3)c2cc1OCCCN1CCOCC1";
+export const RESEARCH_DEMO_PUBLIC_INPUTS = Object.freeze({
+  target: Object.freeze({
+    name: "EGFR kinase domain",
+    sequence: EGFR_KINASE_SEQUENCE,
+    source: "https://www.uniprot.org/uniprotkb/P00533/entry",
+  }),
+  seed: Object.freeze({
+    name: "gefitinib",
+    smiles: GEFITINIB_SMILES,
+    source: "https://pubchem.ncbi.nlm.nih.gov/compound/Gefitinib",
+  }),
+});
+
+export const CRAMBIN_PUBLIC_INPUT = Object.freeze({
+  id: "1CRN",
+  name: "Crambin",
+  sequence: "TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN",
+  source: "https://www.rcsb.org/structure/1CRN",
+});
+
+export const BATCH_FASTA_RELATIVE_PATH = BATCH_DEMO_INPUT_FILE;
+export const BATCH_PROTEIN_RECORDS = Object.freeze([
+  CRAMBIN_PUBLIC_INPUT,
+  Object.freeze({ id: "1UBQ", name: "Ubiquitin", sequence: "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG", source: "https://www.rcsb.org/structure/1UBQ" }),
+  Object.freeze({ id: "1PGA", name: "Protein G B1 domain", sequence: "MTYKLILNGKTLKGETTTEAVDAATAEKVFKQYANDNGVDGEWTYDDATKTFTVTE", source: "https://www.rcsb.org/structure/1PGA" }),
+  Object.freeze({ id: "1L2Y", name: "Trp-cage miniprotein", sequence: "NLYIQWLKDGGPSSGRPPPS", source: "https://www.rcsb.org/structure/1L2Y" }),
+  Object.freeze({ id: "1VII", name: "Villin headpiece subdomain", sequence: "MLSDEDFKAVFGMTRSAFANLPLWKQQNLKKEKGLF", source: "https://www.rcsb.org/structure/1VII" }),
+]);
+
+const BATCH_RECORD_BY_ID = new Map(BATCH_PROTEIN_RECORDS.map((record) => [record.id, record]));
+const BATCH_PROTEIN = /^[ACDEFGHIKLMNPQRSTVWY]+$/u;
+
+export function parseBatchProteinFasta(text) {
+  if (typeof text !== "string" || text.length < 1 || Buffer.byteLength(text, "utf8") > 16_384) {
+    throw new InputError("bundled batch FASTA must be a nonempty file no larger than 16384 bytes");
+  }
+  const records = [];
+  let active = null;
+  for (const [index, rawLine] of text.split(/\r?\n/u).entries()) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (line.startsWith(">")) {
+      const id = line.slice(1).trim().split(/\s+/u)[0];
+      if (!id) throw new InputError(`batch FASTA header on line ${index + 1} is missing an ID`);
+      active = { id, sequence: "" };
+      records.push(active);
+      continue;
+    }
+    if (!active) throw new InputError(`batch FASTA sequence on line ${index + 1} appears before a header`);
+    if (!BATCH_PROTEIN.test(line)) throw new InputError(`batch FASTA record ${active.id} contains an invalid protein sequence`);
+    active.sequence += line;
+  }
+  if (records.length !== BATCH_PROTEIN_RECORDS.length) {
+    throw new InputError(`bundled batch FASTA must contain exactly ${BATCH_PROTEIN_RECORDS.length} records`);
+  }
+  if (new Set(records.map(({ id }) => id)).size !== records.length) throw new InputError("bundled batch FASTA record IDs must be unique");
+  return records.map((record, index) => {
+    const expected = BATCH_RECORD_BY_ID.get(record.id);
+    if (!expected || BATCH_PROTEIN_RECORDS[index].id !== record.id) {
+      throw new InputError("bundled batch FASTA must contain the five reviewed public IDs in the documented order");
+    }
+    if (record.sequence !== expected.sequence) {
+      throw new InputError(`bundled batch FASTA record ${record.id} does not match its reviewed public sequence and length`);
+    }
+    return { ...expected };
+  });
+}
+
+function batchProteinFilePath(workspaceRoot = "/workspace/agent", relativePath = BATCH_FASTA_RELATIVE_PATH) {
+  if (relativePath !== BATCH_FASTA_RELATIVE_PATH) throw new InputError("batch input_file must be the fixed bundled FASTA path");
+  const root = path.resolve(workspaceRoot);
+  const target = path.resolve(root, relativePath);
+  if (!target.startsWith(`${root}${path.sep}`)) throw new InputError("batch FASTA path escapes the trusted workspace root");
+  return target;
+}
+
+export async function loadBatchProteinFile(relativePath = BATCH_FASTA_RELATIVE_PATH, options = {}) {
+  const workspaceRoot = options.workspaceRoot || process.env.BIONEMO_CLIENT_WORKSPACE || "/workspace/agent";
+  return parseBatchProteinFasta(await readFile(batchProteinFilePath(workspaceRoot, relativePath), "utf8"));
+}
 
 const SAMPLES = Object.freeze({
   egfr_kinase_public: {
     label: "Public EGFR kinase-domain structure bundled by the pinned upstream toolkit",
     source: "NVIDIA BioNeMo Agent Toolkit drug-discovery evaluation asset (egfr.pdb)",
     relativePath: "nim-skills/meta-skills/drug-discovery-pipeline/evals/files/egfr.pdb",
-    sequence: EGFR_SEQUENCE,
+    sequence: EGFR_KINASE_SEQUENCE,
   },
 });
 
@@ -59,4 +141,4 @@ export async function resolveWorkflowInput(workflowId, raw, options = {}) {
 }
 
 export const PUBLIC_SAMPLES = Object.freeze(Object.fromEntries(Object.entries(SAMPLES).map(([id, item]) => [id, { label: item.label, source: item.source, sequenceLength: item.sequence.length }])));
-export const __test = { loadSample, SAMPLES };
+export const __test = { loadSample, SAMPLES, batchProteinFilePath };

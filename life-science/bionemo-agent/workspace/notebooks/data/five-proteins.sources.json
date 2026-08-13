@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "licenseNote": "Public protein sequences retrieved from the RCSB PDB FASTA display endpoints for this research-only demo.",
+  "records": [
+    {
+      "id": "1CRN",
+      "pdbId": "1CRN",
+      "name": "crambin",
+      "source": "https://www.rcsb.org/fasta/entry/1CRN/display"
+    },
+    {
+      "id": "1UBQ",
+      "pdbId": "1UBQ",
+      "name": "ubiquitin",
+      "source": "https://www.rcsb.org/fasta/entry/1UBQ/display"
+    },
+    {
+      "id": "1PGA",
+      "pdbId": "1PGA",
+      "name": "protein G",
+      "source": "https://www.rcsb.org/fasta/entry/1PGA/display"
+    },
+    {
+      "id": "1L2Y",
+      "pdbId": "1L2Y",
+      "name": "TC5b",
+      "source": "https://www.rcsb.org/fasta/entry/1L2Y/display"
+    },
+    {
+      "id": "1VII",
+      "pdbId": "1VII",
+      "name": "villin",
+      "source": "https://www.rcsb.org/fasta/entry/1VII/display"
+    }
+  ]
+}

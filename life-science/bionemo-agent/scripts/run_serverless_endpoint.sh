@@ -57,6 +57,7 @@ else
   CREATE_CMD+=(--env "BIONEMO_ENABLE_HTTPS_TUNNEL=false")
 fi
 if [[ -n "${BIONEMO_PUBLIC_ORIGIN:-}" ]]; then CREATE_CMD+=(--env "BIONEMO_PUBLIC_ORIGIN=$BIONEMO_PUBLIC_ORIGIN"); fi
+if [[ -n "${AGENT_MODEL:-}" ]]; then CREATE_CMD+=(--env "AGENT_MODEL=$AGENT_MODEL"); fi
 
 if [[ -n "${NVIDIA_API_KEY_SECRET:-}" ]]; then
   CREATE_CMD+=(--env-secret "NVIDIA_API_KEY=$NVIDIA_API_KEY_SECRET")

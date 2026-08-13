@@ -41,6 +41,9 @@
         "primary": "setup/setup-required",
         "fallbacks": []
       },
+      "compaction": {
+        "reserveTokensFloor": 20000
+      },
       "skills": [
         "boltz2-nim",
         "diffdock-nim",
@@ -52,6 +55,7 @@
         "openfold3-nim",
         "proteinmpnn-nim",
         "rfdiffusion-nim",
+        "tavily-research",
         "drug-discovery-pipeline",
         "msa-structure-prediction-pipeline",
         "protein-binder-design"
@@ -88,6 +92,7 @@
           "openfold3-nim",
           "proteinmpnn-nim",
           "rfdiffusion-nim",
+          "tavily-research",
           "drug-discovery-pipeline",
           "msa-structure-prediction-pipeline",
           "protein-binder-design"
@@ -116,6 +121,10 @@
       "bionemo_openfold3",
       "bionemo_proteinmpnn",
       "bionemo_rfdiffusion",
+      "bionemo_research_drug_demo",
+      "bionemo_compare_protein_structures",
+      "bionemo_optimize_ligand_complex",
+      "bionemo_batch_fold_demo",
       "bionemo_drug_discovery",
       "bionemo_msa_to_structure",
       "bionemo_protein_binder_design"
@@ -167,7 +176,7 @@
     "limits": {
       "maxCandidatesPerRoot": 32,
       "maxSkillsLoadedPerSource": 16,
-      "maxSkillsInPrompt": 13,
+      "maxSkillsInPrompt": 14,
       "maxSkillsPromptChars": 60000,
       "maxSkillFileBytes": 65536
     }

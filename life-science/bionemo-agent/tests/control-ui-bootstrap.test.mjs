@@ -4,9 +4,18 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
+import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { CONTROL_UI_BOOTSTRAP_NAME, prepareControlUi } from "../runtime/prepare-control-ui.mjs";
 
 const bootstrapUrl = new URL("../runtime/control-ui-default-session.js", import.meta.url);
+const defaultDemoPrompt = NOTEBOOK_CATALOG[0].prompt;
+
+test("startup draft is the exact Tavily-enabled first notebook prompt", async () => {
+  const firstNotebook = JSON.parse(await readFile(new URL(`../workspace/notebooks/${NOTEBOOK_CATALOG[0].file}`, import.meta.url), "utf8"));
+  assert.equal(defaultDemoPrompt, firstNotebook.metadata.bionemo.prompt);
+  assert.equal(firstNotebook.metadata.bionemo.optionalTavily, true);
+  assert.match(defaultDemoPrompt, /use_tavily=true/u);
+});
 
 async function runBootstrap(href) {
   const source = await readFile(bootstrapUrl, "utf8");
@@ -23,14 +32,36 @@ async function runBootstrap(href) {
 }
 
 test("default-session bootstrap canonicalizes only first-entry BioNeMo routes", async () => {
-  assert.deepEqual(await runBootstrap("https://workbench.example/"), [
-    { state: { retained: true }, title: "", next: "/chat?session=agent%3Abionemo%3Amain" },
-  ]);
-  assert.deepEqual(await runBootstrap("https://workbench.example/?theme=dark#token=kept"), [
-    { state: { retained: true }, title: "", next: "/chat?theme=dark&session=agent%3Abionemo%3Amain#token=kept" },
-  ]);
+  const rootCalls = await runBootstrap("https://workbench.example/");
+  assert.equal(rootCalls.length, 1);
+  assert.deepEqual(rootCalls[0].state, { retained: true });
+  assert.equal(rootCalls[0].title, "");
+  const rootUrl = new URL(rootCalls[0].next, "https://workbench.example");
+  assert.equal(rootUrl.pathname, "/chat");
+  assert.equal(rootUrl.searchParams.get("session"), "agent:bionemo:main");
+  assert.equal(rootUrl.searchParams.get("draft"), defaultDemoPrompt);
+
+  const themedCalls = await runBootstrap("https://workbench.example/?theme=dark#token=kept");
+  assert.equal(themedCalls.length, 1);
+  const themedUrl = new URL(themedCalls[0].next, "https://workbench.example");
+  assert.equal(themedUrl.pathname, "/chat");
+  assert.equal(themedUrl.searchParams.get("theme"), "dark");
+  assert.equal(themedUrl.searchParams.get("session"), "agent:bionemo:main");
+  assert.equal(themedUrl.searchParams.get("draft"), defaultDemoPrompt);
+  assert.equal(themedUrl.hash, "#token=kept");
+
+  const legacyCalls = await runBootstrap("https://workbench.example/chat?session=main");
+  assert.equal(legacyCalls.length, 1);
+  const legacyUrl = new URL(legacyCalls[0].next, "https://workbench.example");
+  assert.equal(legacyUrl.pathname, "/chat");
+  assert.equal(legacyUrl.searchParams.get("session"), "agent:bionemo:main");
+  assert.equal(legacyUrl.searchParams.get("draft"), defaultDemoPrompt);
+
   assert.deepEqual(await runBootstrap("https://workbench.example/chat?session=main&draft=kept"), [
     { state: { retained: true }, title: "", next: "/chat?session=agent%3Abionemo%3Amain&draft=kept" },
+  ]);
+  assert.deepEqual(await runBootstrap("https://workbench.example/?draft=kept&theme=light"), [
+    { state: { retained: true }, title: "", next: "/chat?draft=kept&theme=light&session=agent%3Abionemo%3Amain" },
   ]);
 });
 

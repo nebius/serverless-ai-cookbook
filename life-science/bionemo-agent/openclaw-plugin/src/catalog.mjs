@@ -102,6 +102,38 @@ export const SKILLS = Object.freeze({
 });
 
 export const WORKFLOWS = Object.freeze({
+  research_drug_demo: workflow({
+    id: "research_drug_demo",
+    tool: "bionemo_research_drug_demo",
+    label: "Research-first EGFR drug demo",
+    steps: ["Tavily", "OpenFold2", "MolMIM", "OpenFold3"],
+    description: "Research public EGFR evidence, characterize its target structure, optimize two gefitinib-derived candidates, and model the best-scoring candidate with the same target sequence.",
+    crossBackend: true,
+  }),
+  compare_protein_structures: workflow({
+    id: "compare_protein_structures",
+    tool: "bionemo_compare_protein_structures",
+    label: "Compare Crambin structure predictions",
+    steps: ["OpenFold2", "OpenFold3"],
+    description: "Predict the same fixed public Crambin sequence with OpenFold2 and OpenFold3 for a bounded, side-by-side research comparison.",
+    crossBackend: true,
+  }),
+  optimize_ligand_complex: workflow({
+    id: "optimize_ligand_complex",
+    tool: "bionemo_optimize_ligand_complex",
+    label: "Optimize an EGFR ligand complex",
+    steps: ["MolMIM", "OpenFold3"],
+    description: "Optimize exactly two gefitinib-derived candidates with MolMIM and model the best-scoring candidate with the fixed public EGFR sequence in OpenFold3.",
+    crossBackend: true,
+  }),
+  batch_fold_demo: workflow({
+    id: "batch_fold_demo",
+    tool: "bionemo_batch_fold_demo",
+    label: "Fold five public proteins",
+    steps: ["Read fixed FASTA", "OpenFold2 × 5"],
+    description: "Read the bundled five-protein FASTA and fold each public sequence exactly once, sequentially, while retaining per-record failures.",
+    crossBackend: true,
+  }),
   drug_discovery: workflow({
     id: "drug_discovery",
     tool: "bionemo_drug_discovery",
@@ -124,6 +156,15 @@ export const WORKFLOWS = Object.freeze({
     description: "Design one bounded binder backbone, sequence it, and co-fold it for research review.",
   }),
 });
+
+export const DIRECT_ONLY_TOOL_NAMES = Object.freeze([
+  ...Object.values(SKILLS).map((entry) => entry.tool),
+  ...Object.values(WORKFLOWS).filter((entry) => !entry.crossBackend).map((entry) => entry.tool),
+]);
+
+export const CROSS_BACKEND_TOOL_NAMES = Object.freeze(
+  Object.values(WORKFLOWS).filter((entry) => entry.crossBackend).map((entry) => entry.tool),
+);
 
 export const EXACT_TOOL_NAMES = Object.freeze([
   ...Object.values(SKILLS).map((entry) => entry.tool),

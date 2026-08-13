@@ -1,13 +1,16 @@
-# BioNeMo Agent Workbench 3.2.6 on Nebius Serverless
+# BioNeMo Agent Workbench 3.3.0 on Nebius Serverless
 
 This recipe packages a ready-to-start life-science agent environment for a
 Nebius Serverless CPU endpoint. The image contains:
 
 - a single-step, token-authenticated OpenClaw browser agent;
 - Codex CLI `0.147.0` and Claude Code `2.1.228`, installed without auth caches;
-- all 31 skills from NVIDIA's pinned BioNeMo Agent Toolkit plugin;
+- all 31 skills from NVIDIA's pinned BioNeMo Agent Toolkit plugin plus a
+  credential-free Tavily research skill;
 - the public Cerebrium BioNeMo MCP URL in all three clients;
-- ten bounded hosted-NIM adapters, three composed research workflows, and a bundled interactive 3Dmol structure viewer; and
+- ten bounded hosted-NIM adapters, seven composed research workflows, and a bundled interactive 3Dmol structure viewer;
+- four image-baked, provider-neutral nbformat notebooks, including a fixed
+  five-protein batch dataset and safe same-origin notebook previews; and
 - optional Tavily MCP search.
 
 The container may start without a model credential. In that case the browser
@@ -36,16 +39,21 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 | `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
 | none | local setup-required responder | no external model |
 
-The Token Factory picker exposes a curated agent-capable catalog: Nemotron 3
-Nano, Nemotron 3.5 Lightning, Nemotron 3 Super, Nemotron 3 Ultra, GPT-OSS 120B,
-Qwen3 32B, GLM 5.1, and DeepSeek V4 Pro. Nano remains the default because its
-262K context window is the safest fit for the workbench's tool schemas. The
-live service accepts 1,048,576-token contexts for Lightning and Ultra and a
-262,144-token context for Super even though the model catalog currently
-under-reports those three as 8K. The image supplies the verified limits so
-OpenClaw does not compact ordinary sessions prematurely. It also sends
-`max_tokens` specifically for Super, whose route rejects
-`max_completion_tokens`.
+The Token Factory picker exposes the four models that passed the workbench's
+structured-tool, native-JSON, consent, and presentation gates: Nemotron 3 Nano,
+Nemotron 3 Super, GLM 5.1, and DeepSeek V4 Pro. Nano remains the default because
+its 262K context window is the safest fit for the workbench's tool schemas. The
+live service accepts a 262,144-token context for Super even though the model
+catalog currently under-reports it as 8K. The image supplies that independently
+verified limit and sends `max_tokens` specifically for Super, whose route
+rejects `max_completion_tokens`.
+
+The same gate tested all eight previously exposed models. Lightning was removed
+for invalid nullable-object types and false consent attempts, GPT-OSS for
+missing-consent attempts, Qwen3 for provider-visible reasoning tags, and Ultra
+for an unrelated response in clean endpoint acceptance. Those known-failing
+IDs are rejected even when supplied through `AGENT_MODEL`; arbitrary operator
+models remain available as explicit custom overrides.
 
 The NVIDIA Build profile uses Nemotron 3 Super with template thinking disabled.
 Release acceptance produced one structured flat OpenFold2 call, five PDB
@@ -55,6 +63,10 @@ returned raw tool-call JSON as assistant text in six of six direct probes
 (including three with `tool_choice=required`). The NVIDIA provider keeps a
 bounded 240-second idle timeout so a slow hosted response does not discard an
 already completed BioNeMo NIM result.
+
+OpenClaw reserves at least 20,000 tokens for compaction recovery. This keeps
+long Super, Nano, GLM, and DeepSeek tool sessions out of the unrecoverable
+low-buffer state identified by OpenClaw's compaction warning.
 
 Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
 model with `AGENT_MODEL`, and the OpenAI-compatible endpoint with
@@ -95,7 +107,28 @@ alias for `BIONEMO_MCP_API_KEY`.
 
 Set `TAVILY_API_KEY` to enable the Tavily remote MCP server. The default search
 parameters use basic depth, at most five results, and omit raw content and
-images.
+images. The same `tavily-research` skill is available to OpenClaw, Codex, and
+Claude; credentials remain runtime-only and are never part of the skill.
+
+The BioNeMo dashboard opens with four visible guided notebooks. They are real,
+clean nbformat 4 files baked under `/workspace/agent/notebooks`, available as a
+safe read-only preview, an exact `.ipynb` download, and a one-click launch into
+the canonical `agent:bionemo:main` chat. They do not contain credentials,
+executed output, or a Python kernel:
+
+1. an optional Tavily-first EGFR/gefitinib research workflow using OpenFold2,
+   MolMIM, and OpenFold3;
+2. a side-by-side Crambin OpenFold2/OpenFold3 structure comparison;
+3. bounded MolMIM ligand optimization followed by OpenFold3 complex modeling;
+4. a bulk workflow that reads the bundled, reviewed five-protein FASTA and
+   invokes OpenFold2 once per record, sequentially.
+
+Each notebook calls one low-arity, backend-neutral `bionemo_*` wrapper. The
+wrapper selects direct NVIDIA or the Cerebrium MCP backend, owns all model
+handoffs, prevents duplicate same-turn execution, and stores artifacts and 3D
+viewer links. Tavily is optional: `use_tavily=true` runs the bounded research
+step when configured, while `use_tavily=false` runs the same scientific model
+pipeline without search or a Tavily credential.
 
 ## Immutable pins
 
@@ -107,12 +140,13 @@ images.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.2.6` |
+| Workbench | `3.3.0` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
-directories are copied to `/etc/codex/skills` and `~/.claude/skills`. Runtime
-client files contain only endpoint URLs and environment-variable placeholders.
+directories and the image-owned `tavily-research` skill are copied to
+`/etc/codex/skills` and `~/.claude/skills`. Runtime client files contain only
+endpoint URLs and environment-variable placeholders.
 
 ## Security boundaries
 
@@ -149,7 +183,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.2.6"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.0"
 ./scripts/build_image.sh
 ```
 
@@ -170,7 +204,7 @@ payload key must match the environment variable name.
 export PROFILE=sandbox
 export PARENT_ID=project-e00z6b02t8ddk96c49
 export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.2.6-<digest8>"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.3.0-<digest8>"
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
 
 # Any combination is optional. Set only one of the NVIDIA alternatives.
@@ -241,8 +275,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.2.6-test .
-docker run --rm bionemo-agent:3.2.6-test doctor
+docker build -t bionemo-agent:3.3.0-test .
+docker run --rm bionemo-agent:3.3.0-test doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`
@@ -262,9 +296,10 @@ backend, but never the credential value.
 
 The hardened browser plugin exposes Boltz2, DiffDock, Evo2 40B, GenMol,
 MolMIM, MSA Search, OpenFold2, OpenFold3, ProteinMPNN, and RFdiffusion. It also
-includes bounded drug-discovery, MSA-to-structure, and protein-binder-design
-workflows. The broader 31-skill NVIDIA bundle remains available to Codex and
-Claude for authenticated interactive use.
+includes four backend-neutral notebook workflows plus the bounded direct
+drug-discovery, MSA-to-structure, and protein-binder-design workflows. The
+broader 31-skill NVIDIA bundle remains available to Codex and Claude for
+authenticated interactive use.
 
 Direct MolMIM requests send explicit hosted defaults of 10 output molecules
 and 20 particles when omitted, and reject a particle population smaller than

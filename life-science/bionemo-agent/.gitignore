@@ -1,4 +1,6 @@
+.playwright-cli/
 .task-output/
+output/playwright/
 coverage/
 node_modules/
 *.log

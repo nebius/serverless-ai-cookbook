@@ -11,7 +11,7 @@ ARG THREEDMOL_VERSION="2.5.5"
 LABEL org.opencontainers.image.title="Nebius BioNeMo Agent Workbench" \
       org.opencontainers.image.description="Authenticated BioNeMo browser agent plus unauthenticated Codex and Claude Code CLIs with NVIDIA BioNeMo skills and MCP" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook/tree/main/life-science/bionemo-agent" \
-      org.opencontainers.image.version="3.2.6" \
+      org.opencontainers.image.version="3.3.0" \
       org.opencontainers.image.licenses="Apache-2.0 AND CC-BY-4.0 AND BSD-3-Clause" \
       io.nebius.bionemo.toolkit.commit="${BIONEMO_TOOLKIT_COMMIT}" \
       io.nebius.openclaw.version="2026.7.1-2" \
@@ -59,8 +59,11 @@ RUN node /opt/bionemo/runtime/patch-openclaw-mcp-turn-context.mjs /app/dist \
     && install -d -o root -g root -m 0755 /etc/codex/skills \
     && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /etc/codex/skills/ \
     && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /home/node/.claude/skills/ \
+    && cp -a /workspace/agent/skills/tavily-research /etc/codex/skills/ \
+    && cp -a /workspace/agent/skills/tavily-research /home/node/.claude/skills/ \
     && chown -R node:node /opt/bionemo /home/node/.claude \
     && chmod -R a-w /etc/codex/skills /home/node/.claude/skills \
+    && chmod -R a-w /workspace/agent/notebooks \
     && chmod -R go-rwx /opt/bionemo /workspace/agent
 
 ENV PORT=18789 \
@@ -69,6 +72,7 @@ ENV PORT=18789 \
     OPENCLAW_CONFIG_PATH=/workspace/state/openclaw.json \
     BIONEMO_CONFIG_TEMPLATE=/opt/bionemo/config/openclaw.template.json \
     BIONEMO_ARTIFACT_ROOT=/workspace/agent/artifacts \
+    BIONEMO_NOTEBOOK_ROOT=/workspace/agent/notebooks \
     BIONEMO_3DMOL_PATH=/opt/bionemo/assets/3Dmol-min.js \
     BIONEMO_VENDOR_ROOT=/opt/bionemo/vendor/bionemo-agent-toolkit \
     BIONEMO_MCP_URL=https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp \

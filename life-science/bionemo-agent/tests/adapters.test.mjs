@@ -5,11 +5,11 @@ import path from "node:path";
 import test from "node:test";
 import { ArtifactStore, extractArtifacts } from "../openclaw-plugin/src/artifacts.mjs";
 import { NimClient, __test as clientInternals } from "../openclaw-plugin/src/client.mjs";
-import { EXACT_TOOL_NAMES, NVIDIA_HOST, SKILLS } from "../openclaw-plugin/src/catalog.mjs";
+import { CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, NVIDIA_HOST, SKILLS } from "../openclaw-plugin/src/catalog.mjs";
 import { publicError, redactSecrets, redactText } from "../openclaw-plugin/src/errors.mjs";
-import { resolveSkillInput, resolveWorkflowInput } from "../openclaw-plugin/src/samples.mjs";
+import { BATCH_PROTEIN_RECORDS, parseBatchProteinFasta, resolveSkillInput, resolveWorkflowInput, __test as sampleInternals } from "../openclaw-plugin/src/samples.mjs";
 import { createRuntime } from "../openclaw-plugin/index.mjs";
-import { JSON_SCHEMAS, LIMITS, VALIDATORS, normalizeDirectSkillInput, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
+import { BATCH_DEMO_INPUT_FILE, JSON_SCHEMAS, LIMITS, RESEARCH_DEMO_ACK_FIELDS, VALIDATORS, normalizeDirectSkillInput, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
 
 const PDB = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\nATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n";
 const PROTEIN = "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ";
@@ -22,15 +22,52 @@ const VALID_INPUTS = Object.freeze({
   molmim: { smi: "CCO", algorithm: "CMA-ES", num_molecules: 2, num_iterations: 2, property_name: "QED", particles: 2 },
   msa_search: { sequence: PROTEIN, databases: ["Uniref30_2302"], output_alignment_formats: ["a3m"] },
   openfold2: { sequence: PROTEIN, input_id: "public-example", selected_models: [1] },
-  openfold3: { inputs: [{ input_id: "public-example", output_format: "pdb", molecules: [{ type: "protein", sequence: PROTEIN, diffusion_samples: 1 }] }] },
+  openfold3: { inputs: [{ input_id: "public-example", output_format: "pdb", molecules: [{ id: "A", type: "protein", sequence: PROTEIN, diffusion_samples: 1 }] }] },
   proteinmpnn: { input_pdb: PDB, input_pdb_chains: ["A"], num_seq_per_target: 2, sampling_temp: [0.1] },
   rfdiffusion: { input_pdb: PDB, contigs: "80-90", diffusion_steps: 10, random_seed: 7 },
 });
 
-test("catalog exposes exactly ten atomic skills and thirteen explicit tools", () => {
+test("catalog exposes ten atomic skills, thirteen direct-only tools, and four cross-backend workflows", () => {
   assert.equal(Object.keys(SKILLS).length, 10);
-  assert.equal(EXACT_TOOL_NAMES.length, 13);
-  assert.equal(new Set(EXACT_TOOL_NAMES).size, 13);
+  assert.equal(DIRECT_ONLY_TOOL_NAMES.length, 13);
+  assert.equal(CROSS_BACKEND_TOOL_NAMES.length, 4);
+  assert.equal(EXACT_TOOL_NAMES.length, 17);
+  assert.equal(new Set(EXACT_TOOL_NAMES).size, 17);
+  assert.equal(CROSS_BACKEND_TOOL_NAMES.every((name) => !DIRECT_ONLY_TOOL_NAMES.includes(name) && EXACT_TOOL_NAMES.includes(name)), true);
+});
+
+test("cross-backend schemas and validators require all five explicit const-true acknowledgements", () => {
+  const accepted = {
+    ack_research_only: true,
+    ack_non_clinical: true,
+    ack_non_commercial: true,
+    ack_aup_accepted: true,
+    ack_no_safety_or_therapeutic_claims: true,
+  };
+  assert.deepEqual(validateWorkflowInput("research_drug_demo", accepted), { ...accepted, use_tavily: true });
+  assert.deepEqual(validateWorkflowInput("research_drug_demo", { ...accepted, use_tavily: false }), { ...accepted, use_tavily: false });
+  for (const workflowId of ["research_drug_demo", "compare_protein_structures", "optimize_ligand_complex", "batch_fold_demo"]) {
+    assert.deepEqual([...JSON_SCHEMAS[workflowId].required].sort(), [...RESEARCH_DEMO_ACK_FIELDS].sort());
+    for (const key of Object.keys(accepted)) {
+      assert.equal(JSON_SCHEMAS[workflowId].properties[key].const, true);
+      assert.throws(() => validateWorkflowInput(workflowId, { ...accepted, [key]: false }), /must be true/u, `${workflowId}:${key}`);
+      const missing = { ...accepted };
+      delete missing[key];
+      assert.throws(() => validateWorkflowInput(workflowId, missing), /missing required fields/u, `${workflowId}:${key}`);
+    }
+  }
+  assert.throws(() => validateWorkflowInput("research_drug_demo", { ...accepted, query: "attacker controlled" }), /unsupported fields/u);
+  assert.deepEqual(validateWorkflowInput("batch_fold_demo", accepted), { ...accepted, input_file: BATCH_DEMO_INPUT_FILE });
+  assert.throws(() => validateWorkflowInput("batch_fold_demo", { ...accepted, input_file: "../../etc/passwd" }), /must be exactly/u);
+});
+
+test("fixed batch FASTA parser accepts only five reviewed records and rejects drift", () => {
+  const fasta = `${BATCH_PROTEIN_RECORDS.map(({ id, sequence }) => `>${id}\n${sequence}`).join("\n")}\n`;
+  assert.deepEqual(parseBatchProteinFasta(fasta).map(({ id, sequence }) => [id, sequence.length]), BATCH_PROTEIN_RECORDS.map(({ id, sequence }) => [id, sequence.length]));
+  assert.throws(() => parseBatchProteinFasta(`${fasta}>EXTRA\nACDE\n`), /exactly 5 records/u);
+  assert.throws(() => parseBatchProteinFasta(fasta.replace(BATCH_PROTEIN_RECORDS[1].sequence, `${BATCH_PROTEIN_RECORDS[1].sequence.slice(0, -1)}?`)), /invalid protein sequence/u);
+  assert.throws(() => parseBatchProteinFasta(fasta.replace(">1UBQ", ">1CRN")), /unique/u);
+  assert.throws(() => sampleInternals.batchProteinFilePath("/workspace/agent", "../../etc/passwd"), /fixed bundled FASTA/u);
 });
 
 for (const [id, input] of Object.entries(VALID_INPUTS)) {
@@ -86,10 +123,16 @@ test("MolMIM aligns effective output and population defaults before upstream com
       return new Response("{}", { status: 200 });
     },
   });
-  await client.call("molmim", { smi: "CCO" });
-  assert.deepEqual(forwarded, [{ smi: "CCO", num_molecules: 10, particles: 20 }]);
+  await client.call("molmim", { smi: "CCO", num_iterations: 3, radius: 1 });
+  assert.deepEqual(forwarded, [{ smi: "CCO", num_molecules: 10, particles: 20, iterations: 3, scaled_radius: 1 }]);
+  assert.equal("num_iterations" in forwarded[0], false);
+  assert.equal("radius" in forwarded[0], false);
   await assert.rejects(() => client.call("molmim", { smi: "CCO", particles: 2 }), /greater than or equal to num_molecules/u);
   assert.equal(forwarded.length, 1);
+
+  await client.call("openfold2", { sequence: PROTEIN, input_id: "public-example", selected_models: [1], relax: false });
+  assert.deepEqual(forwarded[1], { sequence: PROTEIN, input_id: "public-example", selected_models: [1], relax_prediction: false });
+  assert.equal("relax" in forwarded[1], false);
 });
 
 test("ProteinMPNN model schema requires exactly one backbone source", () => {

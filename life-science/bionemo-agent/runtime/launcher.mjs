@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { capabilities, configureOpenClaw, normalizedEnvironment } from "./runtime-config.mjs";
+import { capabilities, configureOpenClaw, normalizedEnvironment, validatedRemoteUrl } from "./runtime-config.mjs";
 import { startMcpSchemaAdapter } from "./mcp-schema-adapter.mjs";
 import { prepareClients } from "./prepare-clients.mjs";
 import { startSetupServer } from "./setup-server.mjs";
@@ -107,6 +107,22 @@ async function writeRuntimeFiles({ templatePath, configPath, stateDir, origins, 
   return capabilityState;
 }
 
+function configureMcpAdapterEnvironment(runtimeEnv, { upstreamUrl, adapterUrl, processEnv = process.env }) {
+  const upstream = validatedRemoteUrl(upstreamUrl, runtimeEnv);
+  const adapter = new URL(adapterUrl);
+  if (adapter.protocol !== "http:" || adapter.hostname !== "127.0.0.1" || !adapter.port || adapter.pathname !== "/mcp" || adapter.username || adapter.password || adapter.search || adapter.hash) {
+    throw new Error("MCP schema adapter URL must be an exact loopback HTTP /mcp endpoint");
+  }
+  if (adapter.toString() === upstream) throw new Error("MCP upstream and schema adapter URLs must be distinct");
+  runtimeEnv.BIONEMO_MCP_UPSTREAM_URL = upstream;
+  runtimeEnv.BIONEMO_MCP_URL = adapter.toString();
+  runtimeEnv.BIONEMO_ALLOW_INSECURE_MCP = "true";
+  processEnv.BIONEMO_MCP_UPSTREAM_URL = upstream;
+  processEnv.BIONEMO_MCP_URL = adapter.toString();
+  processEnv.BIONEMO_ALLOW_INSECURE_MCP = "true";
+  return runtimeEnv;
+}
+
 async function main() {
   const runtimeEnv = normalizedEnvironment(process.env);
   const gatewayToken = requireEnvironment(runtimeEnv);
@@ -151,14 +167,14 @@ async function main() {
       port: mcpAdapterPort,
     });
     // The browser workbench consumes the flattened loopback MCP contract. The
-    // adapter alone holds and forwards the upstream credential.
+    // adapter alone holds and forwards the upstream credential. The composed
+    // plugin workflow keeps the validated raw upstream URL in a private child
+    // environment field because it speaks the gateway's native typed envelope.
     mcpAdapter.server.unref();
-    runtimeEnv.BIONEMO_MCP_URL = mcpAdapter.url;
-    runtimeEnv.BIONEMO_ALLOW_INSECURE_MCP = "true";
-    // Any client prepared inside this launcher process must retain the same
-    // adapter URL rather than restoring the raw upstream wrapper schemas.
-    process.env.BIONEMO_MCP_URL = mcpAdapter.url;
-    process.env.BIONEMO_ALLOW_INSECURE_MCP = "true";
+    configureMcpAdapterEnvironment(runtimeEnv, {
+      upstreamUrl: initialCapabilities.mcpUrl,
+      adapterUrl: mcpAdapter.url,
+    });
     process.stdout.write("BioNeMo MCP schema adapter: active on loopback; remote request envelopes are normalized locally.\n");
   }
 
@@ -206,4 +222,4 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   });
 }
 
-export const __test = { CLOUDFLARED_URL_PATTERN, requireEnvironment, parseBoolean, safeOrigin, exposureMode, nebiusManagedOrigin, startQuickTunnel, writeRuntimeFiles };
+export const __test = { CLOUDFLARED_URL_PATTERN, requireEnvironment, parseBoolean, safeOrigin, exposureMode, nebiusManagedOrigin, startQuickTunnel, writeRuntimeFiles, configureMcpAdapterEnvironment };

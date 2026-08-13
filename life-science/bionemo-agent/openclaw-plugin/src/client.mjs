@@ -76,6 +76,23 @@ function retryDelay(response, attempt) {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function vendorPayload(skillId, payload) {
+  if (skillId === "openfold2") {
+    const { relax: relax_prediction, ...request } = payload;
+    return {
+      ...request,
+      ...(relax_prediction !== undefined ? { relax_prediction } : {}),
+    };
+  }
+  if (skillId !== "molmim") return payload;
+  const { num_iterations: iterations, radius: scaled_radius, ...request } = payload;
+  return {
+    ...request,
+    ...(iterations !== undefined ? { iterations } : {}),
+    ...(scaled_radius !== undefined ? { scaled_radius } : {}),
+  };
+}
+
 export class NimClient {
   constructor({ fetchImpl = globalThis.fetch, env = process.env, logger = console, retries = 2 } = {}) {
     if (typeof fetchImpl !== "function") throw new TypeError("fetch implementation is required");
@@ -93,7 +110,8 @@ export class NimClient {
     const route = skillId === "msa_search" && payload.sequences ? definition.pairedRoute : definition.route;
     const url = buildAllowedUrl(route);
     const key = requireNvidiaKey(this.env);
-    const requestBytes = Buffer.byteLength(JSON.stringify(payload), "utf8");
+    const request = vendorPayload(skillId, payload);
+    const requestBytes = Buffer.byteLength(JSON.stringify(request), "utf8");
 
     for (let attempt = 0; attempt <= this.retries; attempt += 1) {
       const started = performance.now();
@@ -107,9 +125,9 @@ export class NimClient {
             Accept: "application/json",
             Authorization: `Bearer ${key}`,
             "Content-Type": "application/json",
-            "User-Agent": "nebius-bionemo-agent/2.1",
+            "User-Agent": "nebius-bionemo-agent/3.3.0",
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(request),
           redirect: "error",
           signal: controller.signal,
         });
@@ -161,4 +179,4 @@ export class NimClient {
   }
 }
 
-export const __test = { buildAllowedUrl, readBodyLimited, requireNvidiaKey };
+export const __test = { buildAllowedUrl, readBodyLimited, requireNvidiaKey, vendorPayload };

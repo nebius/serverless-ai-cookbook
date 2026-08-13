@@ -1,6 +1,6 @@
 # Tool boundary
 
-The direct NVIDIA backend has exactly thirteen scientific tools:
+The workbench plugin has exactly seventeen scientific tools:
 
 - Atomic NIM tools: `bionemo_boltz2`, `bionemo_diffdock`, `bionemo_evo2`,
   `bionemo_genmol`, `bionemo_molmim`, `bionemo_msa_search`,
@@ -8,13 +8,20 @@ The direct NVIDIA backend has exactly thirteen scientific tools:
   `bionemo_rfdiffusion`.
 - Composed workflows: `bionemo_drug_discovery`,
   `bionemo_msa_to_structure`, and `bionemo_protein_binder_design`.
+- Four backend-neutral composed workflows: `bionemo_research_drug_demo`,
+  `bionemo_compare_protein_structures`, `bionemo_optimize_ligand_complex`, and
+  `bionemo_batch_fold_demo`. They use the configured NVIDIA or Cerebrium MCP
+  backend. The research demo can optionally start with bounded Tavily research.
 
-All requests are validated by task-owned adapters, sent only to
-`https://health.api.nvidia.com`, bounded by timeout and size limits, and saved
-under an isolated artifact root. No general-purpose execution tool is enabled.
+All requests are validated by task-owned adapters, bounded by timeout and size
+limits, and saved under an isolated artifact root. Direct model calls go only
+to `https://health.api.nvidia.com`; backend-neutral workflows instead use the
+configured native MCP upstream when MCP mode is selected. No general-purpose
+execution tool is enabled.
 
 When the `clawbio_*` MCP tools are present, they are the selected BioNeMo
-backend and the direct tools above are hidden. Follow their displayed flat
+backend and the thirteen direct-only tools above are hidden; all four
+backend-neutral composed workflows remain available. Follow MCP tools' displayed flat
 schemas: pass request fields at the top level, use native JSON arrays and
 objects, and include only required `ack_*` booleans after explicit acceptance.
 The local adapter creates the remote request envelope and idempotency key.

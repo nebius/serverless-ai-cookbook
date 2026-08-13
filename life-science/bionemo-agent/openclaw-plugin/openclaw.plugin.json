@@ -2,7 +2,7 @@
   "id": "bionemo-agent-toolkit",
   "name": "BioNeMo Agent Toolkit",
   "description": "Bounded hosted BioNeMo tools with an optional remote MCP backend.",
-  "version": "3.2.6",
+  "version": "3.3.0",
   "activation": {
     "onStartup": true,
     "onRoutes": ["/plugins/bionemo", "/plugins/bionemo/readiness"]
@@ -19,6 +19,10 @@
       "bionemo_openfold3",
       "bionemo_proteinmpnn",
       "bionemo_rfdiffusion",
+      "bionemo_research_drug_demo",
+      "bionemo_compare_protein_structures",
+      "bionemo_optimize_ligand_complex",
+      "bionemo_batch_fold_demo",
       "bionemo_drug_discovery",
       "bionemo_msa_to_structure",
       "bionemo_protein_binder_design"
