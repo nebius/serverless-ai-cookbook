@@ -53,6 +53,12 @@ test("four stable ready examples map one-to-one to the baked notebooks", () => {
     "Example 3 · Optimize ligand complex",
     "Example 4 · Batch-fold five proteins",
   ]);
+  for (const definition of EXAMPLE_SESSIONS) {
+    assert.equal(
+      buildExampleStarterText(definition).includes(`](.${definition.notebookPath})`),
+      true,
+    );
+  }
 });
 
 test("native seeding writes one explicit local user starter without starting a run", async (t) => {

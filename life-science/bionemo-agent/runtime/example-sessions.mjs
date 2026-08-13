@@ -39,7 +39,7 @@ ${definition.description}
 
 ${steps}
 
-Notebook: [Open the guided notebook](${definition.notebookPath})
+Notebook: [Open the guided notebook](.${definition.notebookPath})
 
 ## Exact reviewed prompt
 
