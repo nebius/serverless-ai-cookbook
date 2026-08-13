@@ -102,6 +102,125 @@ test("completed composed workflows register a run-scoped final presentation sync
   ]) assert.equal(pluginInternals.artifactPresentation({ structuredContent: { runId: PRESENTATION_WORKFLOW_RUN_ID, artifacts: [artifact] } }), undefined);
 });
 
+test("final presentation is derived statelessly across separate plugin registrations", async () => {
+  const toolApi = fakeApi();
+  const finalizeApi = fakeApi();
+  const toolRuntime = {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { return presentationWorkflowResult(); },
+  };
+  const finalizeRuntime = {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { throw new Error("not used"); },
+  };
+  pluginInternals.registerPlugin(toolApi, { runtime: toolRuntime });
+  const finalizeRegistration = pluginInternals.registerPlugin(finalizeApi, { runtime: finalizeRuntime });
+  assert.equal(finalizeRegistration.presentationRegistry.size(), 0, "separate registration starts without tool-instance state");
+
+  const wrapperName = "bionemo_research_drug_demo";
+  const tool = toolApi.captured.tools.find(({ name }) => name === wrapperName);
+  const result = await tool.execute("tool-call-current", {
+    [MCP_TURN_ID_FIELD]: PRESENTATION_AGENT_RUN_ID,
+    ack_research_only: true,
+  });
+  const beforeFinalize = finalizeApi.captured.hooks.find(({ event }) => event === "before_agent_finalize").handler;
+  const messages = [
+    { role: "user", content: "run the workflow" },
+    { role: "assistant", content: [{ type: "toolCall", id: "tool-call-current", name: wrapperName, arguments: {} }] },
+    { role: "toolResult", toolCallId: "tool-call-current", toolName: wrapperName, content: result.content, isError: false },
+  ];
+  const inlineMedia = `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/01-top.pdb`;
+  const final = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: `Summary\n${PRESENTATION_FIRST_VIEWER}\nDo not emit MEDIA:${inlineMedia} inline.`,
+    messages,
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(final.action, "continue");
+  assert.equal(final.appendFinalAssistantText.includes(PRESENTATION_FIRST_VIEWER), false, "existing viewer remains deduplicated");
+  assert.equal(final.appendFinalAssistantText.includes(PRESENTATION_SECOND_VIEWER), true);
+  assert.equal(final.appendFinalAssistantText.split("\n").includes(`MEDIA:${inlineMedia}`), true, "inline mention cannot suppress exact own-line MEDIA");
+  assert.equal(finalizeRegistration.presentationRegistry.size(), 0, "stateless derivation does not create cross-registration pending state");
+});
+
+test("current-turn presentation rejects stale, failed, malformed, duplicated, and mismatched wrapper results", () => {
+  const wrapperName = "bionemo_research_drug_demo";
+  const otherWrapperName = "bionemo_compare_protein_structures";
+  const content = [{ type: "text", text: JSON.stringify({ status: "completed", ...presentationWorkflowResult() }) }];
+  const result = { role: "toolResult", toolCallId: "tool-call-current", toolName: wrapperName, content, isError: false };
+  const user = { role: "user", content: "current turn" };
+  const call = { role: "assistant", content: [{ type: "toolCall", id: "tool-call-current", name: wrapperName, arguments: {} }] };
+  const derived = pluginInternals.currentTurnArtifactPresentation([user, call, result]);
+  assert.equal(derived.observed, true);
+  assert.equal(derived.presentation.viewerMarkdown.length, 2);
+
+  const stale = pluginInternals.currentTurnArtifactPresentation([
+    { role: "user", content: "previous turn" },
+    result,
+    { role: "assistant", content: "previous final" },
+    user,
+    { role: "assistant", content: "new final without a workflow" },
+  ]);
+  assert.deepEqual(stale, { observed: false }, "previous-turn results stay outside the last-user boundary");
+
+  for (const messages of [
+    [user, call, { ...result, isError: true }],
+    [user, call, { ...result, error: { code: "failed" } }],
+    [user, call, { ...result, content: [{ type: "text", text: "not json" }] }],
+    [user, call, result, { ...result, toolCallId: "tool-call-second" }],
+    [user, call, { ...result, toolCallId: "tool-call-mismatch" }],
+    [user, { role: "assistant", content: [{ type: "toolCall", id: "tool-call-current", name: otherWrapperName, arguments: {} }] }, result],
+  ]) {
+    const rejected = pluginInternals.currentTurnArtifactPresentation(messages);
+    assert.equal(rejected.observed, true);
+    assert.equal(rejected.presentation, undefined);
+  }
+});
+
+test("current-turn presentation accepts the pinned live history projection shape", () => {
+  const wrapperName = "bionemo_research_drug_demo";
+  const projectedHistory = [
+    {
+      role: "user",
+      content: "run the workflow",
+      timestamp: 1,
+      idempotencyKey: "agent-turn-11111111",
+      __openclaw: { id: "history-user", recordTimestampMs: 1, seq: 1 },
+    },
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "I will run the bounded workflow." }],
+      provider: "nvidia",
+      model: "nemotron-3-super-120b-a12b",
+      stopReason: "toolUse",
+      __openclaw: { id: "history-assistant-tool", recordTimestampMs: 2, seq: 2 },
+    },
+    {
+      role: "toolResult",
+      toolCallId: "call-live-history-11111111",
+      toolName: wrapperName,
+      content: [{ type: "text", text: JSON.stringify({ status: "completed", ...presentationWorkflowResult() }) }],
+      isError: false,
+      timestamp: 3,
+      __openclaw: { id: "history-tool-result", recordTimestampMs: 3, seq: 3 },
+    },
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "Final summary" }],
+      provider: "nvidia",
+      model: "nemotron-3-super-120b-a12b",
+      stopReason: "stop",
+      __openclaw: { id: "history-assistant-final", recordTimestampMs: 4, seq: 4 },
+    },
+  ];
+  assert.equal("structuredContent" in projectedHistory[2], false, "gateway history omits structuredContent");
+  const derived = pluginInternals.currentTurnArtifactPresentation(projectedHistory);
+  assert.equal(derived.observed, true);
+  assert.deepEqual(derived.presentation.viewerMarkdown, [PRESENTATION_FIRST_VIEWER, PRESENTATION_SECOND_VIEWER]);
+  assert.match(derived.presentation.mediaLine, /^MEDIA:\/workspace\/agent\/artifacts\//u);
+});
+
 test("presentation state clears on workflow failure, agent abort, and TTL expiry", async () => {
   let clock = 10;
   const scheduled = [];

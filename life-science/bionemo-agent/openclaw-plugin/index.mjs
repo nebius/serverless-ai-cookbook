@@ -70,6 +70,7 @@ function structuredToolResult(result) {
 const WORKFLOW_RUN_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u;
 const VIEWER_CAPABILITY = /^[A-Za-z0-9_-]{32}$/u;
 const STRUCTURE_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.(?:pdb|cif|mmcif)$/iu;
+const CROSS_BACKEND_TOOL_NAME_SET = new Set(CROSS_BACKEND_TOOL_NAMES);
 
 function validatedPresentationArtifact(item, runId, { artifactRoot, publicBaseUrl }) {
   if (!item || typeof item !== "object" || typeof item.name !== "string" || !STRUCTURE_FILE.test(item.name)) return undefined;
@@ -110,6 +111,73 @@ function artifactPresentation(result, options = {}) {
     viewerMarkdown: [...new Set(structures.map((item) => item.viewerMarkdown))],
     mediaLine: `MEDIA:${structures[0].downloadPath}`,
   };
+}
+
+function normalizedMessageRole(message) {
+  return typeof message?.role === "string" ? message.role.toLowerCase().replace(/[^a-z]/gu, "") : "";
+}
+
+function messageToolName(value) {
+  if (!value || typeof value !== "object") return undefined;
+  for (const candidate of [value.toolName, value.tool_name, value.name, value.function?.name]) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return undefined;
+}
+
+function messageToolCallId(value, { includeId = false } = {}) {
+  if (!value || typeof value !== "object") return undefined;
+  const candidates = [value.toolCallId, value.tool_call_id, value.callId, value.call_id];
+  if (includeId) candidates.push(value.id);
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return undefined;
+}
+
+function currentTurnArtifactPresentation(messages, options = {}) {
+  if (!Array.isArray(messages)) return { observed: false };
+  let lastUserIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (normalizedMessageRole(messages[index]) === "user") {
+      lastUserIndex = index;
+      break;
+    }
+  }
+  if (lastUserIndex < 0) return { observed: false };
+  const currentTurn = messages.slice(lastUserIndex + 1);
+  const wrapperResults = currentTurn.filter((message) => {
+    const role = normalizedMessageRole(message);
+    return (role === "toolresult" || role === "tool" || role === "function")
+      && CROSS_BACKEND_TOOL_NAME_SET.has(messageToolName(message));
+  });
+  if (!wrapperResults.length) return { observed: false };
+  if (wrapperResults.length !== 1) return { observed: true };
+  const result = wrapperResults[0];
+  if (result.isError === true || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "")) {
+    return { observed: true };
+  }
+
+  const wrapperCalls = [];
+  for (const message of currentTurn) {
+    if (normalizedMessageRole(message) !== "assistant" || !Array.isArray(message.content)) continue;
+    for (const block of message.content) {
+      const type = typeof block?.type === "string" ? block.type.toLowerCase().replace(/[^a-z]/gu, "") : "";
+      if (!["toolcall", "tooluse", "functioncall"].includes(type)) continue;
+      if (CROSS_BACKEND_TOOL_NAME_SET.has(messageToolName(block))) wrapperCalls.push(block);
+    }
+  }
+  if (wrapperCalls.length > 1) return { observed: true };
+  if (wrapperCalls.length === 1) {
+    if (messageToolName(wrapperCalls[0]) !== messageToolName(result)) return { observed: true };
+    const callId = messageToolCallId(wrapperCalls[0], { includeId: true });
+    const resultCallId = messageToolCallId(result);
+    if (callId && resultCallId && callId !== resultCallId) return { observed: true };
+  }
+
+  const structured = structuredToolResult(result);
+  if (!structured || (typeof structured.status === "string" && structured.status !== "completed")) return { observed: true };
+  return { observed: true, presentation: artifactPresentation(result, options) };
 }
 
 function textBlockPhase(block) {
@@ -355,7 +423,11 @@ export function registerPlugin(api, options = {}) {
     api.on("before_agent_finalize", (event, ctx) => {
       const agentRunId = ctx?.runId || event?.runId;
       if (!validMcpTurnId(agentRunId)) return;
-      const presentation = presentationRegistry.get(agentRunId);
+      const currentTurn = currentTurnArtifactPresentation(event?.messages, {
+        artifactRoot: runtime.store?.root,
+        publicBaseUrl: runtime.store?.publicBaseUrl,
+      });
+      const presentation = currentTurn.observed ? currentTurn.presentation : presentationRegistry.get(agentRunId);
       if (!presentation) return;
       const appendFinalAssistantText = artifactPresentationAppendText(event?.lastAssistantMessage, presentation);
       if (!appendFinalAssistantText) return;
@@ -388,6 +460,7 @@ export const __test = Object.freeze({
   appendArtifactPresentation,
   appendArtifactPresentationText,
   createPresentationRegistry,
+  currentTurnArtifactPresentation,
   registerPlugin,
   textBlockPhase,
   visibleAssistantText,
