@@ -90,7 +90,15 @@ test("gateway reconciliation pins only drifted examples and verifies sessions.li
     start() { this.started = true; }
     async waitForReady() { assert.equal(this.started, true); }
     stop() { this.stopped = true; }
-    async listSessions() { return { sessions: rows.map((row) => ({ ...row })) }; }
+    async listSessions(params) {
+      assert.deepEqual(params, {
+        agentId: "bionemo",
+        limit: 50,
+        includeGlobal: true,
+        includeUnknown: true,
+      });
+      return { sessions: rows.map((row) => ({ ...row })) };
+    }
     async patchSession(patch) {
       patches.push(patch);
       const row = rows.find(({ key }) => key === patch.key);

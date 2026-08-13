@@ -130,7 +130,6 @@ export async function pinAndVerifyExampleSessions({
       });
       const before = await client.listSessions({
         agentId: "bionemo",
-        activeMinutes: 0,
         limit: 50,
         includeGlobal: true,
         includeUnknown: true,
@@ -151,7 +150,6 @@ export async function pinAndVerifyExampleSessions({
       }
       const after = await client.listSessions({
         agentId: "bionemo",
-        activeMinutes: 0,
         limit: 50,
         includeGlobal: true,
         includeUnknown: true,
