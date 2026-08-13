@@ -52,14 +52,14 @@ test("plugin registers exactly the manifest-declared 17 tools", async () => {
   const promptHook = api.captured.hooks.find(({ event }) => event === "before_prompt_build");
   const systemContext = (await promptHook.handler()).prependSystemContext;
   assert.match(systemContext, /MEDIA:<downloadPath>/u);
-  assert.match(systemContext, /When clawbio_\* MCP tools are available/u);
+  assert.match(systemContext, /local demo-only ClawBio catalog tools/u);
+  assert.match(systemContext, /raw hosted-model MCP is a private backend and is not available in the OpenClaw browser/u);
   assert.match(systemContext, /For every artifact that has viewerMarkdown/u);
   assert.match(systemContext, /same-origin path beginning with \/; preserve it verbatim/u);
   assert.doesNotMatch(systemContext, /viewerUrl, use that exact absolute URL/u);
-  assert.match(systemContext, /submission tool may be called only once per user request/u);
-  assert.match(systemContext, /poll only clawbio_job_status for that exact ID, at most four times/u);
-  assert.match(systemContext, /never resubmit or call jobs-list\/model-fetch discovery/u);
-  assert.match(systemContext, /call exactly clawbio_models__models_list; never invent or expand that name/u);
+  assert.doesNotMatch(systemContext, /clawbio_models__/u);
+  assert.doesNotMatch(systemContext, /poll only clawbio_job_status/u);
+  assert.match(systemContext, /call the selected composed tool exactly once/u);
   assert.match(systemContext, /wrapper returns a successful completed result, call no other tool in the turn/u);
 });
 
@@ -296,13 +296,13 @@ test("agent instructions require exact clickable viewer links", async () => {
   assert.match(workspaceInstructions, /Never reconstruct it from `viewerUrl`/u);
 });
 
-test("plugin injects trusted per-turn identity only into compute-submitting MCP tools", async () => {
+test("plugin injects trusted per-turn identity into wrappers and defensively guards private compute names", async () => {
   const api = fakeApi();
   plugin.register(api);
   const hook = api.captured.hooks.find(({ event }) => event === "before_tool_call").handler;
   const runId = "d9fd641b-f6ae-42c6-aeed-f18b2f770299";
   const event = {
-    toolName: "clawbio_models__clawbio_esm2_embed",
+    toolName: "bionemo_models__clawbio_esm2_embed",
     params: { sequences: ["MKTII"], ack_research_only: true, ack_non_clinical: true },
   };
   const injected = await hook(event, { runId });
@@ -318,7 +318,7 @@ test("plugin injects trusted per-turn identity only into compute-submitting MCP 
     assert.equal(composed.params[MCP_TURN_ID_FIELD], runId);
   }
 
-  assert.equal(await hook({ toolName: "clawbio_models__clawbio_job_status", params: { job_id: "job" } }, { runId }), undefined);
+  assert.equal(await hook({ toolName: "bionemo_models__clawbio_job_status", params: { job_id: "job" } }, { runId }), undefined);
   assert.equal(await hook({ toolName: "bionemo_openfold2", params: { sequence: "MKTII" } }, { runId }), undefined);
   const missing = await hook(event, {});
   assert.equal(missing.block, true);
@@ -446,7 +446,7 @@ test("Serverless launch binds one backend-specific MysteryBox payload", async ()
   assert.equal((script.match(/MODEL_CREDENTIALS_SECRET/g) || []).length >= 4, true);
 });
 
-test("runtime config and exec approvals persist placeholders, never secret values", async (t) => {
+test("runtime config omits private MCP credentials and persists only required placeholders", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-runtime-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const templatePath = path.join(root, "template.json");
@@ -458,7 +458,7 @@ test("runtime config and exec approvals persist placeholders, never secret value
   const parsedConfig = JSON.parse(config);
   const approvals = JSON.parse(await readFile(path.join(stateDir, "exec-approvals.json"), "utf8"));
   assert.match(config, /\$\{NVIDIA_API_KEY\}/u);
-  assert.match(config, /\$\{BIONEMO_MCP_API_KEY\}/u);
+  assert.doesNotMatch(config, /BIONEMO_MCP_API_KEY/u);
   assert.equal(config.includes("secret-value"), false);
   assert.equal(config.includes("mcp-secret"), false);
   assert.equal(parsedConfig.gateway.controlUi.dangerouslyDisableDeviceAuth, true);
@@ -570,12 +570,15 @@ test("NVIDIA defaults to the tool-reliable Super profile", () => {
   assert.deepEqual(custom.agents.defaults.models["nvidia/example/custom"], {});
 });
 
-test("OpenClaw enables only configured remote MCP servers and keeps credential placeholders", () => {
+test("OpenClaw keeps hosted BioNeMo MCP private and enables only local or optional browser MCP servers", () => {
   const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
   const state = configureOpenClaw(config, { NVIDIA_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", TAVILY_API_KEY: "t" });
   assert.equal(state.reasoningProvider, "nvidia");
-  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio_models", "tavily_web"]);
-  assert.equal(config.mcp.servers.clawbio_models.headers.Authorization, "Bearer ${BIONEMO_MCP_API_KEY}");
+  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio", "tavily_web"]);
+  assert.equal(config.mcp.servers.clawbio.transport, "stdio");
+  assert.deepEqual(config.mcp.servers.clawbio.toolFilter, { include: ["list_skills", "describe_skill", "run_skill"] });
+  assert.equal(config.mcp.servers.clawbio_models, undefined);
+  assert.equal(config.mcp.servers.bionemo_models, undefined);
   assert.equal(config.mcp.servers.tavily_web.headers.Authorization, "Bearer ${BIONEMO_TAVILY_API_KEY}");
   assert.equal(config.mcp.servers.tavily, undefined);
   assert.equal(capabilities({ BIONEMO_TAVILY_API_KEY: "private-alias" }).tavily, true);
@@ -649,7 +652,7 @@ test("launcher keeps the flattened adapter URL distinct from the private native 
   await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
   await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://example.test"], env: runtimeEnv });
   const persisted = await readFile(configPath, "utf8");
-  assert.match(persisted, /http:\/\/127\.0\.0\.1:18791\/mcp/u);
+  assert.doesNotMatch(persisted, /http:\/\/127\.0\.0\.1:18791\/mcp/u);
   assert.equal(persisted.includes("https://native.example/mcp"), false);
   assert.equal(persisted.includes("not-persisted"), false);
   await prepareClients(runtimeEnv);
@@ -673,9 +676,9 @@ test("an explicit NVIDIA BioNeMo backend does not also expose the incompatible M
     BIONEMO_MCP_API_KEY: "m",
   });
   assert.equal(state.modelBackend, "nvidia");
-  assert.deepEqual(config.mcp.servers, {});
-  assert.deepEqual(config.tools.alsoAllow, EXACT_TOOL_NAMES);
-  assert.equal(config.tools.deny.includes("bundle-mcp"), true);
+  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio"]);
+  assert.deepEqual(config.tools.alsoAllow, [...EXACT_TOOL_NAMES, "bundle-mcp"]);
+  assert.equal(config.tools.deny.includes("bundle-mcp"), false);
 });
 
 test("Token Factory models retain aliases, credential placeholders, and AGENT_MODEL overrides", () => {
@@ -723,7 +726,13 @@ test("Codex and Claude configs contain placeholders and all packaged skills with
   const codex = await readFile(path.join(root, ".codex", "config.toml"), "utf8");
   const claude = await readFile(path.join(workspace, ".mcp.json"), "utf8");
   assert.match(codex, /bearer_token_env_var = "BIONEMO_MCP_API_KEY"/u);
+  assert.match(codex, /\[mcp_servers\.clawbio\][\s\S]+command = "\/opt\/clawbio\/bin\/python"/u);
+  assert.match(codex, /\[mcp_servers\.bionemo_models\]/u);
+  assert.doesNotMatch(codex, /\[mcp_servers\.clawbio_models\]/u);
   assert.match(codex, /\[mcp_servers\.tavily_web\]/u);
+  assert.match(claude, /"clawbio"[\s\S]+"\/opt\/bionemo\/runtime\/clawbio-mcp\.py"/u);
+  assert.match(claude, /"bionemo_models"/u);
+  assert.doesNotMatch(claude, /"clawbio_models"/u);
   assert.match(claude, /\$\{BIONEMO_MCP_API_KEY\}/u);
   assert.match(claude, /"tavily_web"/u);
   assert.doesNotMatch(claude, /"tavily"\s*:/u);

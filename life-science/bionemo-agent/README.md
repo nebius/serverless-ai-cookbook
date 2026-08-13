@@ -5,8 +5,13 @@ Nebius Serverless CPU endpoint. The image contains:
 
 - a single-step, token-authenticated OpenClaw browser agent;
 - Codex CLI `0.147.0` and Claude Code `2.1.228`, installed without auth caches;
-- all 31 skills from NVIDIA's pinned BioNeMo Agent Toolkit plugin plus a
-  credential-free Tavily research skill;
+- all 31 skills from NVIDIA's pinned BioNeMo Agent Toolkit plugin, 95
+  redistributable ClawBio skill contracts, and a credential-free Tavily
+  research skill;
+- a source-pinned ClawBio CLI plus a local, demo-only three-tool MCP catalog
+  shared by OpenClaw, Codex, and Claude;
+- a source-pinned RDKit conformer preflight that prevents an unusable MolMIM
+  candidate from being handed to OpenFold3;
 - the public Cerebrium BioNeMo MCP URL in all three clients;
 - ten bounded hosted-NIM adapters, seven composed research workflows, and a bundled interactive 3Dmol structure viewer;
 - four image-baked, provider-neutral nbformat notebooks, including a fixed
@@ -87,11 +92,15 @@ BioNeMo model tools use `BIONEMO_BACKEND=auto`:
 - otherwise tools report that model access is unavailable.
 
 Only the selected BioNeMo backend is exposed to the reasoning model. In MCP
-mode, a loopback schema adapter flattens Cerebrium's transport envelope and
-hides the duplicate direct tools; in NVIDIA mode, the direct tools remain
-visible and the Cerebrium catalog is absent. This keeps one unambiguous tool
-contract per operation for the browser workbench. The bundled Codex and Claude
-clients remain available for separately authenticated interactive use.
+mode, OpenClaw exposes only the four bounded `bionemo_*` composed wrappers; the
+raw Cerebrium model/job MCP tools are not materialized in its UI. In NVIDIA
+mode, the typed direct tools remain visible. The browser-launch process also
+provides a loopback schema adapter for colocated Codex/Claude clients, with
+product-facing operations such as `molmim_optimize` and `job_status`.
+Standalone CLI entrypoints still connect directly under the clean server alias
+`bionemo_models`; that upstream compatibility surface may retain `clawbio_*`
+operation IDs. OpenClaw never sees those raw operations or duplicated
+`server__tool` branding.
 
 The default MCP endpoint is:
 
@@ -109,15 +118,26 @@ parameters use basic depth, at most five results, and omit raw content and
 images. The same `tavily-research` skill is available to OpenClaw, Codex, and
 Claude; credentials remain runtime-only and are never part of the skill.
 
+The image also packages ClawBio from immutable upstream commit
+`794dd1f5aacc1af308694c9b2f7966d0e396916e`. Codex and Claude can discover all
+95 redistributed skill contracts directly. OpenClaw gets a small
+`clawbio-catalog` router and three local MCP tools to search the catalog, read a
+contract, or run an explicitly requested qualified demo. The browser MCP
+surface deliberately has no input/output-path parameters, cannot read patient
+or customer files, and marks demo readiness separately from upstream CLI
+registration. Two upstream proprietary clinical-report skills are excluded;
+MIT, Apache-2.0, and GPL-3.0 license texts ship in the image.
+
 The BioNeMo dashboard opens with four visible guided notebooks. They are real,
 clean nbformat 4 files baked under `/workspace/agent/notebooks`, available as a
 safe read-only preview, an exact `.ipynb` download, and a one-click launch into
 its own ready example chat. At startup, OpenClaw's native session lifecycle
-creates and pins four stable, distinctly labelled empty sessions in the
-Sessions sidebar. Their reviewed prompts are drafts only: opening the page or a
-session never sends a model request, starts a tool, or runs scientific compute.
-They do not contain credentials, fake assistant output, executed output, or a
-Python kernel:
+creates and pins four stable, distinctly labelled starter-only sessions in the
+Sessions sidebar. Each contains one visible static user template labelled
+`STATIC STARTER — NOT EXECUTED`, while its reviewed prompt is also loaded as an
+unsent draft. Opening the page or a session never sends a model request, starts
+a tool, or runs scientific compute. They do not contain credentials, fake
+assistant output, executed output, or a Python kernel:
 
 1. an optional Tavily-first EGFR/gefitinib research workflow using OpenFold2,
    MolMIM, and OpenFold3;
@@ -133,11 +153,19 @@ viewer links. Tavily is optional: `use_tavily=true` runs the bounded research
 step when configured, while `use_tavily=false` runs the same scientific model
 pipeline without search or a Tavily credential.
 
+The two ligand workflows evaluate both returned MolMIM candidates with a
+deterministic local RDKit conformer preflight. They select the highest-scoring
+candidate that can be represented in 3D, report the compatibility result for
+both candidates, and make exactly one OpenFold3 handoff. This avoids treating a
+candidate-specific conformer failure as a general model-service outage.
+
 ## Immutable pins
 
 | Component | Pin |
 |---|---|
 | NVIDIA BioNeMo Agent Toolkit | `23d483511e0b42221bdafd7259ff43c05220ee86` |
+| ClawBio | `794dd1f5aacc1af308694c9b2f7966d0e396916e` (source archive SHA-256 `207978ebea5d940242f8f0e2708ef768ac976bf04e161e68c6556c91f215e5a0`) |
+| RDKit | `2025.9.6` (`cp311` manylinux x86-64 wheel SHA-256 `3f4fc084890efb29b51ea4679bb07d28b276b6e73e3381e678a5ba057b4c4222`) |
 | OpenClaw image | `2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac` |
 | Cloudflared | `2026.7.3` with pinned Linux amd64 SHA-256 |
 | Codex CLI | `0.147.0` |
@@ -147,9 +175,12 @@ pipeline without search or a Tavily credential.
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
-directories and the image-owned `tavily-research` skill are copied to
-`/etc/codex/skills` and `~/.claude/skills`. Runtime client files contain only
-endpoint URLs and environment-variable placeholders.
+directories, the 95 sanitized ClawBio directories, and the image-owned
+`tavily-research` skill are copied to `/etc/codex/skills` and
+`~/.claude/skills` (127 direct skills per CLI). OpenClaw keeps its bounded
+native catalog at 15 skills and reaches the wider ClawBio catalog through the
+local hardened MCP server. Runtime client files contain only endpoint URLs,
+local executable paths, and environment-variable placeholders.
 
 ## Security boundaries
 
@@ -166,6 +197,12 @@ Token-only mode is a deliberate security/usability tradeoff for the bounded
 event image. Keep the token secret: anyone who has it can use the Control UI.
 Terminal, exec, general filesystem/network tools, subagents, and unbounded
 OpenClaw capabilities remain disabled.
+
+The local ClawBio MCP server is the sole bounded exception for ClawBio demos:
+it exposes list, describe, and demo-run operations, accepts no arbitrary local
+paths or extra command arguments, and runs only the image-qualified demo
+allowlist. Its catalog and demos are research/education aids, not clinical
+decision support.
 
 OpenClaw uses the minimal tool profile. General runtime, filesystem, arbitrary
 network, browser, automation, session, node, agent, messaging, and media tool
@@ -192,7 +229,7 @@ export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.2
 
 The script builds and pushes the version tag, resolves its digest, writes an
 SPDX SBOM and Grype/Trivy reports under `.task-output/image`, and blocks the
-release on fixable Critical findings. Deploy the printed digest or a unique,
+release on fixable Critical findings or detected image secrets. Deploy the printed digest or a unique,
 digest-derived short alias when Serverless label limits make the full digest
 reference too long.
 
@@ -309,8 +346,8 @@ The hardened browser plugin exposes Boltz2, DiffDock, Evo2 40B, GenMol,
 MolMIM, MSA Search, OpenFold2, OpenFold3, ProteinMPNN, and RFdiffusion. It also
 includes four backend-neutral notebook workflows plus the bounded direct
 drug-discovery, MSA-to-structure, and protein-binder-design workflows. The
-broader 31-skill NVIDIA bundle remains available to Codex and Claude for
-authenticated interactive use.
+broader 31-skill NVIDIA bundle and 95 redistributable ClawBio contracts remain
+available to Codex and Claude for authenticated interactive use.
 
 Direct MolMIM requests send explicit hosted defaults of 10 output molecules
 and 20 particles when omitted, and reject a particle population smaller than

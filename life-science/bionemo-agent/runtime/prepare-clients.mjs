@@ -11,14 +11,30 @@ export async function prepareClients(env = process.env) {
     "# Generated at container start. Contains environment-variable names only, never credentials.",
     'cli_auth_credentials_store = "file"',
     "",
-    "[mcp_servers.clawbio_models]",
+    "[mcp_servers.clawbio]",
+    'command = "/opt/clawbio/bin/python"',
+    'args = ["/opt/bionemo/runtime/clawbio-mcp.py"]',
+    'cwd = "/workspace/agent/artifacts/clawbio"',
+    "tool_timeout_sec = 300",
+    "",
+    "[mcp_servers.bionemo_models]",
     `url = ${tomlString(state.mcpUrl)}`,
     "tool_timeout_sec = 900",
   ];
-  const claude = { mcpServers: { clawbio_models: { type: "http", url: state.mcpUrl } } };
+  const claude = {
+    mcpServers: {
+      clawbio: {
+        type: "stdio",
+        command: "/opt/clawbio/bin/python",
+        args: ["/opt/bionemo/runtime/clawbio-mcp.py"],
+        cwd: "/workspace/agent/artifacts/clawbio",
+      },
+      bionemo_models: { type: "http", url: state.mcpUrl },
+    },
+  };
   if (state.mcp) {
     codex.push('bearer_token_env_var = "BIONEMO_MCP_API_KEY"');
-    claude.mcpServers.clawbio_models.headers = { Authorization: "Bearer ${BIONEMO_MCP_API_KEY}" };
+    claude.mcpServers.bionemo_models.headers = { Authorization: "Bearer ${BIONEMO_MCP_API_KEY}" };
   }
   if (state.tavily) {
     codex.push("", "[mcp_servers.tavily_web]", 'url = "https://mcp.tavily.com/mcp/"', 'bearer_token_env_var = "TAVILY_API_KEY"', "tool_timeout_sec = 120");

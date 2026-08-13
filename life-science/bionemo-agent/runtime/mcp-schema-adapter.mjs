@@ -14,15 +14,21 @@ const ACKNOWLEDGEMENT_FIELDS = Object.freeze([
   "no_safety_or_therapeutic_claims",
 ]);
 
-// The upstream name repeats both the MCP server namespace and the tool
-// purpose once OpenClaw qualifies it (clawbio_models__clawbio_models_list).
-// Expose one shorter, read-only compatibility name to the model and translate
-// it back at the adapter boundary. Compute-tool names remain untouched.
+// The hosted service retains its upstream `clawbio_*` API for compatibility.
+// Clients connect to it as `bionemo_models`, so expose product-neutral
+// operation names and translate them back only at this private boundary.
 export const MODELS_LIST_ALIAS = "models_list";
 export const MODELS_LIST_UPSTREAM_NAME = "clawbio_models_list";
 
-// These requirements are part of the public clawbio_models_list contract. They
-// are deliberately model-facing: the adapter never fabricates user consent.
+export function productToolName(upstreamName) {
+  if (typeof upstreamName !== "string") return upstreamName;
+  return upstreamName.startsWith("clawbio_") && upstreamName.length > "clawbio_".length
+    ? upstreamName.slice("clawbio_".length)
+    : upstreamName;
+}
+
+// These requirements come from the private upstream acknowledgement contract.
+// They remain client-facing because the adapter never fabricates user consent.
 const REQUIRED_ACKNOWLEDGEMENTS = Object.freeze({
   clawbio_boltz2_predict: ["research_only", "non_clinical"],
   clawbio_diffdock_dock: ["research_only", "no_safety_or_therapeutic_claims"],
@@ -149,19 +155,25 @@ function requestSchemaVariants(inputSchema) {
 
 function toolDescription(description) {
   const prefix = typeof description === "string" && description.trim() ? `${description.trim()} ` : "";
-  return `${prefix}Arguments use one flat JSON object. Arrays and objects must be native JSON values, not strings. The local adapter supplies the upstream request envelope and idempotency key. This submits one compute job: call it at most once per user request. After a job ID is returned, poll only clawbio_job_status for that exact ID, at most four times. Never resubmit, call clawbio_jobs_list, or call clawbio_model_fetch while waiting; if the job is still nonterminal, report its exact ID and status.`;
+  return `${prefix}Arguments use one flat JSON object. Arrays and objects must be native JSON values, not strings. The local adapter supplies the upstream request envelope and idempotency key. This submits one compute job: call it at most once per user request. After a job ID is returned, poll only job_status for that exact ID, at most four times. Never resubmit, call jobs_list, or call model_fetch while waiting; if the job is still nonterminal, report its exact ID and status.`;
 }
 
 export function adaptMcpToolDefinition(tool) {
   if (!plainObject(tool) || typeof tool.name !== "string" || !plainObject(tool.inputSchema)) {
     return { tool: clone(tool), mapping: null };
   }
+  const upstreamName = tool.name;
+  const publicName = productToolName(upstreamName);
   const requestDefinition = requestSchemaVariants(tool.inputSchema);
-  const requiredAcknowledgements = REQUIRED_ACKNOWLEDGEMENTS[tool.name];
+  const requiredAcknowledgements = REQUIRED_ACKNOWLEDGEMENTS[upstreamName];
   if (!requestDefinition || !requiredAcknowledgements) {
     const next = clone(tool);
+    next.name = publicName;
     next.inputSchema = annotateStructuredValues(dereferenceSchema(tool.inputSchema, tool.inputSchema));
-    return { tool: next, mapping: null };
+    return {
+      tool: next,
+      mapping: publicName === upstreamName ? null : { mode: "tool-alias", upstreamName },
+    };
   }
 
   const acknowledgementProperties = Object.fromEntries(requiredAcknowledgements.map((field) => [`ack_${field}`, acknowledgementProperty(field)]));
@@ -175,14 +187,16 @@ export function adaptMcpToolDefinition(tool) {
     ])],
   }));
   const next = clone(tool);
+  next.name = publicName;
   next.description = toolDescription(tool.description);
   next.inputSchema = flatVariants.length === 1
-    ? { ...flatVariants[0], title: `${tool.name}Arguments` }
-    : { type: "object", oneOf: flatVariants, title: `${tool.name}Arguments` };
+    ? { ...flatVariants[0], title: `${publicName}Arguments` }
+    : { type: "object", oneOf: flatVariants, title: `${publicName}Arguments` };
   return {
     tool: next,
     mapping: {
       mode: "flat-request",
+      upstreamName,
       requestSchemas: requestDefinition.variants,
       requestKeys: [...new Set(requestDefinition.variants.flatMap((schema) => Object.keys(schema.properties)))],
       discriminatorProperty: requestDefinition.discriminatorProperty,
@@ -196,14 +210,8 @@ export function adaptToolsListPayload(payload, catalog = new Map()) {
   if (!plainObject(payload) || !Array.isArray(payload.result?.tools)) return clone(payload);
   const next = clone(payload);
   next.result.tools = payload.result.tools.map((tool) => {
-    if (plainObject(tool) && tool.name === MODELS_LIST_UPSTREAM_NAME) {
-      const aliased = clone(tool);
-      aliased.name = MODELS_LIST_ALIAS;
-      catalog.set(MODELS_LIST_ALIAS, { mode: "tool-alias", upstreamName: MODELS_LIST_UPSTREAM_NAME });
-      return aliased;
-    }
     const adapted = adaptMcpToolDefinition(tool);
-    if (adapted.mapping) catalog.set(tool.name, adapted.mapping);
+    if (adapted.mapping) catalog.set(adapted.tool.name, adapted.mapping);
     return adapted.tool;
   });
   return next;
@@ -252,7 +260,7 @@ function coerceStructuredValue(value, schema, label, toolName) {
   const parsed = maybeParseStructuredString(value, effectiveSchema, label);
   if (Array.isArray(parsed)) {
     let items = parsed;
-    if (wasSerialized && toolName === "clawbio_esm2_embed" && label === "sequences" && schemaType(effectiveSchema?.items) === "string") {
+    if (wasSerialized && productToolName(toolName) === "esm2_embed" && label === "sequences" && schemaType(effectiveSchema?.items) === "string") {
       items = parsed.map((item, index) => {
         if (typeof item === "string") return item;
         if (plainObject(item) && typeof item.sequence === "string") {
@@ -316,6 +324,7 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
     return next;
   }
   if (!mapping || mapping.mode !== "flat-request") return clone(payload);
+  const upstreamName = mapping.upstreamName || toolName;
   const rawSupplied = plainObject(payload.params.arguments) ? payload.params.arguments : {};
   const turnId = rawSupplied[MCP_TURN_ID_FIELD];
   if (turnId !== undefined && !validMcpTurnId(turnId)) {
@@ -344,9 +353,9 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
   for (const key of requestKeys) {
     const propertySchema = requestSchema.properties[key];
     if (Object.hasOwn(supplied, key)) {
-      request[key] = coerceStructuredValue(supplied[key], propertySchema, key, toolName);
+      request[key] = coerceStructuredValue(supplied[key], propertySchema, key, upstreamName);
     } else if (plainObject(propertySchema) && Object.hasOwn(propertySchema, "default")) {
-      request[key] = coerceStructuredValue(undefined, propertySchema, key, toolName);
+      request[key] = coerceStructuredValue(undefined, propertySchema, key, upstreamName);
     }
   }
   for (const key of requestSchema.required || []) {
@@ -362,10 +371,11 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
   }
 
   const next = clone(payload);
+  next.params.name = upstreamName;
   next.params.arguments = {
     request,
     acknowledgements,
-    idempotency_key: idempotencyKeyFactory(toolName, payload.id, { request, acknowledgements }, { turnId }),
+    idempotency_key: idempotencyKeyFactory(upstreamName, payload.id, { request, acknowledgements }, { turnId }),
   };
   return next;
 }

@@ -58,7 +58,8 @@
         "tavily-research",
         "drug-discovery-pipeline",
         "msa-structure-prediction-pipeline",
-        "protein-binder-design"
+        "protein-binder-design",
+        "clawbio-catalog"
       ],
       "skipBootstrap": true,
       "thinkingDefault": "medium",
@@ -95,7 +96,8 @@
           "tavily-research",
           "drug-discovery-pipeline",
           "msa-structure-prediction-pipeline",
-          "protein-binder-design"
+          "protein-binder-design",
+          "clawbio-catalog"
         ],
         "sandbox": {
           "mode": "off"
@@ -176,7 +178,7 @@
     "limits": {
       "maxCandidatesPerRoot": 32,
       "maxSkillsLoadedPerSource": 16,
-      "maxSkillsInPrompt": 14,
+      "maxSkillsInPrompt": 15,
       "maxSkillsPromptChars": 60000,
       "maxSkillFileBytes": 65536
     }

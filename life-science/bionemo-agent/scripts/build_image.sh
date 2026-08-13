@@ -56,6 +56,7 @@ SCAN_PIDS+=("$!")
   trivy image --scanners vuln,secret --format json --output "$OUTPUT_DIR/trivy.json" "$IMMUTABLE_IMAGE"
   # Keep the full vulnerability/secret report, then enforce the fixable gate.
   trivy image --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 "$IMMUTABLE_IMAGE"
+  trivy image --scanners secret --exit-code 1 "$IMMUTABLE_IMAGE"
 ) >"$OUTPUT_DIR/trivy.log" 2>&1 &
 SCAN_PIDS+=("$!")
 

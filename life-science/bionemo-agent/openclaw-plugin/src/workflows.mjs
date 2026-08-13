@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { InputError, publicError } from "./errors.mjs";
+import { LocalLigandEmbeddabilityPreflight } from "./ligand-preflight.mjs";
 import { BATCH_FASTA_RELATIVE_PATH, CRAMBIN_PUBLIC_INPUT, RESEARCH_DEMO_PUBLIC_INPUTS, loadBatchProteinFile } from "./samples.mjs";
 import { CROSS_BACKEND_WORKFLOW_IDS, RESEARCH_DEMO_ACK_FIELDS, validateWorkflowInput } from "./validation.mjs";
 import { MCP_TURN_ID_FIELD, validMcpTurnId } from "../../runtime/mcp-submission-policy.mjs";
@@ -96,11 +97,76 @@ function researchDemoExecutionInput(rawInput) {
 
 function selectedMolecule(candidates) {
   if (!Array.isArray(candidates) || !candidates.length) throw new InputError("MolMIM returned no valid molecules for the OpenFold3 handoff");
-  return [...candidates].sort((a, b) => {
-    const left = Number.isFinite(a.generationScore) ? a.generationScore : -Infinity;
-    const right = Number.isFinite(b.generationScore) ? b.generationScore : -Infinity;
-    return right - left;
-  })[0];
+  return candidates.map((candidate, responseIndex) => ({ candidate, responseIndex })).sort((a, b) => {
+    const left = Number.isFinite(a.candidate.generationScore) ? a.candidate.generationScore : -Infinity;
+    const right = Number.isFinite(b.candidate.generationScore) ? b.candidate.generationScore : -Infinity;
+    return right - left || a.responseIndex - b.responseIndex;
+  })[0].candidate;
+}
+
+const DEFAULT_LIGAND_PREFLIGHT = new LocalLigandEmbeddabilityPreflight();
+const LIGAND_SELECTION_BASIS = "highest_molmim_score_among_openfold3_embeddable_candidates";
+const LIGAND_SELECTION_TIE_BREAK = "earliest_candidate_in_molmim_response";
+
+function ligandCandidateSummary(candidate) {
+  return {
+    smiles: candidate.smiles,
+    molmimScore: candidate.generationScore,
+    molmimResponseIndex: candidate.molmimResponseIndex,
+    preflight: candidate.preflight,
+  };
+}
+
+async function preflightAndSelectLigand(candidates, ligandPreflight) {
+  if (!Array.isArray(candidates) || !candidates.length) throw new InputError("MolMIM returned no valid molecules for the OpenFold3 handoff");
+  if (typeof ligandPreflight?.assess !== "function") {
+    throw Object.assign(new Error("The local ligand embeddability preflight is not configured; OpenFold3 was not called."), {
+      code: "ligand_preflight_unavailable",
+      status: 500,
+      retryable: false,
+    });
+  }
+  const results = await ligandPreflight.assess(candidates.map(({ smiles }) => smiles));
+  if (!Array.isArray(results) || results.length !== candidates.length) {
+    throw Object.assign(new Error("The local ligand embeddability preflight returned an invalid result set; OpenFold3 was not called."), {
+      code: "ligand_preflight_invalid_response",
+      status: 500,
+      retryable: false,
+    });
+  }
+  const assessed = candidates.map((candidate, molmimResponseIndex) => {
+    const result = results[molmimResponseIndex];
+    if (typeof result?.embeddable !== "boolean" || typeof result?.code !== "string" || result.code.length > 64) {
+      throw Object.assign(new Error("The local ligand embeddability preflight returned an invalid candidate result; OpenFold3 was not called."), {
+        code: "ligand_preflight_invalid_response",
+        status: 500,
+        retryable: false,
+      });
+    }
+    return {
+      ...candidate,
+      molmimResponseIndex,
+      preflight: { embeddable: result.embeddable, code: result.code },
+    };
+  });
+  const embeddable = assessed.filter((candidate) => candidate.preflight.embeddable);
+  if (!embeddable.length) {
+    throw Object.assign(new Error("No MolMIM candidate passed the bounded local ligand embeddability preflight; OpenFold3 was not called."), {
+      code: "no_embeddable_ligand_candidate",
+      status: 422,
+      retryable: false,
+    });
+  }
+  return {
+    candidates: assessed,
+    selected: selectedMolecule(embeddable),
+    selection: {
+      basis: LIGAND_SELECTION_BASIS,
+      tieBreak: LIGAND_SELECTION_TIE_BREAK,
+      assessedCandidateCount: assessed.length,
+      embeddableCandidateCount: embeddable.length,
+    },
+  };
 }
 
 const STRUCTURE_CONFIDENCE_FIELDS = new Set([
@@ -143,12 +209,24 @@ function queryOnlyMsa(sequence) {
 }
 
 export class ResearchDrugDemoRunner {
-  constructor({ directClient, mcpClient, tavilyClient, store, backend, batchProteinLoader = loadBatchProteinFile, batchInterRequestDelayMs = 0, sleepImpl = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), onProgress = () => {} }) {
+  constructor({
+    directClient,
+    mcpClient,
+    tavilyClient,
+    store,
+    backend,
+    ligandPreflight = DEFAULT_LIGAND_PREFLIGHT,
+    batchProteinLoader = loadBatchProteinFile,
+    batchInterRequestDelayMs = 0,
+    sleepImpl = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    onProgress = () => {},
+  }) {
     this.directClient = directClient;
     this.mcpClient = mcpClient;
     this.tavilyClient = tavilyClient;
     this.store = store;
     this.backend = backend;
+    this.ligandPreflight = ligandPreflight;
     this.batchProteinLoader = batchProteinLoader;
     this.batchInterRequestDelayMs = Math.max(0, Math.min(Number(batchInterRequestDelayMs) || 0, 10_000));
     this.sleepImpl = sleepImpl;
@@ -296,8 +374,8 @@ export class ResearchDrugDemoRunner {
       min_similarity: 0.4,
       radius: 1,
     }, "Optimize two gefitinib-derived candidates", "MolMIM");
-    const candidates = generatedMolecules(optimized.data).slice(0, 2);
-    const best = selectedMolecule(candidates);
+    const preflight = await preflightAndSelectLigand(generatedMolecules(optimized.data).slice(0, 2), this.ligandPreflight);
+    const { candidates, selected: best } = preflight;
 
     const complex = await this.modelStep(run, steps, workflowId, turnId, "openfold3", {
       inputs: [{
@@ -332,14 +410,15 @@ export class ResearchDrugDemoRunner {
         metadataTrust: "untrusted_metadata",
       })),
       modelSteps: steps.map(({ model, skillId, remoteJobId }) => ({ model, skillId, ...(remoteJobId ? { remoteJobId } : {}) })),
-      candidates: candidates.map(({ smiles, generationScore }) => ({ smiles, molmimScore: generationScore })),
-      selectedCandidate: { smiles: best.smiles, molmimScore: best.generationScore },
+      candidates: candidates.map(ligandCandidateSummary),
+      selectedCandidate: ligandCandidateSummary(best),
+      candidateSelection: preflight.selection,
       modelConfidence: {
         openfold2: structureConfidenceSummary(targetCharacterization.data),
         openfold3: structureConfidenceSummary(complex.data),
       },
       openfold3OutputCount: complex.data?.outputs?.[0]?.structures_with_scores?.length ?? null,
-      handoff: "OpenFold2 characterizes the target structure. OpenFold3 independently models the same target sequence with the MolMIM-optimized ligand; OpenFold3 does not consume the OpenFold2 coordinates.",
+      handoff: "OpenFold2 characterizes the target structure. After deterministic local embeddability preflight, OpenFold3 independently models the same target sequence with the highest-scoring passing MolMIM ligand; OpenFold3 does not consume the OpenFold2 coordinates.",
       limitations: "Search snippets are untrusted evidence leads. This bounded workflow does not establish binding affinity, safety, therapeutic efficacy, or clinical validity. Review primary sources, model confidence, chemical validity, and structure plausibility, then perform appropriate computational replication and wet-lab validation.",
     };
   }
@@ -385,8 +464,8 @@ export class ResearchDrugDemoRunner {
       min_similarity: 0.4,
       radius: 1,
     }, "Optimize exactly two gefitinib-derived candidates", "MolMIM");
-    const candidates = generatedMolecules(optimized.data).slice(0, 2);
-    const best = selectedMolecule(candidates);
+    const preflight = await preflightAndSelectLigand(generatedMolecules(optimized.data).slice(0, 2), this.ligandPreflight);
+    const { candidates, selected: best } = preflight;
     const complex = await this.modelStep(run, steps, workflowId, turnId, "openfold3", {
       inputs: [{
         input_id: "egfr-gefitinib-optimization-public",
@@ -406,8 +485,10 @@ export class ResearchDrugDemoRunner {
       seed: { name: RESEARCH_DEMO_PUBLIC_INPUTS.seed.name, source: RESEARCH_DEMO_PUBLIC_INPUTS.seed.source },
       requestedCandidateCount: 2,
       validCandidateCount: candidates.length,
-      candidates: candidates.map(({ smiles, generationScore }) => ({ smiles, molmimScore: generationScore })),
-      selectedCandidate: { smiles: best.smiles, molmimScore: best.generationScore },
+      embeddableCandidateCount: preflight.selection.embeddableCandidateCount,
+      candidates: candidates.map(ligandCandidateSummary),
+      selectedCandidate: ligandCandidateSummary(best),
+      candidateSelection: preflight.selection,
       complexConfidence: structureConfidenceSummary(complex.data),
       openfold3OutputCount: complex.data?.outputs?.[0]?.structures_with_scores?.length ?? null,
       limitations: "MolMIM score ranking and a predicted complex do not establish chemical validity, binding affinity, safety, therapeutic efficacy, or clinical utility. Review chemistry and structure plausibility and validate experimentally.",
@@ -712,4 +793,4 @@ export function summarizeWorkflowInput(workflowId, input) {
   return { targetPdbBytes: Buffer.byteLength(input.target_pdb), targetSequenceLength: input.target_sequence.length, contigs: input.contigs, hotspotCount: input.hotspot_res?.length ?? 0, validationModel: input.validation_model ?? "openfold3" };
 }
 
-export const __test = { canonicalJson, generatedMolecules, firstAlignment, firstDesignedSequence, dockingCandidate, affinitySummary, crossBackendExecutionInput, researchDemoExecutionInput, composedWorkflowIdempotency, researchDemoIdempotency, selectedMolecule, structureConfidenceSummary, queryOnlyMsa };
+export const __test = { canonicalJson, generatedMolecules, firstAlignment, firstDesignedSequence, dockingCandidate, affinitySummary, crossBackendExecutionInput, researchDemoExecutionInput, composedWorkflowIdempotency, researchDemoIdempotency, selectedMolecule, preflightAndSelectLigand, structureConfidenceSummary, queryOnlyMsa };

@@ -25,6 +25,11 @@ const ACKS = Object.freeze({
   ack_no_safety_or_therapeutic_claims: true,
 });
 const PDB = "ATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n";
+const allEmbeddablePreflight = Object.freeze({
+  async assess(smiles) {
+    return smiles.map(() => ({ embeddable: true, code: "embedded_etkdg" }));
+  },
+});
 
 function executionInput(turnId = "turn-research-demo-12345678") {
   return { ...ACKS, [MCP_TURN_ID_FIELD]: turnId };
@@ -56,6 +61,7 @@ function tavilyResult() {
 test("direct research demo is Tavily-first and hands the fixed public target and best of two MolMIM candidates into OpenFold3", async (t) => {
   const store = await storeFixture(t);
   const order = [];
+  const preflightInputs = [];
   const directClient = {
     async call(skillId, payload) {
       order.push(skillId);
@@ -94,15 +100,29 @@ test("direct research demo is Tavily-first and hands the fixed public target and
     assertConfigured() {},
     async search() { order.push("tavily"); return tavilyResult(); },
   };
-  const runner = new ResearchDrugDemoRunner({ directClient, mcpClient: null, tavilyClient, store, backend: "nvidia" });
+  const runner = new ResearchDrugDemoRunner({
+    directClient,
+    mcpClient: null,
+    tavilyClient,
+    store,
+    backend: "nvidia",
+    ligandPreflight: {
+      async assess(smiles) {
+        preflightInputs.push(smiles);
+        return allEmbeddablePreflight.assess(smiles);
+      },
+    },
+  });
   const output = await runner.run(executionInput());
   assert.deepEqual(order, ["tavily", "openfold2", "molmim", "openfold3"]);
+  assert.deepEqual(preflightInputs, [["CCO", "CCN"]]);
   assert.deepEqual(output.steps.map(({ status }) => status), ["completed", "completed", "completed", "completed"]);
   assert.equal(output.summary.selectedCandidate.smiles, "CCN");
   assert.deepEqual(output.summary.candidates, [
-    { smiles: "CCO", molmimScore: 0.2 },
-    { smiles: "CCN", molmimScore: 0.9 },
+    { smiles: "CCO", molmimScore: 0.2, molmimResponseIndex: 0, preflight: { embeddable: true, code: "embedded_etkdg" } },
+    { smiles: "CCN", molmimScore: 0.9, molmimResponseIndex: 1, preflight: { embeddable: true, code: "embedded_etkdg" } },
   ]);
+  assert.equal(output.summary.candidateSelection.basis, "highest_molmim_score_among_openfold3_embeddable_candidates");
   assert.deepEqual(output.summary.modelConfidence, {
     openfold2: { ptm_score: 0.61, confidence_score: 0.72, ranking_confidence: 0.68 },
     openfold3: { complex_plddt_score: 0.81, confidence_score: 0.6, plddt: 77.2, iptm_score: 0.55 },
@@ -278,6 +298,7 @@ test("MCP failure is durable and is never resubmitted or artifact-fetched", asyn
     tavilyClient: { assertConfigured() {}, async search() { return tavilyResult(); } },
     store,
     backend: "mcp",
+    ligandPreflight: allEmbeddablePreflight,
   });
   await assert.rejects(() => runner.run(executionInput()), /not resubmitted/u);
   assert.equal(calls.length, 1);
@@ -336,6 +357,7 @@ test("composed MCP workflow calls each model once with three unique stable per-s
     tavilyClient: { assertConfigured() {}, async search() { return tavilyResult(); } },
     store,
     backend: "mcp",
+    ligandPreflight: allEmbeddablePreflight,
   });
   const turnId = "turn-mcp-order-12345678";
   const output = await runner.run(executionInput(turnId));
@@ -359,6 +381,7 @@ test("workflow preflight prevents model calls until every acknowledgement is pre
     tavilyClient: { assertConfigured() { throw Object.assign(new Error("missing"), { code: "missing_tavily_key", status: 500 }); }, async search() { calls += 1; } },
     store,
     backend: "nvidia",
+    ligandPreflight: allEmbeddablePreflight,
   });
   await assert.rejects(() => runner.run({ ...executionInput(), ack_non_clinical: false }), /must be true/u);
   assert.equal(calls, 0);
@@ -379,6 +402,7 @@ test("research demo defaults Tavily on but safely skips it when the optional key
     tavilyClient: { isConfigured() { return false; }, async search() { throw new Error("must not search"); } },
     store,
     backend: "nvidia",
+    ligandPreflight: allEmbeddablePreflight,
   });
   const output = await runner.run(executionInput("turn-optional-tavily-12345678"));
   assert.deepEqual(modelCalls, ["openfold2", "molmim", "openfold3"]);
@@ -396,7 +420,7 @@ test("three additional composed workflows are low-arity, ordered, and backend-ne
     if (skillId === "openfold3") return nimResult(skillId, { outputs: [{ structures_with_scores: [{ structure: PDB, format: "pdb", confidence_score: 0.7 }] }] });
     return nimResult(skillId, { structures_in_ranked_order: [{ structure: PDB, format: "pdb", confidence_score: 0.6 }] });
   } };
-  const runner = new ResearchDrugDemoRunner({ directClient, mcpClient: null, tavilyClient: null, store, backend: "nvidia", batchProteinLoader: async () => BATCH_PROTEIN_RECORDS });
+  const runner = new ResearchDrugDemoRunner({ directClient, mcpClient: null, tavilyClient: null, store, backend: "nvidia", ligandPreflight: allEmbeddablePreflight, batchProteinLoader: async () => BATCH_PROTEIN_RECORDS });
 
   const compared = await runner.run("compare_protein_structures", executionInput("turn-compare-structures-12345678"));
   assert.deepEqual(calls.splice(0).map(({ skillId }) => skillId), ["openfold2", "openfold3"]);
@@ -412,8 +436,8 @@ test("three additional composed workflows are low-arity, ordered, and backend-ne
   assert.equal(optimizationCalls[1].payload.inputs[0].molecules[1].smiles, "CCN");
   assert.equal(optimized.summary.selectedCandidate.smiles, "CCN");
   assert.deepEqual(optimized.summary.candidates, [
-    { smiles: "CCO", molmimScore: 0.2 },
-    { smiles: "CCN", molmimScore: 0.9 },
+    { smiles: "CCO", molmimScore: 0.2, molmimResponseIndex: 0, preflight: { embeddable: true, code: "embedded_etkdg" } },
+    { smiles: "CCN", molmimScore: 0.9, molmimResponseIndex: 1, preflight: { embeddable: true, code: "embedded_etkdg" } },
   ]);
 
   const batch = await runner.run("batch_fold_demo", executionInput("turn-batch-fold-12345678"));
@@ -424,6 +448,82 @@ test("three additional composed workflows are low-arity, ordered, and backend-ne
   assert.equal(batch.summary.completed, 5);
   assert.equal(batch.summary.failed, 0);
   assert.equal(batch.summary.results.every(({ elapsedMs, requestId }) => elapsedMs === 7 && typeof requestId === "string"), true);
+});
+
+test("ligand optimization assesses every candidate and skips the observed higher-scoring non-embeddable candidate", async (t) => {
+  const store = await storeFixture(t, "bionemo-ligand-preflight-selection-");
+  const calls = [];
+  const assessments = [];
+  const top = "COc1cc2ncnc(N3C[C@H]4C[C@H]3[C@H]4CCl)c2cc1OC";
+  const lower = "CN1CCc2nnc(NCc3ccc(F)c(Cl)c3)cc2C1";
+  const runner = new ResearchDrugDemoRunner({
+    directClient: {
+      async call(skillId, payload) {
+        calls.push({ skillId, payload });
+        if (skillId === "molmim") return nimResult(skillId, { generated: [{ smiles: top, score: 0.99 }, { smiles: lower, score: 0.61 }] });
+        assert.equal(skillId, "openfold3");
+        assert.equal(payload.inputs[0].molecules[1].smiles, lower);
+        return nimResult(skillId, { outputs: [{ structures_with_scores: [{ structure: PDB, format: "pdb" }] }] });
+      },
+    },
+    mcpClient: null,
+    tavilyClient: null,
+    store,
+    backend: "nvidia",
+    ligandPreflight: {
+      async assess(smiles) {
+        assessments.push(smiles);
+        return [
+          { embeddable: false, code: "conformer_generation_failed" },
+          { embeddable: true, code: "embedded_etkdg" },
+        ];
+      },
+    },
+  });
+
+  const output = await runner.run("optimize_ligand_complex", executionInput("turn-ligand-preflight-selection-12345678"));
+  assert.deepEqual(assessments, [[top, lower]]);
+  assert.equal(calls.filter(({ skillId }) => skillId === "molmim").length, 1);
+  assert.equal(calls.filter(({ skillId }) => skillId === "openfold3").length, 1);
+  assert.equal(output.summary.selectedCandidate.smiles, lower);
+  assert.equal(output.summary.selectedCandidate.molmimScore, 0.61);
+  assert.deepEqual(output.summary.candidates.map(({ preflight }) => preflight.embeddable), [false, true]);
+  assert.deepEqual(output.summary.candidateSelection, {
+    basis: "highest_molmim_score_among_openfold3_embeddable_candidates",
+    tieBreak: "earliest_candidate_in_molmim_response",
+    assessedCandidateCount: 2,
+    embeddableCandidateCount: 1,
+  });
+});
+
+test("ligand optimization fails closed before OpenFold3 when no candidate embeds", async (t) => {
+  const store = await storeFixture(t, "bionemo-ligand-preflight-none-");
+  const modelCalls = [];
+  const runner = new ResearchDrugDemoRunner({
+    directClient: {
+      async call(skillId) {
+        modelCalls.push(skillId);
+        if (skillId === "molmim") return nimResult(skillId, { generated: [{ smiles: "candidate-one", score: 0.9 }, { smiles: "candidate-two", score: 0.8 }] });
+        throw new Error("OpenFold3 must not be called");
+      },
+    },
+    mcpClient: null,
+    tavilyClient: null,
+    store,
+    backend: "nvidia",
+    ligandPreflight: {
+      async assess(smiles) {
+        assert.deepEqual(smiles, ["candidate-one", "candidate-two"]);
+        return smiles.map(() => ({ embeddable: false, code: "conformer_generation_failed" }));
+      },
+    },
+  });
+
+  await assert.rejects(
+    () => runner.run("optimize_ligand_complex", executionInput("turn-ligand-preflight-none-12345678")),
+    (error) => error.code === "no_embeddable_ligand_candidate" && /OpenFold3 was not called/u.test(error.message),
+  );
+  assert.deepEqual(modelCalls, ["molmim"]);
 });
 
 test("batch folding retains one failure, continues sequentially, and never retries a record", async (t) => {
@@ -580,6 +680,7 @@ test("runtime deduplicates duplicate MCP wrapper invocations in one turn but lat
     logger: { info() {} },
     fetchImpl: async () => { throw new Error("clients are mocked below"); },
   });
+  runtime.researchDemoRunner.ligandPreflight = allEmbeddablePreflight;
   let searches = 0;
   runtime.tavilyClient.search = async () => { searches += 1; return tavilyResult(); };
   const modelCalls = [];
@@ -619,6 +720,7 @@ test("runtime dedupe scope combines workflow ID with trusted turn ID", async (t)
     logger: { info() {} },
     fetchImpl: async () => { throw new Error("mocked below"); },
   });
+  runtime.researchDemoRunner.ligandPreflight = allEmbeddablePreflight;
   const calls = [];
   runtime.researchDirectClient.call = async (skillId) => {
     calls.push(skillId);

@@ -6,7 +6,6 @@ import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import {
-  BIONEMO_SUPER_CATALOG_PROMPT,
   BIONEMO_SUPER_INITIAL_TURNS,
   BIONEMO_SUPER_NOTEBOOK_TURNS,
   bionemoSuperBoundedResultSummary,
@@ -29,7 +28,7 @@ function turn(name, { id = name, isError = false, arguments: args = {} } = {}) {
   ] };
 }
 
-test("Super finalizes after atomic wrappers and successful catalog lookup only", () => {
+test("Super finalizes after successful atomic wrappers only", () => {
   for (const name of ["bionemo_research_drug_demo", "bionemo_compare_protein_structures", "bionemo_optimize_ligand_complex", "bionemo_batch_fold_demo"]) {
     assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn(name)), true);
     assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn(name, { isError: true })), false);
@@ -37,9 +36,6 @@ test("Super finalizes after atomic wrappers and successful catalog lookup only",
     assert.equal(bionemoSuperCompletedToolTarget(superModel, turn(name)), name);
     assert.match(bionemoSuperDeterministicFinalText(superModel, turn(name)), /returned a terminal result/u);
   }
-  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn("clawbio_models__models_list")), true);
-  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn("clawbio_models__models_list", { isError: true })), false);
-  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn("tool_call", { id: "mcp:bundle-mcp:clawbio_models__models_list" })), true);
   const errored = structuredClone(turn("bionemo_compare_protein_structures"));
   errored.messages.at(-1).error = { code: "failed" };
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, errored), false);
@@ -47,19 +43,20 @@ test("Super finalizes after atomic wrappers and successful catalog lookup only",
 
 test("Super initial calls are source-owned only for exact reviewed prompts", () => {
   assert.equal(BIONEMO_SUPER_NOTEBOOK_TURNS.length, 4);
-  assert.equal(BIONEMO_SUPER_INITIAL_TURNS.length, 5);
+  assert.deepEqual(BIONEMO_SUPER_INITIAL_TURNS, BIONEMO_SUPER_NOTEBOOK_TURNS);
   for (const expected of BIONEMO_SUPER_INITIAL_TURNS) {
     const actual = bionemoSuperInitialNotebookTool(superModel, {
       messages: [{ role: "user", content: [{ type: "text", text: expected.prompt }] }],
     });
     assert.deepEqual(actual, { name: expected.name, params: { ...expected.params } });
   }
-  assert.equal(BIONEMO_SUPER_INITIAL_TURNS.at(-1).prompt, BIONEMO_SUPER_CATALOG_PROMPT);
-  assert.equal(bionemoSuperInitialNotebookTool(superModel, { messages: [{ role: "user", content: `${BIONEMO_SUPER_CATALOG_PROMPT} ` }] }), undefined);
-  assert.equal(bionemoSuperInitialNotebookTool({ ...superModel, provider: "nvidia" }, { messages: [{ role: "user", content: BIONEMO_SUPER_CATALOG_PROMPT }] }), undefined);
+  const [first] = BIONEMO_SUPER_NOTEBOOK_TURNS;
+  assert.equal(bionemoSuperInitialNotebookTool(superModel, { messages: [{ role: "user", content: `${first.prompt} ` }] }), undefined);
+  assert.equal(bionemoSuperInitialNotebookTool({ ...superModel, provider: "nvidia" }, { messages: [{ role: "user", content: first.prompt }] }), undefined);
+  assert.equal(bionemoSuperInitialNotebookTool(superModel, { messages: [{ role: "user", content: "List all available BioNeMo models." }] }), undefined);
   assert.equal(bionemoSuperInitialNotebookTool(superModel, { messages: [
-    { role: "user", content: BIONEMO_SUPER_CATALOG_PROMPT },
-    { role: "toolResult", toolName: "clawbio_models__models_list" },
+    { role: "user", content: first.prompt },
+    { role: "toolResult", toolName: first.name },
   ] }), undefined);
 });
 
@@ -78,8 +75,8 @@ test("Super fallback includes only a bounded workflow summary", () => {
 test("Super guard leaves initial, other-model, mismatched, and compute/status chains untouched", () => {
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, { messages: [{ role: "user", content: [] }] }), false);
   assert.equal(bionemoSuperShouldFinalizeWithoutTools({ ...superModel, id: "deepseek-ai/DeepSeek-V4-Pro" }, turn("bionemo_batch_fold_demo")), false);
-  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn("clawbio_openfold2_predict")), false);
-  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn("clawbio_job_status")), false);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn("openfold2_predict")), false);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn("job_status")), false);
   const mismatch = structuredClone(turn("bionemo_batch_fold_demo"));
   mismatch.messages.at(-1).toolCallId = "other";
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, mismatch), false);

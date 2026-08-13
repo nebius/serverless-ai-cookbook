@@ -6,7 +6,6 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
 const PATCH_MARKER = "openclaw.bionemo.super-followup.v3";
-export const BIONEMO_SUPER_CATALOG_PROMPT = "Call exactly clawbio_models__models_list once with no arguments. Do not call any other tool. After it succeeds, call no more tools and briefly summarize which BioNeMo models are available.";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -35,7 +34,6 @@ export const BIONEMO_SUPER_NOTEBOOK_TURNS = Object.freeze(NOTEBOOK_CATALOG.map((
 }));
 export const BIONEMO_SUPER_INITIAL_TURNS = Object.freeze([
   ...BIONEMO_SUPER_NOTEBOOK_TURNS,
-  Object.freeze({ prompt: BIONEMO_SUPER_CATALOG_PROMPT, name: "clawbio_models__models_list", params: Object.freeze({}) }),
 ]);
 
 export function bionemoSuperInitialNotebookTool(model, context) {
@@ -63,7 +61,6 @@ export function bionemoSuperCompletedToolTarget(model, context) {
     "bionemo_optimize_ligand_complex",
     "bionemo_batch_fold_demo",
   ]);
-  const catalogTool = "clawbio_models__models_list";
   if (String(model?.provider || "").toLowerCase() !== "tokenfactory"
     || String(model?.id || "").toLowerCase() !== superModel) return undefined;
   const messages = Array.isArray(context?.messages) ? context.messages : [];
@@ -84,13 +81,12 @@ export function bionemoSuperCompletedToolTarget(model, context) {
     if (!args || typeof args !== "object" || Array.isArray(args) || typeof args.id !== "string") return undefined;
     target = args.id.startsWith("openclaw:bionemo-agent-toolkit:")
       ? args.id.slice("openclaw:bionemo-agent-toolkit:".length)
-      : args.id === "mcp:bundle-mcp:clawbio_models__models_list" ? catalogTool : args.id;
+      : args.id;
   }
   const failed = result.isError === true
     || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "");
   if (failed) return undefined;
-  if (wrappers.has(target)) return target;
-  return target === catalogTool ? target : undefined;
+  return wrappers.has(target) ? target : undefined;
 }
 
 export function bionemoSuperShouldFinalizeWithoutTools(model, context) {
@@ -124,7 +120,6 @@ export function bionemoSuperDeterministicFinalText(model, context) {
     bionemo_compare_protein_structures: "The OpenFold2 and OpenFold3 structure-comparison workflow returned a terminal result. Review the returned scalar confidence summaries and attached structures. Neither prediction is experimental ground truth; this research-only output requires independent computational and wet-lab validation.",
     bionemo_optimize_ligand_complex: "The MolMIM and OpenFold3 ligand-complex workflow returned a terminal result. Review both candidates, the deterministic selection, returned score, confidence, and attached structure. It makes no binding, safety, efficacy, or clinical claim and requires independent validation.",
     bionemo_batch_fold_demo: "The bounded five-protein OpenFold2 workflow returned a terminal result. Review each record status, confidence summary, and attached structure. These research-only predictions require independent computational and experimental validation.",
-    clawbio_models__models_list: "The read-only BioNeMo model catalog lookup completed. Review the returned catalog entries above.",
   };
   if (!target) return undefined;
   const summary = bionemoSuperBoundedResultSummary(model, context);

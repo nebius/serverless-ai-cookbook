@@ -9,6 +9,7 @@ import {
   adaptMcpToolDefinition,
   adaptToolCallPayload,
   adaptToolsListPayload,
+  productToolName,
   startMcpSchemaAdapter,
 } from "../runtime/mcp-schema-adapter.mjs";
 import { MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
@@ -157,6 +158,8 @@ test("Cerebrium wrapper schemas become flat, dereferenced model-facing schemas",
   const adapted = adaptToolsListPayload(TOOLS_LIST, catalog);
   const [openfold2, esm2] = adapted.result.tools;
 
+  assert.equal(openfold2.name, "openfold2_predict");
+  assert.equal(esm2.name, "esm2_embed");
   assert.deepEqual(openfold2.inputSchema.required, ["sequence", "ack_research_only", "ack_non_clinical"]);
   assert.deepEqual(Object.keys(openfold2.inputSchema.properties), ["sequence", "selected_models", "ack_research_only", "ack_non_clinical"]);
   assert.equal(openfold2.inputSchema.properties.ack_research_only.const, true);
@@ -164,7 +167,7 @@ test("Cerebrium wrapper schemas become flat, dereferenced model-facing schemas",
   assert.equal(JSON.stringify(openfold2).includes("$defs"), false);
   assert.match(openfold2.description, /flat JSON object/u);
   assert.match(openfold2.description, /call it at most once per user request/u);
-  assert.match(openfold2.description, /poll only clawbio_job_status for that exact ID, at most four times/u);
+  assert.match(openfold2.description, /poll only job_status for that exact ID, at most four times/u);
   assert.match(openfold2.inputSchema.properties.selected_models.description, /never as a quoted or stringified JSON/u);
 
   assert.equal(esm2.inputSchema.properties.sequences.type, "array");
@@ -208,7 +211,7 @@ test("schema defaults and internal turn identity normalize before hashing and fo
     jsonrpc: "2.0",
     method: "tools/call",
     params: {
-      name: "clawbio_esm2_embed",
+      name: "esm2_embed",
       arguments: {
         sequences: ["MKTII"],
         ack_research_only: true,
@@ -254,13 +257,13 @@ test("real optional anyOf input references normalize nested defaults before hash
   const diffdockOmitted = adaptToolCallPayload({
     ...common,
     id: 31,
-    params: { name: DIFFDOCK.name, arguments: diffdockArguments },
+    params: { name: productToolName(DIFFDOCK.name), arguments: diffdockArguments },
   }, catalog);
   const diffdockExplicit = adaptToolCallPayload({
     ...common,
     id: 32,
     params: {
-      name: DIFFDOCK.name,
+      name: productToolName(DIFFDOCK.name),
       arguments: { ...diffdockArguments, protein_input: { ...diffdockArguments.protein_input, encoding: "binary" } },
     },
   }, catalog);
@@ -283,13 +286,13 @@ test("real optional anyOf input references normalize nested defaults before hash
   const deepvariantOmitted = adaptToolCallPayload({
     ...common,
     id: 33,
-    params: { name: DEEPVARIANT.name, arguments: deepvariantArguments },
+    params: { name: productToolName(DEEPVARIANT.name), arguments: deepvariantArguments },
   }, catalog);
   const deepvariantExplicit = adaptToolCallPayload({
     ...common,
     id: 34,
     params: {
-      name: DEEPVARIANT.name,
+      name: productToolName(DEEPVARIANT.name),
       arguments: {
         ...deepvariantArguments,
         reference: {
@@ -312,7 +315,7 @@ test("the exact stringified ESM2 failure shape is canonicalized before upstream 
     id: 42,
     method: "tools/call",
     params: {
-      name: "clawbio_esm2_embed",
+      name: "esm2_embed",
       arguments: {
         sequences: "[{\"id\": \"test_seq\", \"sequence\": \"MKTIIALSYIFCLVFADALKL\"}]",
         ack_research_only: true,
@@ -344,7 +347,7 @@ test("the adapter never fabricates required user acknowledgements", () => {
     jsonrpc: "2.0",
     id: 43,
     method: "tools/call",
-    params: { name: "clawbio_esm2_embed", arguments: { sequences: ["MKTIIALSYIFCLVFADALKL"] } },
+    params: { name: "esm2_embed", arguments: { sequences: ["MKTIIALSYIFCLVFADALKL"] } },
   }, catalog), (error) => error instanceof McpAdapterInputError && /ack_research_only=true/u.test(error.message));
 });
 
@@ -390,7 +393,7 @@ test("JSON-RPC batches forward valid members and return invalid-params per rejec
       id: 20,
       method: "tools/call",
       params: {
-        name: "clawbio_esm2_embed",
+        name: "esm2_embed",
         arguments: {
           sequences: ["MKTII"],
           ack_research_only: true,
@@ -404,7 +407,7 @@ test("JSON-RPC batches forward valid members and return invalid-params per rejec
       id: 21,
       method: "tools/call",
       params: {
-        name: "clawbio_esm2_embed",
+        name: "esm2_embed",
         arguments: { sequences: ["MISSINGACK"] },
       },
     },
@@ -412,7 +415,7 @@ test("JSON-RPC batches forward valid members and return invalid-params per rejec
       jsonrpc: "2.0",
       method: "tools/call",
       params: {
-        name: "clawbio_esm2_embed",
+        name: "esm2_embed",
         arguments: { sequences: ["INVALID-NOTIFICATION-MISSING-ACK"] },
       },
     },
@@ -470,20 +473,22 @@ test("union request schemas also become a consistent flat top-level contract", (
     },
   };
   const adapted = adaptMcpToolDefinition(union);
+  assert.equal(adapted.tool.name, "esmc_analyze");
   assert.equal(adapted.mapping.mode, "flat-request");
+  assert.equal(adapted.mapping.upstreamName, union.name);
   assert.equal(JSON.stringify(adapted.tool).includes("$ref"), false);
   assert.equal(JSON.stringify(adapted.tool).includes("$defs"), false);
   assert.equal(adapted.tool.inputSchema.oneOf.length, 2);
   assert.equal(adapted.tool.inputSchema.oneOf.every((branch) => !Object.hasOwn(branch.properties, "request")), true);
   assert.deepEqual(adapted.tool.inputSchema.oneOf[0].required, ["operation", "ack_research_only", "ack_non_clinical", "ack_aup_accepted"]);
 
-  const catalog = new Map([[union.name, adapted.mapping]]);
+  const catalog = new Map([[adapted.tool.name, adapted.mapping]]);
   const call = adaptToolCallPayload({
     jsonrpc: "2.0",
     id: 9,
     method: "tools/call",
     params: {
-      name: union.name,
+      name: adapted.tool.name,
       arguments: { operation: "logits", ack_research_only: true, ack_non_clinical: true, ack_aup_accepted: true },
     },
   }, catalog, { idempotencyKeyFactory: () => "union-key" });
@@ -526,6 +531,7 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }),
   });
   const listed = await listResponse.json();
+  assert.deepEqual(listed.result.tools.map(({ name }) => name), ["openfold2_predict", "esm2_embed"]);
   assert.deepEqual(listed.result.tools[1].inputSchema.required, ["sequences", "ack_research_only", "ack_non_clinical"]);
   assert.equal(listResponse.headers.get("mcp-session-id"), "test-session");
 
@@ -537,7 +543,7 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
       id: 2,
       method: "tools/call",
       params: {
-        name: "clawbio_esm2_embed",
+        name: "esm2_embed",
         arguments: {
           sequences: ["MKTIIALSYIFCLVFADALKL"],
           ack_research_only: true,
@@ -550,6 +556,7 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
   assert.equal(callResponse.status, 200);
   assert.equal(upstreamCalls.length, 2);
   assert.equal(upstreamCalls.every((call) => call.authorization === `Bearer ${secret}`), true);
+  assert.equal(upstreamCalls[1].payload.params.name, "clawbio_esm2_embed");
   assert.deepEqual(upstreamCalls[1].payload.params.arguments.request, { sequences: ["MKTIIALSYIFCLVFADALKL"], format: "npz" });
   assert.equal(upstreamCalls[1].payload.params.arguments.acknowledgements.research_only, true);
   assert.equal(MCP_TURN_ID_FIELD in upstreamCalls[1].payload.params.arguments, false);
@@ -564,7 +571,7 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
       id: 200,
       method: "tools/call",
       params: {
-        name: "clawbio_esm2_embed",
+        name: "esm2_embed",
         arguments: {
           ack_non_clinical: true,
           sequences: "[\"MKTIIALSYIFCLVFADALKL\"]",
@@ -589,7 +596,7 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
       id: 2,
       method: "tools/call",
       params: {
-        name: "clawbio_esm2_embed",
+        name: "esm2_embed",
         arguments: {
           sequences: ["MKTIIALSYIFCLVFADALKL"],
           format: "npz",
@@ -615,7 +622,7 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
       id: 201,
       method: "tools/call",
       params: {
-        name: "clawbio_esm2_embed",
+        name: "esm2_embed",
         arguments: {
           sequences: ["MKTIIALSYIFCLVFADALKL"],
           ack_research_only: true,

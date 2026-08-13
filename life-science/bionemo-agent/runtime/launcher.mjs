@@ -188,10 +188,11 @@ async function main() {
       apiKey: runtimeEnv.BIONEMO_MCP_API_KEY,
       port: mcpAdapterPort,
     });
-    // The browser workbench consumes the flattened loopback MCP contract. The
-    // adapter alone holds and forwards the upstream credential. The composed
-    // plugin workflow keeps the validated raw upstream URL in a private child
-    // environment field because it speaks the gateway's native typed envelope.
+    // Codex and Claude consume the flattened loopback MCP contract. The
+    // adapter alone holds and forwards the upstream credential. OpenClaw does
+    // not materialize raw hosted-model tools; its composed plugin workflows
+    // keep the validated raw upstream URL in a private child environment field
+    // because they speak the gateway's native typed envelope.
     mcpAdapter.server.unref();
     configureMcpAdapterEnvironment(runtimeEnv, {
       upstreamUrl: initialCapabilities.mcpUrl,
@@ -202,7 +203,7 @@ async function main() {
 
   const capabilityState = await writeRuntimeFiles({ templatePath, configPath, stateDir, origins, env: runtimeEnv, setupPort });
   const seededSessions = await seedExampleSessions({ configPath });
-  process.stdout.write(`BioNeMo ready example sessions: ${seededSessions.length} native empty sessions seeded; no workflow was started.\n`);
+  process.stdout.write(`BioNeMo ready example sessions: ${seededSessions.length} native static starters seeded; no workflow was started.\n`);
   const devicePairingRequired = parseBoolean(runtimeEnv.BIONEMO_REQUIRE_DEVICE_PAIRING, false, "BIONEMO_REQUIRE_DEVICE_PAIRING");
   process.stdout.write(`BioNeMo browser authentication: gateway token${devicePairingRequired ? " plus one-time device approval" : " only; per-browser device approval disabled"}.\n`);
   await prepareClients(runtimeEnv);

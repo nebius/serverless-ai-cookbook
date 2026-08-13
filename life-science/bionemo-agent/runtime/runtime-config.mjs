@@ -185,13 +185,15 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   };
 
   config.mcp = { sessionIdleTtlMs: 600000, servers: {} };
-  const useClawBioMcp = state.modelBackend === "mcp";
-  if (useClawBioMcp) {
-    config.mcp.servers.clawbio_models = {
-      url: state.mcpUrl, transport: "streamable-http", timeout: 900,
-      headers: { Authorization: "Bearer ${BIONEMO_MCP_API_KEY}" },
-    };
-  }
+  config.mcp.servers.clawbio = {
+    command: "/opt/clawbio/bin/python",
+    args: ["/opt/bionemo/runtime/clawbio-mcp.py"],
+    cwd: "/workspace/agent/artifacts/clawbio",
+    transport: "stdio",
+    timeout: 300,
+    toolFilter: { include: ["list_skills", "describe_skill", "run_skill"] },
+  };
+  const useHostedMcpBackend = state.modelBackend === "mcp";
   if (state.tavily) {
     // Avoid the reserved official-plugin id `tavily`: OpenClaw otherwise
     // attempts a runtime npm install of @openclaw/tavily-plugin. This image
@@ -202,15 +204,16 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
       headers: { Authorization: "Bearer ${BIONEMO_TAVILY_API_KEY}", DEFAULT_PARAMETERS: "{\"search_depth\":\"basic\",\"max_results\":5,\"include_raw_content\":false,\"include_images\":false}" },
     };
   }
-  if (useClawBioMcp || state.tavily) {
-    config.tools.deny = config.tools.deny.filter((name) => name !== "bundle-mcp");
-    if (!config.tools.alsoAllow.includes("bundle-mcp")) config.tools.alsoAllow.push("bundle-mcp");
-  }
-  if (useClawBioMcp) {
-    // Never show two incompatible contracts for the same BioNeMo operation.
-    // The remote MCP adapter is the selected backend, so hide the direct NIM
-    // plugin tools instead of asking the reasoning model to choose between a
-    // flat direct schema and an enveloped remote schema.
+  // The image-local, demo-only ClawBio catalog is always present, so the MCP
+  // materializer is part of every reasoning-provider surface. Remote BioNeMo
+  // and Tavily servers remain credential-gated above.
+  config.tools.deny = config.tools.deny.filter((name) => name !== "bundle-mcp");
+  if (!config.tools.alsoAllow.includes("bundle-mcp")) config.tools.alsoAllow.push("bundle-mcp");
+  if (useHostedMcpBackend) {
+    // Hosted BioNeMo MCP remains a private implementation backend for the four
+    // composed plugin workflows. Do not materialize its raw model/job tools in
+    // OpenClaw; hide direct NIM tools so the browser has one bounded compute
+    // contract per workflow. Terminal clients are configured separately.
     const directTools = new Set(DIRECT_ONLY_TOOL_NAMES);
     config.tools.alsoAllow = config.tools.alsoAllow.filter((name) => !directTools.has(name));
     for (const name of CROSS_BACKEND_TOOL_NAMES) {
