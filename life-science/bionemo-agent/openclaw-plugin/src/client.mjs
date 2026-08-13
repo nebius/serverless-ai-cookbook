@@ -125,7 +125,7 @@ export class NimClient {
             Accept: "application/json",
             Authorization: `Bearer ${key}`,
             "Content-Type": "application/json",
-            "User-Agent": "nebius-bionemo-agent/3.3.1",
+            "User-Agent": "nebius-bionemo-agent/3.3.2",
           },
           body: JSON.stringify(request),
           redirect: "error",

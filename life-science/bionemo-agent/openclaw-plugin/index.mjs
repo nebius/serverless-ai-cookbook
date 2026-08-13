@@ -1,3 +1,4 @@
+import path from "node:path";
 import { ArtifactStore, VIEWER_ROUTE_PREFIX } from "./src/artifacts.mjs";
 import { NimClient } from "./src/client.mjs";
 import { CROSS_BACKEND_TOOL_NAMES, PUBLIC_CATALOG, SKILLS, TOOLKIT_COMMIT, WORKFLOWS } from "./src/catalog.mjs";
@@ -10,7 +11,7 @@ import { JSON_SCHEMAS, VALIDATORS, normalizeDirectSkillInput } from "./src/valid
 import { ResearchDrugDemoRunner, WorkflowRunner } from "./src/workflows.mjs";
 import { MCP_TURN_ID_FIELD, submissionToolBaseName, validMcpTurnId } from "../runtime/mcp-submission-policy.mjs";
 
-export const PLUGIN_VERSION = "3.3.1";
+export const PLUGIN_VERSION = "3.3.2";
 
 function summaryForSkill(skillId, input) {
   const summary = { requestBytes: Buffer.byteLength(JSON.stringify(input), "utf8") };
@@ -48,6 +49,160 @@ function toolResult(value) {
     caveat: "Research use only. Review confidence and validate experimentally; this is not clinical advice.",
   }, null, 2);
   return { content: [{ type: "text", text }], structuredContent: structured };
+}
+
+const PRESENTATION_TTL_MS = 60 * 60 * 1_000;
+const FINAL_ANSWER_SIGNATURE = JSON.stringify({ v: 1, phase: "final_answer" });
+
+function structuredToolResult(result) {
+  if (result?.structuredContent && typeof result.structuredContent === "object") return result.structuredContent;
+  const text = Array.isArray(result?.content)
+    ? result.content.find((item) => item?.type === "text" && typeof item.text === "string")?.text
+    : undefined;
+  if (!text) return undefined;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === "object" ? parsed : undefined;
+  }
+  catch { return undefined; }
+}
+
+const WORKFLOW_RUN_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u;
+const VIEWER_CAPABILITY = /^[A-Za-z0-9_-]{32}$/u;
+const STRUCTURE_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.(?:pdb|cif|mmcif)$/iu;
+
+function validatedPresentationArtifact(item, runId, { artifactRoot, publicBaseUrl }) {
+  if (!item || typeof item !== "object" || typeof item.name !== "string" || !STRUCTURE_FILE.test(item.name)) return undefined;
+  const expectedDownloadPath = path.join(artifactRoot, runId, item.name);
+  if (item.downloadPath !== expectedDownloadPath || typeof item.viewerMarkdown !== "string") return undefined;
+  const markdown = item.viewerMarkdown.match(/^\[View structure in 3D\]\(<([^\s<>]+)>\)$/u);
+  if (!markdown) return undefined;
+  const viewerValue = markdown[1];
+  let viewer;
+  try { viewer = new URL(viewerValue, "https://bionemo.same-origin.invalid"); }
+  catch { return undefined; }
+  const expectedPath = `${VIEWER_ROUTE_PREFIX}/${runId}/${encodeURIComponent(item.name)}`;
+  if (viewer.pathname !== expectedPath || viewer.hash || viewer.username || viewer.password) return undefined;
+  const searchEntries = [...viewer.searchParams.entries()];
+  if (searchEntries.length !== 1 || searchEntries[0][0] !== "access" || !VIEWER_CAPABILITY.test(searchEntries[0][1])) return undefined;
+  if (viewerValue.startsWith("/")) {
+    if (viewer.origin !== "https://bionemo.same-origin.invalid") return undefined;
+  } else {
+    if (!publicBaseUrl || viewer.origin !== publicBaseUrl) return undefined;
+    const expectedAbsolute = new URL(`${expectedPath}?access=${encodeURIComponent(searchEntries[0][1])}`, `${publicBaseUrl}/`).toString();
+    if (viewerValue !== expectedAbsolute) return undefined;
+  }
+  return item;
+}
+
+function artifactPresentation(result, options = {}) {
+  const structured = structuredToolResult(result);
+  const artifacts = Array.isArray(structured?.artifacts) ? structured.artifacts : [];
+  const runId = typeof structured?.runId === "string" && WORKFLOW_RUN_ID.test(structured.runId) ? structured.runId : undefined;
+  if (!runId) return undefined;
+  const artifactRoot = path.resolve(options.artifactRoot || "/workspace/agent/artifacts");
+  const publicBaseUrl = typeof options.publicBaseUrl === "string" ? options.publicBaseUrl : "";
+  const structures = artifacts
+    .map((item) => validatedPresentationArtifact(item, runId, { artifactRoot, publicBaseUrl }))
+    .filter(Boolean);
+  if (!structures.length) return undefined;
+  return {
+    viewerMarkdown: [...new Set(structures.map((item) => item.viewerMarkdown))],
+    mediaLine: `MEDIA:${structures[0].downloadPath}`,
+  };
+}
+
+function textBlockPhase(block) {
+  if (!block || typeof block !== "object" || typeof block.textSignature !== "string") return undefined;
+  if (!block.textSignature.startsWith("{")) return undefined;
+  try {
+    const signature = JSON.parse(block.textSignature);
+    return signature?.v === 1 && (signature.phase === "commentary" || signature.phase === "final_answer")
+      ? signature.phase
+      : undefined;
+  }
+  catch { return undefined; }
+}
+
+function visibleAssistantText(message) {
+  if (typeof message?.content === "string") return message.content;
+  if (!Array.isArray(message?.content)) return "";
+  const textBlocks = message.content.filter((item) => item?.type === "text" && typeof item.text === "string");
+  const hasExplicitPhase = textBlocks.some((item) => textBlockPhase(item));
+  const visible = hasExplicitPhase
+    ? textBlocks.filter((item) => textBlockPhase(item) === "final_answer")
+    : message?.phase === "commentary" ? [] : textBlocks;
+  return visible.map((item) => item.text).join("\n");
+}
+
+function artifactPresentationAppendText(text, presentation) {
+  if (typeof text !== "string") return undefined;
+  const missing = presentation.viewerMarkdown.filter((line) => !text.includes(line));
+  const existingLines = new Set(text.split(/\r?\n/u).map((line) => line.trim()));
+  if (presentation.mediaLine && !existingLines.has(presentation.mediaLine)) missing.push(presentation.mediaLine);
+  return missing.length ? `Workflow artifacts\n\n${missing.join("\n")}` : undefined;
+}
+
+function appendArtifactPresentationText(text, presentation) {
+  const appendText = artifactPresentationAppendText(text, presentation);
+  if (!appendText) return text;
+  return text ? `${text.trimEnd()}\n\n${appendText}` : appendText;
+}
+
+function appendArtifactPresentation(message, presentation) {
+  if (message?.role !== "assistant") return undefined;
+  if (message.stopReason !== "stop") return undefined;
+  if (Array.isArray(message?.content) && message.content.some((item) => /tool/u.test(String(item?.type || "").toLowerCase()))) return undefined;
+  if (message.phase === "commentary") return undefined;
+  const currentText = visibleAssistantText(message);
+  const nextText = appendArtifactPresentationText(currentText, presentation);
+  if (nextText === undefined || nextText === currentText) return message;
+  const suffix = nextText.slice(currentText.trimEnd().length).replace(/^\s+/u, "");
+  if (typeof message.content === "string") return { ...message, content: nextText };
+  const content = Array.isArray(message.content) ? [...message.content] : [];
+  const hasExplicitPhase = content.some((item) => item?.type === "text" && textBlockPhase(item));
+  if (hasExplicitPhase && !content.some((item) => item?.type === "text" && textBlockPhase(item) === "final_answer")) return undefined;
+  content.push({
+    type: "text",
+    text: suffix,
+    ...(hasExplicitPhase ? { textSignature: FINAL_ANSWER_SIGNATURE } : {}),
+  });
+  return { ...message, content };
+}
+
+function createPresentationRegistry({
+  now = () => Date.now(),
+  setTimeoutImpl = setTimeout,
+  clearTimeoutImpl = clearTimeout,
+  ttlMs = PRESENTATION_TTL_MS,
+} = {}) {
+  const pending = new Map();
+  const clear = (runId) => {
+    const entry = pending.get(runId);
+    if (!entry) return false;
+    clearTimeoutImpl(entry.timer);
+    return pending.delete(runId);
+  };
+  const set = (runId, presentation) => {
+    clear(runId);
+    const expiresAt = now() + ttlMs;
+    const entry = { presentation, expiresAt, timer: undefined };
+    entry.timer = setTimeoutImpl(() => {
+      if (pending.get(runId) === entry) pending.delete(runId);
+    }, ttlMs);
+    entry.timer?.unref?.();
+    pending.set(runId, entry);
+  };
+  const get = (runId) => {
+    const entry = pending.get(runId);
+    if (!entry) return undefined;
+    if (entry.expiresAt <= now()) {
+      clear(runId);
+      return undefined;
+    }
+    return entry.presentation;
+  };
+  return Object.freeze({ set, get, clear, size: () => pending.size });
 }
 
 export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env, artifactRoot, logger = console } = {}) {
@@ -126,13 +281,9 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
   return { store, client, researchDirectClient, tavilyClient, mcpClient, researchDemoRunner, researchDemoExecutions, runSkill, runWorkflow };
 }
 
-export default {
-  id: "bionemo-agent-toolkit",
-  name: "BioNeMo Agent Toolkit",
-  description: "Bounded NVIDIA hosted-NIM adapters plus a preconfigured remote BioNeMo MCP gateway.",
-  version: PLUGIN_VERSION,
-  register(api) {
-    const runtime = createRuntime({ logger: api.logger });
+export function registerPlugin(api, options = {}) {
+    const runtime = options.runtime || createRuntime({ logger: api.logger });
+    const presentationRegistry = options.presentationRegistry || createPresentationRegistry();
     for (const definition of Object.values(SKILLS)) {
       api.registerTool({
         name: definition.tool,
@@ -150,7 +301,25 @@ export default {
           ? `${definition.description} It selects the configured NVIDIA or Cerebrium MCP model backend${definition.id === "research_drug_demo" ? " and can optionally run bounded Tavily research first" : ""}; research use only.`
           : `${definition.description} Bounded event-sized hosted NIM calls only; research use only.`,
         parameters: JSON_SCHEMAS[definition.id],
-        async execute(_toolCallId, params) { return toolResult(await runtime.runWorkflow(definition.id, params)); },
+        async execute(_toolCallId, params) {
+          const agentRunId = params?.[MCP_TURN_ID_FIELD];
+          try {
+            const result = toolResult(await runtime.runWorkflow(definition.id, params));
+            if (definition.crossBackend && validMcpTurnId(agentRunId)) {
+              const presentation = artifactPresentation(result, {
+                artifactRoot: runtime.store?.root,
+                publicBaseUrl: runtime.store?.publicBaseUrl,
+              });
+              if (presentation) presentationRegistry.set(agentRunId, presentation);
+              else presentationRegistry.clear(agentRunId);
+            }
+            return result;
+          }
+          catch (error) {
+            if (definition.crossBackend && validMcpTurnId(agentRunId)) presentationRegistry.clear(agentRunId);
+            throw error;
+          }
+        },
       });
     }
 
@@ -183,9 +352,43 @@ export default {
       }
       return { params: { ...event.params, [MCP_TURN_ID_FIELD]: runId } };
     });
+    api.on("before_agent_finalize", (event, ctx) => {
+      const agentRunId = ctx?.runId || event?.runId;
+      if (!validMcpTurnId(agentRunId)) return;
+      const presentation = presentationRegistry.get(agentRunId);
+      if (!presentation) return;
+      const appendFinalAssistantText = artifactPresentationAppendText(event?.lastAssistantMessage, presentation);
+      if (!appendFinalAssistantText) return;
+      return { action: "continue", appendFinalAssistantText };
+    });
+    api.on("agent_end", (event, ctx) => {
+      const agentRunId = event?.runId || ctx?.runId;
+      if (validMcpTurnId(agentRunId)) presentationRegistry.clear(agentRunId);
+    });
     api.on("before_prompt_build", async () => ({
       prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_*, clawbio_* MCP, and Tavily MCP tools. The four backend-neutral composed demo tools are bionemo_research_drug_demo, bionemo_compare_protein_structures, bionemo_optimize_ligand_complex, and bionemo_batch_fold_demo. After the user explicitly accepts every displayed const-true acknowledgement, call the selected composed tool exactly once and do not reproduce its internal model or optional Tavily calls. When clawbio_* MCP tools are available, use them for other BioNeMo model work and do not call the direct bionemo_* adapters; use direct bionemo_* only when the MCP tools are absent. Follow every displayed tool schema exactly. Pass direct bionemo_* arguments as one flat JSON object. For direct MolMIM calls, always pass num_molecules and keep particles greater than or equal to num_molecules. For direct ProteinMPNN calls, pass exactly one of input_pdb or input_pdb_sample. Adapted clawbio_* submission arguments are also flat: pass request fields at the top level as native JSON values plus only the displayed ack_* booleans after explicit user acceptance. Never send request, acknowledgements, or idempotency_key envelope fields, and never stringify an array or object. A clawbio_* submission tool may be called only once per user request. After it returns a job ID, poll only clawbio_job_status for that exact ID, at most four times; never resubmit or call jobs-list/model-fetch discovery while waiting. If it remains nonterminal, report the exact job ID and current status so the user can continue later. Never ask for or reveal credentials. For every artifact that has viewerMarkdown, copy that complete viewerMarkdown field verbatim into the final reply; it is already a clickable link in the exact form [View structure in 3D](<VALUE>). Do not reconstruct it from viewerUrl and do not leave either field as plain text. Its URL may be a same-origin path beginning with /; preserve it verbatim and never prepend, invent, or rewrite a host. Attach the top-ranked structure by emitting its exact absolute downloadPath as MEDIA:<downloadPath> on its own line in the final reply. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
     }));
     api.logger.info?.(`BioNeMo Agent Toolkit ${PLUGIN_VERSION} registered ${PUBLIC_CATALOG.skills.length} skills and ${PUBLIC_CATALOG.workflows.length} workflows`);
+    return { runtime, presentationRegistry };
+}
+
+export default {
+  id: "bionemo-agent-toolkit",
+  name: "BioNeMo Agent Toolkit",
+  description: "Bounded NVIDIA hosted-NIM adapters plus a preconfigured remote BioNeMo MCP gateway.",
+  version: PLUGIN_VERSION,
+  register(api) {
+    return registerPlugin(api);
   },
 };
+
+export const __test = Object.freeze({
+  artifactPresentation,
+  artifactPresentationAppendText,
+  appendArtifactPresentation,
+  appendArtifactPresentationText,
+  createPresentationRegistry,
+  registerPlugin,
+  textBlockPhase,
+  visibleAssistantText,
+});

@@ -5,7 +5,7 @@ import { LIMITS } from "./validation.mjs";
 export const TAVILY_SEARCH_URL = "https://api.tavily.com/search";
 export const DEFAULT_CEREBRIUM_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
 export const TAVILY_EGFR_QUERY = "EGFR gefitinib resistance mechanism medicinal chemistry current public research evidence";
-export const RESEARCH_DEMO_USER_AGENT = "nebius-bionemo-agent/3.3.1";
+export const RESEARCH_DEMO_USER_AGENT = "nebius-bionemo-agent/3.3.2";
 export const TAVILY_PRIMARY_DOMAINS = Object.freeze([
   "pubmed.ncbi.nlm.nih.gov",
   "pmc.ncbi.nlm.nih.gov",

@@ -166,7 +166,7 @@
         "enabled": true,
         "hooks": {
           "allowPromptInjection": true,
-          "allowConversationAccess": false
+          "allowConversationAccess": true
         },
         "config": {}
       }

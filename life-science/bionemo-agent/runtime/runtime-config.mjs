@@ -4,21 +4,20 @@ import { CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES } from "../openclaw-pl
 
 export const DEFAULT_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
-export const NEBIUS_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
+export const NEBIUS_MODEL = "deepseek-ai/DeepSeek-V4-Pro";
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
-// Token Factory's /v1/models catalog currently under-reports Super as 8K. The
-// serving limit below was returned by live request validation on 2026-08-12;
-// using 8K makes OpenClaw compact on ordinary BioNeMo tool prompts.
+// Keep all eight evaluated candidates here so known failures remain blocked
+// even when an operator supplies their exact id through AGENT_MODEL.
 export const TOKEN_FACTORY_QUALIFICATION = Object.freeze([
-  Object.freeze({ id: NEBIUS_MODEL, alias: "Nemotron 3 Nano", contextWindow: 262144, maxTokens: 8192 }),
+  Object.freeze({ id: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", alias: "Nemotron 3 Nano", qualified: false, reason: "truncated the optimized-ligand notebook after successful compute and omitted the OpenFold3 result, artifact links, and limitations" }),
   Object.freeze({ id: "nvidia/Nemotron-3_5-Lightning", alias: "Nemotron 3.5 Lightning", qualified: false, reason: "emitted string sentinels for nullable structured fields and attempted false consent acknowledgements" }),
-  Object.freeze({ id: "nvidia/nemotron-3-super-120b-a12b", alias: "Nemotron 3 Super", contextWindow: 262144, maxTokens: 4096, compat: Object.freeze({ maxTokensField: "max_tokens" }) }),
+  Object.freeze({ id: "nvidia/nemotron-3-super-120b-a12b", alias: "Nemotron 3 Super", qualified: false, reason: "made two structured calls to nonexistent MCP tool names before its third successful catalog call" }),
   Object.freeze({ id: "nvidia/Nemotron-3-Ultra-550b-a55b", alias: "Nemotron 3 Ultra", qualified: false, reason: "returned an unrelated workflow instead of the requested exact response in clean endpoint acceptance" }),
   Object.freeze({ id: "openai/gpt-oss-120b", alias: "GPT-OSS 120B", qualified: false, reason: "attempted model submissions without every required user acknowledgement" }),
   Object.freeze({ id: "Qwen/Qwen3-32B", alias: "Qwen3 32B", qualified: false, reason: "emitted visible provider-side reasoning tags and did not meet the presentation gate" }),
-  Object.freeze({ id: "zai-org/GLM-5.1", alias: "GLM 5.1", contextWindow: 202752, maxTokens: 8192 }),
-  Object.freeze({ id: "deepseek-ai/DeepSeek-V4-Pro", alias: "DeepSeek V4 Pro", contextWindow: 1048576, maxTokens: 8192 }),
+  Object.freeze({ id: "zai-org/GLM-5.1", alias: "GLM 5.1", qualified: false, reason: "failed the deployed OpenClaw MCP catalog turn with no structured tool call or final response" }),
+  Object.freeze({ id: NEBIUS_MODEL, alias: "DeepSeek V4 Pro", contextWindow: 1048576, maxTokens: 8192 }),
 ]);
 
 export const TOKEN_FACTORY_MODELS = Object.freeze(

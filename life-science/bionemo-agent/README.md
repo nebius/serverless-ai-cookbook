@@ -1,4 +1,4 @@
-# BioNeMo Agent Workbench 3.3.1 on Nebius Serverless
+# BioNeMo Agent Workbench 3.3.2 on Nebius Serverless
 
 This recipe packages a ready-to-start life-science agent environment for a
 Nebius Serverless CPU endpoint. The image contains:
@@ -34,26 +34,24 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 | Available credential | Reasoning provider | Default model |
 |---|---|---|
 | `NVIDIA_API_KEY` or `NGC_API_KEY` | NVIDIA Build | `nvidia/nemotron-3-super-120b-a12b` |
-| `NEBIUS_API_KEY` | Nebius Token Factory | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` |
+| `NEBIUS_API_KEY` | Nebius Token Factory | `deepseek-ai/DeepSeek-V4-Pro` |
 | `OPENAI_API_KEY` | OpenAI | `gpt-5.6` using the OpenClaw runtime |
 | `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
 | none | local setup-required responder | no external model |
 
-The Token Factory picker exposes the four models that passed the workbench's
-structured-tool, native-JSON, consent, and presentation gates: Nemotron 3 Nano,
-Nemotron 3 Super, GLM 5.1, and DeepSeek V4 Pro. Nano remains the default because
-its 262K context window is the safest fit for the workbench's tool schemas. The
-live service accepts a 262,144-token context for Super even though the model
-catalog currently under-reports it as 8K. The image supplies that independently
-verified limit and sends `max_tokens` specifically for Super, whose route
-rejects `max_completion_tokens`.
+The Token Factory picker exposes only DeepSeek V4 Pro. It is the sole model from
+the eight-model qualification matrix that completed a clean deployed OpenClaw
+MCP catalog turn and the full notebook workflow gate without malformed,
+duplicate, truncated, or missing tool behavior.
 
-The same gate tested all eight previously exposed models. Lightning was removed
-for invalid nullable-object types and false consent attempts, GPT-OSS for
-missing-consent attempts, Qwen3 for provider-visible reasoning tags, and Ultra
-for an unrelated response in clean endpoint acceptance. Those known-failing
-IDs are rejected even when supplied through `AGENT_MODEL`; arbitrary operator
-models remain available as explicit custom overrides.
+The same gate tested all eight previously exposed models. Nano was removed after
+its optimized-ligand notebook response truncated before the OpenFold3 result and
+artifacts; Super made two structured calls to nonexistent MCP tools before a
+third successful call; GLM failed the deployed MCP turn without a callable tool
+or final answer. Lightning, GPT-OSS, Qwen3, and Ultra retain their previously
+documented schema, consent, presentation, and response failures. Those known-
+failing IDs are rejected even when supplied through `AGENT_MODEL`; arbitrary
+operator models remain available as explicit custom overrides.
 
 The NVIDIA Build profile uses Nemotron 3 Super with template thinking disabled.
 Release acceptance produced one structured flat OpenFold2 call, five PDB
@@ -65,7 +63,7 @@ bounded 240-second idle timeout so a slow hosted response does not discard an
 already completed BioNeMo NIM result.
 
 OpenClaw reserves at least 20,000 tokens for compaction recovery. This keeps
-long Super, Nano, GLM, and DeepSeek tool sessions out of the unrecoverable
+long NVIDIA Super and Token Factory DeepSeek tool sessions out of the unrecoverable
 low-buffer state identified by OpenClaw's compaction warning.
 
 Override the reasoning choice with `AGENT_PROVIDER=nvidia|nebius|openai|anthropic|claude|setup`, the
@@ -140,7 +138,7 @@ pipeline without search or a Tavily credential.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.3.1` |
+| Workbench | `3.3.2` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -183,7 +181,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.1"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.2"
 ./scripts/build_image.sh
 ```
 
@@ -193,45 +191,51 @@ release on fixable Critical findings. Deploy the printed digest or a unique,
 digest-derived short alias when Serverless label limits make the full digest
 reference too long.
 
-## Deploy one Serverless endpoint
+## Deploy a Serverless endpoint
 
-`AUTH_TOKEN_SECRET` is the only required application selector. Every model or
-search credential is optional. A selector may be a MysteryBox secret name,
-secret ID, version ID, or another selector accepted by the Nebius CLI; its
-payload key must match the environment variable name.
+The deployment interface has one positional choice and two required selectors:
+
+- `nvidia` or `tokenfactory` selects the complete, tested role;
+- `AUTH_TOKEN_SECRET` points to a MysteryBox secret containing `AUTH_TOKEN`;
+- `MODEL_CREDENTIALS_SECRET` points to a secret containing `NVIDIA_API_KEY`
+  for NVIDIA, or both `NEBIUS_API_KEY` and `BIONEMO_MCP_API_KEY` for Token
+  Factory plus Cerebrium MCP.
+
+Tavily is optional. Set `TAVILY_SECRET` to a selector containing
+`TAVILY_API_KEY` to enable the research step; without it, the same notebook
+records that research was skipped and continues the scientific workflow.
 
 ```bash
-export PROFILE=sandbox
-export PARENT_ID=project-e00z6b02t8ddk96c49
-export SUBNET_ID=vpcsubnet-e00p701fa30cj5f7wq
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/ba:3.3.1-<digest8>"
+# The active Nebius CLI profile supplies the project automatically.
 export AUTH_TOKEN_SECRET="<selector-with-AUTH_TOKEN>"
+export MODEL_CREDENTIALS_SECRET="<selector-for-this-backend>"
+export TAVILY_SECRET="<optional-selector-with-TAVILY_API_KEY>"
 
-# Any combination is optional. Set only one of the NVIDIA alternatives.
-export NVIDIA_API_KEY_SECRET="<selector-with-NVIDIA_API_KEY>"
-# export NGC_API_KEY_SECRET="<selector-with-NGC_API_KEY>"
-# export NEBIUS_API_KEY_SECRET="<selector-with-NEBIUS_API_KEY>"
-# export OPENAI_API_KEY_SECRET="<selector-with-OPENAI_API_KEY>"
-# export ANTHROPIC_API_KEY_SECRET="<selector-with-ANTHROPIC_API_KEY>"
-# export BIONEMO_MCP_API_KEY_SECRET="<selector-with-BIONEMO_MCP_API_KEY>"
-# export TAVILY_API_KEY_SECRET="<selector-with-TAVILY_API_KEY>"
-
-export ENDPOINT_NAME="bionemo-agent-workbench-3"
-./scripts/run_serverless_endpoint.sh
+./scripts/run_serverless_endpoint.sh nvidia
+# or
+./scripts/run_serverless_endpoint.sh tokenfactory
 ```
 
-The defaults create a regular `cpu-d3` / `4vcpu-16gb` endpoint with a 30 GiB
-disk and container port `18789`. Open the HTTPS URL managed by Nebius
-Serverless directly; there is no Cloudflare hop or custom reverse proxy.
-Do not put secret values in plain `--env` arguments or URLs.
+The script defaults to the public `ba:latest` image and resolves it to an
+immutable digest before creating the endpoint. `IMAGE`, `ENDPOINT_NAME`, and
+`SUBNET_ID` remain optional escape hatches; normally none is needed. A
+MysteryBox selector may be a secret name, secret ID, version ID, or
+`SECRET_ID@VERSION_ID`.
+
+The release fixes the non-choice settings in the script: native Nebius HTTPS,
+no public VM IP, no device pairing, no Cloudflare process, the production MCP
+URL, `cpu-d3` / `4vcpu-16gb`, a 30 GiB disk, and container port `18789`. This
+keeps stale shell variables from silently changing the deployment. Open the
+HTTPS URL managed by Nebius Serverless directly, and never put secret values in
+plain `--env` arguments or URLs.
 
 Nebius assigns the browser URL only after the endpoint is created, so it cannot
 be put in OpenClaw's static origin allowlist at image startup, and the
 Serverless edge presents an internal Host header to the container. In the
-default event-oriented mode, the Control UI accepts any browser origin while
-the rate-limited OpenClaw `AUTH_TOKEN` remains mandatory. If an exact origin is
-known in advance, set it as `BIONEMO_PUBLIC_ORIGIN`; the launcher then uses that
-static allowlist instead.
+standard event-oriented deployment, the Control UI accepts the managed browser
+origin while the rate-limited OpenClaw `AUTH_TOKEN` remains mandatory. A custom
+operator may use `BIONEMO_PUBLIC_ORIGIN` with the raw image, but the simplified
+Serverless interface deliberately does not expose it.
 
 Expose only the Nebius-managed HTTPS endpoint: omit `--public`
 so the container has no directly reachable public IP. Also omit Serverless
@@ -244,10 +248,10 @@ cannot be completed by an ordinary browser navigation. The managed HTTPS edge
 remains the only network path and OpenClaw's rate-limited token authentication
 remains active.
 
-For compatibility, `BIONEMO_HTTPS_MODE=cloudflare` explicitly enables the
-older Cloudflare quick-tunnel path and Serverless token authentication.
+## Advanced image runtime reference
 
-## Environment-variable reference
+These are image-level controls for custom operators. The standard Serverless
+deployment script derives or fixes them and does not require them from users.
 
 | Variable | Secret | Required | Purpose |
 |---|---:|---:|---|
@@ -275,8 +279,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.3.1-test .
-docker run --rm bionemo-agent:3.3.1-test doctor
+docker build -t bionemo-agent:3.3.2-test .
+docker run --rm bionemo-agent:3.3.2-test doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`
