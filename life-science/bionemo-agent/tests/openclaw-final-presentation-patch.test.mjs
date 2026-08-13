@@ -49,7 +49,7 @@ test("pinned OpenClaw final presentation patch is fail-closed, phase-safe, and i
   const lifecycle = await chunk(distRoot, "lifecycle-hook-helpers-", "function normalizeBeforeAgentFinalizeResult");
   const selection = await chunk(distRoot, "selection-", "function handleAgentEnd(ctx, evt)");
   for (const candidate of [hookRunner, lifecycle, selection]) {
-    assert.match(candidate.source, /openclaw\.bionemo\.final-presentation\.v1/u);
+    assert.match(candidate.source, /openclaw\.bionemo\.final-presentation\.v2/u);
     await execFileAsync(process.execPath, ["--check", path.join(distRoot, candidate.name)]);
   }
   assert.match(hookRunner.source, /concatOptionalTextSegments\(\{\s*left: acc\?\.appendFinalAssistantText,\s*right: next\.appendFinalAssistantText/su);
@@ -57,10 +57,88 @@ test("pinned OpenClaw final presentation patch is fail-closed, phase-safe, and i
   assert.match(selection.source, /textSignature: JSON\.stringify\(\{ v: 1, phase: "final_answer" \}\)/u);
   assert.match(selection.source, /rewriteTranscriptEntriesInSessionManager/u);
   assert.match(selection.source, /activeSession\.agent\.state\.messages = activeSessionManager\.buildSessionContext\(\)\.messages/u);
-  assert.match(selection.source, /replace: true,\s*phase: "final_answer"/su);
+  assert.match(selection.source, /ctx\.state\.assistantTexts\[index\] = rawReplacement/u);
+  assert.match(selection.source, /parseReplyDirectives\(splitTrailingDirective\(rawReplacement\.trim\(\), \{ final: true \}\)\.text\)/u);
+  assert.match(selection.source, /resolveSendableOutboundReplyParts\(parsedReplacement\)/u);
+  assert.match(selection.source, /text: cleanedReplacement,\s*delta: "",\s*replace: true,\s*mediaUrls,\s*phase: "final_answer"/su);
   const asyncTerminal = selection.source.match(/\.then\(\(decision\) => \{[\s\S]*?return deliverTerminalWithLifecycleErrorFallback\(\);\n\t\}\);/u)?.[0];
   assert.ok(asyncTerminal);
   assert.ok(asyncTerminal.indexOf("applyFinalPresentation(decision)") < asyncTerminal.indexOf("return deliverTerminalWithLifecycleErrorFallback();"));
+});
+
+test("final presentation live replacement uses native directive delivery while preserving raw transcript text", { timeout: 120_000 }, async (t) => {
+  const distRoot = await pinnedDist(t);
+  await patchOpenClawFinalPresentation(distRoot);
+  const selection = await chunk(distRoot, "selection-", "function handleAgentEnd(ctx, evt)");
+  const directives = await chunk(distRoot, "payloads-", "function parseReplyDirectives");
+  const replyPayload = await chunk(distRoot, "reply-payload-", "function resolveSendableOutboundReplyParts");
+  const applySource = selection.source.match(/\tconst applyFinalPresentation = \(decision\) => \{[\s\S]*?\n\t\};\n\tconst deliverTerminal/u)?.[0]
+    ?.replace(/\n\tconst deliverTerminal$/u, "");
+  assert.ok(applySource, "patched live presentation helper must be extractable");
+
+  const rawReplacement = "Normalized answer.\n\nMEDIA:/tmp/native-structure.cif";
+  const coreScript = [
+    `import { f as parseReplyDirectives } from ${JSON.stringify(`file:///app/dist/${directives.name}`)};`,
+    `import { m as resolveSendableOutboundReplyParts } from ${JSON.stringify(`file:///app/dist/${replyPayload.name}`)};`,
+    `const parsed = parseReplyDirectives(${JSON.stringify(rawReplacement)});`,
+    "process.stdout.write(JSON.stringify({ parsed, sendable: resolveSendableOutboundReplyParts(parsed) }));",
+  ].join("\n");
+  const { stdout: coreStdout } = await execFileAsync("docker", [
+    "run", "--rm", "--network", "none", "--entrypoint", "node", PINNED_IMAGE,
+    "--input-type=module", "--eval", coreScript,
+  ]);
+  const core = JSON.parse(coreStdout);
+  assert.equal(core.parsed.text, "Normalized answer.");
+  assert.deepEqual(core.sendable.mediaUrls, ["/tmp/native-structure.cif"]);
+  assert.equal(core.sendable.hasMedia, true);
+
+  const emitted = [];
+  const ctx = {
+    state: { assistantTexts: ["Provider answer."] },
+    emitAssistantStreamData: (data) => emitted.push(data),
+  };
+  const calls = [];
+  const applyFinalPresentation = Function(
+    "ctx",
+    "splitTrailingDirective",
+    "parseReplyDirectives",
+    "resolveSendableOutboundReplyParts",
+    "buildAssistantStreamData",
+    `"use strict";\n${applySource}\nreturn applyFinalPresentation;`,
+  )(
+    ctx,
+    (text, options) => {
+      calls.push(["split", text, options]);
+      return { text, tail: "" };
+    },
+    (text) => {
+      calls.push(["parse", text]);
+      return core.parsed;
+    },
+    (payload) => {
+      calls.push(["resolve", payload]);
+      return core.sendable;
+    },
+    (payload) => ({
+      text: payload.text ?? "",
+      delta: payload.delta ?? "",
+      replace: payload.replace ? true : undefined,
+      mediaUrls: payload.mediaUrls?.length ? payload.mediaUrls : undefined,
+      phase: payload.phase,
+    }),
+  );
+
+  const decision = { replacementAssistantText: rawReplacement };
+  assert.equal(applyFinalPresentation(decision), decision);
+  assert.equal(ctx.state.assistantTexts[0], rawReplacement, "assistantTexts must retain raw MEDIA for persistence");
+  assert.deepEqual(calls[0], ["split", rawReplacement, { final: true }]);
+  assert.deepEqual(emitted, [{
+    text: "Normalized answer.",
+    delta: "",
+    replace: true,
+    mediaUrls: ["/tmp/native-structure.cif"],
+    phase: "final_answer",
+  }]);
 });
 
 test("final presentation patch rejects a drifted pinned chunk before writing", async (t) => {
@@ -80,6 +158,6 @@ test("final presentation patch rejects a partially patched runtime", async (t) =
   const distRoot = await pinnedDist(t);
   const hookRunner = await chunk(distRoot, "hook-runner-global-", "const mergeBeforeAgentFinalize");
   const hookPath = path.join(distRoot, hookRunner.name);
-  await writeFile(hookPath, `/* openclaw.bionemo.final-presentation.v1 */\n${hookRunner.source}`);
+  await writeFile(hookPath, `/* openclaw.bionemo.final-presentation.v2 */\n${hookRunner.source}`);
   await assert.rejects(() => patchOpenClawFinalPresentation(distRoot), /partially patched/u);
 });

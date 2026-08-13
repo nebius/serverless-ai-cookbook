@@ -15,7 +15,7 @@ export const PINNED_OPENCLAW_FINAL_PRESENTATION_HASHES = Object.freeze({
   ]),
 });
 
-const PATCH_MARKER = "openclaw.bionemo.final-presentation.v1";
+const PATCH_MARKER = "openclaw.bionemo.final-presentation.v2";
 
 const MERGE_START_ANCHOR = `\tconst mergeBeforeAgentFinalize = (acc, next) => {
 \t\tconst normalizeRetry = (retry) => {`;
@@ -189,15 +189,19 @@ const FINALIZE_OUTCOME_REPLACEMENT = `\t\t\t\t});
 const APPLY_LIVE_ANCHOR = `\tconst deliverTerminal = () => {
 \t\tctx.state.deferBlockReplyDelivery = false;`;
 const APPLY_LIVE_REPLACEMENT = `\tconst applyFinalPresentation = (decision) => {
-\t\tconst replacement = decision?.replacementAssistantText;
-\t\tif (typeof replacement !== "string" || !replacement.trim()) return decision;
+\t\tconst rawReplacement = decision?.replacementAssistantText;
+\t\tif (typeof rawReplacement !== "string" || !rawReplacement.trim()) return decision;
 \t\tconst index = ctx.state.assistantTexts.length - 1;
-\t\tif (index >= 0) ctx.state.assistantTexts[index] = replacement;
-\t\telse ctx.state.assistantTexts.push(replacement);
-\t\tctx.emitAssistantStreamData(buildAssistantStreamData({
-\t\t\ttext: replacement,
+\t\tif (index >= 0) ctx.state.assistantTexts[index] = rawReplacement;
+\t\telse ctx.state.assistantTexts.push(rawReplacement);
+\t\tconst parsedReplacement = parseReplyDirectives(splitTrailingDirective(rawReplacement.trim(), { final: true }).text);
+\t\tconst cleanedReplacement = parsedReplacement.text ?? "";
+\t\tconst { mediaUrls, hasMedia } = resolveSendableOutboundReplyParts(parsedReplacement);
+\t\tif (cleanedReplacement || hasMedia) ctx.emitAssistantStreamData(buildAssistantStreamData({
+\t\t\ttext: cleanedReplacement,
 \t\t\tdelta: "",
 \t\t\treplace: true,
+\t\t\tmediaUrls,
 \t\t\tphase: "final_answer"
 \t\t}));
 \t\treturn decision;
