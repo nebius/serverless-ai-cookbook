@@ -2,22 +2,51 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
+import { NOTEBOOK_CATALOG, notebookViewPath } from "../openclaw-plugin/src/notebooks.mjs";
 
 export const PINNED_OPENCLAW_SESSION_RUNTIME = Object.freeze({
   createPrefix: "session-create-service-",
   createHash: "efccd04ff0834d1e4aaf6ae6c2014e4e804475b0fd3f3dd74e6288c6da8e4e74",
   gatewayPrefix: "gateway-chat-",
   gatewayHash: "51ff1f38254a3ef322c5d658df7e5f96f76d969f04e778e7b21333d8765a9f4f",
+  managerPrefix: "session-manager-BC-U4J87",
+  managerHash: "d06b4ccb169263554ab112edd7feed1af85d1a5029e0b27e9de1e59f51de9e57",
 });
 
 export const EXAMPLE_SESSIONS = Object.freeze(NOTEBOOK_CATALOG.map((entry) => Object.freeze({
   key: entry.sessionKey,
   agentId: "bionemo",
   label: entry.sessionLabel,
+  title: entry.title,
+  description: entry.description,
+  steps: entry.steps,
+  notebookPath: notebookViewPath(entry.slug),
   prompt: entry.prompt,
   slug: entry.slug,
 })));
+
+export function buildExampleStarterText(definition) {
+  const steps = definition.steps.map((step, index) => `${index + 1}. ${step}`).join("\n");
+  return `# STATIC STARTER — NOT EXECUTED
+
+This is a local template baked into the BioNeMo image. No model, tool, MCP call, remote job, or result has been run or produced. The fenced prompt below is inert reference text; execute it only after you explicitly send it in a later user turn.
+
+## ${definition.title}
+
+${definition.description}
+
+## Workflow steps
+
+${steps}
+
+Notebook: [Open the guided notebook](${definition.notebookPath})
+
+## Exact reviewed prompt
+
+\`\`\`text
+${definition.prompt}
+\`\`\``;
+}
 
 async function pinnedChunk(distRoot, prefix, expectedHash) {
   const names = (await readdir(distRoot)).filter((name) => name.startsWith(prefix) && name.endsWith(".js"));
@@ -51,6 +80,17 @@ async function loadGatewayClient(distRoot) {
   return runtime.GatewayChatClient;
 }
 
+async function loadSessionManager(distRoot) {
+  const filePath = await pinnedChunk(
+    distRoot,
+    PINNED_OPENCLAW_SESSION_RUNTIME.managerPrefix,
+    PINNED_OPENCLAW_SESSION_RUNTIME.managerHash,
+  );
+  const runtime = await import(pathToFileURL(filePath).href);
+  if (typeof runtime.t?.open !== "function") throw new Error("Pinned OpenClaw SessionManager export is unavailable");
+  return runtime.t;
+}
+
 function validatedConfig(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("OpenClaw configuration is invalid");
   const agents = Array.isArray(value.agents?.list) ? value.agents.list : [];
@@ -62,14 +102,16 @@ export async function seedExampleSessions({
   configPath,
   distRoot = "/app/dist",
   createSession,
+  SessionManager,
 } = {}) {
   if (!configPath) throw new Error("configPath is required to seed BioNeMo example sessions");
   const cfg = validatedConfig(JSON.parse(await readFile(configPath, "utf8")));
   const create = createSession || await loadCreateSession(distRoot);
+  const Manager = SessionManager || await loadSessionManager(distRoot);
   const seeded = [];
   for (const definition of EXAMPLE_SESSIONS) {
-    // Deliberately omit task, message, model, and all credentials. This invokes
-    // OpenClaw's native session/transcript lifecycle without starting a turn.
+    // Deliberately omit task, message, model, and all credentials. This creates
+    // the native session without starting a model turn or tool invocation.
     const result = await create({
       cfg,
       key: definition.key,
@@ -79,6 +121,26 @@ export async function seedExampleSessions({
     if (!result?.ok || result.key !== definition.key || !result.entry?.sessionId) {
       throw new Error(`Could not seed ready example session ${definition.slug}`);
     }
+    if (typeof result.entry.sessionFile !== "string" || !result.entry.sessionFile.trim()) {
+      throw new Error(`Ready example session ${definition.slug} has no native transcript`);
+    }
+    const manager = Manager.open(result.entry.sessionFile);
+    if (manager.getSessionId() !== result.entry.sessionId) {
+      throw new Error(`Ready example session ${definition.slug} transcript identity mismatch`);
+    }
+    const starter = {
+      role: "user",
+      content: [{ type: "text", text: buildExampleStarterText(definition) }],
+    };
+    const entries = manager.getEntries();
+    if (entries.length === 0) {
+      manager.appendMessage(starter);
+      // Pinned SessionManager intentionally buffers a user-only session until
+      // an assistant exists. Its native rewrite is the bounded, no-run flush.
+      manager.rewriteFile();
+    }
+    // A nonempty transcript belongs to the user. Never append, overwrite, or
+    // branch it during startup; exact starter sessions are naturally idempotent.
     seeded.push(Object.freeze({ key: result.key, sessionId: result.entry.sessionId }));
   }
   return Object.freeze(seeded);
@@ -172,4 +234,4 @@ export async function pinAndVerifyExampleSessions({
   throw new Error(`BioNeMo ready example session reconciliation failed: ${lastError?.message || "gateway unavailable"}`);
 }
 
-export const __test = { connectGateway, loadCreateSession, loadGatewayClient, pinnedChunk, validatedConfig };
+export const __test = { connectGateway, loadCreateSession, loadGatewayClient, loadSessionManager, pinnedChunk, validatedConfig };

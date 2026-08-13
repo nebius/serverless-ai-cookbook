@@ -5,7 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
-import { EXAMPLE_SESSIONS, pinAndVerifyExampleSessions, seedExampleSessions } from "../runtime/example-sessions.mjs";
+import {
+  EXAMPLE_SESSIONS,
+  buildExampleStarterText,
+  pinAndVerifyExampleSessions,
+  seedExampleSessions,
+} from "../runtime/example-sessions.mjs";
 
 const execFileAsync = promisify(execFile);
 const PINNED_IMAGE = "ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac";
@@ -50,21 +55,36 @@ test("four stable ready examples map one-to-one to the baked notebooks", () => {
   ]);
 });
 
-test("native seeding sends no task, message, model, credential, or synthetic output", async (t) => {
+test("native seeding writes one explicit local user starter without starting a run", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-example-seed-unit-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const configPath = path.join(root, "openclaw.json");
   await writeFile(configPath, JSON.stringify(minimalConfig(path.join(root, "workspace"))));
   const ids = new Map();
   const calls = [];
+  const transcripts = new Map();
   const createSession = async (params) => {
     calls.push(params);
     const sessionId = ids.get(params.key) || `stable-${ids.size + 1}`;
     ids.set(params.key, sessionId);
-    return { ok: true, key: params.key, entry: { sessionId } };
+    const sessionFile = path.join(root, `${sessionId}.jsonl`);
+    if (!transcripts.has(sessionFile)) transcripts.set(sessionFile, { sessionId, entries: [], rewrites: 0 });
+    return { ok: true, key: params.key, entry: { sessionId, sessionFile } };
   };
-  const first = await seedExampleSessions({ configPath, createSession });
-  const second = await seedExampleSessions({ configPath, createSession });
+  class FakeSessionManager {
+    static open(sessionFile) {
+      const state = transcripts.get(sessionFile);
+      assert.ok(state);
+      return {
+        getSessionId: () => state.sessionId,
+        getEntries: () => state.entries.map((entry) => structuredClone(entry)),
+        appendMessage: (message) => state.entries.push({ type: "message", message: structuredClone(message) }),
+        rewriteFile: () => { state.rewrites += 1; },
+      };
+    }
+  }
+  const first = await seedExampleSessions({ configPath, createSession, SessionManager: FakeSessionManager });
+  const second = await seedExampleSessions({ configPath, createSession, SessionManager: FakeSessionManager });
   assert.deepEqual(first, second);
   assert.equal(calls.length, 8);
   for (const call of calls) {
@@ -73,6 +93,51 @@ test("native seeding sends no task, message, model, credential, or synthetic out
     assert.equal(Object.hasOwn(call, "message"), false);
     assert.equal(Object.hasOwn(call, "model"), false);
   }
+  for (const definition of EXAMPLE_SESSIONS) {
+    const sessionId = ids.get(definition.key);
+    const state = transcripts.get(path.join(root, `${sessionId}.jsonl`));
+    assert.equal(state.rewrites, 1);
+    assert.deepEqual(state.entries, [{
+      type: "message",
+      message: {
+        role: "user",
+        content: [{ type: "text", text: buildExampleStarterText(definition) }],
+      },
+    }]);
+    assert.match(state.entries[0].message.content[0].text, /^# STATIC STARTER — NOT EXECUTED\n/u);
+  }
+});
+
+test("native seeding preserves a nonempty user transcript without inserting a starter", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-example-seed-preserve-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const configPath = path.join(root, "openclaw.json");
+  await writeFile(configPath, JSON.stringify(minimalConfig(path.join(root, "workspace"))));
+  const states = new Map(EXAMPLE_SESSIONS.map((definition, index) => [definition.key, {
+    sessionId: `preserved-${index}`,
+    sessionFile: path.join(root, `preserved-${index}.jsonl`),
+    entries: [{ type: "message", message: { role: "user", content: [{ type: "text", text: "Existing user work" }] } }],
+  }]));
+  class FakeSessionManager {
+    static open(sessionFile) {
+      const state = [...states.values()].find((candidate) => candidate.sessionFile === sessionFile);
+      return {
+        getSessionId: () => state.sessionId,
+        getEntries: () => structuredClone(state.entries),
+        appendMessage: () => assert.fail("must not append to a nonempty transcript"),
+        rewriteFile: () => assert.fail("must not rewrite a nonempty transcript"),
+      };
+    }
+  }
+  await seedExampleSessions({
+    configPath,
+    SessionManager: FakeSessionManager,
+    createSession: async ({ key }) => {
+      const state = states.get(key);
+      return { ok: true, key, entry: { sessionId: state.sessionId, sessionFile: state.sessionFile } };
+    },
+  });
+  assert.equal([...states.values()].every(({ entries }) => entries[0].message.content[0].text === "Existing user work"), true);
 });
 
 test("gateway reconciliation pins only drifted examples and verifies sessions.list metadata", async () => {
@@ -122,7 +187,7 @@ test("gateway reconciliation pins only drifted examples and verifies sessions.li
   assert.equal(instances.every(({ stopped }) => stopped), true);
 });
 
-test("exact pinned OpenClaw creates four header-only sessions idempotently", { timeout: 120_000 }, async (t) => {
+test("exact pinned OpenClaw creates four visible local starter sessions idempotently", { timeout: 120_000 }, async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-example-seed-pinned-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const stateDir = path.join(root, "state");
@@ -163,10 +228,21 @@ test("exact pinned OpenClaw creates four header-only sessions idempotently", { t
     assert.equal(entry.label, definition.label);
     const transcript = await readFile(entry.sessionFile, "utf8");
     const lines = transcript.trimEnd().split("\n").map(JSON.parse);
-    assert.equal(lines.length, 1);
+    assert.equal(lines.length, 2);
     assert.deepEqual({ type: lines[0].type, version: lines[0].version, id: lines[0].id }, { type: "session", version: 3, id: entry.sessionId });
     assert.equal(Object.hasOwn(lines[0], "role"), false);
     assert.equal(Object.hasOwn(lines[0], "message"), false);
+    assert.equal(lines[1].type, "message");
+    assert.equal(lines[1].parentId, null);
+    assert.deepEqual(lines[1].message, {
+      role: "user",
+      content: [{ type: "text", text: buildExampleStarterText(definition) }],
+    });
+    assert.match(lines[1].message.content[0].text, /^# STATIC STARTER — NOT EXECUTED\n/u);
+    assert.equal(lines.some(({ message }) => message?.role === "assistant" || message?.role === "tool"), false);
+    assert.equal(Object.hasOwn(lines[1].message, "model"), false);
+    assert.equal(Object.hasOwn(lines[1].message, "toolCall"), false);
+    assert.equal(Object.hasOwn(lines[1].message, "toolResult"), false);
     assert.equal((await stat(entry.sessionFile)).mode & 0o777, 0o600);
   }
 });
