@@ -12,6 +12,7 @@ import {
   bionemoSuperCompletedToolTarget,
   bionemoSuperDeterministicFinalText,
   bionemoSuperInitialNotebookTool,
+  bionemoSuperLocalCompletionText,
   bionemoSuperShouldFinalizeWithoutTools,
   patchOpenClawSuperFollowup,
 } from "../runtime/patch-openclaw-super-followup.mjs";
@@ -21,11 +22,11 @@ const PINNED_IMAGE = "ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24
 const superModel = { provider: "tokenfactory", id: "nvidia/nemotron-3-super-120b-a12b" };
 const deepSeekModel = { provider: "tokenfactory", id: "deepseek-ai/DeepSeek-V4-Pro" };
 
-function turn(name, { id = name, isError = false, arguments: args = {} } = {}) {
+function turn(name, { id = name, isError = false, arguments: args = {}, status = "completed" } = {}) {
   return { messages: [
     { role: "user", content: [{ type: "text", text: "run" }] },
     { role: "assistant", content: [{ type: "toolCall", id: "call-1", name, arguments: name === "tool_call" ? { id, ...args } : args }] },
-    { role: "toolResult", toolCallId: "call-1", toolName: name, isError, content: [{ type: "text", text: "done" }] },
+    { role: "toolResult", toolCallId: "call-1", toolName: name, isError, content: [{ type: "text", text: JSON.stringify({ status, summary: { skill: name } }) }] },
   ] };
 }
 
@@ -51,6 +52,26 @@ test("Token Factory Super and DeepSeek finalize after successful atomic wrappers
   errored.messages.at(-1).error = { code: "failed" };
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, errored), false);
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(deepSeekModel, errored), false);
+});
+
+test("host-local completion is limited to exact completed Token Factory Super tool boundaries", () => {
+  const completed = turn("bionemo_molmim");
+  assert.match(bionemoSuperLocalCompletionText(superModel, completed), /MolMIM optimization returned a terminal result/u);
+  const structured = structuredClone(completed);
+  structured.messages.at(-1).content = [{ type: "text", text: "not-json" }];
+  structured.messages.at(-1).structuredContent = { status: "completed", summary: { skill: "MolMIM" } };
+  assert.match(bionemoSuperLocalCompletionText(superModel, structured), /MolMIM optimization returned a terminal result/u);
+  assert.equal(bionemoSuperLocalCompletionText(deepSeekModel, completed), undefined);
+  assert.equal(bionemoSuperLocalCompletionText(superModel, turn("bionemo_molmim", { status: "running" })), undefined);
+  assert.equal(bionemoSuperLocalCompletionText(superModel, turn("bionemo_molmim", { status: null })), undefined);
+  assert.equal(bionemoSuperLocalCompletionText(superModel, turn("bionemo_molmim", { isError: true })), undefined);
+  const ambiguous = structuredClone(completed);
+  delete ambiguous.messages.at(-1).isError;
+  assert.equal(bionemoSuperLocalCompletionText(superModel, ambiguous), undefined);
+  assert.equal(bionemoSuperLocalCompletionText(superModel, turn("tavily_search")), undefined);
+  const mismatch = structuredClone(completed);
+  mismatch.messages.at(-1).toolCallId = "other";
+  assert.equal(bionemoSuperLocalCompletionText(superModel, mismatch), undefined);
 });
 
 test("Super initial calls are source-owned only for exact reviewed prompts", () => {
@@ -134,25 +155,33 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v5/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v6/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
-  const guard = source.indexOf("if (bionemoSuperShouldFinalizeWithoutTools(model, context))");
+  const guard = source.indexOf("if (bionemoSuperFinalText)");
   const request = source.indexOf("client.chat.completions.create(params");
   assert.ok(callback >= 0 && callback < codeMode && codeMode < guard && guard < request);
   assert.match(source, /delete params\.tools;\s*params\.tool_choice = "none";/su);
-  assert.match(source, /bionemoSuperFinalText: bionemoSuperDeterministicFinalText\(model, context\)/u);
+  assert.match(source, /const bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText\(model, context\)/u);
+  assert.match(source, /const client = bionemoSuperLocalFinalText \? undefined : createOpenAICompletionsClient/u);
+  assert.match(source, /const responseStream = bionemoSuperLocalFinalText\s*\? \(async function\* bionemoSuperCompletedStream\(\) \{\s*yield \{ id: "bionemo-local-completion", choices:/su);
+  assert.match(source, /bionemoSuperFinalText,/u);
   assert.match(source, /if \(!bionemoSuperFinalText && !bionemoSuperInitialTool && choiceDelta\.tool_calls/u);
   assert.match(source, /if \(choiceDelta\.content && !bionemoSuperFinalText && !bionemoSuperInitialTool\)/u);
   assert.match(source, /appendTextDelta\(bionemoSuperFinalText\)/u);
   assert.match(source, /params\.tool_choice = \{ type: "function", function: \{ name: bionemoSuperInitialTool\.name \} \}/u);
   await execFileAsync(process.execPath, ["--check", path.join(distRoot, file)]);
 
-  const testingSource = source.replace(
+  let testingSource = source.replace(
     "export { ",
-    "export { processOpenAICompletionsStream as __bionemoProcessOpenAICompletionsStream, bionemoSuperDeterministicFinalText as __bionemoSuperDeterministicFinalText, bionemoSuperShouldFinalizeWithoutTools as __bionemoSuperShouldFinalizeWithoutTools, ",
+    "export { createOpenAICompletionsTransportStreamFn as __bionemoCreateOpenAICompletionsTransportStreamFn, processOpenAICompletionsStream as __bionemoProcessOpenAICompletionsStream, bionemoSuperDeterministicFinalText as __bionemoSuperDeterministicFinalText, bionemoSuperLocalCompletionText as __bionemoSuperLocalCompletionText, bionemoSuperShouldFinalizeWithoutTools as __bionemoSuperShouldFinalizeWithoutTools, ",
   );
   assert.notEqual(testingSource, source);
+  testingSource = testingSource.replaceAll(
+    "fetch: buildGuardedModelFetch(model),",
+    "fetch: globalThis.__bionemoTestFetch ?? buildGuardedModelFetch(model),",
+  );
+  assert.match(testingSource, /globalThis\.__bionemoTestFetch \?\? buildGuardedModelFetch/u);
   await writeFile(path.join(distRoot, file), testingSource);
   const expectedInitial = BIONEMO_SUPER_NOTEBOOK_TURNS[1];
   const integrationScript = `
@@ -184,6 +213,57 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.equal(patched.__bionemoSuperShouldFinalizeWithoutTools(deepSeekModel, successfulBoundary), true);
     const sourceOwnedFinal = patched.__bionemoSuperDeterministicFinalText(deepSeekModel, successfulBoundary);
     assert.match(sourceOwnedFinal, /five-protein OpenFold2 workflow returned a terminal result/u);
+    const superLocalFinal = patched.__bionemoSuperLocalCompletionText(model, successfulBoundary);
+    assert.match(superLocalFinal, /five-protein OpenFold2 workflow returned a terminal result/u);
+    assert.equal(patched.__bionemoSuperLocalCompletionText(deepSeekModel, successfulBoundary), undefined);
+
+    const collectEvents = async (eventStream) => {
+      const events = [];
+      for await (const event of eventStream) events.push(event);
+      return events;
+    };
+    const within = async (promise, timeoutMs) => {
+      let timer;
+      try {
+        return await Promise.race([
+          promise,
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("transport did not finish locally")), timeoutMs); }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    const transport = patched.__bionemoCreateOpenAICompletionsTransportStreamFn();
+    let providerFetchCalls = 0;
+    globalThis.__bionemoTestFetch = async () => {
+      providerFetchCalls += 1;
+      return await new Promise(() => {});
+    };
+    const localEvents = await within(collectEvents(transport(model, successfulBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
+    assert.equal(providerFetchCalls, 0, "completed Super boundary must not start the zero-byte provider follow-up");
+    assert.equal(localEvents.some(({ type }) => type === "error"), false, JSON.stringify(localEvents));
+    assert.equal(localEvents.at(0).type, "start");
+    assert.equal(localEvents.at(-1).type, "done");
+    assert.equal(localEvents.some(({ type }) => type === "text_start"), true);
+    assert.equal(localEvents.some(({ type }) => type === "text_delta"), true);
+    assert.deepEqual(localEvents.at(-1).message.content, [{ type: "text", text: superLocalFinal }]);
+    assert.equal(localEvents.at(-1).message.stopReason, "stop");
+
+    const providerBody = 'data: {"id":"normal-response","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Provider normal path."},"finish_reason":"stop"}]}\\n\\ndata: [DONE]\\n\\n';
+    globalThis.__bionemoTestFetch = async () => {
+      providerFetchCalls += 1;
+      return new Response(providerBody, { status: 200, headers: { "content-type": "text/event-stream" } });
+    };
+    const erroredBoundaryForTransport = ${JSON.stringify(turn("bionemo_batch_fold_demo", { isError: true }))};
+    const erroredEvents = await within(collectEvents(transport(model, erroredBoundaryForTransport, { apiKey: "test-key", emitReasoning: false })), 2_000);
+    assert.equal(providerFetchCalls, 1, "errored Super boundary retains the provider transport");
+    assert.equal(erroredEvents.at(-1).type, "done");
+    assert.deepEqual(erroredEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
+    const deepSeekEvents = await within(collectEvents(transport(deepSeekModel, successfulBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
+    assert.equal(providerFetchCalls, 2, "other models retain the provider transport");
+    assert.equal(deepSeekEvents.at(-1).type, "done");
+    assert.deepEqual(deepSeekEvents.at(-1).message.content, [{ type: "text", text: sourceOwnedFinal }]);
+
     const repeatedProviderChunks = () => (async function* providerChunks() {
       for (let index = 0; index < 3; index += 1) {
         yield { id: \`response-deepseek-\${index}\`, choices: [{ index: 0, delta: {

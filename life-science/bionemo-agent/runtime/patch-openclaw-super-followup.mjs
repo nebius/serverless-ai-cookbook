@@ -6,7 +6,7 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v5";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v6";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -152,11 +152,35 @@ export function bionemoSuperDeterministicFinalText(model, context) {
   return summary ? `${text[target]}\n\nReturned workflow summary:\n${summary}` : text[target];
 }
 
+export function bionemoSuperLocalCompletionText(model, context) {
+  const superModel = "nvidia/nemotron-3-super-120b-a12b";
+  if (String(model?.provider || "").toLowerCase() !== "tokenfactory"
+    || String(model?.id || "").toLowerCase() !== superModel) return undefined;
+  if (!bionemoSuperCompletedToolTarget(model, context)) return undefined;
+  const result = Array.isArray(context?.messages) ? context.messages.at(-1) : undefined;
+  if (result?.isError !== false) return undefined;
+  let structured = result?.structuredContent;
+  if (!structured || typeof structured !== "object" || Array.isArray(structured)) {
+    const text = Array.isArray(result?.content)
+      ? result.content.find((block) => block?.type === "text" && typeof block.text === "string")?.text
+      : undefined;
+    if (text) {
+      try { structured = JSON.parse(text); } catch { structured = undefined; }
+    }
+  }
+  if (String(structured?.status || "").toLowerCase() !== "completed") return undefined;
+  return bionemoSuperDeterministicFinalText(model, context);
+}
+
 const HELPER_ANCHOR = "function buildOpenAICompletionsParams(model, context, options) {";
+const CLIENT_ANCHOR = `\t\t\t\tconst client = createOpenAICompletionsClient(model, context, options?.apiKey || getEnvApiKey(model.provider) || "", options?.headers);`;
+const CLIENT_REPLACEMENT = `\t\t\t\tconst bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText(model, context);\n\t\t\t\tconst client = bionemoSuperLocalFinalText ? undefined : createOpenAICompletionsClient(model, context, options?.apiKey || getEnvApiKey(model.provider) || "", options?.headers);`;
 const PAYLOAD_ANCHOR = `\t\t\t\tconst nextParams = await options?.onPayload?.(params, model);\n\t\t\t\tif (nextParams !== void 0) params = nextParams;\n\t\t\t\tif (options?.openclawCodeModeToolSurface === true) {\n\t\t\t\t\tenforceCodeModeResponsesToolSurface(params);\n\t\t\t\t\tassertCodeModeResponsesToolSurface(params);\n\t\t\t\t}`;
-const PAYLOAD_REPLACEMENT = `\t\t\t\tconst nextParams = await options?.onPayload?.(params, model);\n\t\t\t\tif (nextParams !== void 0) params = nextParams;\n\t\t\t\tif (options?.openclawCodeModeToolSurface === true) {\n\t\t\t\t\tenforceCodeModeResponsesToolSurface(params);\n\t\t\t\t\tassertCodeModeResponsesToolSurface(params);\n\t\t\t\t}\n\t\t\t\tlet bionemoSuperInitialTool = bionemoSuperInitialNotebookTool(model, context);\n\t\t\t\tif (bionemoSuperInitialTool && Array.isArray(params.tools) && params.tools.some((tool) => tool?.function?.name === bionemoSuperInitialTool.name)) {\n\t\t\t\t\tparams.tool_choice = { type: "function", function: { name: bionemoSuperInitialTool.name } };\n\t\t\t\t} else bionemoSuperInitialTool = undefined;\n\t\t\t\tif (bionemoSuperShouldFinalizeWithoutTools(model, context)) {\n\t\t\t\t\tdelete params.tools;\n\t\t\t\t\tparams.tool_choice = "none";\n\t\t\t\t}`;
+const PAYLOAD_REPLACEMENT = `\t\t\t\tconst nextParams = await options?.onPayload?.(params, model);\n\t\t\t\tif (nextParams !== void 0) params = nextParams;\n\t\t\t\tif (options?.openclawCodeModeToolSurface === true) {\n\t\t\t\t\tenforceCodeModeResponsesToolSurface(params);\n\t\t\t\t\tassertCodeModeResponsesToolSurface(params);\n\t\t\t\t}\n\t\t\t\tlet bionemoSuperInitialTool = bionemoSuperInitialNotebookTool(model, context);\n\t\t\t\tif (bionemoSuperInitialTool && Array.isArray(params.tools) && params.tools.some((tool) => tool?.function?.name === bionemoSuperInitialTool.name)) {\n\t\t\t\t\tparams.tool_choice = { type: "function", function: { name: bionemoSuperInitialTool.name } };\n\t\t\t\t} else bionemoSuperInitialTool = undefined;\n\t\t\t\tconst bionemoSuperFinalText = bionemoSuperLocalFinalText ?? bionemoSuperDeterministicFinalText(model, context);\n\t\t\t\tif (bionemoSuperFinalText) {\n\t\t\t\t\tdelete params.tools;\n\t\t\t\t\tparams.tool_choice = "none";\n\t\t\t\t}`;
+const REQUEST_ANCHOR = `\t\t\t\tfirstEventAbort = createFirstStreamEventAbortController(options?.signal);\n\t\t\t\tconst responseStream = await client.chat.completions.create(params, buildOpenAISdkRequestOptions(model, firstEventAbort.signal));`;
+const REQUEST_REPLACEMENT = `\t\t\t\tfirstEventAbort = createFirstStreamEventAbortController(options?.signal);\n\t\t\t\tconst responseStream = bionemoSuperLocalFinalText\n\t\t\t\t\t? (async function* bionemoSuperCompletedStream() {\n\t\t\t\t\t\tyield { id: "bionemo-local-completion", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] };\n\t\t\t\t\t})()\n\t\t\t\t\t: await client.chat.completions.create(params, buildOpenAISdkRequestOptions(model, firstEventAbort.signal));`;
 const STREAM_OPTIONS_ANCHOR = `\t\t\t\tawait processOpenAICompletionsStream(responseStream, output, model, stream, {\n\t\t\t\t\tsignal: options?.signal,\n\t\t\t\t\temitReasoning,`;
-const STREAM_OPTIONS_REPLACEMENT = `\t\t\t\tawait processOpenAICompletionsStream(responseStream, output, model, stream, {\n\t\t\t\t\tsignal: options?.signal,\n\t\t\t\t\tbionemoSuperInitialTool,\n\t\t\t\t\tbionemoSuperFinalText: bionemoSuperDeterministicFinalText(model, context),\n\t\t\t\t\temitReasoning,`;
+const STREAM_OPTIONS_REPLACEMENT = `\t\t\t\tawait processOpenAICompletionsStream(responseStream, output, model, stream, {\n\t\t\t\t\tsignal: options?.signal,\n\t\t\t\t\tbionemoSuperInitialTool,\n\t\t\t\t\tbionemoSuperFinalText,\n\t\t\t\t\temitReasoning,`;
 const STREAM_INIT_ANCHOR = `\tconst emitReasoning = options?.emitReasoning ?? true;\n\tconst compat = getCompat(model);`;
 const STREAM_INIT_REPLACEMENT = `\tconst emitReasoning = options?.emitReasoning ?? true;\n\tconst bionemoSuperInitialTool = options?.bionemoSuperInitialTool && typeof options.bionemoSuperInitialTool === "object" ? options.bionemoSuperInitialTool : undefined;\n\tconst bionemoSuperFinalText = typeof options?.bionemoSuperFinalText === "string" ? options.bionemoSuperFinalText : "";\n\tconst compat = getCompat(model);`;
 const CONTENT_ANCHOR = `\t\tif (choiceDelta.content) {`;
@@ -193,10 +217,12 @@ export async function patchOpenClawSuperFollowup(distRoot) {
   let source = replaceExactlyOnce(
     original,
     HELPER_ANCHOR,
-    `/* ${PATCH_MARKER} */\nconst BIONEMO_SUPER_INITIAL_TURNS = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS)};\n${bionemoSuperInitialNotebookTool.toString()}\n${bionemoSuperCompletedToolTarget.toString()}\n${bionemoSuperShouldFinalizeWithoutTools.toString()}\n${bionemoSuperBoundedResultSummary.toString()}\n${bionemoSuperDeterministicFinalText.toString()}\n${HELPER_ANCHOR}`,
+    `/* ${PATCH_MARKER} */\nconst BIONEMO_SUPER_INITIAL_TURNS = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS)};\n${bionemoSuperInitialNotebookTool.toString()}\n${bionemoSuperCompletedToolTarget.toString()}\n${bionemoSuperShouldFinalizeWithoutTools.toString()}\n${bionemoSuperBoundedResultSummary.toString()}\n${bionemoSuperDeterministicFinalText.toString()}\n${bionemoSuperLocalCompletionText.toString()}\n${HELPER_ANCHOR}`,
     "helper insertion",
   );
+  source = replaceExactlyOnce(source, CLIENT_ANCHOR, CLIENT_REPLACEMENT, "local completion client bypass");
   source = replaceExactlyOnce(source, PAYLOAD_ANCHOR, PAYLOAD_REPLACEMENT, "post-payload tool guard");
+  source = replaceExactlyOnce(source, REQUEST_ANCHOR, REQUEST_REPLACEMENT, "local completion request bypass");
   source = replaceExactlyOnce(source, STREAM_OPTIONS_ANCHOR, STREAM_OPTIONS_REPLACEMENT, "final-only stream option");
   source = replaceExactlyOnce(source, STREAM_INIT_ANCHOR, STREAM_INIT_REPLACEMENT, "final-only stream state");
   source = replaceExactlyOnce(source, CONTENT_ANCHOR, CONTENT_REPLACEMENT, "final-only content suppression");
