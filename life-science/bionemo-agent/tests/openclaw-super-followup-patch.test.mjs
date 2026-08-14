@@ -269,7 +269,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v7/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v8/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperFinalText)");
@@ -278,7 +278,8 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   assert.match(source, /delete params\.tools;\s*params\.tool_choice = "none";/su);
   assert.match(source, /const bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText\(model, context\)/u);
   assert.match(source, /const client = bionemoSuperLocalFinalText \? undefined : createOpenAICompletionsClient/u);
-  assert.match(source, /const responseStream = bionemoSuperLocalFinalText\s*\? \(async function\* bionemoSuperCompletedStream\(\) \{\s*yield \{ id: "bionemo-local-completion", choices:/su);
+  assert.match(source, /const bionemoSuperLocalResponse = bionemoSuperLocalFinalText \|\| bionemoSuperInitialTool\?\.name === "tavily_web__tavily_search"/u);
+  assert.match(source, /const responseStream = bionemoSuperLocalResponse\s*\? \(async function\* bionemoSuperCompletedStream\(\) \{\s*yield \{ id: "bionemo-local-completion", choices:/su);
   assert.match(source, /bionemoSuperFinalText,/u);
   assert.match(source, /if \(!bionemoSuperFinalText && !bionemoSuperInitialTool && choiceDelta\.tool_calls/u);
   assert.match(source, /if \(choiceDelta\.content && !bionemoSuperFinalText && !bionemoSuperInitialTool\)/u);
@@ -376,6 +377,21 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       providerFetchCalls += 1;
       return await new Promise(() => {});
     };
+    const exactTavilyInitialContext = { messages: [{ role: "user", content: [{ type: "text", text: ${JSON.stringify(tavilyInitial.prompt)} }] }] };
+    const initialTavilyEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
+      apiKey: "test-key",
+      emitReasoning: false,
+      signal: AbortSignal.timeout(500),
+      onPayload(params) {
+        return { ...params, tools: [{ type: "function", function: { name: expectedTavilyInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
+      },
+    })), 750);
+    assert.equal(providerFetchCalls, 0, "exact source-owned Tavily initial turn must not start a zero-byte provider request");
+    assert.equal(initialTavilyEvents.some(({ type }) => type === "error"), false, JSON.stringify(initialTavilyEvents));
+    assert.equal(initialTavilyEvents.at(0).type, "start");
+    assert.equal(initialTavilyEvents.at(-1).type, "done");
+    assert.equal(initialTavilyEvents.at(-1).message.stopReason, "toolUse");
+    assert.deepEqual(initialTavilyEvents.at(-1).message.content.filter(({ type }) => type === "toolCall").map(({ name, arguments: args }) => ({ name, args })), [{ name: expectedTavilyInitial.name, args: expectedTavilyInitial.params }]);
     const localEvents = await within(collectEvents(transport(model, successfulBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
     assert.equal(providerFetchCalls, 0, "completed Super boundary must not start the zero-byte provider follow-up");
     assert.equal(localEvents.some(({ type }) => type === "error"), false, JSON.stringify(localEvents));
