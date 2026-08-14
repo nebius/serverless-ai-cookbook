@@ -951,8 +951,8 @@ test("an explicit NVIDIA BioNeMo backend does not also expose the incompatible M
 
 test("Token Factory models retain aliases, credential placeholders, and AGENT_MODEL overrides", () => {
   const configured = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
-  configureOpenClaw(configured, { AGENT_PROVIDER: "nebius", NEBIUS_API_KEY: "do-not-persist", AGENT_MODEL: "DEEPSEEK-AI/deepseek-v4-pro" });
-  assert.equal(configured.agents.defaults.model.primary, "tokenfactory/deepseek-ai/DeepSeek-V4-Pro");
+  configureOpenClaw(configured, { AGENT_PROVIDER: "nebius", NEBIUS_API_KEY: "do-not-persist" });
+  assert.equal(configured.agents.defaults.model.primary, "tokenfactory/nvidia/nemotron-3-super-120b-a12b");
   assert.equal(configured.models.providers.tokenfactory.baseUrl, "https://api.tokenfactory.nebius.com/v1");
   assert.equal(configured.models.providers.tokenfactory.apiKey, "${NEBIUS_API_KEY}");
   assert.equal(configured.models.providers.tokenfactory.models.every((model) => !model.name.includes("requires API key") && model.reasoning === true), true);
@@ -965,6 +965,16 @@ test("Token Factory models retain aliases, credential placeholders, and AGENT_MO
     alias: "Nemotron 3 Super",
     params: { chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true } },
   });
+  const glmModel = configured.models.providers.tokenfactory.models.find(({ id }) => id === "zai-org/GLM-5.2");
+  assert.deepEqual(glmModel, {
+    id: "zai-org/GLM-5.2",
+    name: "GLM 5.2 via Nebius Token Factory",
+    reasoning: true,
+    input: ["text"],
+    contextWindow: 90_000,
+    maxTokens: 8_192,
+  });
+  assert.deepEqual(configured.agents.defaults.models["tokenfactory/zai-org/GLM-5.2"], { alias: "GLM 5.2" });
   assert.equal(JSON.stringify(configured).includes("do-not-persist"), false);
 
   const custom = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };

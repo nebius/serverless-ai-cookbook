@@ -10,7 +10,7 @@ import {
 
 export const DEFAULT_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
-export const NEBIUS_MODEL = "deepseek-ai/DeepSeek-V4-Pro";
+export const NEBIUS_MODEL = NVIDIA_MODEL;
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
 const NEMOTRON_SUPER_PARAMS = Object.freeze({
@@ -20,8 +20,10 @@ const NEMOTRON_SUPER_COMPAT = Object.freeze({
   maxTokensField: "max_tokens",
   requiresStringContent: true,
 });
-// Keep all eight evaluated candidates here so known failures remain blocked
-// even when an operator supplies their exact id through AGENT_MODEL.
+// Keep every known workflow failure here so an exact AGENT_MODEL override
+// cannot silently reintroduce it. Models that passed the bounded workflow
+// matrix but were not selected for the small picker remain available as
+// explicit custom overrides.
 export const TOKEN_FACTORY_QUALIFICATION = Object.freeze([
   Object.freeze({ id: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", alias: "Nemotron 3 Nano", qualified: false, reason: "truncated the optimized-ligand notebook after successful compute and omitted the OpenFold3 result, artifact links, and limitations" }),
   Object.freeze({ id: "nvidia/Nemotron-3_5-Lightning", alias: "Nemotron 3.5 Lightning", qualified: false, reason: "emitted string sentinels for nullable structured fields and attempted false consent acknowledgements" }),
@@ -34,7 +36,13 @@ export const TOKEN_FACTORY_QUALIFICATION = Object.freeze([
   Object.freeze({ id: "openai/gpt-oss-120b", alias: "GPT-OSS 120B", qualified: false, reason: "attempted model submissions without every required user acknowledgement" }),
   Object.freeze({ id: "Qwen/Qwen3-32B", alias: "Qwen3 32B", qualified: false, reason: "emitted visible provider-side reasoning tags and did not meet the presentation gate" }),
   Object.freeze({ id: "zai-org/GLM-5.1", alias: "GLM 5.1", qualified: false, reason: "failed the deployed OpenClaw MCP catalog turn with no structured tool call or final response" }),
-  Object.freeze({ id: NEBIUS_MODEL, alias: "DeepSeek V4 Pro", contextWindow: 1048576, maxTokens: 8192 }),
+  Object.freeze({ id: "deepseek-ai/DeepSeek-V4-Pro", alias: "DeepSeek V4 Pro", qualified: false, reason: "made four forbidden file-read calls after the required ClawBio describe and run calls in the workbench tour" }),
+  Object.freeze({ id: "deepseek-ai/DeepSeek-V4-Flash", alias: "DeepSeek V4 Flash", qualified: false, reason: "ended the skill-guidance example twice at the output-length limit without a terminal response" }),
+  Object.freeze({ id: "MiniMaxAI/MiniMax-M3", alias: "MiniMax M3", qualified: false, reason: "accepted the 90k prompt probes but exhausted bounded completion budgets through 2,048 tokens without any visible final response, leaving no validated long-context OpenClaw profile" }),
+  Object.freeze({ id: "moonshotai/Kimi-K3", alias: "Kimi K3", qualified: false, reason: "skipped both required ClawBio tool calls in the GWAS example and answered directly" }),
+  // GLM 5.2 returned the exact sentinel with 90,025 prompt tokens. Advertise
+  // only a rounded-down 90k context profile; no larger context is inferred.
+  Object.freeze({ id: "zai-org/GLM-5.2", alias: "GLM 5.2", contextWindow: 90000, maxTokens: 8192 }),
 ]);
 
 export const TOKEN_FACTORY_MODELS = Object.freeze(

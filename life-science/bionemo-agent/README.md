@@ -43,24 +43,39 @@ Provider selection defaults to `AGENT_PROVIDER=auto`:
 | Available credential | Reasoning provider | Default model |
 |---|---|---|
 | `NVIDIA_API_KEY` or `NGC_API_KEY` | NVIDIA Build | `nvidia/nemotron-3-super-120b-a12b` |
-| `NEBIUS_API_KEY` | Nebius Token Factory | `deepseek-ai/DeepSeek-V4-Pro` |
+| `NEBIUS_API_KEY` | Nebius Token Factory | `nvidia/nemotron-3-super-120b-a12b` |
 | `OPENAI_API_KEY` | OpenAI | `gpt-5.6` using the OpenClaw runtime |
 | `ANTHROPIC_API_KEY` | Anthropic Claude | `claude-sonnet-5` |
 | none | local setup-required responder | no external model |
 
-The Token Factory picker exposes DeepSeek V4 Pro by default and Nemotron 3
-Super as a qualified alternative. Super uses a conservative 262,144-token
-OpenClaw profile, `max_tokens`, string tool-result content, and template
-thinking disabled. A stable read-only MCP catalog alias avoids the repeated
-namespace that caused its earlier invalid catalog calls.
+The Token Factory picker exposes Nemotron 3 Super by default and GLM 5.2 as the
+qualified alternative. Super uses a conservative 262,144-token OpenClaw
+profile, `max_tokens`, string tool-result content, and template thinking
+disabled. Those request compatibility settings apply to Super only. GLM 5.2
+uses the ordinary Token Factory request contract and a rounded-down 90,000-token
+profile after returning the exact sentinel with 90,025 prompt tokens. A stable
+read-only MCP catalog alias avoids the repeated namespace that caused earlier
+invalid catalog calls.
 
-The same gate tested all eight previously exposed models. Nano was removed after
-its optimized-ligand notebook response truncated before the OpenFold3 result and
-artifacts; GLM failed the deployed MCP turn without a callable tool or final
-answer. Lightning, GPT-OSS, Qwen3, and Ultra retain their previously
-documented schema, consent, presentation, and response failures. Those known-
-failing IDs are rejected even when supplied through `AGENT_MODEL`; arbitrary
-operator models remain available as explicit custom overrides.
+The current local screen covered all 29 Token Factory catalog entries, including
+28 chat candidates, before shortlisted models were exercised through the real
+OpenClaw examples. Super passed all six behavioral examples and all four
+composed-workflow model calls; GLM 5.2 passed the same behavioral semantics and
+four composed calls. The configured atomic call also completed correctly, with
+its persisted step projection covered by an image-level regression test.
+
+DeepSeek V4 Pro was removed after it made four forbidden file-read calls after
+the required ClawBio calls. DeepSeek V4 Flash twice exhausted its output budget
+without a terminal answer, Kimi K3 skipped the two required ClawBio tools, and
+MiniMax M3 produced no visible final in all three bounded 90k prompt probes,
+including a 2,048-token completion budget. None has a validated workbench
+profile. Kimi K2.7 Code completed the tested examples
+but was left out of the intentionally small picker because of its materially
+worse latency/cost tradeoff; it remains available as an explicit custom
+override. Nano, Lightning, Ultra, GPT-OSS, Qwen3, and GLM 5.1 retain their
+previously documented workflow failures. Known failing IDs are rejected even
+when supplied through `AGENT_MODEL`; other operator models remain available as
+explicit custom overrides.
 
 The NVIDIA Build profile uses Nemotron 3 Super with template thinking disabled.
 Release acceptance produced one structured flat OpenFold2 call, five PDB
@@ -72,7 +87,7 @@ bounded 240-second idle timeout so a slow hosted response does not discard an
 already completed BioNeMo NIM result.
 
 OpenClaw reserves at least 20,000 tokens for compaction recovery. This keeps
-long NVIDIA Super, Token Factory Super, and Token Factory DeepSeek tool sessions
+long NVIDIA Super, Token Factory Super, and Token Factory GLM 5.2 tool sessions
 out of the unrecoverable low-buffer state identified by OpenClaw's compaction
 warning.
 
