@@ -6,7 +6,7 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v6";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v7";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -52,6 +52,18 @@ export const BIONEMO_SUPER_INITIAL_TURNS = Object.freeze([
       ack_no_safety_or_therapeutic_claims: true,
     }),
   }),
+  Object.freeze({
+    prompt: WORKBENCH_EXAMPLE_SESSIONS.find(({ slug }) => slug === "tavily-public-research").prompt,
+    name: "tavily_web__tavily_search",
+    params: Object.freeze({
+      query: "RCSB PDB UniProt protein structure research contributions",
+      include_domains: Object.freeze(["rcsb.org", "uniprot.org"]),
+      search_depth: "basic",
+      max_results: 5,
+      include_raw_content: false,
+      include_images: false,
+    }),
+  }),
 ]);
 
 export function bionemoSuperInitialNotebookTool(model, context) {
@@ -74,6 +86,7 @@ export function bionemoSuperInitialNotebookTool(model, context) {
 export function bionemoSuperCompletedToolTarget(model, context) {
   const superModel = "nvidia/nemotron-3-super-120b-a12b";
   const deepSeekModel = "deepseek-ai/deepseek-v4-pro";
+  const tavilySearch = "tavily_web__tavily_search";
   const wrappers = new Set([
     "bionemo_research_drug_demo",
     "bionemo_compare_protein_structures",
@@ -109,7 +122,66 @@ export function bionemoSuperCompletedToolTarget(model, context) {
   const failed = result.isError === true
     || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "");
   if (failed) return undefined;
-  return wrappers.has(target) ? target : undefined;
+  if (wrappers.has(target)) return target;
+  if (modelId !== superModel || target !== tavilySearch || call.name !== tavilySearch
+    || result.toolName !== tavilySearch || result.isError !== false || result.structuredContent !== undefined) return undefined;
+
+  const expected = BIONEMO_SUPER_INITIAL_TURNS.find((entry) => entry.name === tavilySearch);
+  if (!expected) return undefined;
+  let userIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "user") { userIndex = index; break; }
+  }
+  if (userIndex < 0) return undefined;
+  const userContent = messages[userIndex]?.content;
+  const prompt = typeof userContent === "string" ? userContent : Array.isArray(userContent)
+    ? userContent.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text).join("")
+    : "";
+  if (prompt !== expected.prompt) return undefined;
+
+  const currentTurn = messages.slice(userIndex + 1);
+  const turnCalls = currentTurn.flatMap((message) => message?.role === "assistant" && Array.isArray(message.content)
+    ? message.content.filter((block) => ["toolCall", "toolUse", "functionCall"].includes(block?.type))
+    : []);
+  const turnResults = currentTurn.filter((message) => ["toolResult", "tool", "function"].includes(message?.role));
+  if (turnCalls.length !== 1 || turnCalls[0] !== call || turnResults.length !== 1 || turnResults[0] !== result) return undefined;
+
+  let args = call.arguments;
+  if (typeof args === "string") {
+    try { args = JSON.parse(args); } catch { return undefined; }
+  }
+  if (!args || typeof args !== "object" || Array.isArray(args)) return undefined;
+  const expectedKeys = Object.keys(expected.params).sort();
+  const actualKeys = Object.keys(args).sort();
+  if (actualKeys.length !== expectedKeys.length || actualKeys.some((key, index) => key !== expectedKeys[index])) return undefined;
+  if (args.query !== expected.params.query
+    || args.search_depth !== expected.params.search_depth
+    || args.max_results !== expected.params.max_results
+    || args.include_raw_content !== expected.params.include_raw_content
+    || args.include_images !== expected.params.include_images
+    || !Array.isArray(args.include_domains)
+    || args.include_domains.length !== expected.params.include_domains.length
+    || args.include_domains.some((domain, index) => domain !== expected.params.include_domains[index])) return undefined;
+
+  const details = result.details;
+  if (!details || typeof details !== "object" || Array.isArray(details)
+    || details.mcpServer !== "tavily_web" || details.mcpTool !== "tavily_search") return undefined;
+  const structured = details.structuredContent;
+  if (!structured || typeof structured !== "object" || Array.isArray(structured)
+    || structured.query !== expected.params.query
+    || !Array.isArray(structured.results) || structured.results.length < 1 || structured.results.length > 5) return undefined;
+  for (const source of structured.results) {
+    if (!source || typeof source !== "object" || Array.isArray(source)
+      || typeof source.title !== "string" || !source.title.trim() || source.title.length > 300
+      || /[\u0000-\u001f\u007f]/u.test(source.title)
+      || typeof source.url !== "string" || !source.url.trim() || source.url.length > 2_048) return undefined;
+    let url;
+    try { url = new URL(source.url); } catch { return undefined; }
+    const hostname = url.hostname.toLowerCase();
+    const allowedHost = ["rcsb.org", "uniprot.org"].some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+    if (url.protocol !== "https:" || url.username || url.password || url.port || !allowedHost) return undefined;
+  }
+  return tavilySearch;
 }
 
 export function bionemoSuperShouldFinalizeWithoutTools(model, context) {
@@ -146,6 +218,7 @@ export function bionemoSuperDeterministicFinalText(model, context) {
     bionemo_molmim: "The bounded MolMIM optimization returned a terminal result. Review the returned candidates and scores as research-only hypotheses. No binding, safety, efficacy, therapeutic, or clinical claim is made; independent computational and wet-lab validation is required.",
     bionemo_openfold2: "The bounded OpenFold2 prediction returned a terminal result. Review the scalar confidence summary and attached structure. This is not experimental ground truth and requires independent computational and experimental validation.",
     bionemo_openfold3: "The bounded OpenFold3 prediction returned a terminal result. Review the scalar confidence summary and attached structure. This is not experimental ground truth and requires independent computational and experimental validation.",
+    tavily_web__tavily_search: "The bounded Tavily search completed for the requested RCSB PDB and UniProt documentation comparison. Source claims: none are restated from untrusted search content. Source-owned comparison (not derived from the returned snippets): RCSB PDB is structure-centered, while UniProt is sequence- and annotation-centered; their cross-references connect structures with protein identity and biological context. Validated Tavily response metadata records only that the bounded search returned the source titles and canonical URLs appended below. No BioNeMo, ClawBio, or scientific compute was run.",
   };
   if (!target) return undefined;
   const summary = bionemoSuperBoundedResultSummary(model, context);
@@ -156,9 +229,11 @@ export function bionemoSuperLocalCompletionText(model, context) {
   const superModel = "nvidia/nemotron-3-super-120b-a12b";
   if (String(model?.provider || "").toLowerCase() !== "tokenfactory"
     || String(model?.id || "").toLowerCase() !== superModel) return undefined;
-  if (!bionemoSuperCompletedToolTarget(model, context)) return undefined;
+  const target = bionemoSuperCompletedToolTarget(model, context);
+  if (!target) return undefined;
   const result = Array.isArray(context?.messages) ? context.messages.at(-1) : undefined;
   if (result?.isError !== false) return undefined;
+  if (target === "tavily_web__tavily_search") return bionemoSuperDeterministicFinalText(model, context);
   let structured = result?.structuredContent;
   if (!structured || typeof structured !== "object" || Array.isArray(structured)) {
     const text = Array.isArray(result?.content)

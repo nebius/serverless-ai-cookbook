@@ -12,6 +12,7 @@ import { __test as launcher } from "../runtime/launcher.mjs";
 import { capabilities, configureOpenClaw, DEFAULT_MCP_URL, TOKEN_FACTORY_MODELS } from "../runtime/runtime-config.mjs";
 import { prepareClients } from "../runtime/prepare-clients.mjs";
 import { MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
+import { BIONEMO_SUPER_INITIAL_TURNS, bionemoSuperLocalCompletionText } from "../runtime/patch-openclaw-super-followup.mjs";
 
 function fakeApi() {
   const captured = { tools: [], routes: [], controls: [], hooks: [] };
@@ -359,6 +360,33 @@ test("one successful current-turn Tavily search deterministically appends its bo
   }, { runId: PRESENTATION_AGENT_RUN_ID });
   assert.match(disclosure.appendFinalAssistantText, /^No direct UniProt source was returned by this bounded search\./u);
   assert.match(disclosure.appendFinalAssistantText, /Sources\n\n- RCSB/u);
+
+  const exactTurn = BIONEMO_SUPER_INITIAL_TURNS.find(({ name }) => name === TAVILY_TOOL_NAME);
+  const exactResult = tavilyToolResult([
+    { title: "RCSB PDB documentation", url: "https://www.rcsb.org/docs/" },
+  ], { details: {
+    mcpServer: "tavily_web",
+    mcpTool: "tavily_search",
+    structuredContent: {
+      query: exactTurn.params.query,
+      results: [{ title: "RCSB PDB documentation", url: "https://www.rcsb.org/docs/" }],
+    },
+  } });
+  const exactMessages = [
+    { role: "user", content: [{ type: "text", text: exactTurn.prompt }] },
+    { role: "assistant", content: [{ type: "toolCall", id: "tavily-call-current", name: TAVILY_TOOL_NAME, arguments: structuredClone(exactTurn.params) }] },
+    exactResult,
+  ];
+  const localFinal = bionemoSuperLocalCompletionText({ provider: "tokenfactory", id: "nvidia/nemotron-3-super-120b-a12b" }, { messages: exactMessages });
+  assert.match(localFinal, /Source-owned comparison/u);
+  const crossHook = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: localFinal,
+    messages: exactMessages,
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(crossHook.action, "continue");
+  assert.match(crossHook.appendFinalAssistantText, /^No direct UniProt source was returned by this bounded search\./u);
+  assert.match(crossHook.appendFinalAssistantText, /Sources\n\n- RCSB PDB documentation — https:\/\/www\.rcsb\.org\/docs\//u);
 });
 
 test("current-turn Tavily presentation fails closed on stale, failed, malformed, duplicated, or mismatched results", () => {
