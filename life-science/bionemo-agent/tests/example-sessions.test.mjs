@@ -89,6 +89,10 @@ test("nine stable ready examples include four notebook workflows and five bounde
     EXAMPLE_SESSIONS.find(({ slug }) => slug === "tavily-public-research").prompt,
     /include_domains exactly to \["rcsb\.org", "uniprot\.org"\]/u,
   );
+  assert.match(
+    EXAMPLE_SESSIONS.find(({ slug }) => slug === "tavily-public-research").prompt,
+    /No direct UniProt source was returned by this bounded search\./u,
+  );
 });
 
 test("new workbench prompts preserve exact bounded no-run and exactly-once contracts", () => {
