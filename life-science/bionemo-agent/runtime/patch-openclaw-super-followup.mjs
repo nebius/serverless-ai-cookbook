@@ -6,7 +6,7 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v13";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v14";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -176,10 +176,41 @@ export function bionemoSuperCompletedToolTarget(model, context) {
     || args.include_domains.length !== expected.params.include_domains.length
     || args.include_domains.some((domain, index) => domain !== expected.params.include_domains[index])) return undefined;
 
+  const hasDetails = Object.hasOwn(result, "details");
   const details = result.details;
-  if (!details || typeof details !== "object" || Array.isArray(details)
-    || details.mcpServer !== "tavily_web" || details.mcpTool !== "tavily_search") return undefined;
-  const structured = details.structuredContent;
+  let structured;
+  if (hasDetails) {
+    if (!details || typeof details !== "object" || Array.isArray(details)
+      || details.mcpServer !== "tavily_web" || details.mcpTool !== "tavily_search") return undefined;
+    structured = details.structuredContent;
+  } else {
+    const projectedCallId = /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u;
+    if (typeof userContent !== "string"
+      || bionemoNormalizeStrictOpenClawPrompt(userContent) !== expected.prompt
+      || !Array.isArray(assistant.content) || assistant.content.length !== 1 || assistant.content[0] !== call
+      || assistant.stopReason !== "toolUse"
+      || call.type !== "toolCall" || call.partialArgs !== JSON.stringify(expected.params)
+      || typeof call.id !== "string" || !projectedCallId.test(call.id)
+      || typeof result.toolCallId !== "string" || !projectedCallId.test(result.toolCallId)
+      || !Object.hasOwn(result, "isError") || result.isError !== false
+      || Object.hasOwn(result, "error") || result.error !== undefined
+      || Object.hasOwn(result, "structuredContent") || result.structuredContent !== undefined
+      || details !== undefined
+      || !Array.isArray(result.content) || result.content.length !== 1) return undefined;
+    const contentBlock = result.content[0];
+    const contentKeys = contentBlock && typeof contentBlock === "object" && !Array.isArray(contentBlock)
+      ? Object.keys(contentBlock).sort()
+      : [];
+    if (contentKeys.length !== 2 || contentKeys[0] !== "text" || contentKeys[1] !== "type"
+      || contentBlock.type !== "text" || typeof contentBlock.text !== "string" || contentBlock.text.length > 65_536) return undefined;
+    const marker = "structuredContent:\n";
+    if (!contentBlock.text.startsWith(marker)) return undefined;
+    const suffix = contentBlock.text.slice(marker.length);
+    try { structured = JSON.parse(suffix); } catch { return undefined; }
+    let canonical;
+    try { canonical = JSON.stringify(structured, null, 2); } catch { return undefined; }
+    if (canonical !== suffix) return undefined;
+  }
   if (!structured || typeof structured !== "object" || Array.isArray(structured)
     || structured.query !== expected.params.query
     || !Array.isArray(structured.results) || structured.results.length < 1 || structured.results.length > 5) return undefined;
@@ -266,7 +297,7 @@ const CLIENT_REPLACEMENT = `\t\t\t\tconst bionemoSuperLocalFinalText = bionemoSu
 const PAYLOAD_ANCHOR = `\t\t\t\tconst nextParams = await options?.onPayload?.(params, model);\n\t\t\t\tif (nextParams !== void 0) params = nextParams;\n\t\t\t\tif (options?.openclawCodeModeToolSurface === true) {\n\t\t\t\t\tenforceCodeModeResponsesToolSurface(params);\n\t\t\t\t\tassertCodeModeResponsesToolSurface(params);\n\t\t\t\t}`;
 const PAYLOAD_REPLACEMENT = `\t\t\t\tconst nextParams = await options?.onPayload?.(params, model);\n\t\t\t\tif (nextParams !== void 0) params = nextParams;\n\t\t\t\tif (options?.openclawCodeModeToolSurface === true) {\n\t\t\t\t\tenforceCodeModeResponsesToolSurface(params);\n\t\t\t\t\tassertCodeModeResponsesToolSurface(params);\n\t\t\t\t}\n\t\t\t\tlet bionemoSuperInitialTool = bionemoSuperInitialNotebookTool(model, context);\n\t\t\t\tif (bionemoSuperInitialTool && Array.isArray(params.tools)\n\t\t\t\t\t&& params.tools.some((tool) => tool?.function?.name === bionemoSuperInitialTool.name)) {\n\t\t\t\t\tparams.tool_choice = { type: "function", function: { name: bionemoSuperInitialTool.name } };\n\t\t\t\t} else bionemoSuperInitialTool = undefined;\n\t\t\t\tconst bionemoSuperFinalText = bionemoSuperLocalFinalText ?? bionemoSuperDeterministicFinalText(model, context);\n\t\t\t\tif (bionemoSuperFinalText) {\n\t\t\t\t\tdelete params.tools;\n\t\t\t\t\tparams.tool_choice = "none";\n\t\t\t\t}`;
 const REQUEST_ANCHOR = `\t\t\t\tfirstEventAbort = createFirstStreamEventAbortController(options?.signal);\n\t\t\t\tconst responseStream = await client.chat.completions.create(params, buildOpenAISdkRequestOptions(model, firstEventAbort.signal));`;
-const REQUEST_REPLACEMENT = `\t\t\t\tfirstEventAbort = createFirstStreamEventAbortController(options?.signal);\n\t\t\t\tconst bionemoSuperLocalResponse = bionemoSuperLocalFinalText || bionemoSuperInitialTool?.name === "tavily_web__tavily_search";\n\t\t\t\tconst responseStream = bionemoSuperLocalResponse\n\t\t\t\t\t? (async function* bionemoSuperCompletedStream() {\n\t\t\t\t\t\tyield { id: "bionemo-local-completion", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] };\n\t\t\t\t\t})()\n\t\t\t\t\t: await client.chat.completions.create(params, buildOpenAISdkRequestOptions(model, firstEventAbort.signal));`;
+const REQUEST_REPLACEMENT = `\t\t\t\tfirstEventAbort = createFirstStreamEventAbortController(options?.signal);\n\t\t\t\tconst bionemoSuperLocalResponse = bionemoSuperLocalFinalText || Boolean(bionemoSuperInitialTool);\n\t\t\t\tconst responseStream = bionemoSuperLocalResponse\n\t\t\t\t\t? (async function* bionemoSuperCompletedStream() {\n\t\t\t\t\t\tyield { id: "bionemo-local-completion", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] };\n\t\t\t\t\t})()\n\t\t\t\t\t: await client.chat.completions.create(params, buildOpenAISdkRequestOptions(model, firstEventAbort.signal));`;
 const STREAM_OPTIONS_ANCHOR = `\t\t\t\tawait processOpenAICompletionsStream(responseStream, output, model, stream, {\n\t\t\t\t\tsignal: options?.signal,\n\t\t\t\t\temitReasoning,`;
 const STREAM_OPTIONS_REPLACEMENT = `\t\t\t\tawait processOpenAICompletionsStream(responseStream, output, model, stream, {\n\t\t\t\t\tsignal: options?.signal,\n\t\t\t\t\tbionemoSuperInitialTool,\n\t\t\t\t\tbionemoSuperFinalText,\n\t\t\t\t\temitReasoning,`;
 const STREAM_INIT_ANCHOR = `\tconst emitReasoning = options?.emitReasoning ?? true;\n\tconst compat = getCompat(model);`;

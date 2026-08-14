@@ -63,6 +63,37 @@ function tavilyTurn() {
   ] };
 }
 
+const EPHEMERAL_TAVILY_CALL_ID = "callbionemosuper0123456789ab4cde8f012345";
+
+function ephemeralTavilyTurn() {
+  const persisted = tavilyTurn();
+  const structured = persisted.messages[2].details.structuredContent;
+  return { messages: [
+    {
+      role: "user",
+      content: `[Fri 2026-08-14 18:06 UTC] ${tavilyInitial.prompt}`,
+    },
+    {
+      role: "assistant",
+      stopReason: "toolUse",
+      content: [{
+        type: "toolCall",
+        id: EPHEMERAL_TAVILY_CALL_ID,
+        name: tavilyInitial.name,
+        arguments: structuredClone(tavilyInitial.params),
+        partialArgs: JSON.stringify(tavilyInitial.params),
+      }],
+    },
+    {
+      role: "toolResult",
+      toolCallId: EPHEMERAL_TAVILY_CALL_ID,
+      toolName: tavilyInitial.name,
+      isError: false,
+      content: [{ type: "text", text: `structuredContent:\n${JSON.stringify(structured, null, 2)}` }],
+    },
+  ] };
+}
+
 test("Token Factory Super and DeepSeek finalize after successful atomic wrappers only", () => {
   for (const name of [
     "bionemo_research_drug_demo",
@@ -186,6 +217,174 @@ test("host-local Tavily completion requires the exact source-owned turn and trus
   }
   assert.equal(bionemoSuperCompletedToolTarget(deepSeekModel, completed), undefined);
   assert.equal(bionemoSuperLocalCompletionText(deepSeekModel, completed), undefined);
+  assert.equal(bionemoSuperCompletedToolTarget({ ...superModel, provider: "nvidia" }, completed), undefined);
+});
+
+test("host-local Tavily completion accepts only the exact stripped ephemeral LLM boundary", () => {
+  const completed = ephemeralTavilyTurn();
+  assert.equal(EPHEMERAL_TAVILY_CALL_ID.length, 40);
+  assert.equal(EPHEMERAL_TAVILY_CALL_ID.startsWith("call_bionemo_super_"), false);
+  assert.match(EPHEMERAL_TAVILY_CALL_ID, /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u);
+  assert.equal(bionemoSuperCompletedToolTarget(superModel, completed), tavilyInitial.name);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, completed), true);
+  assert.match(bionemoSuperLocalCompletionText(superModel, completed), /RCSB PDB/u);
+
+  const rejected = [];
+  const bareJson = structuredClone(completed);
+  bareJson.messages[2].content[0].text = bareJson.messages[2].content[0].text.slice("structuredContent:\n".length);
+  rejected.push(bareJson);
+  const providerProse = structuredClone(completed);
+  providerProse.messages[2].content[0].text = "Provider normal path.";
+  rejected.push(providerProse);
+  const wrongPrompt = structuredClone(completed);
+  wrongPrompt.messages[0].content += " ";
+  rejected.push(wrongPrompt);
+  const projectedUserBlocks = structuredClone(completed);
+  projectedUserBlocks.messages[0].content = [{ type: "text", text: projectedUserBlocks.messages[0].content }];
+  rejected.push(projectedUserBlocks);
+  const prefixed = structuredClone(completed);
+  prefixed.messages[2].content[0].text = `prefix:${prefixed.messages[2].content[0].text}`;
+  rejected.push(prefixed);
+  const suffixed = structuredClone(completed);
+  suffixed.messages[2].content[0].text += " trailing provider prose";
+  rejected.push(suffixed);
+  const trailingWhitespace = structuredClone(completed);
+  trailingWhitespace.messages[2].content[0].text += "\n";
+  rejected.push(trailingWhitespace);
+  const compactJson = structuredClone(completed);
+  const compactStructured = JSON.parse(compactJson.messages[2].content[0].text.slice("structuredContent:\n".length));
+  compactJson.messages[2].content[0].text = `structuredContent:\n${JSON.stringify(compactStructured)}`;
+  rejected.push(compactJson);
+  const duplicateKey = structuredClone(completed);
+  duplicateKey.messages[2].content[0].text = duplicateKey.messages[2].content[0].text.replace(
+    "{\n",
+    `{\n  "query": ${JSON.stringify(tavilyInitial.params.query)},\n`,
+  );
+  rejected.push(duplicateKey);
+  const oversized = structuredClone(completed);
+  const oversizedStructured = JSON.parse(oversized.messages[2].content[0].text.slice("structuredContent:\n".length));
+  oversizedStructured.padding = "x".repeat(65_536);
+  oversized.messages[2].content[0].text = `structuredContent:\n${JSON.stringify(oversizedStructured, null, 2)}`;
+  assert.ok(oversized.messages[2].content[0].text.length > 65_536);
+  rejected.push(oversized);
+  const extraBlock = structuredClone(completed);
+  extraBlock.messages[2].content.push({ type: "text", text: "extra" });
+  rejected.push(extraBlock);
+  const extraResultField = structuredClone(completed);
+  extraResultField.messages[2].content[0].metadata = {};
+  rejected.push(extraResultField);
+  const extraAssistantBlock = structuredClone(completed);
+  extraAssistantBlock.messages[1].content.push({ type: "text", text: "extra" });
+  rejected.push(extraAssistantBlock);
+  const wrongStopReason = structuredClone(completed);
+  wrongStopReason.messages[1].stopReason = "stop";
+  rejected.push(wrongStopReason);
+  for (const alternateType of ["toolUse", "functionCall"]) {
+    const wrongCallType = structuredClone(completed);
+    wrongCallType.messages[1].content[0].type = alternateType;
+    rejected.push(wrongCallType);
+  }
+  const alteredPartialArgs = structuredClone(completed);
+  alteredPartialArgs.messages[1].content[0].partialArgs = "{}";
+  rejected.push(alteredPartialArgs);
+  const missingPartialArgs = structuredClone(completed);
+  delete missingPartialArgs.messages[1].content[0].partialArgs;
+  rejected.push(missingPartialArgs);
+  const mismatchedId = structuredClone(completed);
+  mismatchedId.messages[2].toolCallId = "fedcba9876543210fedcba9876543210fedcba98";
+  rejected.push(mismatchedId);
+  const emptyId = structuredClone(completed);
+  emptyId.messages[1].content[0].id = "";
+  emptyId.messages[2].toolCallId = "";
+  rejected.push(emptyId);
+  const nonStringId = structuredClone(completed);
+  nonStringId.messages[1].content[0].id = 42;
+  nonStringId.messages[2].toolCallId = 42;
+  rejected.push(nonStringId);
+  for (const invalidId of [
+    "0123456789abcdef0123456789abcdef01234567",
+    "call_bionemo_super_0123456789ab4cde8f012345",
+    EPHEMERAL_TAVILY_CALL_ID.replace("4cde8", "5cde8"),
+    EPHEMERAL_TAVILY_CALL_ID.replace("4cde8", "4cde7"),
+  ]) {
+    const invalidProjectedId = structuredClone(completed);
+    invalidProjectedId.messages[1].content[0].id = invalidId;
+    invalidProjectedId.messages[2].toolCallId = invalidId;
+    rejected.push(invalidProjectedId);
+  }
+  const badArgs = structuredClone(completed);
+  badArgs.messages[1].content[0].arguments.max_results = 4;
+  rejected.push(badArgs);
+  const badHost = structuredClone(completed);
+  const badHostStructured = JSON.parse(badHost.messages[2].content[0].text.slice("structuredContent:\n".length));
+  badHostStructured.results[0].url = "https://evil.example/docs/";
+  badHost.messages[2].content[0].text = `structuredContent:\n${JSON.stringify(badHostStructured, null, 2)}`;
+  rejected.push(badHost);
+  const credentialedUrl = structuredClone(completed);
+  const credentialedStructured = JSON.parse(credentialedUrl.messages[2].content[0].text.slice("structuredContent:\n".length));
+  credentialedStructured.results[0].url = "https://user:pass@www.rcsb.org/docs/";
+  credentialedUrl.messages[2].content[0].text = `structuredContent:\n${JSON.stringify(credentialedStructured, null, 2)}`;
+  rejected.push(credentialedUrl);
+  const explicitPort = structuredClone(completed);
+  const portStructured = JSON.parse(explicitPort.messages[2].content[0].text.slice("structuredContent:\n".length));
+  portStructured.results[0].url = "https://www.rcsb.org:8443/docs/";
+  explicitPort.messages[2].content[0].text = `structuredContent:\n${JSON.stringify(portStructured, null, 2)}`;
+  rejected.push(explicitPort);
+  const unsafeTitle = structuredClone(completed);
+  const titleStructured = JSON.parse(unsafeTitle.messages[2].content[0].text.slice("structuredContent:\n".length));
+  titleStructured.results[0].title = "RCSB\nPDB";
+  unsafeTitle.messages[2].content[0].text = `structuredContent:\n${JSON.stringify(titleStructured, null, 2)}`;
+  rejected.push(unsafeTitle);
+  const tooManyResults = structuredClone(completed);
+  const tooManyStructured = JSON.parse(tooManyResults.messages[2].content[0].text.slice("structuredContent:\n".length));
+  tooManyStructured.results = Array.from({ length: 6 }, (_, index) => ({ title: `RCSB ${index}`, url: `https://www.rcsb.org/docs/${index}` }));
+  tooManyResults.messages[2].content[0].text = `structuredContent:\n${JSON.stringify(tooManyStructured, null, 2)}`;
+  rejected.push(tooManyResults);
+  const badQuery = structuredClone(completed);
+  const badQueryStructured = JSON.parse(badQuery.messages[2].content[0].text.slice("structuredContent:\n".length));
+  badQueryStructured.query = "different query";
+  badQuery.messages[2].content[0].text = `structuredContent:\n${JSON.stringify(badQueryStructured, null, 2)}`;
+  rejected.push(badQuery);
+  const missingSuccess = structuredClone(completed);
+  delete missingSuccess.messages[2].isError;
+  rejected.push(missingSuccess);
+  const errored = structuredClone(completed);
+  errored.messages[2].isError = true;
+  rejected.push(errored);
+  const stringSuccess = structuredClone(completed);
+  stringSuccess.messages[2].isError = "false";
+  rejected.push(stringSuccess);
+  const reportedError = structuredClone(completed);
+  reportedError.messages[2].error = { code: "provider_error" };
+  rejected.push(reportedError);
+  const ambiguousError = structuredClone(completed);
+  ambiguousError.messages[2].error = null;
+  rejected.push(ambiguousError);
+  const ownUndefinedError = structuredClone(completed);
+  ownUndefinedError.messages[2].error = undefined;
+  rejected.push(ownUndefinedError);
+  const ambiguousDetails = structuredClone(completed);
+  ambiguousDetails.messages[2].details = {};
+  rejected.push(ambiguousDetails);
+  const ownUndefinedDetails = structuredClone(completed);
+  ownUndefinedDetails.messages[2].details = undefined;
+  rejected.push(ownUndefinedDetails);
+  const ambiguousStructured = structuredClone(completed);
+  ambiguousStructured.messages[2].structuredContent = null;
+  rejected.push(ambiguousStructured);
+  const ownUndefinedStructured = structuredClone(completed);
+  ownUndefinedStructured.messages[2].structuredContent = undefined;
+  rejected.push(ownUndefinedStructured);
+  const duplicateResult = structuredClone(completed);
+  duplicateResult.messages.splice(-1, 0, structuredClone(duplicateResult.messages[2]));
+  rejected.push(duplicateResult);
+
+  for (const boundary of rejected) {
+    assert.equal(bionemoSuperCompletedToolTarget(superModel, boundary), undefined);
+    assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, boundary), false);
+    assert.equal(bionemoSuperLocalCompletionText(superModel, boundary), undefined);
+  }
+  assert.equal(bionemoSuperCompletedToolTarget(deepSeekModel, completed), undefined);
   assert.equal(bionemoSuperCompletedToolTarget({ ...superModel, provider: "nvidia" }, completed), undefined);
 });
 
@@ -313,7 +512,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v13/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v14/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperFinalText)");
@@ -322,11 +521,15 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   assert.match(source, /delete params\.tools;\s*params\.tool_choice = "none";/su);
   assert.match(source, /const bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText\(model, context\)/u);
   assert.match(source, /const client = bionemoSuperLocalFinalText \? undefined : createOpenAICompletionsClient/u);
-  assert.equal(source.match(/bionemoNormalizeStrictOpenClawPrompt\(/gu)?.length, 3);
+  assert.equal(source.match(/bionemoNormalizeStrictOpenClawPrompt\(/gu)?.length, 4);
   assert.match(source, /bionemoSuperInitialTool && Array\.isArray\(params\.tools\)\s*&& params\.tools\.some\(\(tool\) => tool\?\.function\?\.name === bionemoSuperInitialTool\.name\)/su);
   assert.doesNotMatch(source, /bionemoSuperContextTavilyTool|mcp:bundle-mcp:tavily_web__tavily_search/u);
+  assert.equal(source.includes(["BIONEMO", "TEMP", "TAVILY", "POST", "RESULT", "TRANSPORT", "DIAGNOSTIC"].join("_")), false);
+  assert.doesNotMatch(source, /bionemoEmitTempTavily/u);
   assert.equal(source.includes(["bionemo", "super", "initial", "diagnostic"].join("-")), false);
   assert.match(source, /const responseStream = bionemoSuperLocalResponse\s*\? \(async function\* bionemoSuperCompletedStream\(\) \{\s*yield \{ id: "bionemo-local-completion", choices:/su);
+  assert.match(source, /const bionemoSuperLocalResponse = bionemoSuperLocalFinalText \|\| Boolean\(bionemoSuperInitialTool\)/u);
+  assert.doesNotMatch(source, /bionemoSuperInitialTool\?\.name === "tavily_web__tavily_search"/u);
   assert.match(source, /bionemoSuperFinalText,/u);
   assert.match(source, /if \(!bionemoSuperFinalText && !bionemoSuperInitialTool && choiceDelta\.tool_calls/u);
   assert.match(source, /if \(choiceDelta\.content && !bionemoSuperFinalText && !bionemoSuperInitialTool\)/u);
@@ -354,6 +557,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     const deepSeekModel = ${JSON.stringify({ ...deepSeekModel, api: "openai-completions", baseUrl: "https://example.invalid/v1", reasoning: true, input: ["text"], contextWindow: 1_048_576, maxTokens: 8_192 })};
     const expectedInitial = ${JSON.stringify({ name: expectedInitial.name, params: { ...expectedInitial.params } })};
     const expectedTavilyInitial = ${JSON.stringify({ name: expectedTavilyInitial.name, params: { ...expectedTavilyInitial.params } })};
+    const expectedInitialTurns = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS.map(({ prompt, name, params }) => ({ prompt, name, params: { ...params } })))};
     const output = () => ({ role: "assistant", content: [], api: model.api, provider: model.provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: Date.now() });
     const chunks = () => (async function* providerChunks() { yield { id: "response-1", choices: [{ index: 0, delta: { content: "<tool_call><function=read><parameter=path>artifact.pdb</parameter></function></tool_call>", tool_calls: [{ index: 0, id: "provider-call", type: "function", function: { name: "babel", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }; }());
     const initialOutput = output();
@@ -395,6 +599,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
 
     const successfulBoundary = ${JSON.stringify(turn("bionemo_batch_fold_demo"))};
     const successfulTavilyBoundary = ${JSON.stringify(tavilyTurn())};
+    const successfulEphemeralTavilyBoundary = ${JSON.stringify(ephemeralTavilyTurn())};
     assert.equal(patched.__bionemoSuperShouldFinalizeWithoutTools(deepSeekModel, successfulBoundary), true);
     const sourceOwnedFinal = patched.__bionemoSuperDeterministicFinalText(deepSeekModel, successfulBoundary);
     assert.match(sourceOwnedFinal, /five-protein OpenFold2 workflow returned a terminal result/u);
@@ -424,27 +629,32 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       providerFetchCalls += 1;
       return await new Promise(() => {});
     };
-    const exactTavilyInitialContext = { messages: [{ role: "user", content: "[Fri 2026-08-14 18:06 UTC] " + ${JSON.stringify(tavilyInitial.prompt)} }] };
-    const initialTavilyEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
-      apiKey: "test-key",
-      emitReasoning: false,
-      signal: AbortSignal.timeout(500),
-      onPayload(params) {
-        return { ...params, tools: [{ type: "function", function: { name: expectedTavilyInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
-      },
-    })), 750);
-    assert.equal(providerFetchCalls, 0, "exact source-owned Tavily initial turn must not start a zero-byte provider request");
-    assert.equal(initialTavilyEvents.some(({ type }) => type === "error"), false, JSON.stringify(initialTavilyEvents));
-    assert.equal(initialTavilyEvents.at(0).type, "start");
-    assert.equal(initialTavilyEvents.at(-1).type, "done");
-    assert.equal(initialTavilyEvents.at(-1).message.stopReason, "toolUse");
-    assert.deepEqual(initialTavilyEvents.at(-1).message.content, [{
-      type: "toolCall",
-      id: initialTavilyEvents.at(-1).message.content[0].id,
-      name: expectedTavilyInitial.name,
-      arguments: expectedTavilyInitial.params,
-      partialArgs: JSON.stringify(expectedTavilyInitial.params),
-    }]);
+    for (const expected of expectedInitialTurns) {
+      const exactInitialContext = { messages: [{ role: "user", content: "[Fri 2026-08-14 18:06 UTC] " + expected.prompt }] };
+      const initialEvents = await within(collectEvents(transport(model, exactInitialContext, {
+        apiKey: "test-key",
+        emitReasoning: false,
+        signal: AbortSignal.timeout(500),
+        onPayload(params) {
+          return { ...params, tools: [{ type: "function", function: { name: expected.name, description: "bounded test", parameters: { type: "object" } } }] };
+        },
+      })), 750);
+      assert.equal(providerFetchCalls, 0, expected.name + " must not start a zero-byte provider request");
+      assert.equal(initialEvents.some(({ type }) => type === "error"), false, JSON.stringify(initialEvents));
+      assert.equal(initialEvents.at(0).type, "start");
+      assert.equal(initialEvents.at(-1).type, "done");
+      assert.equal(initialEvents.at(-1).message.stopReason, "toolUse");
+      assert.deepEqual(initialEvents.at(-1).message.content, [{
+        type: "toolCall",
+        id: initialEvents.at(-1).message.content[0].id,
+        name: expected.name,
+        arguments: expected.params,
+        partialArgs: JSON.stringify(expected.params),
+      }]);
+      assert.equal(initialEvents.at(-1).message.content[0].id.startsWith("call_bionemo_super_"), true);
+    }
+    const expectedScienceInitial = expectedInitialTurns[0];
+    const exactScienceInitialContext = { messages: [{ role: "user", content: "[Fri 2026-08-14 18:06 UTC] " + expectedScienceInitial.prompt }] };
     const localEvents = await within(collectEvents(transport(model, successfulBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
     assert.equal(providerFetchCalls, 0, "completed Super boundary must not start the zero-byte provider follow-up");
     assert.equal(localEvents.some(({ type }) => type === "error"), false, JSON.stringify(localEvents));
@@ -471,57 +681,198 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.deepEqual(tavilyLocalEvents.at(-1).message.content, [{ type: "text", text: tavilyLocalFinal }]);
     assert.equal(tavilyLocalEvents.at(-1).message.stopReason, "stop");
 
+    assert.equal(successfulEphemeralTavilyBoundary.messages[1].content[0].id.length, 40);
+    assert.equal(successfulEphemeralTavilyBoundary.messages[1].content[0].id.startsWith("call_bionemo_super_"), false);
+    assert.match(successfulEphemeralTavilyBoundary.messages[1].content[0].id, /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u);
+    const ephemeralTavilyLocalFinal = patched.__bionemoSuperLocalCompletionText(model, successfulEphemeralTavilyBoundary);
+    assert.match(ephemeralTavilyLocalFinal, /RCSB PDB/u);
+    assert.match(ephemeralTavilyLocalFinal, /UniProt/u);
+    const ephemeralTavilyLocalEvents = await within(collectEvents(transport(model, successfulEphemeralTavilyBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
+    assert.equal(providerFetchCalls, 0, "exact stripped ephemeral Tavily boundary must not start a provider request");
+    assert.equal(ephemeralTavilyLocalEvents.some(({ type }) => type === "error"), false, JSON.stringify(ephemeralTavilyLocalEvents));
+    assert.equal(ephemeralTavilyLocalEvents.at(0).type, "start");
+    assert.equal(ephemeralTavilyLocalEvents.at(-1).type, "done");
+    assert.deepEqual(ephemeralTavilyLocalEvents.at(-1).message.content, [{ type: "text", text: ephemeralTavilyLocalFinal }]);
+    assert.equal(ephemeralTavilyLocalEvents.at(-1).message.stopReason, "stop");
+
     const providerBody = 'data: {"id":"normal-response","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Provider normal path."},"finish_reason":"stop"}]}\\n\\ndata: [DONE]\\n\\n';
     globalThis.__bionemoTestFetch = async () => {
       providerFetchCalls += 1;
       return new Response(providerBody, { status: 200, headers: { "content-type": "text/event-stream" } });
     };
-    const malformedTimestampContext = { messages: [{ role: "user", content: "[Fri 2026-8-14 18:06 UTC] " + ${JSON.stringify(tavilyInitial.prompt)} }] };
+    const ephemeralRejected = [];
+    const bareJsonBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    bareJsonBoundary.messages[2].content[0].text = bareJsonBoundary.messages[2].content[0].text.slice("structuredContent:\\n".length);
+    ephemeralRejected.push(["bare JSON", bareJsonBoundary]);
+    const providerProseBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    providerProseBoundary.messages[2].content[0].text = "Provider normal path.";
+    ephemeralRejected.push(["provider prose", providerProseBoundary]);
+    const wrongPromptBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    wrongPromptBoundary.messages[0].content += " ";
+    ephemeralRejected.push(["wrong source prompt", wrongPromptBoundary]);
+    const userBlocksBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    userBlocksBoundary.messages[0].content = [{ type: "text", text: userBlocksBoundary.messages[0].content }];
+    ephemeralRejected.push(["non-string user projection", userBlocksBoundary]);
+    const prefixedBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    prefixedBoundary.messages[2].content[0].text = "prefix:" + prefixedBoundary.messages[2].content[0].text;
+    ephemeralRejected.push(["extra prefix", prefixedBoundary]);
+    const suffixedBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    suffixedBoundary.messages[2].content[0].text += " trailing provider prose";
+    ephemeralRejected.push(["extra suffix", suffixedBoundary]);
+    const trailingWhitespaceBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    trailingWhitespaceBoundary.messages[2].content[0].text += "\\n";
+    ephemeralRejected.push(["trailing JSON whitespace", trailingWhitespaceBoundary]);
+    const compactJsonBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    const compactStructured = JSON.parse(compactJsonBoundary.messages[2].content[0].text.slice("structuredContent:\\n".length));
+    compactJsonBoundary.messages[2].content[0].text = "structuredContent:\\n" + JSON.stringify(compactStructured);
+    ephemeralRejected.push(["compact JSON", compactJsonBoundary]);
+    const duplicateKeyBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    duplicateKeyBoundary.messages[2].content[0].text = duplicateKeyBoundary.messages[2].content[0].text.replace(
+      "{\\n",
+      "{\\n  \\"query\\": " + JSON.stringify(expectedTavilyInitial.params.query) + ",\\n",
+    );
+    ephemeralRejected.push(["duplicate JSON key", duplicateKeyBoundary]);
+    const oversizedBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    const oversizedStructured = JSON.parse(oversizedBoundary.messages[2].content[0].text.slice("structuredContent:\\n".length));
+    oversizedStructured.padding = "x".repeat(65_536);
+    oversizedBoundary.messages[2].content[0].text = "structuredContent:\\n" + JSON.stringify(oversizedStructured, null, 2);
+    assert.ok(oversizedBoundary.messages[2].content[0].text.length > 65_536);
+    ephemeralRejected.push(["oversized result text", oversizedBoundary]);
+    const extraBlockBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    extraBlockBoundary.messages[2].content.push({ type: "text", text: "extra" });
+    ephemeralRejected.push(["extra result block", extraBlockBoundary]);
+    const extraResultFieldBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    extraResultFieldBoundary.messages[2].content[0].metadata = {};
+    ephemeralRejected.push(["extra result content field", extraResultFieldBoundary]);
+    const extraAssistantBlockBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    extraAssistantBlockBoundary.messages[1].content.push({ type: "text", text: "extra" });
+    ephemeralRejected.push(["extra assistant block", extraAssistantBlockBoundary]);
+    const wrongStopReasonBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    wrongStopReasonBoundary.messages[1].stopReason = "stop";
+    ephemeralRejected.push(["wrong assistant stop reason", wrongStopReasonBoundary]);
+    for (const alternateType of ["toolUse", "functionCall"]) {
+      const wrongCallTypeBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+      wrongCallTypeBoundary.messages[1].content[0].type = alternateType;
+      ephemeralRejected.push(["wrong call type " + alternateType, wrongCallTypeBoundary]);
+    }
+    const alteredPartialArgsBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    alteredPartialArgsBoundary.messages[1].content[0].partialArgs = "{}";
+    ephemeralRejected.push(["altered partial args", alteredPartialArgsBoundary]);
+    const missingPartialArgsBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    delete missingPartialArgsBoundary.messages[1].content[0].partialArgs;
+    ephemeralRejected.push(["missing partial args", missingPartialArgsBoundary]);
+    const mismatchedIdBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    mismatchedIdBoundary.messages[2].toolCallId = "fedcba9876543210fedcba9876543210fedcba98";
+    ephemeralRejected.push(["mismatched ID", mismatchedIdBoundary]);
+    const emptyIdBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    emptyIdBoundary.messages[1].content[0].id = "";
+    emptyIdBoundary.messages[2].toolCallId = "";
+    ephemeralRejected.push(["empty ID", emptyIdBoundary]);
+    for (const [label, invalidId] of [
+      ["arbitrary 40-hex ID", "0123456789abcdef0123456789abcdef01234567"],
+      ["raw underscore ID", "call_bionemo_super_0123456789ab4cde8f012345"],
+      ["wrong UUID version", successfulEphemeralTavilyBoundary.messages[1].content[0].id.replace("4cde8", "5cde8")],
+      ["wrong UUID variant", successfulEphemeralTavilyBoundary.messages[1].content[0].id.replace("4cde8", "4cde7")],
+    ]) {
+      const invalidProjectedIdBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+      invalidProjectedIdBoundary.messages[1].content[0].id = invalidId;
+      invalidProjectedIdBoundary.messages[2].toolCallId = invalidId;
+      ephemeralRejected.push([label, invalidProjectedIdBoundary]);
+    }
+    const badArgsBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    badArgsBoundary.messages[1].content[0].arguments.max_results = 4;
+    ephemeralRejected.push(["bad args", badArgsBoundary]);
+    const badHostBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    const badHostStructured = JSON.parse(badHostBoundary.messages[2].content[0].text.slice("structuredContent:\\n".length));
+    badHostStructured.results[0].url = "https://evil.example/docs/";
+    badHostBoundary.messages[2].content[0].text = "structuredContent:\\n" + JSON.stringify(badHostStructured, null, 2);
+    ephemeralRejected.push(["bad host", badHostBoundary]);
+    const badQueryBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    const badQueryStructured = JSON.parse(badQueryBoundary.messages[2].content[0].text.slice("structuredContent:\\n".length));
+    badQueryStructured.query = "different query";
+    badQueryBoundary.messages[2].content[0].text = "structuredContent:\\n" + JSON.stringify(badQueryStructured, null, 2);
+    ephemeralRejected.push(["bad query", badQueryBoundary]);
+    const missingSuccessBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    delete missingSuccessBoundary.messages[2].isError;
+    ephemeralRejected.push(["missing explicit success", missingSuccessBoundary]);
+    const erroredEphemeralBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    erroredEphemeralBoundary.messages[2].isError = true;
+    ephemeralRejected.push(["errored result", erroredEphemeralBoundary]);
+    const reportedErrorBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    reportedErrorBoundary.messages[2].error = { code: "provider_error" };
+    ephemeralRejected.push(["reported error", reportedErrorBoundary]);
+    const ambiguousErrorBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    ambiguousErrorBoundary.messages[2].error = null;
+    ephemeralRejected.push(["ambiguous error field", ambiguousErrorBoundary]);
+    const undefinedErrorBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    undefinedErrorBoundary.messages[2].error = undefined;
+    ephemeralRejected.push(["own undefined error", undefinedErrorBoundary]);
+    const ambiguousDetailsBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    ambiguousDetailsBoundary.messages[2].details = {};
+    ephemeralRejected.push(["ambiguous details", ambiguousDetailsBoundary]);
+    const undefinedDetailsBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    undefinedDetailsBoundary.messages[2].details = undefined;
+    ephemeralRejected.push(["own undefined details", undefinedDetailsBoundary]);
+    const ambiguousStructuredBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    ambiguousStructuredBoundary.messages[2].structuredContent = null;
+    ephemeralRejected.push(["ambiguous top-level structured content", ambiguousStructuredBoundary]);
+    const undefinedStructuredBoundary = structuredClone(successfulEphemeralTavilyBoundary);
+    undefinedStructuredBoundary.messages[2].structuredContent = undefined;
+    ephemeralRejected.push(["own undefined structured content", undefinedStructuredBoundary]);
+    for (const [label, boundary] of ephemeralRejected) {
+      assert.equal(patched.__bionemoSuperLocalCompletionText(model, boundary), undefined, label);
+      const events = await within(collectEvents(transport(model, boundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
+      assert.equal(events.at(-1).type, "done", label);
+      assert.deepEqual(events.at(-1).message.content, [{ type: "text", text: "Provider normal path." }], label);
+    }
+    assert.equal(providerFetchCalls, ephemeralRejected.length, "every rejected ephemeral shape must retain the provider transport");
+    const providerBaseline = providerFetchCalls;
+    const malformedTimestampContext = { messages: [{ role: "user", content: "[Fri 2026-8-14 18:06 UTC] " + expectedScienceInitial.prompt }] };
     const malformedTimestampEvents = await within(collectEvents(transport(model, malformedTimestampContext, {
       apiKey: "test-key",
       emitReasoning: false,
       onPayload(params) {
-        return { ...params, tools: [{ type: "function", function: { name: expectedTavilyInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
+        return { ...params, tools: [{ type: "function", function: { name: expectedScienceInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
       },
     })), 2_000);
-    assert.equal(providerFetchCalls, 1, "a malformed timestamp envelope must retain the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 1, "a malformed timestamp envelope must retain the provider transport");
     assert.equal(malformedTimestampEvents.at(-1).type, "done");
     assert.deepEqual(malformedTimestampEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
-    const missingSurfaceEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
+    const missingSurfaceEvents = await within(collectEvents(transport(model, exactScienceInitialContext, {
       apiKey: "test-key",
       emitReasoning: false,
       onPayload(params) {
         return { ...params, tools: [{ type: "function", function: { name: "other_tool", description: "other", parameters: { type: "object" } } }] };
       },
     })), 2_000);
-    assert.equal(providerFetchCalls, 2, "a missing direct Tavily provider tool must retain the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 2, "a missing projected source-owned tool must retain the provider transport");
     assert.equal(missingSurfaceEvents.at(-1).type, "done");
     assert.deepEqual(missingSurfaceEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const wrongProviderModel = { ...model, provider: "nvidia" };
-    const wrongProviderEvents = await within(collectEvents(transport(wrongProviderModel, exactTavilyInitialContext, {
+    const wrongProviderEvents = await within(collectEvents(transport(wrongProviderModel, exactScienceInitialContext, {
       apiKey: "test-key",
       emitReasoning: false,
       onPayload(params) {
-        return { ...params, tools: [{ type: "function", function: { name: expectedTavilyInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
+        return { ...params, tools: [{ type: "function", function: { name: expectedScienceInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
       },
     })), 2_000);
-    assert.equal(providerFetchCalls, 3, "the exact timestamped prompt on another provider must retain the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 3, "the exact timestamped prompt on another provider must retain the provider transport");
     assert.equal(wrongProviderEvents.at(-1).type, "done");
     assert.deepEqual(wrongProviderEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const malformedTavilyBoundary = structuredClone(successfulTavilyBoundary);
     malformedTavilyBoundary.messages.at(-1).details.mcpServer = "untrusted-server";
     assert.equal(patched.__bionemoSuperLocalCompletionText(model, malformedTavilyBoundary), undefined);
     const malformedTavilyEvents = await within(collectEvents(transport(model, malformedTavilyBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 4, "malformed Tavily provenance retains the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 4, "malformed Tavily provenance retains the provider transport");
     assert.equal(malformedTavilyEvents.at(-1).type, "done");
     assert.deepEqual(malformedTavilyEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const erroredBoundaryForTransport = ${JSON.stringify(turn("bionemo_batch_fold_demo", { isError: true }))};
     const erroredEvents = await within(collectEvents(transport(model, erroredBoundaryForTransport, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 5, "errored Super boundary retains the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 5, "errored Super boundary retains the provider transport");
     assert.equal(erroredEvents.at(-1).type, "done");
     assert.deepEqual(erroredEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const deepSeekEvents = await within(collectEvents(transport(deepSeekModel, successfulBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 6, "other models retain the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 6, "other models retain the provider transport");
     assert.equal(deepSeekEvents.at(-1).type, "done");
     assert.deepEqual(deepSeekEvents.at(-1).message.content, [{ type: "text", text: sourceOwnedFinal }]);
 
