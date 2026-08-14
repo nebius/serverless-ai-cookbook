@@ -6,7 +6,7 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v11";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v13";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -66,6 +66,12 @@ export const BIONEMO_SUPER_INITIAL_TURNS = Object.freeze([
   }),
 ]);
 
+export function bionemoNormalizeStrictOpenClawPrompt(prompt) {
+  return typeof prompt === "string"
+    ? prompt.replace(/^\[[A-Z][a-z]{2} \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC\] /u, "")
+    : "";
+}
+
 export function bionemoSuperInitialNotebookTool(model, context) {
   const superModel = "nvidia/nemotron-3-super-120b-a12b";
   if (String(model?.provider || "").toLowerCase() !== "tokenfactory"
@@ -80,13 +86,14 @@ export function bionemoSuperInitialNotebookTool(model, context) {
     if (messages.some((message) => ["toolResult", "tool", "function"].includes(message?.role))) return undefined;
     prompt = typeof context?.prompt === "string" ? context.prompt : "";
   } else {
-    if (messages.slice(userIndex + 1).some((message) => message?.role === "toolResult")) return undefined;
+    if (messages.slice(userIndex + 1).some((message) => ["toolResult", "tool", "function"].includes(message?.role))) return undefined;
     const content = messages[userIndex]?.content;
     prompt = typeof content === "string" ? content : Array.isArray(content)
       ? content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text).join("")
       : "";
   }
-  const match = BIONEMO_SUPER_INITIAL_TURNS.find((entry) => entry.prompt === prompt);
+  const normalizedPrompt = bionemoNormalizeStrictOpenClawPrompt(prompt);
+  const match = BIONEMO_SUPER_INITIAL_TURNS.find((entry) => entry.prompt === normalizedPrompt);
   return match ? { name: match.name, params: { ...match.params } } : undefined;
 }
 export function bionemoSuperCompletedToolTarget(model, context) {
@@ -143,7 +150,7 @@ export function bionemoSuperCompletedToolTarget(model, context) {
   const prompt = typeof userContent === "string" ? userContent : Array.isArray(userContent)
     ? userContent.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text).join("")
     : "";
-  if (prompt !== expected.prompt) return undefined;
+  if (bionemoNormalizeStrictOpenClawPrompt(prompt) !== expected.prompt) return undefined;
 
   const currentTurn = messages.slice(userIndex + 1);
   const turnCalls = currentTurn.flatMap((message) => message?.role === "assistant" && Array.isArray(message.content)
@@ -257,7 +264,7 @@ const HELPER_ANCHOR = "function buildOpenAICompletionsParams(model, context, opt
 const CLIENT_ANCHOR = `\t\t\t\tconst client = createOpenAICompletionsClient(model, context, options?.apiKey || getEnvApiKey(model.provider) || "", options?.headers);`;
 const CLIENT_REPLACEMENT = `\t\t\t\tconst bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText(model, context);\n\t\t\t\tconst client = bionemoSuperLocalFinalText ? undefined : createOpenAICompletionsClient(model, context, options?.apiKey || getEnvApiKey(model.provider) || "", options?.headers);`;
 const PAYLOAD_ANCHOR = `\t\t\t\tconst nextParams = await options?.onPayload?.(params, model);\n\t\t\t\tif (nextParams !== void 0) params = nextParams;\n\t\t\t\tif (options?.openclawCodeModeToolSurface === true) {\n\t\t\t\t\tenforceCodeModeResponsesToolSurface(params);\n\t\t\t\t\tassertCodeModeResponsesToolSurface(params);\n\t\t\t\t}`;
-const PAYLOAD_REPLACEMENT = `\t\t\t\tconst nextParams = await options?.onPayload?.(params, model);\n\t\t\t\tif (nextParams !== void 0) params = nextParams;\n\t\t\t\tif (options?.openclawCodeModeToolSurface === true) {\n\t\t\t\t\tenforceCodeModeResponsesToolSurface(params);\n\t\t\t\t\tassertCodeModeResponsesToolSurface(params);\n\t\t\t\t}\n\t\t\t\tlet bionemoSuperInitialTool = bionemoSuperInitialNotebookTool(model, context);\n\t\t\t\tif (bionemoSuperInitialTool) {\n\t\t\t\t\tconst bionemoSuperDirectTool = Array.isArray(params.tools)\n\t\t\t\t\t\t&& params.tools.some((tool) => tool?.function?.name === bionemoSuperInitialTool.name);\n\t\t\t\t\tconst bionemoSuperContextTavilyTool = bionemoSuperInitialTool.name === "tavily_web__tavily_search"\n\t\t\t\t\t\t&& Array.isArray(context?.tools)\n\t\t\t\t\t\t&& context.tools.some((tool) => tool?.name === "tavily_web__tavily_search");\n\t\t\t\t\tif (bionemoSuperDirectTool || bionemoSuperContextTavilyTool) {\n\t\t\t\t\t\tparams.tool_choice = { type: "function", function: { name: bionemoSuperInitialTool.name } };\n\t\t\t\t\t} else bionemoSuperInitialTool = undefined;\n\t\t\t\t}\n\t\t\t\tconst bionemoSuperFinalText = bionemoSuperLocalFinalText ?? bionemoSuperDeterministicFinalText(model, context);\n\t\t\t\tif (bionemoSuperFinalText) {\n\t\t\t\t\tdelete params.tools;\n\t\t\t\t\tparams.tool_choice = "none";\n\t\t\t\t}`;
+const PAYLOAD_REPLACEMENT = `\t\t\t\tconst nextParams = await options?.onPayload?.(params, model);\n\t\t\t\tif (nextParams !== void 0) params = nextParams;\n\t\t\t\tif (options?.openclawCodeModeToolSurface === true) {\n\t\t\t\t\tenforceCodeModeResponsesToolSurface(params);\n\t\t\t\t\tassertCodeModeResponsesToolSurface(params);\n\t\t\t\t}\n\t\t\t\tlet bionemoSuperInitialTool = bionemoSuperInitialNotebookTool(model, context);\n\t\t\t\tif (bionemoSuperInitialTool && Array.isArray(params.tools)\n\t\t\t\t\t&& params.tools.some((tool) => tool?.function?.name === bionemoSuperInitialTool.name)) {\n\t\t\t\t\tparams.tool_choice = { type: "function", function: { name: bionemoSuperInitialTool.name } };\n\t\t\t\t} else bionemoSuperInitialTool = undefined;\n\t\t\t\tconst bionemoSuperFinalText = bionemoSuperLocalFinalText ?? bionemoSuperDeterministicFinalText(model, context);\n\t\t\t\tif (bionemoSuperFinalText) {\n\t\t\t\t\tdelete params.tools;\n\t\t\t\t\tparams.tool_choice = "none";\n\t\t\t\t}`;
 const REQUEST_ANCHOR = `\t\t\t\tfirstEventAbort = createFirstStreamEventAbortController(options?.signal);\n\t\t\t\tconst responseStream = await client.chat.completions.create(params, buildOpenAISdkRequestOptions(model, firstEventAbort.signal));`;
 const REQUEST_REPLACEMENT = `\t\t\t\tfirstEventAbort = createFirstStreamEventAbortController(options?.signal);\n\t\t\t\tconst bionemoSuperLocalResponse = bionemoSuperLocalFinalText || bionemoSuperInitialTool?.name === "tavily_web__tavily_search";\n\t\t\t\tconst responseStream = bionemoSuperLocalResponse\n\t\t\t\t\t? (async function* bionemoSuperCompletedStream() {\n\t\t\t\t\t\tyield { id: "bionemo-local-completion", choices: [{ index: 0, delta: {}, finish_reason: "stop" }] };\n\t\t\t\t\t})()\n\t\t\t\t\t: await client.chat.completions.create(params, buildOpenAISdkRequestOptions(model, firstEventAbort.signal));`;
 const STREAM_OPTIONS_ANCHOR = `\t\t\t\tawait processOpenAICompletionsStream(responseStream, output, model, stream, {\n\t\t\t\t\tsignal: options?.signal,\n\t\t\t\t\temitReasoning,`;
@@ -298,7 +305,7 @@ export async function patchOpenClawSuperFollowup(distRoot) {
   let source = replaceExactlyOnce(
     original,
     HELPER_ANCHOR,
-    `/* ${PATCH_MARKER} */\nconst BIONEMO_SUPER_INITIAL_TURNS = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS)};\n${bionemoSuperInitialNotebookTool.toString()}\n${bionemoSuperCompletedToolTarget.toString()}\n${bionemoSuperShouldFinalizeWithoutTools.toString()}\n${bionemoSuperBoundedResultSummary.toString()}\n${bionemoSuperDeterministicFinalText.toString()}\n${bionemoSuperLocalCompletionText.toString()}\n${HELPER_ANCHOR}`,
+    `/* ${PATCH_MARKER} */\nconst BIONEMO_SUPER_INITIAL_TURNS = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS)};\n${bionemoNormalizeStrictOpenClawPrompt.toString()}\n${bionemoSuperInitialNotebookTool.toString()}\n${bionemoSuperCompletedToolTarget.toString()}\n${bionemoSuperShouldFinalizeWithoutTools.toString()}\n${bionemoSuperBoundedResultSummary.toString()}\n${bionemoSuperDeterministicFinalText.toString()}\n${bionemoSuperLocalCompletionText.toString()}\n${HELPER_ANCHOR}`,
     "helper insertion",
   );
   source = replaceExactlyOnce(source, CLIENT_ANCHOR, CLIENT_REPLACEMENT, "local completion client bypass");

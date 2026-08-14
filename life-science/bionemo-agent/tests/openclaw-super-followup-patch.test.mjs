@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import {
   BIONEMO_SUPER_INITIAL_TURNS,
   BIONEMO_SUPER_NOTEBOOK_TURNS,
+  bionemoNormalizeStrictOpenClawPrompt,
   bionemoSuperBoundedResultSummary,
   bionemoSuperCompletedToolTarget,
   bionemoSuperDeterministicFinalText,
@@ -117,10 +118,19 @@ test("host-local Tavily completion requires the exact source-owned turn and trus
   assert.match(final, /Source-owned comparison/iu);
   assert.match(final, /source titles and canonical URLs appended below/iu);
 
+  const timestamped = structuredClone(completed);
+  timestamped.messages[0].content[0].text = `[Fri 2026-08-14 18:06 UTC] ${tavilyInitial.prompt}`;
+  assert.equal(bionemoSuperCompletedToolTarget(superModel, timestamped), tavilyInitial.name);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, timestamped), true);
+  assert.equal(bionemoSuperLocalCompletionText(superModel, timestamped), final);
+
   const rejected = [];
   const wrongPrompt = structuredClone(completed);
   wrongPrompt.messages[0].content[0].text += " ";
   rejected.push(wrongPrompt);
+  const doubleTimestamp = structuredClone(timestamped);
+  doubleTimestamp.messages[0].content[0].text = `[Fri 2026-08-14 18:06 UTC] ${doubleTimestamp.messages[0].content[0].text}`;
+  rejected.push(doubleTimestamp);
   const wrongArgs = structuredClone(completed);
   wrongArgs.messages[1].content[0].arguments.max_results = 4;
   rejected.push(wrongArgs);
@@ -215,16 +225,28 @@ test("Super initial calls are source-owned only for exact reviewed prompts", () 
       bionemoSuperInitialNotebookTool(superModel, { prompt: expected.prompt, messages: [] }),
       { name: expected.name, params: { ...expected.params } },
     );
+    assert.deepEqual(
+      bionemoSuperInitialNotebookTool(superModel, {
+        messages: [{ role: "user", content: `[Fri 2026-08-14 18:06 UTC] ${expected.prompt}` }],
+      }),
+      { name: expected.name, params: { ...expected.params } },
+    );
   }
   const [first] = BIONEMO_SUPER_NOTEBOOK_TURNS;
+  const strictEnvelope = "[Fri 2026-08-14 18:06 UTC] ";
+  assert.equal(bionemoNormalizeStrictOpenClawPrompt(first.prompt), first.prompt);
+  assert.equal(bionemoNormalizeStrictOpenClawPrompt(`${strictEnvelope}${first.prompt}`), first.prompt);
+  assert.equal(bionemoNormalizeStrictOpenClawPrompt(`${strictEnvelope}${strictEnvelope}${first.prompt}`), `${strictEnvelope}${first.prompt}`);
   assert.equal(bionemoSuperInitialNotebookTool(deepSeekModel, { messages: [{ role: "user", content: first.prompt }] }), undefined);
   assert.equal(bionemoSuperInitialNotebookTool(superModel, { messages: [{ role: "user", content: `${first.prompt} ` }] }), undefined);
   assert.equal(bionemoSuperInitialNotebookTool({ ...superModel, provider: "nvidia" }, { messages: [{ role: "user", content: first.prompt }] }), undefined);
   assert.equal(bionemoSuperInitialNotebookTool(superModel, { messages: [{ role: "user", content: "List all available BioNeMo models." }] }), undefined);
-  assert.equal(bionemoSuperInitialNotebookTool(superModel, { messages: [
-    { role: "user", content: first.prompt },
-    { role: "toolResult", toolName: first.name },
-  ] }), undefined);
+  for (const role of ["toolResult", "tool", "function"]) {
+    assert.equal(bionemoSuperInitialNotebookTool(superModel, { messages: [
+      { role: "user", content: first.prompt },
+      { role, toolName: first.name },
+    ] }), undefined);
+  }
   assert.equal(bionemoSuperInitialNotebookTool(superModel, {
     prompt: first.prompt,
     messages: [{ role: "user", content: "Continue from the previous tool call." }],
@@ -233,6 +255,16 @@ test("Super initial calls are source-owned only for exact reviewed prompts", () 
     prompt: first.prompt,
     messages: [{ role: "toolResult", toolName: first.name }],
   }), undefined);
+  for (const malformed of [
+    `[Fri 2026-8-14 18:06 UTC] ${first.prompt}`,
+    `[Fri 2026-08-14 18:06 UTC] [Fri 2026-08-14 18:06 UTC] ${first.prompt}`,
+    `prefix [Fri 2026-08-14 18:06 UTC] ${first.prompt}`,
+    `[Fri 2026-08-14 18:06 UTC] ${first.prompt} `,
+  ]) {
+    assert.equal(bionemoSuperInitialNotebookTool(superModel, {
+      messages: [{ role: "user", content: malformed }],
+    }), undefined);
+  }
 });
 
 test("Super fallback includes only a bounded workflow summary", () => {
@@ -281,7 +313,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v11/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v13/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperFinalText)");
@@ -290,8 +322,10 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   assert.match(source, /delete params\.tools;\s*params\.tool_choice = "none";/su);
   assert.match(source, /const bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText\(model, context\)/u);
   assert.match(source, /const client = bionemoSuperLocalFinalText \? undefined : createOpenAICompletionsClient/u);
-  assert.match(source, /const bionemoSuperContextTavilyTool = bionemoSuperInitialTool\.name === "tavily_web__tavily_search"\s*&& Array\.isArray\(context\?\.tools\)\s*&& context\.tools\.some\(\(tool\) => tool\?\.name === "tavily_web__tavily_search"\)/su);
-  assert.doesNotMatch(source, /mcp:bundle-mcp:tavily_web__tavily_search/u);
+  assert.equal(source.match(/bionemoNormalizeStrictOpenClawPrompt\(/gu)?.length, 3);
+  assert.match(source, /bionemoSuperInitialTool && Array\.isArray\(params\.tools\)\s*&& params\.tools\.some\(\(tool\) => tool\?\.function\?\.name === bionemoSuperInitialTool\.name\)/su);
+  assert.doesNotMatch(source, /bionemoSuperContextTavilyTool|mcp:bundle-mcp:tavily_web__tavily_search/u);
+  assert.equal(source.includes(["bionemo", "super", "initial", "diagnostic"].join("-")), false);
   assert.match(source, /const responseStream = bionemoSuperLocalResponse\s*\? \(async function\* bionemoSuperCompletedStream\(\) \{\s*yield \{ id: "bionemo-local-completion", choices:/su);
   assert.match(source, /bionemoSuperFinalText,/u);
   assert.match(source, /if \(!bionemoSuperFinalText && !bionemoSuperInitialTool && choiceDelta\.tool_calls/u);
@@ -320,7 +354,6 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     const deepSeekModel = ${JSON.stringify({ ...deepSeekModel, api: "openai-completions", baseUrl: "https://example.invalid/v1", reasoning: true, input: ["text"], contextWindow: 1_048_576, maxTokens: 8_192 })};
     const expectedInitial = ${JSON.stringify({ name: expectedInitial.name, params: { ...expectedInitial.params } })};
     const expectedTavilyInitial = ${JSON.stringify({ name: expectedTavilyInitial.name, params: { ...expectedTavilyInitial.params } })};
-    const registryTool = (name) => ({ name, label: name, description: name, parameters: { type: "object", properties: {}, additionalProperties: false } });
     const output = () => ({ role: "assistant", content: [], api: model.api, provider: model.provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: Date.now() });
     const chunks = () => (async function* providerChunks() { yield { id: "response-1", choices: [{ index: 0, delta: { content: "<tool_call><function=read><parameter=path>artifact.pdb</parameter></function></tool_call>", tool_calls: [{ index: 0, id: "provider-call", type: "function", function: { name: "babel", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }; }());
     const initialOutput = output();
@@ -391,7 +424,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       providerFetchCalls += 1;
       return await new Promise(() => {});
     };
-    const exactTavilyInitialContext = { prompt: ${JSON.stringify(tavilyInitial.prompt)}, messages: [] };
+    const exactTavilyInitialContext = { messages: [{ role: "user", content: "[Fri 2026-08-14 18:06 UTC] " + ${JSON.stringify(tavilyInitial.prompt)} }] };
     const initialTavilyEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
       apiKey: "test-key",
       emitReasoning: false,
@@ -405,27 +438,13 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.equal(initialTavilyEvents.at(0).type, "start");
     assert.equal(initialTavilyEvents.at(-1).type, "done");
     assert.equal(initialTavilyEvents.at(-1).message.stopReason, "toolUse");
-    assert.deepEqual(initialTavilyEvents.at(-1).message.content.filter(({ type }) => type === "toolCall").map(({ name, arguments: args }) => ({ name, args })), [{ name: expectedTavilyInitial.name, args: expectedTavilyInitial.params }]);
-    const codeModeTavilyContext = {
-      ...exactTavilyInitialContext,
-      tools: [registryTool("exec"), registryTool("wait"), registryTool(expectedTavilyInitial.name)],
-    };
-    const codeModeTavilyEvents = await within(collectEvents(transport(model, codeModeTavilyContext, {
-      apiKey: "test-key",
-      emitReasoning: false,
-      signal: AbortSignal.timeout(500),
-      openclawCodeModeToolSurface: true,
-      onPayload(params) {
-        assert.deepEqual(params.tools.map((tool) => tool.function.name), ["exec", expectedTavilyInitial.name, "wait"]);
-        return params;
-      },
-    })), 750);
-    assert.equal(providerFetchCalls, 0, "the exact code-mode Tavily registry must not start a zero-byte provider request");
-    assert.equal(codeModeTavilyEvents.some(({ type }) => type === "error"), false, JSON.stringify(codeModeTavilyEvents));
-    assert.equal(codeModeTavilyEvents.at(0).type, "start");
-    assert.equal(codeModeTavilyEvents.at(-1).type, "done");
-    assert.equal(codeModeTavilyEvents.at(-1).message.stopReason, "toolUse");
-    assert.deepEqual(codeModeTavilyEvents.at(-1).message.content.filter(({ type }) => type === "toolCall").map(({ name, arguments: args }) => ({ name, args })), [{ name: expectedTavilyInitial.name, args: expectedTavilyInitial.params }]);
+    assert.deepEqual(initialTavilyEvents.at(-1).message.content, [{
+      type: "toolCall",
+      id: initialTavilyEvents.at(-1).message.content[0].id,
+      name: expectedTavilyInitial.name,
+      arguments: expectedTavilyInitial.params,
+      partialArgs: JSON.stringify(expectedTavilyInitial.params),
+    }]);
     const localEvents = await within(collectEvents(transport(model, successfulBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
     assert.equal(providerFetchCalls, 0, "completed Super boundary must not start the zero-byte provider follow-up");
     assert.equal(localEvents.some(({ type }) => type === "error"), false, JSON.stringify(localEvents));
@@ -436,11 +455,14 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.deepEqual(localEvents.at(-1).message.content, [{ type: "text", text: superLocalFinal }]);
     assert.equal(localEvents.at(-1).message.stopReason, "stop");
 
-    const tavilyLocalFinal = patched.__bionemoSuperLocalCompletionText(model, successfulTavilyBoundary);
+    const timestampedSuccessfulTavilyBoundary = structuredClone(successfulTavilyBoundary);
+    timestampedSuccessfulTavilyBoundary.messages[0].content[0].text = "[Fri 2026-08-14 18:06 UTC] "
+      + timestampedSuccessfulTavilyBoundary.messages[0].content[0].text;
+    const tavilyLocalFinal = patched.__bionemoSuperLocalCompletionText(model, timestampedSuccessfulTavilyBoundary);
     assert.match(tavilyLocalFinal, /RCSB PDB/u);
     assert.match(tavilyLocalFinal, /UniProt/u);
-    const tavilyLocalEvents = await within(collectEvents(transport(model, successfulTavilyBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
-    assert.equal(providerFetchCalls, 0, "exact successful Tavily boundary must not start a zero-byte provider follow-up");
+    const tavilyLocalEvents = await within(collectEvents(transport(model, timestampedSuccessfulTavilyBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
+    assert.equal(providerFetchCalls, 0, "timestamp-prefixed successful Tavily boundary must not start a zero-byte provider follow-up");
     assert.equal(tavilyLocalEvents.some(({ type }) => type === "error"), false, JSON.stringify(tavilyLocalEvents));
     assert.equal(tavilyLocalEvents.at(0).type, "start");
     assert.equal(tavilyLocalEvents.at(-1).type, "done");
@@ -454,36 +476,36 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       providerFetchCalls += 1;
       return new Response(providerBody, { status: 200, headers: { "content-type": "text/event-stream" } });
     };
-    const replayContext = { prompt: ${JSON.stringify(tavilyInitial.prompt)}, messages: [{ role: "user", content: "Continue from the previous tool call." }] };
-    const replayEvents = await within(collectEvents(transport(model, replayContext, {
+    const malformedTimestampContext = { messages: [{ role: "user", content: "[Fri 2026-8-14 18:06 UTC] " + ${JSON.stringify(tavilyInitial.prompt)} }] };
+    const malformedTimestampEvents = await within(collectEvents(transport(model, malformedTimestampContext, {
       apiKey: "test-key",
       emitReasoning: false,
       onPayload(params) {
         return { ...params, tools: [{ type: "function", function: { name: expectedTavilyInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
       },
     })), 2_000);
-    assert.equal(providerFetchCalls, 1, "a replay user message must retain the provider transport");
-    assert.equal(replayEvents.at(-1).type, "done");
-    assert.deepEqual(replayEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
-    const missingDirectContext = {
-      ...exactTavilyInitialContext,
-      tools: [registryTool("exec"), registryTool("wait")],
-    };
-    const missingSurfaceEvents = await within(collectEvents(transport(model, missingDirectContext, {
+    assert.equal(providerFetchCalls, 1, "a malformed timestamp envelope must retain the provider transport");
+    assert.equal(malformedTimestampEvents.at(-1).type, "done");
+    assert.deepEqual(malformedTimestampEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
+    const missingSurfaceEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
       apiKey: "test-key",
       emitReasoning: false,
-      openclawCodeModeToolSurface: true,
+      onPayload(params) {
+        return { ...params, tools: [{ type: "function", function: { name: "other_tool", description: "other", parameters: { type: "object" } } }] };
+      },
     })), 2_000);
-    assert.equal(providerFetchCalls, 2, "a missing direct Tavily context tool must retain the provider transport");
+    assert.equal(providerFetchCalls, 2, "a missing direct Tavily provider tool must retain the provider transport");
     assert.equal(missingSurfaceEvents.at(-1).type, "done");
     assert.deepEqual(missingSurfaceEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const wrongProviderModel = { ...model, provider: "nvidia" };
-    const wrongProviderEvents = await within(collectEvents(transport(wrongProviderModel, codeModeTavilyContext, {
+    const wrongProviderEvents = await within(collectEvents(transport(wrongProviderModel, exactTavilyInitialContext, {
       apiKey: "test-key",
       emitReasoning: false,
-      openclawCodeModeToolSurface: true,
+      onPayload(params) {
+        return { ...params, tools: [{ type: "function", function: { name: expectedTavilyInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
+      },
     })), 2_000);
-    assert.equal(providerFetchCalls, 3, "the exact code-mode context registry on another provider must retain the provider transport");
+    assert.equal(providerFetchCalls, 3, "the exact timestamped prompt on another provider must retain the provider transport");
     assert.equal(wrongProviderEvents.at(-1).type, "done");
     assert.deepEqual(wrongProviderEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const malformedTavilyBoundary = structuredClone(successfulTavilyBoundary);
