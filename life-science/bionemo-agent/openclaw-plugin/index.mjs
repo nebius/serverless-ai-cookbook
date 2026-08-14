@@ -56,6 +56,7 @@ function toolResult(value) {
     status: "completed",
     runId: value.runId,
     summary: value.summary,
+    ...(compactSteps ? { steps: compactSteps } : {}),
     artifacts: compactArtifacts,
     caveat: "Research use only. Review confidence and validate experimentally; this is not clinical advice.",
   }, null, 2);

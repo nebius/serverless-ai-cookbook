@@ -511,6 +511,78 @@ test("model-facing OpenFold2 schema exposes only sequence and explicit configure
   assert.equal(tool.parameters.properties.ack_non_clinical.const, true);
 });
 
+test("configured-backend atomic text result round-trips compact bounded step evidence", async () => {
+  const api = fakeApi();
+  const remoteJobId = "a".repeat(32);
+  const secret = "unit-test-private-token-never-persist";
+  const summary = {
+    skill: "OpenFold2",
+    backend: "mcp",
+    elapsedMs: 7,
+    remoteJobId,
+    confidence: { meanPlddt: 91.2 },
+  };
+  pluginInternals.registerPlugin(api, { runtime: {
+    store: {},
+    async runSkill(skillId) {
+      assert.equal(skillId, "openfold2");
+      return {
+        runId: PRESENTATION_WORKFLOW_RUN_ID,
+        summary,
+        steps: [{
+          label: "OpenFold2",
+          skillId: "openfold2",
+          model: "openfold2",
+          backend: "mcp",
+          status: "completed",
+          elapsedMs: 7,
+          remoteJobId,
+          startedAt: "2026-08-14T00:00:00.000Z",
+          completedAt: "2026-08-14T00:00:00.007Z",
+          authorization: secret,
+          rawModelResponse: `${secret}${"x".repeat(100_000)}`,
+        }],
+        artifacts: [{
+          name: "result.json",
+          bytes: 2,
+          downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/result.json`,
+          privateMetadata: `${secret}${"y".repeat(100_000)}`,
+        }],
+      };
+    },
+    async runWorkflow() { throw new Error("not used"); },
+    async listModels() { throw new Error("not used"); },
+  } });
+
+  const tool = api.captured.tools.find(({ name }) => name === "bionemo_openfold2");
+  const result = await tool.execute("atomic-call", { [MCP_TURN_ID_FIELD]: PRESENTATION_AGENT_RUN_ID });
+  const persisted = JSON.parse(result.content[0].text);
+  const expectedSteps = [{
+    label: "OpenFold2",
+    skillId: "openfold2",
+    model: "openfold2",
+    backend: "mcp",
+    status: "completed",
+    elapsedMs: 7,
+    remoteJobId,
+  }];
+  assert.deepEqual(persisted, {
+    status: "completed",
+    runId: PRESENTATION_WORKFLOW_RUN_ID,
+    summary,
+    steps: expectedSteps,
+    artifacts: [{
+      name: "result.json",
+      bytes: 2,
+      downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/result.json`,
+    }],
+    caveat: "Research use only. Review confidence and validate experimentally; this is not clinical advice.",
+  });
+  assert.deepEqual(result.structuredContent.steps, expectedSteps);
+  assert.equal(Buffer.byteLength(result.content[0].text, "utf8") < 2_048, true);
+  assert.equal(JSON.stringify(result).includes(secret), false);
+});
+
 test("dashboard data and artifacts are gateway-authenticated while readiness is public", () => {
   const api = fakeApi();
   plugin.register(api);
