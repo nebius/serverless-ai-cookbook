@@ -16,6 +16,8 @@ Nebius Serverless CPU endpoint. The image contains:
 - ten bounded hosted-NIM adapters, seven composed research workflows, and a bundled interactive 3Dmol structure viewer;
 - four image-baked, provider-neutral nbformat notebooks, including a fixed
   five-protein batch dataset and safe same-origin notebook previews; and
+- nine static, distinctly labelled OpenClaw example sessions whose reviewed
+  prompts remain unsent until the user submits them; and
 - optional Tavily MCP search.
 
 The container may start without a model credential. In that case the browser
@@ -132,12 +134,14 @@ The BioNeMo dashboard opens with four visible guided notebooks. They are real,
 clean nbformat 4 files baked under `/workspace/agent/notebooks`, available as a
 safe read-only preview, an exact `.ipynb` download, and a one-click launch into
 its own ready example chat. At startup, OpenClaw's native session lifecycle
-creates and pins four stable, distinctly labelled starter-only sessions in the
+creates and pins nine stable, distinctly labelled starter-only sessions in the
 Sessions sidebar. Each contains one visible static user template labelled
 `STATIC STARTER — NOT EXECUTED`, while its reviewed prompt is also loaded as an
 unsent draft. Opening the page or a session never sends a model request, starts
 a tool, or runs scientific compute. They do not contain credentials, fake
-assistant output, executed output, or a Python kernel:
+assistant output, executed output, or a Python kernel.
+
+Four notebook-backed sessions demonstrate the composed BioNeMo workflows:
 
 1. an optional Tavily-first EGFR/gefitinib research workflow using OpenFold2,
    MolMIM, and OpenFold3;
@@ -145,6 +149,19 @@ assistant output, executed output, or a Python kernel:
 3. bounded MolMIM ligand optimization followed by OpenFold3 complex modeling;
 4. a bulk workflow that reads the bundled, reviewed five-protein FASTA and
    invokes OpenFold2 once per record, sequentially.
+
+Five additional source-owned session starters demonstrate the surrounding
+OpenClaw workbench without pretending they are notebooks or precomputed runs:
+
+5. a no-tool tour of the browser agent, bounded tool surface, notebooks,
+   artifacts, and hidden raw hosted model/job/catalog operations;
+6. a no-tool explanation of native OpenClaw skills versus the broader ClawBio
+   contracts available to terminal Codex and Claude clients;
+7. one read-only ClawBio catalog search followed by one contract description;
+8. one readiness-gated, image-qualified local `gwas-lookup` demo with no
+   hosted model compute; and
+9. one bounded Tavily search that returns cited public sources, or reports the
+   safe availability/authentication category and stops without substitution.
 
 Each notebook calls one low-arity, backend-neutral `bionemo_*` wrapper. The
 wrapper selects direct NVIDIA or the Cerebrium MCP backend, owns all model

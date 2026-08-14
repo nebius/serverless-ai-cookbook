@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { NOTEBOOK_CATALOG, notebookViewPath } from "../openclaw-plugin/src/notebooks.mjs";
+import { EXAMPLE_SESSION_CATALOG } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SESSION_RUNTIME = Object.freeze({
   createPrefix: "session-create-service-",
@@ -13,20 +13,13 @@ export const PINNED_OPENCLAW_SESSION_RUNTIME = Object.freeze({
   managerHash: "d06b4ccb169263554ab112edd7feed1af85d1a5029e0b27e9de1e59f51de9e57",
 });
 
-export const EXAMPLE_SESSIONS = Object.freeze(NOTEBOOK_CATALOG.map((entry) => Object.freeze({
-  key: entry.sessionKey,
-  agentId: "bionemo",
-  label: entry.sessionLabel,
-  title: entry.title,
-  description: entry.description,
-  steps: entry.steps,
-  notebookPath: notebookViewPath(entry.slug),
-  prompt: entry.prompt,
-  slug: entry.slug,
-})));
+export const EXAMPLE_SESSIONS = EXAMPLE_SESSION_CATALOG;
 
 export function buildExampleStarterText(definition) {
   const steps = definition.steps.map((step, index) => `${index + 1}. ${step}`).join("\n");
+  const companion = definition.notebookPath
+    ? `Notebook: [Open the guided notebook](.${definition.notebookPath})`
+    : "Companion: This source-owned starter has no executable notebook; its fenced prompt remains inert until sent.";
   return `# STATIC STARTER — NOT EXECUTED
 
 This is a local template baked into the BioNeMo image. No model, tool, MCP call, remote job, or result has been run or produced. The fenced prompt below is inert reference text; execute it only after you explicitly send it in a later user turn.
@@ -39,7 +32,7 @@ ${definition.description}
 
 ${steps}
 
-Notebook: [Open the guided notebook](.${definition.notebookPath})
+${companion}
 
 ## Exact reviewed prompt
 

@@ -27,6 +27,7 @@ export const CRAMBIN_PUBLIC_INPUT = Object.freeze({
 });
 
 export const BATCH_FASTA_RELATIVE_PATH = BATCH_DEMO_INPUT_FILE;
+export const BAKED_WORKFLOW_DATA_ROOT = "/workspace/agent";
 export const BATCH_PROTEIN_RECORDS = Object.freeze([
   CRAMBIN_PUBLIC_INPUT,
   Object.freeze({ id: "1UBQ", name: "Ubiquitin", sequence: "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG", source: "https://www.rcsb.org/structure/1UBQ" }),
@@ -74,17 +75,17 @@ export function parseBatchProteinFasta(text) {
   });
 }
 
-function batchProteinFilePath(workspaceRoot = "/workspace/agent", relativePath = BATCH_FASTA_RELATIVE_PATH) {
+function batchProteinFilePath(workflowDataRoot = BAKED_WORKFLOW_DATA_ROOT, relativePath = BATCH_FASTA_RELATIVE_PATH) {
   if (relativePath !== BATCH_FASTA_RELATIVE_PATH) throw new InputError("batch input_file must be the fixed bundled FASTA path");
-  const root = path.resolve(workspaceRoot);
+  const root = path.resolve(workflowDataRoot);
   const target = path.resolve(root, relativePath);
-  if (!target.startsWith(`${root}${path.sep}`)) throw new InputError("batch FASTA path escapes the trusted workspace root");
+  if (!target.startsWith(`${root}${path.sep}`)) throw new InputError("batch FASTA path escapes the baked workflow data root");
   return target;
 }
 
 export async function loadBatchProteinFile(relativePath = BATCH_FASTA_RELATIVE_PATH, options = {}) {
-  const workspaceRoot = options.workspaceRoot || process.env.BIONEMO_CLIENT_WORKSPACE || "/workspace/agent";
-  return parseBatchProteinFasta(await readFile(batchProteinFilePath(workspaceRoot, relativePath), "utf8"));
+  const workflowDataRoot = options.workflowDataRoot || BAKED_WORKFLOW_DATA_ROOT;
+  return parseBatchProteinFasta(await readFile(batchProteinFilePath(workflowDataRoot, relativePath), "utf8"));
 }
 
 const SAMPLES = Object.freeze({

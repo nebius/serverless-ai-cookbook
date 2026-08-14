@@ -8,7 +8,13 @@ const MODULE_SCRIPT_MARKER = '    <script type="module"';
 const BOOTSTRAP_SCRIPT_TAG = `    <script src="./${CONTROL_UI_BOOTSTRAP_NAME}"></script>\n`;
 
 export function renderExampleSessionPrelude(examples = EXAMPLE_SESSIONS) {
-  const publicDefinitions = examples.map(({ key, agentId, label, prompt }) => ({ key, agentId, label, prompt }));
+  const publicDefinitions = examples.map(({
+    key,
+    agentId,
+    label,
+    prompt,
+    draftSeedGeneration,
+  }) => ({ key, agentId, label, prompt, draftSeedGeneration }));
   return `(function(){"use strict";var definitions=${JSON.stringify(publicDefinitions)}.map(function(entry){return Object.freeze(entry);});Object.defineProperty(globalThis,"__BIONEMO_EXAMPLE_SESSIONS__",{value:Object.freeze(definitions),configurable:false,enumerable:false,writable:false});})();\n`;
 }
 

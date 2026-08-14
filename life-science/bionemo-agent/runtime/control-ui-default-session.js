@@ -4,6 +4,7 @@
   var examples = Array.isArray(globalThis.__BIONEMO_EXAMPLE_SESSIONS__)
     ? globalThis.__BIONEMO_EXAMPLE_SESSIONS__
     : [];
+  var nativeComposerSessionCap = 20;
   var url = new URL(window.location.href);
 
   function gatewayUrlForPage() {
@@ -16,9 +17,11 @@
     var gatewayUrl = gatewayUrlForPage();
     var suffix = encodeURIComponent(gatewayUrl.trim() || "default").slice(0, 240);
     var storageKey = `openclaw.control.chatComposer.v1:${suffix}`;
-    var markerKey = `bionemo.demoDraftSeed.v1:${suffix}`;
+    var markerKey = `bionemo.demoDraftSeed.v2:${suffix}`;
+    var legacyMarkerKey = `bionemo.demoDraftSeed.v1:${suffix}`;
     try {
       if (window.localStorage.getItem(markerKey) === "1") return;
+      var upgradingFromV1 = window.localStorage.getItem(legacyMarkerKey) === "1";
       var parsed = { version: 1, sessions: {} };
       var stored = window.localStorage.getItem(storageKey);
       if (stored) {
@@ -28,29 +31,43 @@
           parsed = candidate;
         }
       }
-      var now = Date.now();
+      var storedSessionCount = Object.keys(parsed.sessions).length;
+      var minimumExistingUpdatedAt = Object.values(parsed.sessions).reduce(function oldestTimestamp(minimum, entry) {
+        var updatedAt = entry && typeof entry.updatedAt === "number" && Number.isFinite(entry.updatedAt)
+          ? entry.updatedAt
+          : minimum;
+        return Math.min(minimum, updatedAt);
+      }, 0);
+      var exampleUpdatedAtBase = minimumExistingUpdatedAt - examples.length;
       examples.forEach(function seedExample(example, index) {
+        // A missing v1 draft may mean that its user deliberately cleared it.
+        // During the v2 upgrade, seed only newly introduced definitions.
+        if (upgradingFromV1 && example.draftSeedGeneration === 1) return;
         var sessionStorageKey = `${example.key}\u0000agent:${example.agentId}`;
+        var hasExisting = Object.prototype.hasOwnProperty.call(parsed.sessions, sessionStorageKey);
         var existing = parsed.sessions[sessionStorageKey];
         var validExisting = existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {};
         if (typeof validExisting.draft === "string" && validExisting.draft.trim()) return;
+        // OpenClaw retains at most 20 composer records on its next native
+        // write. Existing records are user-owned and always take precedence;
+        // fill only genuinely free slots in deterministic catalog order.
+        if (!hasExisting && storedSessionCount >= nativeComposerSessionCap) return;
         parsed.sessions[sessionStorageKey] = {
           ...validExisting,
           draft: example.prompt,
-          updatedAt: now + index,
+          // New image records are deliberately older than every preserved
+          // native record, so OpenClaw evicts an example before user state if
+          // a later user session takes the store over its retention cap.
+          ...(hasExisting ? {} : { updatedAt: exampleUpdatedAtBase + index }),
         };
+        if (!hasExisting) storedSessionCount += 1;
       });
-      var newest = Object.entries(parsed.sessions)
-        .sort(function newestFirst(left, right) {
-          return Number(right[1] && right[1].updatedAt || 0) - Number(left[1] && left[1].updatedAt || 0);
-        })
-        .slice(0, 20);
-      parsed.sessions = Object.fromEntries(newest);
       window.localStorage.setItem(storageKey, JSON.stringify(parsed));
       window.localStorage.setItem(markerKey, "1");
     } catch {
-      // Storage may be unavailable or full. Notebook links still carry their
-      // reviewed draft explicitly, and no failure may weaken authentication.
+      // Storage may be unavailable or full. Static starter transcripts and
+      // notebook links still expose reviewed prompts, and no failure may
+      // weaken authentication.
     }
   }
 
@@ -62,7 +79,8 @@
   // from native storage.
   function installExampleDraftBridge() {
     if (!examples.length || !window.document || typeof window.MutationObserver !== "function") return;
-    var restored = new Set();
+    var lastRequested = "";
+    var restoredForRequested = false;
     var scheduled = false;
 
     function storedDraft(example) {
@@ -84,14 +102,18 @@
     function restoreRequestedExample() {
       var current = new URL(window.location.href);
       var requested = current.pathname === "/chat" ? current.searchParams.get("session") : "";
+      if (requested !== lastRequested) {
+        lastRequested = requested;
+        restoredForRequested = false;
+      }
       var example = examples.find(function findExample(entry) { return entry.key === requested; });
-      if (!example || restored.has(example.key)) return;
+      if (!example || restoredForRequested) return;
       var pane = window.document.querySelector("openclaw-chat-pane");
       if (!pane || !pane.state || pane.state.sessionKey !== example.key) return;
       var textarea = pane.querySelector(".agent-chat__composer-combobox > textarea");
       if (!textarea) return;
       if (typeof textarea.value === "string" && textarea.value.length > 0) {
-        restored.add(example.key);
+        restoredForRequested = true;
         return;
       }
       var draft = storedDraft(example);
@@ -102,7 +124,7 @@
       if (descriptor && typeof descriptor.set === "function") descriptor.set.call(textarea, draft);
       else textarea.value = draft;
       textarea.dispatchEvent(new window.Event("input", { bubbles: true, composed: true }));
-      restored.add(example.key);
+      restoredForRequested = true;
     }
 
     function scheduleRestore() {

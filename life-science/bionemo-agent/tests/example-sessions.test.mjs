@@ -6,6 +6,10 @@ import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import {
+  NOTEBOOK_EXAMPLE_SESSIONS,
+  WORKBENCH_EXAMPLE_SESSIONS,
+} from "../runtime/example-session-catalog.mjs";
+import {
   EXAMPLE_SESSIONS,
   buildExampleStarterText,
   pinAndVerifyExampleSessions,
@@ -42,22 +46,70 @@ function minimalConfig(workspace) {
   };
 }
 
-test("four stable ready examples map one-to-one to the baked notebooks", () => {
-  assert.equal(EXAMPLE_SESSIONS.length, 4);
-  assert.equal(new Set(EXAMPLE_SESSIONS.map(({ key }) => key)).size, 4);
-  assert.equal(new Set(EXAMPLE_SESSIONS.map(({ label }) => label)).size, 4);
+test("nine stable ready examples include four notebook workflows and five bounded workbench tours", () => {
+  assert.equal(EXAMPLE_SESSIONS.length, 9);
+  assert.equal(NOTEBOOK_EXAMPLE_SESSIONS.length, 4);
+  assert.equal(WORKBENCH_EXAMPLE_SESSIONS.length, 5);
+  assert.equal(NOTEBOOK_EXAMPLE_SESSIONS.every(({ draftSeedGeneration }) => draftSeedGeneration === 1), true);
+  assert.equal(WORKBENCH_EXAMPLE_SESSIONS.every(({ draftSeedGeneration }) => draftSeedGeneration === 2), true);
+  assert.equal(new Set(EXAMPLE_SESSIONS.map(({ key }) => key)).size, 9);
+  assert.equal(new Set(EXAMPLE_SESSIONS.map(({ label }) => label)).size, 9);
   assert.equal(EXAMPLE_SESSIONS.every(({ key }) => key.startsWith("agent:bionemo:dashboard:")), true);
   assert.deepEqual(EXAMPLE_SESSIONS.map(({ label }) => label), [
     "Example 1 · Research-first EGFR",
     "Example 2 · Compare protein structures",
     "Example 3 · Optimize ligand complex",
     "Example 4 · Batch-fold five proteins",
+    "Example 5 · Tour the workbench",
+    "Example 6 · Understand skills",
+    "Example 7 · Browse ClawBio catalog",
+    "Example 8 · Run ClawBio GWAS demo",
+    "Example 9 · Research with Tavily",
   ]);
-  for (const definition of EXAMPLE_SESSIONS) {
+  for (const definition of NOTEBOOK_EXAMPLE_SESSIONS) {
     assert.equal(
       buildExampleStarterText(definition).includes(`](.${definition.notebookPath})`),
       true,
     );
+  }
+  for (const definition of WORKBENCH_EXAMPLE_SESSIONS) {
+    const starter = buildExampleStarterText(definition);
+    assert.equal(Object.hasOwn(definition, "notebookPath"), false);
+    assert.doesNotMatch(starter, /Open the guided notebook/u);
+    assert.match(starter, /source-owned starter has no executable notebook/u);
+  }
+  assert.deepEqual(WORKBENCH_EXAMPLE_SESSIONS.map(({ surface }) => surface), [
+    "openclaw",
+    "skills",
+    "clawbio-readonly",
+    "clawbio-demo",
+    "tavily",
+  ]);
+});
+
+test("new workbench prompts preserve exact bounded no-run and exactly-once contracts", () => {
+  const [tour, skills, catalog, demo, tavily] = WORKBENCH_EXAMPLE_SESSIONS;
+  for (const definition of [tour, skills]) assert.match(definition.prompt, /Do not call any tool\./u);
+  assert.match(tour.prompt, /raw hosted model, job, and catalog operations are intentionally absent/u);
+  assert.match(tour.prompt, /read-only models_list operation/u);
+
+  assert.match(catalog.prompt, /Call clawbio__list_skills exactly once with query="gwas"/u);
+  assert.match(catalog.prompt, /call clawbio__describe_skill exactly once with name="gwas-lookup"/u);
+  assert.match(catalog.prompt, /Do not call clawbio__run_skill/u);
+  assert.match(catalog.prompt, /demo_runnable_in_image/u);
+
+  assert.match(demo.prompt, /Call clawbio__describe_skill exactly once with name="gwas-lookup"/u);
+  assert.match(demo.prompt, /call clawbio__run_skill exactly once with skill="gwas-lookup" and demo=true/u);
+  assert.match(demo.prompt, /only if it returns demo_runnable_in_image=true/u);
+  assert.match(demo.prompt, /do not retry or duplicate the demo/u);
+
+  assert.match(tavily.prompt, /configured Tavily MCP search tool exactly once/u);
+  assert.match(tavily.prompt, /basic search depth, at most five results/u);
+  assert.match(tavily.prompt, /stop without substituting another tool or inventing citations/u);
+  assert.doesNotMatch(tavily.prompt, /tavily_web__|tavily__|search__search/u);
+
+  for (const definition of WORKBENCH_EXAMPLE_SESSIONS) {
+    assert.doesNotMatch(definition.prompt, /clawbio_models__|bionemo_models__/u);
   }
 });
 
@@ -92,7 +144,7 @@ test("native seeding writes one explicit local user starter without starting a r
   const first = await seedExampleSessions({ configPath, createSession, SessionManager: FakeSessionManager });
   const second = await seedExampleSessions({ configPath, createSession, SessionManager: FakeSessionManager });
   assert.deepEqual(first, second);
-  assert.equal(calls.length, 8);
+  assert.equal(calls.length, EXAMPLE_SESSIONS.length * 2);
   for (const call of calls) {
     assert.deepEqual(Object.keys(call).sort(), ["agentId", "cfg", "key", "label"]);
     assert.equal(Object.hasOwn(call, "task"), false);
@@ -183,7 +235,7 @@ test("gateway reconciliation pins only drifted examples and verifies sessions.li
     GatewayChatClient: FakeGatewayClient,
     timeoutMs: 1_000,
   });
-  assert.equal(result.length, 4);
+  assert.equal(result.length, EXAMPLE_SESSIONS.length);
   assert.deepEqual(patches, [{
     key: EXAMPLE_SESSIONS[0].key,
     agentId: "bionemo",
@@ -193,7 +245,7 @@ test("gateway reconciliation pins only drifted examples and verifies sessions.li
   assert.equal(instances.every(({ stopped }) => stopped), true);
 });
 
-test("exact pinned OpenClaw creates four visible local starter sessions idempotently", { timeout: 120_000 }, async (t) => {
+test("exact pinned OpenClaw creates nine visible local starter sessions idempotently", { timeout: 120_000 }, async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-example-seed-pinned-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const stateDir = path.join(root, "state");

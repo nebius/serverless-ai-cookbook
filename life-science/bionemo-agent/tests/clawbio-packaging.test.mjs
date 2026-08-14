@@ -50,6 +50,8 @@ test("ClawBio is source-pinned, license-filtered, and copied only to terminal-ca
   assert.match(wrapper, /def list_skills\(/u);
   assert.match(wrapper, /def describe_skill\(/u);
   assert.match(wrapper, /def run_skill\(/u);
+  assert.match(wrapper, /"exit_code": result\.get\("exit_code"\)/u);
+  assert.doesNotMatch(wrapper, /"returncode": result\.get\("returncode"\)/u);
   assert.doesNotMatch(wrapper, /def clawbio_(?:list|describe|run)_skill/u);
   assert.match(router, /`clawbio__list_skills`/u);
   assert.match(router, /`clawbio__describe_skill`/u);

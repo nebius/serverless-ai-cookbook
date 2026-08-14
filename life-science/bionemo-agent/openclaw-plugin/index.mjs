@@ -72,6 +72,12 @@ const WORKFLOW_RUN_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}
 const VIEWER_CAPABILITY = /^[A-Za-z0-9_-]{32}$/u;
 const STRUCTURE_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.(?:pdb|cif|mmcif)$/iu;
 const CROSS_BACKEND_TOOL_NAME_SET = new Set(CROSS_BACKEND_TOOL_NAMES);
+const TAVILY_SEARCH_TOOL_NAME = "tavily_web__tavily_search";
+const TAVILY_SEARCH_SERVER = "tavily_web";
+const TAVILY_SEARCH_OPERATION = "tavily_search";
+const MAX_TAVILY_SOURCES = 5;
+const MAX_TAVILY_TITLE_LENGTH = 300;
+const MAX_TAVILY_URL_LENGTH = 2_048;
 
 function validatedPresentationArtifact(item, runId, { artifactRoot, publicBaseUrl }) {
   if (!item || typeof item !== "object" || typeof item.name !== "string" || !STRUCTURE_FILE.test(item.name)) return undefined;
@@ -155,7 +161,7 @@ function currentTurnArtifactPresentation(messages, options = {}) {
   if (!wrapperResults.length) return { observed: false };
   if (wrapperResults.length !== 1) return { observed: true };
   const result = wrapperResults[0];
-  if (result.isError === true || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "")) {
+  if (result.isError !== false || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "")) {
     return { observed: true };
   }
 
@@ -179,6 +185,81 @@ function currentTurnArtifactPresentation(messages, options = {}) {
   const structured = structuredToolResult(result);
   if (!structured || (typeof structured.status === "string" && structured.status !== "completed")) return { observed: true };
   return { observed: true, presentation: artifactPresentation(result, options) };
+}
+
+function normalizedTavilySource(item) {
+  if (!item || typeof item !== "object" || typeof item.title !== "string" || typeof item.url !== "string") return undefined;
+  const title = item.title.replace(/[\u0000-\u001f\u007f]/gu, " ").replace(/\s+/gu, " ").trim();
+  const rawUrl = item.url.trim();
+  if (!title || title.length > MAX_TAVILY_TITLE_LENGTH || !rawUrl || rawUrl.length > MAX_TAVILY_URL_LENGTH) return undefined;
+  if (!/^https?:\/\//iu.test(rawUrl)) return undefined;
+  let url;
+  try { url = new URL(rawUrl); }
+  catch { return undefined; }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return undefined;
+  return { title, url: url.toString() };
+}
+
+function currentTurnTavilySources(messages) {
+  if (!Array.isArray(messages)) return { observed: false };
+  let lastUserIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (normalizedMessageRole(messages[index]) === "user") {
+      lastUserIndex = index;
+      break;
+    }
+  }
+  if (lastUserIndex < 0) return { observed: false };
+  const currentTurn = messages.slice(lastUserIndex + 1);
+  const searchResults = currentTurn.filter((message) => {
+    const role = normalizedMessageRole(message);
+    return (role === "toolresult" || role === "tool" || role === "function")
+      && messageToolName(message) === TAVILY_SEARCH_TOOL_NAME;
+  });
+  if (!searchResults.length) return { observed: false };
+  if (searchResults.length !== 1) return { observed: true };
+  const result = searchResults[0];
+  if (result.isError === true || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "")) {
+    return { observed: true };
+  }
+
+  const searchCalls = [];
+  for (const message of currentTurn) {
+    if (normalizedMessageRole(message) !== "assistant" || !Array.isArray(message.content)) continue;
+    for (const block of message.content) {
+      const type = typeof block?.type === "string" ? block.type.toLowerCase().replace(/[^a-z]/gu, "") : "";
+      if (!["toolcall", "tooluse", "functioncall"].includes(type)) continue;
+      if (messageToolName(block) === TAVILY_SEARCH_TOOL_NAME) searchCalls.push(block);
+    }
+  }
+  if (searchCalls.length > 1) return { observed: true };
+  if (searchCalls.length === 1) {
+    const callId = messageToolCallId(searchCalls[0], { includeId: true });
+    const resultCallId = messageToolCallId(result);
+    if (callId && resultCallId && callId !== resultCallId) return { observed: true };
+  }
+
+  const details = result.details;
+  if (!details || typeof details !== "object"
+    || details.mcpServer !== TAVILY_SEARCH_SERVER || details.mcpTool !== TAVILY_SEARCH_OPERATION) return { observed: true };
+  if (result.structuredContent !== undefined) return { observed: true };
+  const structured = details.structuredContent;
+  if (!structured || typeof structured !== "object" || !Array.isArray(structured.results)
+    || structured.results.length < 1 || structured.results.length > MAX_TAVILY_SOURCES) return { observed: true };
+  const sources = structured.results.map(normalizedTavilySource);
+  if (sources.some((source) => !source)) return { observed: true };
+  return { observed: true, sources };
+}
+
+function tavilySourceLine(source) {
+  const title = source.title.replace(/([\\`*_[\]{}()<>#+\-.!|])/gu, "\\$1");
+  return `- ${title} — ${source.url}`;
+}
+
+function tavilySourcesAppendText(text, sources) {
+  if (typeof text !== "string" || !Array.isArray(sources) || !sources.length) return undefined;
+  if (sources.every(({ url }) => text.includes(url))) return undefined;
+  return `Sources\n\n${sources.map(tavilySourceLine).join("\n")}`;
 }
 
 function textBlockPhase(block) {
@@ -424,15 +505,23 @@ export function registerPlugin(api, options = {}) {
     api.on("before_agent_finalize", (event, ctx) => {
       const agentRunId = ctx?.runId || event?.runId;
       if (!validMcpTurnId(agentRunId)) return;
+      const appendSegments = [];
       const currentTurn = currentTurnArtifactPresentation(event?.messages, {
         artifactRoot: runtime.store?.root,
         publicBaseUrl: runtime.store?.publicBaseUrl,
       });
       const presentation = currentTurn.observed ? currentTurn.presentation : presentationRegistry.get(agentRunId);
-      if (!presentation) return;
-      const appendFinalAssistantText = artifactPresentationAppendText(event?.lastAssistantMessage, presentation);
-      if (!appendFinalAssistantText) return;
-      return { action: "continue", appendFinalAssistantText };
+      const artifactAppendText = presentation
+        ? artifactPresentationAppendText(event?.lastAssistantMessage, presentation)
+        : undefined;
+      if (artifactAppendText) appendSegments.push(artifactAppendText);
+      const tavily = currentTurnTavilySources(event?.messages);
+      const sourcesAppendText = tavily.sources
+        ? tavilySourcesAppendText(event?.lastAssistantMessage, tavily.sources)
+        : undefined;
+      if (sourcesAppendText) appendSegments.push(sourcesAppendText);
+      if (!appendSegments.length) return;
+      return { action: "continue", appendFinalAssistantText: appendSegments.join("\n\n") };
     });
     api.on("agent_end", (event, ctx) => {
       const agentRunId = event?.runId || ctx?.runId;
@@ -462,7 +551,10 @@ export const __test = Object.freeze({
   appendArtifactPresentationText,
   createPresentationRegistry,
   currentTurnArtifactPresentation,
+  currentTurnTavilySources,
   registerPlugin,
+  tavilySourceLine,
+  tavilySourcesAppendText,
   textBlockPhase,
   visibleAssistantText,
 });

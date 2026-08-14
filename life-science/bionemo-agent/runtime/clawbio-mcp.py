@@ -62,7 +62,7 @@ def run_skill(skill: str, demo: bool = False) -> dict[str, Any]:
         "skill": normalized,
         "demo": True,
         "success": bool(result.get("success")),
-        "returncode": result.get("returncode"),
+        "exit_code": result.get("exit_code"),
         "stdout": result.get("stdout", ""),
         "stderr": result.get("stderr", ""),
     }

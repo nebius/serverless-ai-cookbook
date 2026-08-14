@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -7,7 +7,7 @@ import { ArtifactStore, extractArtifacts } from "../openclaw-plugin/src/artifact
 import { NimClient, __test as clientInternals } from "../openclaw-plugin/src/client.mjs";
 import { CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, NVIDIA_HOST, SKILLS } from "../openclaw-plugin/src/catalog.mjs";
 import { publicError, redactSecrets, redactText } from "../openclaw-plugin/src/errors.mjs";
-import { BATCH_PROTEIN_RECORDS, parseBatchProteinFasta, resolveSkillInput, resolveWorkflowInput, __test as sampleInternals } from "../openclaw-plugin/src/samples.mjs";
+import { BAKED_WORKFLOW_DATA_ROOT, BATCH_FASTA_RELATIVE_PATH, BATCH_PROTEIN_RECORDS, loadBatchProteinFile, parseBatchProteinFasta, resolveSkillInput, resolveWorkflowInput, __test as sampleInternals } from "../openclaw-plugin/src/samples.mjs";
 import { createRuntime } from "../openclaw-plugin/index.mjs";
 import { BATCH_DEMO_INPUT_FILE, JSON_SCHEMAS, LIMITS, RESEARCH_DEMO_ACK_FIELDS, VALIDATORS, normalizeDirectSkillInput, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
 
@@ -68,6 +68,29 @@ test("fixed batch FASTA parser accepts only five reviewed records and rejects dr
   assert.throws(() => parseBatchProteinFasta(fasta.replace(BATCH_PROTEIN_RECORDS[1].sequence, `${BATCH_PROTEIN_RECORDS[1].sequence.slice(0, -1)}?`)), /invalid protein sequence/u);
   assert.throws(() => parseBatchProteinFasta(fasta.replace(">1UBQ", ">1CRN")), /unique/u);
   assert.throws(() => sampleInternals.batchProteinFilePath("/workspace/agent", "../../etc/passwd"), /fixed bundled FASTA/u);
+});
+
+test("baked batch data is independent from the client configuration workspace", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-baked-workflow-data-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  const workflowDataRoot = path.join(root, "baked-workspace");
+  const clientWorkspace = path.join(root, "client-config-only");
+  const fixturePath = path.join(workflowDataRoot, BATCH_FASTA_RELATIVE_PATH);
+  await mkdir(path.dirname(fixturePath), { recursive: true });
+  await mkdir(clientWorkspace, { recursive: true });
+  await writeFile(fixturePath, `${BATCH_PROTEIN_RECORDS.map(({ id, sequence }) => `>${id}\n${sequence}`).join("\n")}\n`);
+
+  const previous = process.env.BIONEMO_CLIENT_WORKSPACE;
+  process.env.BIONEMO_CLIENT_WORKSPACE = clientWorkspace;
+  t.after(() => {
+    if (previous === undefined) delete process.env.BIONEMO_CLIENT_WORKSPACE;
+    else process.env.BIONEMO_CLIENT_WORKSPACE = previous;
+  });
+
+  const loaded = await loadBatchProteinFile(BATCH_FASTA_RELATIVE_PATH, { workflowDataRoot });
+  assert.deepEqual(loaded.map(({ id }) => id), BATCH_PROTEIN_RECORDS.map(({ id }) => id));
+  assert.equal(sampleInternals.batchProteinFilePath(), path.join(BAKED_WORKFLOW_DATA_ROOT, BATCH_FASTA_RELATIVE_PATH));
+  await assert.rejects(() => readFile(path.join(clientWorkspace, BATCH_FASTA_RELATIVE_PATH)), /ENOENT/u);
 });
 
 for (const [id, input] of Object.entries(VALID_INPUTS)) {

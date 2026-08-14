@@ -10,6 +10,7 @@ import { CONTROL_UI_BOOTSTRAP_NAME, prepareControlUi, renderExampleSessionPrelud
 
 const bootstrapUrl = new URL("../runtime/control-ui-default-session.js", import.meta.url);
 const defaultDemoPrompt = NOTEBOOK_CATALOG[0].prompt;
+const NATIVE_COMPOSER_SESSION_CAP = 20;
 
 test("startup draft is the exact Tavily-enabled first notebook prompt", async () => {
   const firstNotebook = JSON.parse(await readFile(new URL(`../workspace/notebooks/${NOTEBOOK_CATALOG[0].file}`, import.meta.url), "utf8"));
@@ -22,6 +23,17 @@ function composerStorageKey(href) {
   const url = new URL(href);
   const gatewayUrl = `${url.protocol === "https:" ? "wss:" : "ws:"}//${url.host}`;
   return `openclaw.control.chatComposer.v1:${encodeURIComponent(gatewayUrl).slice(0, 240)}`;
+}
+
+function simulateNativeComposerPersist(storage, href) {
+  const storageKey = composerStorageKey(href);
+  const parsed = JSON.parse(storage.get(storageKey));
+  const newest = Object.entries(parsed.sessions)
+    .sort((left, right) => Number(right[1]?.updatedAt || 0) - Number(left[1]?.updatedAt || 0))
+    .slice(0, NATIVE_COMPOSER_SESSION_CAP);
+  parsed.sessions = Object.fromEntries(newest);
+  storage.set(storageKey, JSON.stringify(parsed));
+  return parsed;
 }
 
 async function runBootstrap(href, { storage = new Map(), failWrites = false } = {}) {
@@ -98,7 +110,7 @@ async function runInteractiveBootstrap(href, { storage = new Map(), initialValue
     addEventListener(type, callback) { listeners.set(type, callback); },
   };
   vm.runInNewContext(source, { URL, window });
-  return { inputEvents, observerCallbacks, pane, storage, textarea };
+  return { history, inputEvents, location, observerCallbacks, pane, storage, textarea };
 }
 
 test("default-session bootstrap canonicalizes only first-entry BioNeMo routes", async () => {
@@ -146,7 +158,7 @@ test("default-session bootstrap preserves explicit sessions and non-default rout
   }
 });
 
-test("Control UI seeds four ready per-session drafts once without queues or sends", async () => {
+test("Control UI seeds nine ready per-session drafts once without queues or sends", async () => {
   const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
   const storage = new Map();
   const first = await runBootstrap(href, { storage });
@@ -154,17 +166,146 @@ test("Control UI seeds four ready per-session drafts once without queues or send
   const storageKey = composerStorageKey(href);
   const parsed = JSON.parse(storage.get(storageKey));
   assert.equal(parsed.version, 1);
-  assert.equal(Object.keys(parsed.sessions).length, 4);
+  assert.equal(Object.keys(parsed.sessions).length, EXAMPLE_SESSIONS.length);
   for (const definition of EXAMPLE_SESSIONS) {
     const entry = parsed.sessions[`${definition.key}\u0000agent:bionemo`];
     assert.equal(entry.draft, definition.prompt);
     assert.equal(Object.hasOwn(entry, "queue"), false);
   }
-  assert.equal(storage.get(storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:")), "1");
+  assert.equal(storage.get(storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v2:")), "1");
 
   const serialized = storage.get(storageKey);
   await runBootstrap(href, { storage });
   assert.equal(storage.get(storageKey), serialized, "a reload must not replace user-owned composer state");
+});
+
+test("Control UI v2 draft migration adds only new examples and preserves edited or cleared v1 drafts", async () => {
+  const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
+  const storageKey = composerStorageKey(href);
+  const oldMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:");
+  const newMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v2:");
+  const firstKey = `${EXAMPLE_SESSIONS[0].key}\u0000agent:bionemo`;
+  const storage = new Map([
+    [storageKey, JSON.stringify({
+      version: 1,
+      sessions: { [firstKey]: { draft: "existing v1 user edit", updatedAt: 1 } },
+    })],
+    [oldMarkerKey, "1"],
+  ]);
+
+  await runBootstrap(href, { storage });
+
+  const parsed = JSON.parse(storage.get(storageKey));
+  assert.equal(Object.keys(parsed.sessions).length, 1 + EXAMPLE_SESSIONS.filter(({ draftSeedGeneration }) => draftSeedGeneration === 2).length);
+  assert.equal(parsed.sessions[firstKey].draft, "existing v1 user edit");
+  for (const definition of EXAMPLE_SESSIONS.filter(({ draftSeedGeneration }) => draftSeedGeneration === 2)) {
+    assert.equal(parsed.sessions[`${definition.key}\u0000agent:bionemo`].draft, definition.prompt);
+  }
+  for (const definition of EXAMPLE_SESSIONS.slice(1, 4)) {
+    assert.equal(Object.hasOwn(parsed.sessions, `${definition.key}\u0000agent:bionemo`), false);
+  }
+  assert.equal(storage.get(oldMarkerKey), "1");
+  assert.equal(storage.get(newMarkerKey), "1");
+});
+
+test("Control UI migration never evicts user composer records at the native retention boundary", async () => {
+  const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
+  const storageKey = composerStorageKey(href);
+  const oldMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:");
+  const userSessions = Object.fromEntries(Array.from({ length: 20 }, (_, index) => [
+    `agent:user:session-${index}\u0000agent:bionemo`,
+    {
+      draft: `user draft ${index}`,
+      queue: [{ id: `queued-${index}`, text: `queued user message ${index}`, createdAt: index + 1 }],
+      updatedAt: index + 1,
+    },
+  ]));
+  const storage = new Map([
+    [storageKey, JSON.stringify({ version: 1, sessions: userSessions })],
+    [oldMarkerKey, "1"],
+  ]);
+
+  await runBootstrap(href, { storage });
+
+  const parsed = simulateNativeComposerPersist(storage, href);
+  for (const [key, value] of Object.entries(userSessions)) assert.deepEqual(parsed.sessions[key], value);
+  assert.equal(Object.keys(parsed.sessions).length, NATIVE_COMPOSER_SESSION_CAP);
+  for (const definition of EXAMPLE_SESSIONS.filter(({ draftSeedGeneration }) => draftSeedGeneration === 2)) {
+    assert.equal(Object.hasOwn(parsed.sessions, `${definition.key}\u0000agent:bionemo`), false);
+  }
+});
+
+test("Control UI migration fills only partial native capacity in deterministic example order", async () => {
+  const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
+  const storageKey = composerStorageKey(href);
+  const oldMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:");
+  const userSessions = Object.fromEntries(Array.from({ length: 17 }, (_, index) => [
+    `agent:user:partial-${index}\u0000agent:bionemo`,
+    {
+      draft: `partial user draft ${index}`,
+      queue: [{ id: `partial-queued-${index}`, text: `partial queued message ${index}`, createdAt: index + 1 }],
+      updatedAt: index + 1,
+    },
+  ]));
+  const storage = new Map([
+    [storageKey, JSON.stringify({ version: 1, sessions: userSessions })],
+    [oldMarkerKey, "1"],
+  ]);
+
+  await runBootstrap(href, { storage });
+
+  const parsed = simulateNativeComposerPersist(storage, href);
+  const newExamples = EXAMPLE_SESSIONS.filter(({ draftSeedGeneration }) => draftSeedGeneration === 2);
+  for (const [key, value] of Object.entries(userSessions)) assert.deepEqual(parsed.sessions[key], value);
+  for (const definition of newExamples.slice(0, 3)) {
+    assert.equal(parsed.sessions[`${definition.key}\u0000agent:bionemo`].draft, definition.prompt);
+  }
+  for (const definition of newExamples.slice(3)) {
+    assert.equal(Object.hasOwn(parsed.sessions, `${definition.key}\u0000agent:bionemo`), false);
+  }
+  assert.equal(Object.keys(parsed.sessions).length, NATIVE_COMPOSER_SESSION_CAP);
+});
+
+test("native persistence evicts an image draft before any user record after capacity fills", async () => {
+  const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
+  const storageKey = composerStorageKey(href);
+  const oldMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:");
+  const userSessions = Object.fromEntries(Array.from({ length: 19 }, (_, index) => [
+    `agent:user:retained-${index}\u0000agent:bionemo`,
+    {
+      draft: `retained user draft ${index}`,
+      queue: [{ id: `retained-queued-${index}`, text: `retained queued message ${index}`, createdAt: index + 1 }],
+      updatedAt: index + 1,
+    },
+  ]));
+  const storage = new Map([
+    [storageKey, JSON.stringify({ version: 1, sessions: userSessions })],
+    [oldMarkerKey, "1"],
+  ]);
+
+  await runBootstrap(href, { storage });
+
+  const migrated = JSON.parse(storage.get(storageKey));
+  const [firstNewExample] = EXAMPLE_SESSIONS.filter(({ draftSeedGeneration }) => draftSeedGeneration === 2);
+  const exampleStorageKey = `${firstNewExample.key}\u0000agent:bionemo`;
+  assert.equal(Object.keys(migrated.sessions).length, NATIVE_COMPOSER_SESSION_CAP);
+  assert.equal(migrated.sessions[exampleStorageKey].draft, firstNewExample.prompt);
+  assert.ok(migrated.sessions[exampleStorageKey].updatedAt < 1);
+
+  const laterUserKey = "agent:user:later\u0000agent:bionemo";
+  const laterUserRecord = {
+    draft: "later user draft",
+    queue: [{ id: "later-queued", text: "later queued message", createdAt: 20 }],
+    updatedAt: 20,
+  };
+  migrated.sessions[laterUserKey] = laterUserRecord;
+  storage.set(storageKey, JSON.stringify(migrated));
+
+  const persisted = simulateNativeComposerPersist(storage, href);
+  for (const [key, value] of Object.entries(userSessions)) assert.deepEqual(persisted.sessions[key], value);
+  assert.deepEqual(persisted.sessions[laterUserKey], laterUserRecord);
+  assert.equal(Object.hasOwn(persisted.sessions, exampleStorageKey), false);
+  assert.equal(Object.keys(persisted.sessions).length, NATIVE_COMPOSER_SESSION_CAP);
 });
 
 test("Control UI draft seeding preserves existing edits and queues and fails closed on storage errors", async () => {
@@ -186,7 +327,7 @@ test("Control UI draft seeding preserves existing edits and queues and fails clo
 
   const malformed = new Map([[storageKey, "not-json"]]);
   await assert.doesNotReject(() => runBootstrap(href, { storage: malformed }));
-  assert.equal(Object.keys(JSON.parse(malformed.get(storageKey)).sessions).length, 4);
+  assert.equal(Object.keys(JSON.parse(malformed.get(storageKey)).sessions).length, EXAMPLE_SESSIONS.length);
   await assert.doesNotReject(() => runBootstrap(href, { failWrites: true }));
 });
 
@@ -208,7 +349,7 @@ test("Control UI bridge preserves live edits and never resurrects removed or unr
   assert.equal(edited.inputEvents.length, 0);
 
   const storageKey = composerStorageKey(href);
-  const markerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:");
+  const markerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v2:");
   const clearedStorage = new Map([
     [storageKey, JSON.stringify({ version: 1, sessions: {} })],
     [markerKey, "1"],
@@ -220,6 +361,29 @@ test("Control UI bridge preserves live edits and never resurrects removed or unr
   const unrelated = await runInteractiveBootstrap("https://workbench.example/chat?session=agent:other:main");
   assert.equal(unrelated.textarea.value, "");
   assert.equal(unrelated.inputEvents.length, 0);
+});
+
+test("Control UI bridge restores a stored draft again after navigating away and back", async () => {
+  const first = EXAMPLE_SESSIONS[0];
+  const second = EXAMPLE_SESSIONS[1];
+  const href = `https://workbench.example/chat?session=${encodeURIComponent(first.key)}`;
+  const result = await runInteractiveBootstrap(href);
+  assert.equal(result.textarea.value, first.prompt);
+  assert.equal(result.inputEvents.length, 1);
+
+  result.textarea.value = "";
+  result.pane.state.sessionKey = second.key;
+  result.history.pushState(null, "", `/chat?session=${encodeURIComponent(second.key)}`);
+  result.observerCallbacks[0]();
+  assert.equal(result.textarea.value, second.prompt);
+  assert.equal(result.inputEvents.length, 2);
+
+  result.textarea.value = "";
+  result.pane.state.sessionKey = first.key;
+  result.history.pushState(null, "", `/chat?session=${encodeURIComponent(first.key)}`);
+  result.observerCallbacks[0]();
+  assert.equal(result.textarea.value, first.prompt);
+  assert.equal(result.inputEvents.length, 3);
 });
 
 test("Control UI preparation owns an unminified bootstrap loaded before OpenClaw", async (t) => {

@@ -29,6 +29,26 @@ const PRESENTATION_AGENT_RUN_ID = "agent-run-presentation-11111111";
 const PRESENTATION_WORKFLOW_RUN_ID = "11111111-1111-4111-8111-111111111111";
 const PRESENTATION_FIRST_VIEWER = `[View structure in 3D](</bionemo/view/${PRESENTATION_WORKFLOW_RUN_ID}/01-top.pdb?access=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa>)`;
 const PRESENTATION_SECOND_VIEWER = `[View structure in 3D](</bionemo/view/${PRESENTATION_WORKFLOW_RUN_ID}/02-complex.cif?access=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb>)`;
+const TAVILY_TOOL_NAME = "tavily_web__tavily_search";
+
+function tavilyToolResult(results, overrides = {}) {
+  return {
+    role: "toolResult",
+    toolCallId: "tavily-call-current",
+    toolName: TAVILY_TOOL_NAME,
+    content: [{ type: "text", text: "untrusted raw search content that must not be presented" }],
+    isError: false,
+    details: {
+      mcpServer: "tavily_web",
+      mcpTool: "tavily_search",
+      structuredContent: {
+        answer: "untrusted synthesized answer that must not be presented",
+        results,
+      },
+    },
+    ...overrides,
+  };
+}
 
 function presentationWorkflowResult() {
   return {
@@ -168,6 +188,7 @@ test("current-turn presentation rejects stale, failed, malformed, duplicated, an
 
   for (const messages of [
     [user, call, { ...result, isError: true }],
+    [user, call, { ...result, isError: undefined }],
     [user, call, { ...result, error: { code: "failed" } }],
     [user, call, { ...result, content: [{ type: "text", text: "not json" }] }],
     [user, call, result, { ...result, toolCallId: "tool-call-second" }],
@@ -221,6 +242,100 @@ test("current-turn presentation accepts the pinned live history projection shape
   assert.equal(derived.observed, true);
   assert.deepEqual(derived.presentation.viewerMarkdown, [PRESENTATION_FIRST_VIEWER, PRESENTATION_SECOND_VIEWER]);
   assert.match(derived.presentation.mediaLine, /^MEDIA:\/workspace\/agent\/artifacts\//u);
+});
+
+test("one successful current-turn Tavily search deterministically appends its bounded structured sources", () => {
+  const results = [
+    {
+      title: "RCSB PDB [Search] API",
+      url: "HTTPS://Search.RCSB.org:443/docs/../",
+      content: "raw result content must not be presented",
+      raw_content: "raw page must not be presented",
+    },
+    {
+      title: "  UniProt\nDocumentation  ",
+      url: "https://www.uniprot.org/help/entry_name",
+      content: "another raw result",
+    },
+  ];
+  const user = { role: "user", content: "research public sources" };
+  const call = {
+    role: "assistant",
+    content: [{ type: "toolCall", id: "tavily-call-current", name: TAVILY_TOOL_NAME, arguments: { search_depth: "basic", max_results: 5 } }],
+  };
+  const result = tavilyToolResult(results);
+  const derived = pluginInternals.currentTurnTavilySources([user, call, result]);
+  assert.equal(derived.observed, true);
+  assert.deepEqual(derived.sources, [
+    { title: "RCSB PDB [Search] API", url: "https://search.rcsb.org/" },
+    { title: "UniProt Documentation", url: "https://www.uniprot.org/help/entry_name" },
+  ]);
+
+  const api = fakeApi();
+  pluginInternals.registerPlugin(api, { runtime: {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { throw new Error("not used"); },
+  } });
+  const beforeFinalize = api.captured.hooks.find(({ event }) => event === "before_agent_finalize").handler;
+  const final = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: "RCSB and UniProt serve complementary research roles.",
+    messages: [user, call, result],
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(final.action, "continue");
+  assert.equal(final.appendFinalAssistantText, [
+    "Sources",
+    "",
+    "- RCSB PDB \\[Search\\] API — https://search.rcsb.org/",
+    "- UniProt Documentation — https://www.uniprot.org/help/entry_name",
+  ].join("\n"));
+  assert.doesNotMatch(final.appendFinalAssistantText, /raw result|raw page|synthesized answer|untrusted raw/u);
+
+  const alreadyCited = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: `Sources already cited: ${derived.sources.map(({ url }) => url).join(" ")}`,
+    messages: [user, call, result],
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(alreadyCited, undefined, "all returned canonical URLs suppress a duplicate Sources block");
+  const oneMissing = pluginInternals.tavilySourcesAppendText(`Only ${derived.sources[0].url}`, derived.sources);
+  assert.equal(oneMissing.includes("RCSB PDB \\[Search\\] API"), true, "a partial citation appends the complete deterministic block");
+  assert.match(oneMissing, /UniProt Documentation/u);
+});
+
+test("current-turn Tavily presentation fails closed on stale, failed, malformed, duplicated, or mismatched results", () => {
+  const user = { role: "user", content: "current turn" };
+  const call = { role: "assistant", content: [{ type: "toolCall", id: "tavily-call-current", name: TAVILY_TOOL_NAME, arguments: {} }] };
+  const sources = [{ title: "RCSB", url: "https://www.rcsb.org" }];
+  const result = tavilyToolResult(sources);
+  assert.deepEqual(pluginInternals.currentTurnTavilySources([
+    { role: "user", content: "previous turn" },
+    call,
+    result,
+    { role: "assistant", content: "previous final" },
+    user,
+    { role: "assistant", content: "new final" },
+  ]), { observed: false });
+
+  const rejectedHistories = [
+    [user, call, { ...result, isError: true }],
+    [user, call, { ...result, error: { code: "rate_limited" } }],
+    [user, call, result, { ...result, toolCallId: "tavily-call-second" }],
+    [user, { role: "assistant", content: [{ type: "toolCall", id: "different-call", name: TAVILY_TOOL_NAME, arguments: {} }] }, result],
+    [user, call, tavilyToolResult([{ title: "unsafe", url: "javascript:alert(1)" }])],
+    [user, call, tavilyToolResult([{ title: "credential URL", url: "https://user:secret@example.org/" }])],
+    [user, call, tavilyToolResult(Array.from({ length: 6 }, (_, index) => ({ title: `Source ${index}`, url: `https://example.org/${index}` })))],
+    [user, call, tavilyToolResult([{ title: "missing URL" }])],
+    [user, call, { ...result, details: { ...result.details, mcpServer: "other" } }],
+    [user, call, { ...result, details: undefined, structuredContent: result.details.structuredContent }],
+    [user, call, { ...result, structuredContent: result.details.structuredContent }],
+    [user, call, { ...result, details: undefined, content: [{ type: "text", text: JSON.stringify({ results: sources }) }] }],
+  ];
+  for (const messages of rejectedHistories) {
+    const rejected = pluginInternals.currentTurnTavilySources(messages);
+    assert.equal(rejected.observed, true);
+    assert.equal(rejected.sources, undefined);
+  }
 });
 
 test("presentation state clears on workflow failure, agent abort, and TTL expiry", async () => {

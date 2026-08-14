@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v3";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v4";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -55,14 +55,16 @@ export function bionemoSuperInitialNotebookTool(model, context) {
 }
 export function bionemoSuperCompletedToolTarget(model, context) {
   const superModel = "nvidia/nemotron-3-super-120b-a12b";
+  const deepSeekModel = "deepseek-ai/deepseek-v4-pro";
   const wrappers = new Set([
     "bionemo_research_drug_demo",
     "bionemo_compare_protein_structures",
     "bionemo_optimize_ligand_complex",
     "bionemo_batch_fold_demo",
   ]);
+  const modelId = String(model?.id || "").toLowerCase();
   if (String(model?.provider || "").toLowerCase() !== "tokenfactory"
-    || String(model?.id || "").toLowerCase() !== superModel) return undefined;
+    || (modelId !== superModel && modelId !== deepSeekModel)) return undefined;
   const messages = Array.isArray(context?.messages) ? context.messages : [];
   const result = messages.at(-1);
   const assistant = messages.at(-2);
