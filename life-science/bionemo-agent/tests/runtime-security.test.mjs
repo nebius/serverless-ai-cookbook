@@ -6,7 +6,7 @@ import test from "node:test";
 import vm from "node:vm";
 import plugin, { __test as pluginInternals } from "../openclaw-plugin/index.mjs";
 import manifest from "../openclaw-plugin/openclaw.plugin.json" with { type: "json" };
-import { CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, TOOLKIT_COMMIT } from "../openclaw-plugin/src/catalog.mjs";
+import { CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES, CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, NVIDIA_ONLY_TOOL_NAMES, TOOLKIT_COMMIT } from "../openclaw-plugin/src/catalog.mjs";
 import { createUiHandlers, __test as uiInternals } from "../openclaw-plugin/src/ui.mjs";
 import { __test as launcher } from "../runtime/launcher.mjs";
 import { capabilities, configureOpenClaw, DEFAULT_MCP_URL, TOKEN_FACTORY_MODELS } from "../runtime/runtime-config.mjs";
@@ -62,7 +62,7 @@ function presentationWorkflowResult() {
   };
 }
 
-test("plugin registers exactly the manifest-declared 17 tools", async () => {
+test("plugin registers exactly the manifest-declared 18 clean tools", async () => {
   const api = fakeApi();
   plugin.register(api);
   assert.deepEqual(api.captured.tools.map((tool) => tool.name), EXACT_TOOL_NAMES);
@@ -73,14 +73,47 @@ test("plugin registers exactly the manifest-declared 17 tools", async () => {
   const systemContext = (await promptHook.handler()).prependSystemContext;
   assert.match(systemContext, /MEDIA:<downloadPath>/u);
   assert.match(systemContext, /local demo-only ClawBio catalog tools/u);
-  assert.match(systemContext, /raw hosted-model MCP is a private backend and is not available in the OpenClaw browser/u);
+  assert.match(systemContext, /up to ten clean atomic BioNeMo tools, seven clean composed workflow tools, and the read-only bionemo_models_list/u);
+  assert.match(systemContext, /bionemo_molmim, bionemo_openfold2, and bionemo_openfold3 atomics plus the four backend-neutral composed demos select the configured NVIDIA or private MCP backend/u);
+  assert.match(systemContext, /raw hosted-model MCP.*remain private and are not available in the OpenClaw browser/u);
+  assert.match(systemContext, /bionemo_models_list with no arguments.*submits no compute job/u);
   assert.match(systemContext, /For every artifact that has viewerMarkdown/u);
   assert.match(systemContext, /same-origin path beginning with \/; preserve it verbatim/u);
   assert.doesNotMatch(systemContext, /viewerUrl, use that exact absolute URL/u);
   assert.doesNotMatch(systemContext, /clawbio_models__/u);
+  assert.doesNotMatch(systemContext, /clawbio_models_list/u);
   assert.doesNotMatch(systemContext, /poll only clawbio_job_status/u);
-  assert.match(systemContext, /call the selected composed tool exactly once/u);
-  assert.match(systemContext, /wrapper returns a successful completed result, call no other tool in the turn/u);
+  assert.match(systemContext, /call the selected composed or configured-backend atomic tool exactly once/u);
+  assert.match(systemContext, /After that tool returns a successful completed result, call no other tool in the turn/u);
+});
+
+test("the browser model inventory tool returns only the sanitized read-only contract", async () => {
+  const api = fakeApi();
+  const inventory = {
+    readOnly: true,
+    computeSubmitted: false,
+    modelCount: 1,
+    readyCount: 1,
+    models: [{ id: "openfold3", displayName: "OpenFold3", family: "bionemo_nim", readiness: "ready" }],
+    notice: "Sanitized model inventory only; no scientific compute or job was submitted.",
+  };
+  pluginInternals.registerPlugin(api, { runtime: {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { throw new Error("not used"); },
+    async listModels(params) {
+      assert.deepEqual(params, {});
+      return inventory;
+    },
+  } });
+  const tool = api.captured.tools.find(({ name }) => name === "bionemo_models_list");
+  assert.ok(tool);
+  assert.deepEqual(tool.parameters, { type: "object", additionalProperties: false, properties: {} });
+  const result = await tool.execute("inventory-call", {});
+  assert.deepEqual(result.structuredContent, inventory);
+  assert.deepEqual(JSON.parse(result.content[0].text), inventory);
+  assert.equal(JSON.stringify(result).includes("url"), false);
+  assert.equal(JSON.stringify(result).includes("credential"), false);
 });
 
 test("completed composed workflows register a run-scoped final presentation synchronously", async () => {
@@ -445,18 +478,22 @@ test("plugin injects trusted per-turn identity into wrappers and defensively gua
   }
 
   assert.equal(await hook({ toolName: "bionemo_models__clawbio_job_status", params: { job_id: "job" } }, { runId }), undefined);
-  assert.equal(await hook({ toolName: "bionemo_openfold2", params: { sequence: "MKTII" } }, { runId }), undefined);
+  assert.equal(await hook({ toolName: "bionemo_models_list", params: {} }, { runId }), undefined);
+  const atomic = await hook({ toolName: "bionemo_openfold2", params: { sequence: "MKTII", ack_research_only: true, ack_non_clinical: true } }, { runId });
+  assert.equal(atomic.params[MCP_TURN_ID_FIELD], runId);
   const missing = await hook(event, {});
   assert.equal(missing.block, true);
   assert.match(missing.blockReason, /trusted per-turn identity is unavailable/u);
 });
 
-test("model-facing OpenFold2 schema exposes only the reliable sequence argument", () => {
+test("model-facing OpenFold2 schema exposes only sequence and explicit configured-backend acknowledgements", () => {
   const api = fakeApi();
   plugin.register(api);
   const tool = api.captured.tools.find((item) => item.name === "bionemo_openfold2");
-  assert.deepEqual(tool.parameters.required, ["sequence"]);
-  assert.deepEqual(Object.keys(tool.parameters.properties), ["sequence"]);
+  assert.deepEqual(tool.parameters.required, ["sequence", "ack_research_only", "ack_non_clinical"]);
+  assert.deepEqual(Object.keys(tool.parameters.properties), ["sequence", "ack_research_only", "ack_non_clinical"]);
+  assert.equal(tool.parameters.properties.ack_research_only.const, true);
+  assert.equal(tool.parameters.properties.ack_non_clinical.const, true);
 });
 
 test("dashboard data and artifacts are gateway-authenticated while readiness is public", () => {
@@ -713,8 +750,9 @@ test("OpenClaw keeps hosted BioNeMo MCP private and enables only local or option
   assert.equal(config.tools.alsoAllow.includes("bionemo_research_drug_demo"), true);
   assert.equal(config.tools.deny.includes("bionemo_research_drug_demo"), false);
   assert.equal(CROSS_BACKEND_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
-  assert.equal(config.tools.alsoAllow.some((name) => DIRECT_ONLY_TOOL_NAMES.includes(name)), false);
-  assert.equal(DIRECT_ONLY_TOOL_NAMES.every((name) => config.tools.deny.includes(name)), true);
+  assert.equal(DIRECT_ONLY_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(EXACT_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(config.tools.alsoAllow.includes("bionemo_models_list"), true);
   assert.deepEqual(Object.keys(config.models.providers), ["nvidia", "tokenfactory", "openai", "claude", "setup"]);
   assert.match(config.models.providers.openai.models[0].name, /requires API key/u);
   assert.match(config.models.providers.claude.models[0].name, /Anthropic Claude.*requires API key/u);
@@ -730,6 +768,23 @@ test("OpenClaw keeps hosted BioNeMo MCP private and enables only local or option
   assert.deepEqual([...new Set(Object.keys(allowedModels).map((key) => key.slice(0, key.indexOf("/"))))], ["nvidia", "tokenfactory", "openai", "claude"]);
   assert.deepEqual(Object.keys(allowedModels).filter((key) => key.startsWith("tokenfactory/")), TOKEN_FACTORY_MODELS.map(({ id }) => `tokenfactory/${id}`));
   assert.deepEqual(Object.values(allowedModels).filter(({ alias }) => alias).map(({ alias }) => alias), TOKEN_FACTORY_MODELS.map(({ alias }) => alias));
+});
+
+test("MCP-only OpenClaw exposes configured-backend atomics but hides NVIDIA-only wrappers", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [...EXACT_TOOL_NAMES], deny: ["bundle-mcp"] } };
+  const state = configureOpenClaw(config, {
+    AGENT_PROVIDER: "nebius",
+    NEBIUS_API_KEY: "reasoning-key",
+    BIONEMO_BACKEND: "mcp",
+    BIONEMO_MCP_API_KEY: "mcp-key",
+  });
+  assert.equal(state.modelBackend, "mcp");
+  assert.equal(CROSS_BACKEND_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(config.tools.alsoAllow.includes("bionemo_models_list"), true);
+  assert.equal(config.tools.deny.includes("bionemo_models_list"), false);
+  assert.equal(NVIDIA_ONLY_TOOL_NAMES.every((name) => !config.tools.alsoAllow.includes(name) && config.tools.deny.includes(name)), true);
+  assert.equal(config.mcp.servers.bionemo_models, undefined);
 });
 
 test("gateway child hides OpenClaw's reserved Tavily auto-install trigger", () => {

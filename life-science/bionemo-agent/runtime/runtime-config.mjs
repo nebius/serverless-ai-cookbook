@@ -1,6 +1,12 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES } from "../openclaw-plugin/src/catalog.mjs";
+import {
+  CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES,
+  CROSS_BACKEND_TOOL_NAMES,
+  EXACT_TOOL_NAMES,
+  MODEL_INVENTORY_TOOL,
+  NVIDIA_ONLY_TOOL_NAMES,
+} from "../openclaw-plugin/src/catalog.mjs";
 
 export const DEFAULT_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
@@ -193,7 +199,6 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     timeout: 300,
     toolFilter: { include: ["list_skills", "describe_skill", "run_skill"] },
   };
-  const useHostedMcpBackend = state.modelBackend === "mcp";
   if (state.tavily) {
     // Avoid the reserved official-plugin id `tavily`: OpenClaw otherwise
     // attempts a runtime npm install of @openclaw/tavily-plugin. This image
@@ -209,21 +214,26 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   // and Tavily servers remain credential-gated above.
   config.tools.deny = config.tools.deny.filter((name) => name !== "bundle-mcp");
   if (!config.tools.alsoAllow.includes("bundle-mcp")) config.tools.alsoAllow.push("bundle-mcp");
-  if (useHostedMcpBackend) {
-    // Hosted BioNeMo MCP remains a private implementation backend for the four
-    // composed plugin workflows. Do not materialize its raw model/job tools in
-    // OpenClaw; hide direct NIM tools so the browser has one bounded compute
-    // contract per workflow. Terminal clients are configured separately.
-    const directTools = new Set(DIRECT_ONLY_TOOL_NAMES);
-    config.tools.alsoAllow = config.tools.alsoAllow.filter((name) => !directTools.has(name));
-    for (const name of CROSS_BACKEND_TOOL_NAMES) {
+  // These are image-owned, schema-bounded plugin wrappers, not raw hosted MCP
+  // operations. The three configured-backend atomics and four composed demos
+  // work through either supported backend. The remaining wrappers keep their
+  // fixed NVIDIA routes and must not be shown without an NVIDIA credential.
+  const configuredBackendReady = state.modelBackend === "mcp" || state.modelBackend === "nvidia";
+  const visiblePluginTools = new Set([
+    ...(configuredBackendReady ? CROSS_BACKEND_TOOL_NAMES : []),
+    ...(configuredBackendReady ? CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES : []),
+    ...(state.mcp ? [MODEL_INVENTORY_TOOL.name] : []),
+    ...(state.nvidia ? NVIDIA_ONLY_TOOL_NAMES : []),
+  ]);
+  for (const name of EXACT_TOOL_NAMES) {
+    if (visiblePluginTools.has(name)) {
       if (!config.tools.alsoAllow.includes(name)) config.tools.alsoAllow.push(name);
-    }
-    for (const name of DIRECT_ONLY_TOOL_NAMES) {
+    } else {
+      config.tools.alsoAllow = config.tools.alsoAllow.filter((item) => item !== name);
       if (!config.tools.deny.includes(name)) config.tools.deny.push(name);
     }
-    config.tools.deny = config.tools.deny.filter((name) => !CROSS_BACKEND_TOOL_NAMES.includes(name));
   }
+  config.tools.deny = config.tools.deny.filter((name) => !visiblePluginTools.has(name));
   return state;
 }
 

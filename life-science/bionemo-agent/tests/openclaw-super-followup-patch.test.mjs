@@ -30,7 +30,15 @@ function turn(name, { id = name, isError = false, arguments: args = {} } = {}) {
 }
 
 test("Token Factory Super and DeepSeek finalize after successful atomic wrappers only", () => {
-  for (const name of ["bionemo_research_drug_demo", "bionemo_compare_protein_structures", "bionemo_optimize_ligand_complex", "bionemo_batch_fold_demo"]) {
+  for (const name of [
+    "bionemo_research_drug_demo",
+    "bionemo_compare_protein_structures",
+    "bionemo_optimize_ligand_complex",
+    "bionemo_batch_fold_demo",
+    "bionemo_molmim",
+    "bionemo_openfold2",
+    "bionemo_openfold3",
+  ]) {
     for (const model of [superModel, deepSeekModel]) {
       assert.equal(bionemoSuperShouldFinalizeWithoutTools(model, turn(name)), true);
       assert.equal(bionemoSuperShouldFinalizeWithoutTools(model, turn(name, { isError: true })), false);
@@ -47,7 +55,22 @@ test("Token Factory Super and DeepSeek finalize after successful atomic wrappers
 
 test("Super initial calls are source-owned only for exact reviewed prompts", () => {
   assert.equal(BIONEMO_SUPER_NOTEBOOK_TURNS.length, 4);
-  assert.deepEqual(BIONEMO_SUPER_INITIAL_TURNS, BIONEMO_SUPER_NOTEBOOK_TURNS);
+  assert.equal(BIONEMO_SUPER_INITIAL_TURNS.length, 5);
+  assert.deepEqual(BIONEMO_SUPER_INITIAL_TURNS.slice(0, 4), BIONEMO_SUPER_NOTEBOOK_TURNS);
+  assert.equal(BIONEMO_SUPER_INITIAL_TURNS[4].name, "bionemo_molmim");
+  assert.deepEqual(BIONEMO_SUPER_INITIAL_TURNS[4].params, {
+    smi: "COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4",
+    algorithm: "CMA-ES",
+    num_molecules: 2,
+    num_iterations: 2,
+    property_name: "QED",
+    particles: 2,
+    minimize: false,
+    min_similarity: 0.7,
+    radius: 1,
+    ack_research_only: true,
+    ack_no_safety_or_therapeutic_claims: true,
+  });
   for (const expected of BIONEMO_SUPER_INITIAL_TURNS) {
     const actual = bionemoSuperInitialNotebookTool(superModel, {
       messages: [{ role: "user", content: [{ type: "text", text: expected.prompt }] }],
@@ -111,7 +134,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v4/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v5/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperShouldFinalizeWithoutTools(model, context))");

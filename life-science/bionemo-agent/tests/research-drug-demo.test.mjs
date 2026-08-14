@@ -204,6 +204,78 @@ function responseArtifact(data, artifactId = "b".repeat(32)) {
   };
 }
 
+test("read-only model inventory uses the neutral loopback adapter operation and strips upstream capabilities", async () => {
+  const calls = [];
+  const rawCatalog = [
+    {
+      id: "openfold3",
+      display_name: "OpenFold3",
+      family: "bionemo_nim",
+      state: "ready",
+      project_id: "p-secret000",
+      canonical_app: "private-app",
+      compute: "HOPPER_H100",
+      operations: ["predict", "status", "fetch"],
+      capability_url: "https://private.example/capability?token=secret",
+      required_acknowledgements: ["research_only"],
+    },
+    {
+      id: "scvi_scanvi",
+      display_name: "scVI/scANVI",
+      family: "clawbio_custom",
+      state: "ready_live_validated",
+      endpoint: "https://private.example/model",
+    },
+  ];
+  const runtime = createRuntime({
+    env: {
+      BIONEMO_BACKEND: "mcp",
+      BIONEMO_MCP_API_KEY: "adapter-test-key",
+      BIONEMO_MCP_URL: "http://127.0.0.1:18791/mcp",
+      BIONEMO_MCP_UPSTREAM_URL: "https://native.example/mcp",
+      BIONEMO_ALLOW_INSECURE_MCP: "true",
+    },
+    fetchImpl: async (url, init) => {
+      const rpc = JSON.parse(init.body);
+      calls.push({ url, rpc });
+      return rpcResponse({ result: rawCatalog });
+    },
+    logger: { info() {} },
+  });
+  const result = await runtime.listModels({});
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "http://127.0.0.1:18791/mcp");
+  assert.equal(calls[0].rpc.params.name, "models_list");
+  assert.deepEqual(calls[0].rpc.params.arguments, {});
+  assert.deepEqual(result, {
+    readOnly: true,
+    computeSubmitted: false,
+    modelCount: 2,
+    readyCount: 2,
+    models: [
+      { id: "openfold3", displayName: "OpenFold3", family: "bionemo_nim", readiness: "ready" },
+      { id: "scvi_scanvi", displayName: "scVI/scANVI", family: "clawbio_custom", readiness: "ready" },
+    ],
+    notice: "Sanitized model inventory only; no scientific compute or job was submitted.",
+  });
+  const serialized = JSON.stringify(result);
+  for (const forbidden of ["project_id", "canonical_app", "HOPPER_H100", "operations", "capability", "https://", "token", "acknowledgements"]) {
+    assert.equal(serialized.includes(forbidden), false, forbidden);
+  }
+});
+
+test("model inventory fails closed on malformed or duplicate upstream entries", () => {
+  const valid = { id: "openfold3", display_name: "OpenFold3", family: "bionemo_nim", state: "ready" };
+  assert.throws(
+    () => clientInternals.sanitizedModelInventory({ result: [{ ...valid, display_name: "https://private.example/capability" }] }),
+    /invalid display name/u,
+  );
+  assert.throws(
+    () => clientInternals.sanitizedModelInventory({ result: [valid, valid] }),
+    /duplicate model identifiers/u,
+  );
+});
+
 test("native MCP client submits exactly once, uses typed acks, polls to terminal, fetches base64 chunks, and verifies SHA", async () => {
   const jobId = "a".repeat(32);
   const artifact = responseArtifact({ generated: [{ smiles: "CCO", score: 0.8 }] });

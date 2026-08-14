@@ -1,14 +1,24 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { ArtifactStore, VIEWER_ROUTE_PREFIX } from "./src/artifacts.mjs";
 import { NimClient } from "./src/client.mjs";
-import { CROSS_BACKEND_TOOL_NAMES, PUBLIC_CATALOG, SKILLS, TOOLKIT_COMMIT, WORKFLOWS } from "./src/catalog.mjs";
-import { publicError } from "./src/errors.mjs";
+import {
+  CONFIGURED_BACKEND_ATOMIC_SKILL_IDS,
+  CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES,
+  CROSS_BACKEND_TOOL_NAMES,
+  MODEL_INVENTORY_TOOL,
+  PUBLIC_CATALOG,
+  SKILLS,
+  TOOLKIT_COMMIT,
+  WORKFLOWS,
+} from "./src/catalog.mjs";
+import { InputError, publicError } from "./src/errors.mjs";
 import { NOTEBOOK_ROUTE_PREFIX } from "./src/notebooks.mjs";
-import { CerebriumMcpModelClient, TavilySearchClient, selectedResearchBackend } from "./src/research-demo-clients.mjs";
+import { CerebriumMcpModelClient, MCP_MODEL_CATALOG_ALIAS, TavilySearchClient, selectedResearchBackend } from "./src/research-demo-clients.mjs";
 import { resolveSkillInput, resolveWorkflowInput } from "./src/samples.mjs";
 import { createUiHandlers } from "./src/ui.mjs";
-import { JSON_SCHEMAS, VALIDATORS, normalizeDirectSkillInput } from "./src/validation.mjs";
-import { ResearchDrugDemoRunner, WorkflowRunner } from "./src/workflows.mjs";
+import { CONFIGURED_BACKEND_ATOMIC_ACK_FIELDS, JSON_SCHEMAS, VALIDATORS, normalizeDirectSkillInput } from "./src/validation.mjs";
+import { generatedMolecules, ResearchDrugDemoRunner, structureConfidenceSummary, WorkflowRunner } from "./src/workflows.mjs";
 import { MCP_TURN_ID_FIELD, submissionToolBaseName, validMcpTurnId } from "../runtime/mcp-submission-policy.mjs";
 
 export const PLUGIN_VERSION = "3.3.2";
@@ -52,8 +62,71 @@ function toolResult(value) {
   return { content: [{ type: "text", text }], structuredContent: structured };
 }
 
+function modelInventoryToolResult(value) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
+    structuredContent: value,
+  };
+}
+
 const PRESENTATION_TTL_MS = 60 * 60 * 1_000;
 const FINAL_ANSWER_SIGNATURE = JSON.stringify({ v: 1, phase: "final_answer" });
+const CONFIGURED_BACKEND_ATOMIC_SKILL_ID_SET = new Set(CONFIGURED_BACKEND_ATOMIC_SKILL_IDS);
+const CONFIGURED_BACKEND_ATOMIC_TOOL_NAME_SET = new Set(CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES);
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function configuredAtomicExecutionInput(skillId, rawInput) {
+  const ackFields = CONFIGURED_BACKEND_ATOMIC_ACK_FIELDS[skillId];
+  if (!ackFields) return { input: rawInput, turnId: undefined };
+  if (!rawInput || typeof rawInput !== "object" || Array.isArray(rawInput)) {
+    throw new InputError(`${SKILLS[skillId].tool} requires an object argument`);
+  }
+  const turnId = rawInput[MCP_TURN_ID_FIELD];
+  if (!validMcpTurnId(turnId)) throw new InputError(`${SKILLS[skillId].tool} requires a trusted per-turn execution identity`);
+  for (const field of ackFields) {
+    if (rawInput[field] !== true) throw new InputError(`${SKILLS[skillId].tool} requires explicit ${field}=true`);
+  }
+  return {
+    turnId,
+    input: Object.fromEntries(Object.entries(rawInput).filter(([key]) => key !== MCP_TURN_ID_FIELD && !ackFields.includes(key))),
+  };
+}
+
+function configuredAtomicIdentity(skillId, turnId, input) {
+  const digest = createHash("sha256").update(`${skillId}:${turnId}:${canonicalJson(input)}`, "utf8").digest("hex");
+  return {
+    digest,
+    idempotencyKey: `bionemo-atomic-${skillId}-${digest.slice(0, 40)}`,
+  };
+}
+
+function configuredAtomicOutputSummary(skillId, data) {
+  if (skillId === "molmim") {
+    const candidates = generatedMolecules(data).slice(0, 20).map((candidate, index) => ({
+      candidateIndex: index,
+      smiles: candidate.smiles,
+      optimizationScore: candidate.generationScore,
+    }));
+    if (!candidates.length) throw new InputError("MolMIM returned no valid bounded candidates");
+    return { candidateCount: candidates.length, candidates };
+  }
+  if (skillId === "openfold2") {
+    return { confidence: structureConfidenceSummary(data) };
+  }
+  if (skillId === "openfold3") {
+    const outputs = Array.isArray(data?.outputs) ? data.outputs : [];
+    const structures = Array.isArray(outputs[0]?.structures_with_scores) ? outputs[0].structures_with_scores : [];
+    return { confidence: structureConfidenceSummary(data), outputCount: structures.length || null };
+  }
+  return {};
+}
 
 function structuredToolResult(result) {
   if (result?.structuredContent && typeof result.structuredContent === "object") return result.structuredContent;
@@ -72,6 +145,7 @@ const WORKFLOW_RUN_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}
 const VIEWER_CAPABILITY = /^[A-Za-z0-9_-]{32}$/u;
 const STRUCTURE_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.(?:pdb|cif|mmcif)$/iu;
 const CROSS_BACKEND_TOOL_NAME_SET = new Set(CROSS_BACKEND_TOOL_NAMES);
+const ARTIFACT_TOOL_NAME_SET = new Set([...CROSS_BACKEND_TOOL_NAMES, ...CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES]);
 const TAVILY_SEARCH_TOOL_NAME = "tavily_web__tavily_search";
 const TAVILY_SEARCH_SERVER = "tavily_web";
 const TAVILY_SEARCH_OPERATION = "tavily_search";
@@ -156,7 +230,7 @@ function currentTurnArtifactPresentation(messages, options = {}) {
   const wrapperResults = currentTurn.filter((message) => {
     const role = normalizedMessageRole(message);
     return (role === "toolresult" || role === "tool" || role === "function")
-      && CROSS_BACKEND_TOOL_NAME_SET.has(messageToolName(message));
+      && ARTIFACT_TOOL_NAME_SET.has(messageToolName(message));
   });
   if (!wrapperResults.length) return { observed: false };
   if (wrapperResults.length !== 1) return { observed: true };
@@ -171,7 +245,7 @@ function currentTurnArtifactPresentation(messages, options = {}) {
     for (const block of message.content) {
       const type = typeof block?.type === "string" ? block.type.toLowerCase().replace(/[^a-z]/gu, "") : "";
       if (!["toolcall", "tooluse", "functioncall"].includes(type)) continue;
-      if (CROSS_BACKEND_TOOL_NAME_SET.has(messageToolName(block))) wrapperCalls.push(block);
+      if (ARTIFACT_TOOL_NAME_SET.has(messageToolName(block))) wrapperCalls.push(block);
     }
   }
   if (wrapperCalls.length > 1) return { observed: true };
@@ -382,12 +456,21 @@ function createPresentationRegistry({
   return Object.freeze({ set, get, clear, size: () => pending.size });
 }
 
-export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env, artifactRoot, logger = console } = {}) {
+export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env, artifactRoot, logger = console, mcpClient: providedMcpClient } = {}) {
   const store = new ArtifactStore(artifactRoot || env.BIONEMO_ARTIFACT_ROOT || "/workspace/agent/artifacts");
   const client = new NimClient({ fetchImpl, env, logger });
   const researchDirectClient = new NimClient({ fetchImpl, env, logger, retries: 0 });
   const tavilyClient = new TavilySearchClient({ fetchImpl, env });
-  const mcpClient = new CerebriumMcpModelClient({ fetchImpl, env, logger });
+  const mcpClient = providedMcpClient || new CerebriumMcpModelClient({ fetchImpl, env, logger });
+  const modelCatalogClient = env.BIONEMO_MCP_UPSTREAM_URL && env.BIONEMO_MCP_URL
+    ? new CerebriumMcpModelClient({
+      fetchImpl,
+      env,
+      logger,
+      url: env.BIONEMO_MCP_URL,
+      modelCatalogTool: MCP_MODEL_CATALOG_ALIAS,
+    })
+    : mcpClient;
   const researchBackend = selectedResearchBackend(env);
   const researchDemoRunner = new ResearchDrugDemoRunner({
     directClient: researchDirectClient,
@@ -399,6 +482,7 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
     onProgress: async () => {},
   });
   const researchDemoExecutions = new Map();
+  const configuredAtomicExecutions = new Map();
   const researchDemoExecutionTtlMs = 60 * 60 * 1_000;
 
   function runCrossBackendOnce(workflowId, rawInput) {
@@ -424,24 +508,90 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
     return promise;
   }
 
-  async function runSkill(skillId, rawInput) {
-    const normalizedInput = normalizeDirectSkillInput(skillId, rawInput);
-    const input = VALIDATORS[skillId](await resolveSkillInput(skillId, normalizedInput));
+  async function executeSkill(skillId, input, { turnId, backend, idempotencyKey } = {}) {
     const run = await store.createRun({ kind: "skill", id: skillId, inputSummary: summaryForSkill(skillId, input) });
+    const step = {
+      label: SKILLS[skillId].label,
+      skillId,
+      backend: backend || "nvidia",
+      status: "running",
+      startedAt: new Date().toISOString(),
+    };
+    run.manifest.steps = [step];
+    await store.writeManifest(run.directory, run.manifest);
     try {
-      const result = await client.call(skillId, input);
+      const result = backend === "mcp"
+        ? await mcpClient.call(skillId, input, {
+          idempotencyKey,
+          onSubmitted: async ({ jobId }) => {
+            step.remoteJobId = jobId;
+            await store.writeManifest(run.directory, run.manifest);
+          },
+        })
+        : await (CONFIGURED_BACKEND_ATOMIC_SKILL_ID_SET.has(skillId) ? researchDirectClient : client).call(skillId, input);
+      step.status = "completed";
+      step.elapsedMs = result.elapsedMs;
+      step.remoteJobId ||= result.remoteJobId;
+      step.completedAt = new Date().toISOString();
+      const resultSummary = CONFIGURED_BACKEND_ATOMIC_SKILL_ID_SET.has(skillId)
+        ? configuredAtomicOutputSummary(skillId, result.data)
+        : {};
       await store.saveNimResult(run, result);
-      await store.complete(run, { steps: [{ label: SKILLS[skillId].label, skillId, status: "completed", elapsedMs: result.elapsedMs }] });
+      await store.complete(run, { steps: [step] });
       return {
         runId: run.runId,
-        summary: { skill: SKILLS[skillId].label, elapsedMs: result.elapsedMs, requestId: result.requestId, responseKeys: Object.keys(result.data).slice(0, 50) },
+        summary: {
+          skill: SKILLS[skillId].label,
+          backend: backend || "nvidia",
+          elapsedMs: result.elapsedMs,
+          requestId: result.requestId,
+          ...(result.remoteJobId ? { remoteJobId: result.remoteJobId } : {}),
+          ...resultSummary,
+          responseKeys: Object.keys(result.data).slice(0, 50),
+        },
+        steps: [step],
         artifacts: store.presentArtifacts(run),
       };
     } catch (error) {
+      step.status = "failed";
+      step.completedAt = new Date().toISOString();
       const safe = publicError(error);
-      await store.complete(run, { status: "failed", error: safe });
+      await store.complete(run, { status: "failed", error: safe, steps: [step] });
       throw Object.assign(new Error(`${safe.code}: ${safe.message}`), { code: safe.code, status: safe.status });
     }
+  }
+
+  async function runSkill(skillId, rawInput) {
+    if (!CONFIGURED_BACKEND_ATOMIC_SKILL_ID_SET.has(skillId)) {
+      const normalizedInput = normalizeDirectSkillInput(skillId, rawInput);
+      const input = VALIDATORS[skillId](await resolveSkillInput(skillId, normalizedInput));
+      return executeSkill(skillId, input);
+    }
+
+    if (!["mcp", "nvidia"].includes(researchBackend)) {
+      throw new InputError(`${SKILLS[skillId].tool} is unavailable because no supported BioNeMo model backend is configured`);
+    }
+    const execution = configuredAtomicExecutionInput(skillId, rawInput);
+    const normalizedInput = normalizeDirectSkillInput(skillId, execution.input);
+    const input = VALIDATORS[skillId](await resolveSkillInput(skillId, normalizedInput));
+    const identity = configuredAtomicIdentity(skillId, execution.turnId, input);
+    const executionKey = `${skillId}:${execution.turnId}`;
+    const existing = configuredAtomicExecutions.get(executionKey);
+    if (existing) {
+      if (existing.digest !== identity.digest) {
+        throw new InputError(`${SKILLS[skillId].tool} already ran in this turn with a different validated payload`);
+      }
+      return existing.promise;
+    }
+    const promise = executeSkill(skillId, input, {
+      turnId: execution.turnId,
+      backend: researchBackend,
+      idempotencyKey: identity.idempotencyKey,
+    });
+    const cleanupTimer = setTimeout(() => configuredAtomicExecutions.delete(executionKey), researchDemoExecutionTtlMs);
+    cleanupTimer.unref?.();
+    configuredAtomicExecutions.set(executionKey, { digest: identity.digest, promise, cleanupTimer });
+    return promise;
   }
 
   const workflowRunner = new WorkflowRunner({ client, store, onProgress: async () => {} });
@@ -455,19 +605,45 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
       throw Object.assign(new Error(`${safe.code}: ${safe.message}`), { code: safe.code, status: safe.status });
     }
   }
-  return { store, client, researchDirectClient, tavilyClient, mcpClient, researchDemoRunner, researchDemoExecutions, runSkill, runWorkflow };
+  async function listModels(rawInput = {}) {
+    if (!rawInput || typeof rawInput !== "object" || Array.isArray(rawInput) || Object.keys(rawInput).length !== 0) {
+      throw new InputError(`${MODEL_INVENTORY_TOOL.name} accepts no arguments`);
+    }
+    return modelCatalogClient.listModels();
+  }
+  return { store, client, researchDirectClient, tavilyClient, mcpClient, modelCatalogClient, researchBackend, researchDemoRunner, researchDemoExecutions, configuredAtomicExecutions, runSkill, runWorkflow, listModels };
 }
 
 export function registerPlugin(api, options = {}) {
     const runtime = options.runtime || createRuntime({ logger: api.logger });
     const presentationRegistry = options.presentationRegistry || createPresentationRegistry();
     for (const definition of Object.values(SKILLS)) {
+      const configuredBackend = CONFIGURED_BACKEND_ATOMIC_SKILL_ID_SET.has(definition.id);
       api.registerTool({
         name: definition.tool,
         label: definition.label,
-        description: `${definition.description} NVIDIA-hosted route only; research use only.`,
+        description: configuredBackend
+          ? `${definition.description} It uses the configured NVIDIA or Cerebrium MCP backend; research use only.`
+          : `${definition.description} NVIDIA-hosted route only; research use only.`,
         parameters: JSON_SCHEMAS[definition.id],
-        async execute(_toolCallId, params) { return toolResult(await runtime.runSkill(definition.id, params)); },
+        async execute(_toolCallId, params) {
+          const agentRunId = params?.[MCP_TURN_ID_FIELD];
+          try {
+            const result = toolResult(await runtime.runSkill(definition.id, params));
+            if (configuredBackend && validMcpTurnId(agentRunId)) {
+              const presentation = artifactPresentation(result, {
+                artifactRoot: runtime.store?.root,
+                publicBaseUrl: runtime.store?.publicBaseUrl,
+              });
+              if (presentation) presentationRegistry.set(agentRunId, presentation);
+              else presentationRegistry.clear(agentRunId);
+            }
+            return result;
+          } catch (error) {
+            if (configuredBackend && validMcpTurnId(agentRunId)) presentationRegistry.clear(agentRunId);
+            throw error;
+          }
+        },
       });
     }
     for (const definition of Object.values(WORKFLOWS)) {
@@ -499,6 +675,15 @@ export function registerPlugin(api, options = {}) {
         },
       });
     }
+    api.registerTool({
+      name: MODEL_INVENTORY_TOOL.name,
+      label: MODEL_INVENTORY_TOOL.label,
+      description: MODEL_INVENTORY_TOOL.description,
+      parameters: { type: "object", additionalProperties: false, properties: {} },
+      async execute(_toolCallId, params) {
+        return modelInventoryToolResult(await runtime.listModels(params || {}));
+      },
+    });
 
     const handlers = createUiHandlers({ store: runtime.store, runtimeVersion: PLUGIN_VERSION });
     api.registerHttpRoute({ path: "/plugins/bionemo/readiness", auth: "plugin", match: "exact", handler: handlers.readiness });
@@ -519,7 +704,9 @@ export function registerPlugin(api, options = {}) {
       requiredScopes: ["operator.read"],
     });
     api.on("before_tool_call", async (event, ctx) => {
-      if (!submissionToolBaseName(event?.toolName) && !CROSS_BACKEND_TOOL_NAMES.includes(event?.toolName)) return;
+      if (!submissionToolBaseName(event?.toolName)
+        && !CROSS_BACKEND_TOOL_NAMES.includes(event?.toolName)
+        && !CONFIGURED_BACKEND_ATOMIC_TOOL_NAME_SET.has(event?.toolName)) return;
       const runId = ctx?.runId || event?.runId;
       if (!validMcpTurnId(runId)) {
         return {
@@ -559,9 +746,9 @@ export function registerPlugin(api, options = {}) {
       if (validMcpTurnId(agentRunId)) presentationRegistry.clear(agentRunId);
     });
     api.on("before_prompt_build", async () => ({
-      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_* tools, the local demo-only ClawBio catalog tools, and configured Tavily MCP tools. The raw hosted-model MCP is a private backend and is not available in the OpenClaw browser. The four backend-neutral composed demo tools are bionemo_research_drug_demo, bionemo_compare_protein_structures, bionemo_optimize_ligand_complex, and bionemo_batch_fold_demo. After the user explicitly accepts every displayed const-true acknowledgement, call the selected composed tool exactly once and do not reproduce its internal model or optional Tavily calls. After that wrapper returns a successful completed result, call no other tool in the turn; immediately narrate its returned steps, artifacts, and limitations. Follow every displayed tool schema exactly. Pass direct bionemo_* arguments as one flat JSON object. For direct MolMIM calls, always pass num_molecules and keep particles greater than or equal to num_molecules. For direct ProteinMPNN calls, pass exactly one of input_pdb or input_pdb_sample. Never ask for or reveal credentials. For every artifact that has viewerMarkdown, copy that complete viewerMarkdown field verbatim into the final reply; it is already a clickable link in the exact form [View structure in 3D](<VALUE>). Do not reconstruct it from viewerUrl and do not leave either field as plain text. Its URL may be a same-origin path beginning with /; preserve it verbatim and never prepend, invent, or rewrite a host. Attach the top-ranked structure by emitting its exact absolute downloadPath as MEDIA:<downloadPath> on its own line in the final reply. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
+      prependSystemContext: `BioNeMo Toolkit pin ${TOOLKIT_COMMIT}. Use only the configured bionemo_* tools, the local demo-only ClawBio catalog tools, and configured Tavily MCP tools. OpenClaw registers up to ten clean atomic BioNeMo tools, seven clean composed workflow tools, and the read-only bionemo_models_list inventory tool. The clean bionemo_molmim, bionemo_openfold2, and bionemo_openfold3 atomics plus the four backend-neutral composed demos select the configured NVIDIA or private MCP backend. The other seven atomics and three direct workflows retain fixed NVIDIA-hosted routes and are hidden when no NVIDIA credential is configured. The raw hosted-model MCP and its model, job, status, fetch, and capability operations remain private and are not available in the OpenClaw browser. Use bionemo_models_list with no arguments for model inventory; it submits no compute job and returns only sanitized model identities, families, and readiness. Do not infer that every listed inventory entry has a browser compute wrapper. The four backend-neutral composed demo tools are bionemo_research_drug_demo, bionemo_compare_protein_structures, bionemo_optimize_ligand_complex, and bionemo_batch_fold_demo. After the user explicitly accepts every displayed const-true acknowledgement, call the selected composed or configured-backend atomic tool exactly once. Do not reproduce a composed wrapper's internal model or optional Tavily calls. After that tool returns a successful completed result, call no other tool in the turn; immediately narrate its returned steps, artifacts, and limitations. Follow every displayed tool schema exactly. Pass direct bionemo_* arguments as one flat JSON object. For direct MolMIM calls, always pass num_molecules and keep particles greater than or equal to num_molecules. For direct ProteinMPNN calls, pass exactly one of input_pdb or input_pdb_sample. Never ask for or reveal credentials. For every artifact that has viewerMarkdown, copy that complete viewerMarkdown field verbatim into the final reply; it is already a clickable link in the exact form [View structure in 3D](<VALUE>). Do not reconstruct it from viewerUrl and do not leave either field as plain text. Its URL may be a same-origin path beginning with /; preserve it verbatim and never prepend, invent, or rewrite a host. Attach the top-ranked structure by emitting its exact absolute downloadPath as MEDIA:<downloadPath> on its own line in the final reply. Keep all work nonclinical, research-only, and explain confidence plus wet-lab validation requirements. Do not claim that this application itself runs NIM containers or can create Nebius resources.`,
     }));
-    api.logger.info?.(`BioNeMo Agent Toolkit ${PLUGIN_VERSION} registered ${PUBLIC_CATALOG.skills.length} skills and ${PUBLIC_CATALOG.workflows.length} workflows`);
+    api.logger.info?.(`BioNeMo Agent Toolkit ${PLUGIN_VERSION} registered ${PUBLIC_CATALOG.skills.length} skills, ${PUBLIC_CATALOG.workflows.length} workflows, and one read-only model inventory tool`);
     return { runtime, presentationRegistry };
 }
 
@@ -582,6 +769,7 @@ export const __test = Object.freeze({
   appendArtifactPresentationText,
   createPresentationRegistry,
   currentTurnArtifactPresentation,
+  configuredAtomicOutputSummary,
   currentTurnTavilySources,
   registerPlugin,
   tavilySourceLine,

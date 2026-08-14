@@ -469,7 +469,14 @@ export function startMcpSchemaAdapter({
   if (!upstreamUrl) throw new Error("MCP schema adapter requires upstreamUrl");
   if (!apiKey) throw new Error("MCP schema adapter requires apiKey");
   const target = new URL(upstreamUrl);
-  const catalog = new Map();
+  // The browser-owned read-only inventory wrapper can call the neutral alias
+  // before a colocated terminal client has issued tools/list. Keep this one
+  // non-compute alias available from adapter startup; all compute mappings
+  // still come only from the upstream tool catalog.
+  const catalog = new Map([[
+    MODELS_LIST_ALIAS,
+    { mode: "tool-alias", upstreamName: MODELS_LIST_UPSTREAM_NAME },
+  ]]);
   const adapterInstanceId = crypto.randomBytes(16).toString("hex");
   const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && req.url === "/healthz") {

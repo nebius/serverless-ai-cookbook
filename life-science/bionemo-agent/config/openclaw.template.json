@@ -129,7 +129,8 @@
       "bionemo_batch_fold_demo",
       "bionemo_drug_discovery",
       "bionemo_msa_to_structure",
-      "bionemo_protein_binder_design"
+      "bionemo_protein_binder_design",
+      "bionemo_models_list"
     ],
     "deny": [
       "group:runtime",

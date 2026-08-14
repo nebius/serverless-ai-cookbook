@@ -5,11 +5,12 @@ import path from "node:path";
 import test from "node:test";
 import { ArtifactStore, extractArtifacts } from "../openclaw-plugin/src/artifacts.mjs";
 import { NimClient, __test as clientInternals } from "../openclaw-plugin/src/client.mjs";
-import { CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, NVIDIA_HOST, SKILLS } from "../openclaw-plugin/src/catalog.mjs";
+import { CONFIGURED_BACKEND_ATOMIC_SKILL_IDS, CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES, CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, MODEL_INVENTORY_TOOL, NVIDIA_HOST, NVIDIA_ONLY_TOOL_NAMES, SKILLS } from "../openclaw-plugin/src/catalog.mjs";
 import { publicError, redactSecrets, redactText } from "../openclaw-plugin/src/errors.mjs";
 import { BAKED_WORKFLOW_DATA_ROOT, BATCH_FASTA_RELATIVE_PATH, BATCH_PROTEIN_RECORDS, loadBatchProteinFile, parseBatchProteinFasta, resolveSkillInput, resolveWorkflowInput, __test as sampleInternals } from "../openclaw-plugin/src/samples.mjs";
 import { createRuntime } from "../openclaw-plugin/index.mjs";
 import { BATCH_DEMO_INPUT_FILE, JSON_SCHEMAS, LIMITS, RESEARCH_DEMO_ACK_FIELDS, VALIDATORS, normalizeDirectSkillInput, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
+import { MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
 
 const PDB = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\nATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n";
 const PROTEIN = "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ";
@@ -27,12 +28,18 @@ const VALID_INPUTS = Object.freeze({
   rfdiffusion: { input_pdb: PDB, contigs: "80-90", diffusion_steps: 10, random_seed: 7 },
 });
 
-test("catalog exposes ten atomic skills, thirteen direct-only tools, and four cross-backend workflows", () => {
+test("catalog separates three configured-backend atomics from ten NVIDIA-only tools", () => {
   assert.equal(Object.keys(SKILLS).length, 10);
   assert.equal(DIRECT_ONLY_TOOL_NAMES.length, 13);
   assert.equal(CROSS_BACKEND_TOOL_NAMES.length, 4);
-  assert.equal(EXACT_TOOL_NAMES.length, 17);
-  assert.equal(new Set(EXACT_TOOL_NAMES).size, 17);
+  assert.deepEqual(CONFIGURED_BACKEND_ATOMIC_SKILL_IDS, ["molmim", "openfold2", "openfold3"]);
+  assert.deepEqual(CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES, ["bionemo_molmim", "bionemo_openfold2", "bionemo_openfold3"]);
+  assert.equal(NVIDIA_ONLY_TOOL_NAMES.length, 10);
+  assert.equal(EXACT_TOOL_NAMES.length, 18);
+  assert.equal(new Set(EXACT_TOOL_NAMES).size, 18);
+  assert.equal(MODEL_INVENTORY_TOOL.name, "bionemo_models_list");
+  assert.equal(EXACT_TOOL_NAMES.at(-1), MODEL_INVENTORY_TOOL.name);
+  assert.equal(EXACT_TOOL_NAMES.every((name) => name.startsWith("bionemo_") && !name.includes("__")), true);
   assert.equal(CROSS_BACKEND_TOOL_NAMES.every((name) => !DIRECT_ONLY_TOOL_NAMES.includes(name) && EXACT_TOOL_NAMES.includes(name)), true);
 });
 
@@ -131,7 +138,7 @@ test("MolMIM aligns effective output and population defaults before upstream com
   assert.deepEqual(VALIDATORS.molmim({ smi: "CCO", num_molecules: 2, particles: 2 }), { smi: "CCO", num_molecules: 2, particles: 2 });
   assert.throws(() => VALIDATORS.molmim({ smi: "CCO", particles: 2 }), /greater than or equal to num_molecules/u);
   assert.throws(() => VALIDATORS.molmim({ smi: "CCO", num_molecules: 21 }), /greater than or equal to num_molecules/u);
-  assert.deepEqual(JSON_SCHEMAS.molmim.required, ["smi", "num_molecules"]);
+  assert.deepEqual(JSON_SCHEMAS.molmim.required, ["smi", "num_molecules", "ack_research_only", "ack_no_safety_or_therapeutic_claims"]);
   assert.equal(JSON_SCHEMAS.molmim.properties.num_molecules.default, 10);
   assert.equal(JSON_SCHEMAS.molmim.properties.particles.default, 20);
   assert.match(JSON_SCHEMAS.molmim.properties.particles.description, /greater than or equal/u);
@@ -215,8 +222,77 @@ test("direct OpenFold2 recovers the exact accidental stringified MCP envelope", 
       return new Response(JSON.stringify({ result: { structure: "ATOM      1  CA  ALA A   1", format: "pdb" } }), { status: 200 });
     },
   });
-  await runtime.runSkill("openfold2", accidentalEnvelope);
+  await runtime.runSkill("openfold2", {
+    ...accidentalEnvelope,
+    ack_research_only: true,
+    ack_non_clinical: true,
+    [MCP_TURN_ID_FIELD]: "unit-test-openfold2-turn",
+  });
   assert.deepEqual(forwarded, { sequence: "MKTIIALSYIFCLVFADALKL" });
+});
+
+test("configured-backend atomics require explicit acknowledgements and deduplicate one MCP submission per turn", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-atomic-mcp-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  const calls = [];
+  const mcpClient = {
+    async call(skillId, input, options) {
+      calls.push({ skillId, input: structuredClone(input), idempotencyKey: options.idempotencyKey });
+      await options.onSubmitted({ jobId: "a".repeat(32), state: "running", idempotentReplay: false });
+      return {
+        skillId,
+        elapsedMs: 3,
+        requestId: "a".repeat(32),
+        remoteJobId: "a".repeat(32),
+        remoteArtifacts: [],
+        data: { molecules: [{ smiles: "CCO", score: 0.8 }, { smiles: "CCN", score: 0.7 }] },
+      };
+    },
+  };
+  const runtime = createRuntime({
+    artifactRoot: root,
+    env: { BIONEMO_BACKEND: "mcp", BIONEMO_MCP_API_KEY: "unit-test-mcp-key" },
+    mcpClient,
+    logger: { info() {} },
+  });
+  const params = {
+    smi: "CCO",
+    num_molecules: 2,
+    particles: 2,
+    ack_research_only: true,
+    ack_no_safety_or_therapeutic_claims: true,
+    [MCP_TURN_ID_FIELD]: "unit-test-molmim-turn",
+  };
+  const [first, duplicate] = await Promise.all([
+    runtime.runSkill("molmim", params),
+    runtime.runSkill("molmim", structuredClone(params)),
+  ]);
+  assert.equal(calls.length, 1);
+  assert.equal(first.runId, duplicate.runId);
+  assert.deepEqual(calls[0].input, { smi: "CCO", num_molecules: 2, particles: 2 });
+  assert.match(calls[0].idempotencyKey, /^bionemo-atomic-molmim-[a-f0-9]{40}$/u);
+  assert.equal(first.summary.backend, "mcp");
+  assert.equal(first.summary.remoteJobId, "a".repeat(32));
+  assert.deepEqual(first.summary.candidates, [
+    { candidateIndex: 0, smiles: "CCO", optimizationScore: 0.8 },
+    { candidateIndex: 1, smiles: "CCN", optimizationScore: 0.7 },
+  ]);
+  assert.equal(first.summary.candidateCount, 2);
+  assert.equal(first.steps[0].remoteJobId, "a".repeat(32));
+  await assert.rejects(
+    () => runtime.runSkill("molmim", { ...params, smi: "CCC" }),
+    /already ran in this turn with a different validated payload/u,
+  );
+  await assert.rejects(
+    () => runtime.runSkill("molmim", { ...params, ack_research_only: false, [MCP_TURN_ID_FIELD]: "other-turn" }),
+    /ack_research_only=true/u,
+  );
+  const noTurn = { ...params };
+  delete noTurn[MCP_TURN_ID_FIELD];
+  await assert.rejects(() => runtime.runSkill("molmim", noTurn), /trusted per-turn execution identity/u);
+  await runtime.runSkill("molmim", { ...params, [MCP_TURN_ID_FIELD]: "unit-test-molmim-later" });
+  assert.equal(calls.length, 2);
+  assert.notEqual(calls[0].idempotencyKey, calls[1].idempotencyKey);
 });
 
 test("NIM client uses only the fixed HTTPS NVIDIA route and redacts credentials", async () => {

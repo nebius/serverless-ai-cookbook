@@ -16,11 +16,15 @@ export const TAVILY_PRIMARY_DOMAINS = Object.freeze([
 
 const MCP_PROTOCOL_VERSION = "2025-06-18";
 const MCP_BODY_LIMIT = 1_000_000;
+const MCP_MODEL_CATALOG_LIMIT = 64;
 const TAVILY_BODY_LIMIT = 1_000_000;
 const FETCH_CHUNK_BYTES = 32_768;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9][A-Za-z0-9._:-]{15,127}$/u;
 const JOB_ID = /^[0-9a-f]{32}$/u;
 const TERMINAL_STATES = new Set(["succeeded", "failed"]);
+
+export const MCP_MODEL_CATALOG_ALIAS = "models_list";
+export const MCP_MODEL_CATALOG_UPSTREAM_TOOL = "clawbio_models_list";
 
 const MCP_MODELS = Object.freeze({
   openfold2: Object.freeze({
@@ -267,6 +271,63 @@ function unwrappedStructuredContent(value) {
   return value;
 }
 
+function safeCatalogIdentifier(value, label) {
+  if (typeof value !== "string" || !/^[a-z0-9][a-z0-9_]{0,79}$/u.test(value)) {
+    throw codedError(`BioNeMo model inventory contains an invalid ${label}.`, { code: "invalid_mcp_model_catalog" });
+  }
+  return value;
+}
+
+function safeCatalogLabel(value, label) {
+  if (typeof value !== "string") {
+    throw codedError(`BioNeMo model inventory contains an invalid ${label}.`, { code: "invalid_mcp_model_catalog" });
+  }
+  const normalized = value.replace(/[\u0000-\u001f\u007f]/gu, " ").replace(/\s+/gu, " ").trim();
+  if (!normalized || normalized.length > 128 || normalized.includes("://")
+    || !/^[A-Za-z0-9][A-Za-z0-9 ._+()/-]{0,127}$/u.test(normalized)) {
+    throw codedError(`BioNeMo model inventory contains an invalid ${label}.`, { code: "invalid_mcp_model_catalog" });
+  }
+  return normalized;
+}
+
+function sanitizedModelReadiness(value) {
+  if (typeof value !== "string") return "unknown";
+  const state = value.trim().toLowerCase();
+  if (state === "ready" || state.startsWith("ready_")) return "ready";
+  if (["building", "deploying", "starting", "stopped", "unavailable", "failed", "error"].includes(state)) return "not_ready";
+  return "unknown";
+}
+
+export function sanitizedModelInventory(value) {
+  const entries = Array.isArray(value) ? value : Array.isArray(value?.result) ? value.result : null;
+  if (!entries || entries.length < 1 || entries.length > MCP_MODEL_CATALOG_LIMIT) {
+    throw codedError("BioNeMo model inventory returned an invalid bounded model list.", { code: "invalid_mcp_model_catalog" });
+  }
+  const models = entries.map((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw codedError("BioNeMo model inventory contains an invalid model entry.", { code: "invalid_mcp_model_catalog" });
+    }
+    return {
+      id: safeCatalogIdentifier(entry.id, "model identifier"),
+      displayName: safeCatalogLabel(entry.display_name, "display name"),
+      family: safeCatalogIdentifier(entry.family, "model family"),
+      readiness: sanitizedModelReadiness(entry.state),
+    };
+  }).sort((left, right) => left.id.localeCompare(right.id));
+  if (new Set(models.map(({ id }) => id)).size !== models.length) {
+    throw codedError("BioNeMo model inventory contains duplicate model identifiers.", { code: "invalid_mcp_model_catalog" });
+  }
+  const readyCount = models.filter(({ readiness }) => readiness === "ready").length;
+  return {
+    readOnly: true,
+    computeSubmitted: false,
+    modelCount: models.length,
+    readyCount,
+    models,
+    notice: "Sanitized model inventory only; no scientific compute or job was submitted.",
+  };
+}
+
 function mcpRequest(skillId, payload) {
   if (skillId === "openfold2") {
     return {
@@ -338,6 +399,7 @@ export class CerebriumMcpModelClient {
     jobTimeoutMs = 900_000,
     maxPolls = 600,
     pollIntervalMs = 2_000,
+    modelCatalogTool = MCP_MODEL_CATALOG_UPSTREAM_TOOL,
   } = {}) {
     if (typeof fetchImpl !== "function") throw new TypeError("fetch implementation is required");
     this.fetchImpl = fetchImpl;
@@ -350,6 +412,10 @@ export class CerebriumMcpModelClient {
     this.jobTimeoutMs = Math.max(30_000, Math.min(Number(jobTimeoutMs) || 900_000, 1_200_000));
     this.maxPolls = Math.max(1, Math.min(Number(maxPolls) || 600, 1_000));
     this.pollIntervalMs = Math.max(0, Math.min(Number(pollIntervalMs) || 2_000, 10_000));
+    if (![MCP_MODEL_CATALOG_ALIAS, MCP_MODEL_CATALOG_UPSTREAM_TOOL].includes(modelCatalogTool)) {
+      throw new TypeError("unsupported private MCP model-catalog operation");
+    }
+    this.modelCatalogTool = modelCatalogTool;
     this.rpcId = 0;
   }
 
@@ -393,6 +459,19 @@ export class CerebriumMcpModelClient {
       throw codedError(`Cerebrium MCP network error while calling ${name}: ${error?.name || "request failed"}.`, { code: "mcp_network_error", retryable: true });
     } finally {
       timeout.clear();
+    }
+  }
+
+  async listModels() {
+    try {
+      return sanitizedModelInventory(await this.tool(this.modelCatalogTool, {}));
+    } catch (error) {
+      if (error?.code === "invalid_mcp_model_catalog") throw error;
+      throw codedError("BioNeMo model inventory is unavailable from the configured private backend.", {
+        code: typeof error?.code === "string" ? error.code : "mcp_model_catalog_unavailable",
+        status: Number.isInteger(error?.status) ? error.status : 502,
+        retryable: Boolean(error?.retryable),
+      });
     }
   }
 
@@ -525,6 +604,7 @@ export const __test = {
   parsedRpcMessage,
   readBodyLimited,
   responseArtifact,
+  sanitizedModelInventory,
   sanitizedTavilyResult,
   internalMcpUrl,
   validatedIdempotencyKey,

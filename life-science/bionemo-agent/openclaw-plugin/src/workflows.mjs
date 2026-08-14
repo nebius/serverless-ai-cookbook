@@ -5,7 +5,7 @@ import { BATCH_FASTA_RELATIVE_PATH, CRAMBIN_PUBLIC_INPUT, RESEARCH_DEMO_PUBLIC_I
 import { CROSS_BACKEND_WORKFLOW_IDS, RESEARCH_DEMO_ACK_FIELDS, validateWorkflowInput } from "./validation.mjs";
 import { MCP_TURN_ID_FIELD, validMcpTurnId } from "../../runtime/mcp-submission-policy.mjs";
 
-function generatedMolecules(data) {
+export function generatedMolecules(data) {
   let candidates = data?.molecules ?? data?.generated ?? [];
   if (typeof candidates === "string") {
     try { candidates = JSON.parse(candidates); } catch { candidates = []; }
@@ -178,7 +178,7 @@ const STRUCTURE_CONFIDENCE_FIELDS = new Set([
   "plddt",
 ]);
 
-function structureConfidenceSummary(data) {
+export function structureConfidenceSummary(data) {
   const summary = {};
   let visited = 0;
   const visit = (value, depth = 0) => {

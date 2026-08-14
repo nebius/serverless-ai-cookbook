@@ -7,6 +7,12 @@ export const NVIDIA_ORIGIN = `https://${NVIDIA_HOST}`;
 const skill = (definition) => Object.freeze({ kind: "skill", ...definition });
 const workflow = (definition) => Object.freeze({ kind: "workflow", ...definition });
 
+export const MODEL_INVENTORY_TOOL = Object.freeze({
+  name: "bionemo_models_list",
+  label: "List BioNeMo models",
+  description: "List a sanitized, read-only inventory of configured BioNeMo model services and their readiness without submitting compute.",
+});
+
 export const SKILLS = Object.freeze({
   boltz2: skill({
     id: "boltz2",
@@ -162,6 +168,20 @@ export const DIRECT_ONLY_TOOL_NAMES = Object.freeze([
   ...Object.values(WORKFLOWS).filter((entry) => !entry.crossBackend).map((entry) => entry.tool),
 ]);
 
+export const CONFIGURED_BACKEND_ATOMIC_SKILL_IDS = Object.freeze([
+  "molmim",
+  "openfold2",
+  "openfold3",
+]);
+
+export const CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES = Object.freeze(
+  CONFIGURED_BACKEND_ATOMIC_SKILL_IDS.map((id) => SKILLS[id].tool),
+);
+
+export const NVIDIA_ONLY_TOOL_NAMES = Object.freeze(
+  DIRECT_ONLY_TOOL_NAMES.filter((name) => !CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES.includes(name)),
+);
+
 export const CROSS_BACKEND_TOOL_NAMES = Object.freeze(
   Object.values(WORKFLOWS).filter((entry) => entry.crossBackend).map((entry) => entry.tool),
 );
@@ -169,12 +189,14 @@ export const CROSS_BACKEND_TOOL_NAMES = Object.freeze(
 export const EXACT_TOOL_NAMES = Object.freeze([
   ...Object.values(SKILLS).map((entry) => entry.tool),
   ...Object.values(WORKFLOWS).map((entry) => entry.tool),
+  MODEL_INVENTORY_TOOL.name,
 ]);
 
 export const PUBLIC_CATALOG = Object.freeze({
   toolkitCommit: TOOLKIT_COMMIT,
   hostedOrigin: NVIDIA_ORIGIN,
   researchOnly: true,
+  modelInventory: MODEL_INVENTORY_TOOL,
   samples: PUBLIC_SAMPLES,
   skills: Object.values(SKILLS).map(({ id, label, tool, description, artifactTypes }) => ({
     id,

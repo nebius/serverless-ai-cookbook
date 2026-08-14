@@ -3,9 +3,10 @@ import { readdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
+import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v4";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v5";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -34,6 +35,23 @@ export const BIONEMO_SUPER_NOTEBOOK_TURNS = Object.freeze(NOTEBOOK_CATALOG.map((
 }));
 export const BIONEMO_SUPER_INITIAL_TURNS = Object.freeze([
   ...BIONEMO_SUPER_NOTEBOOK_TURNS,
+  Object.freeze({
+    prompt: WORKBENCH_EXAMPLE_SESSIONS.find(({ slug }) => slug === "molmim-direct-mcp").prompt,
+    name: "bionemo_molmim",
+    params: Object.freeze({
+      smi: "COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4",
+      algorithm: "CMA-ES",
+      num_molecules: 2,
+      num_iterations: 2,
+      property_name: "QED",
+      particles: 2,
+      minimize: false,
+      min_similarity: 0.7,
+      radius: 1,
+      ack_research_only: true,
+      ack_no_safety_or_therapeutic_claims: true,
+    }),
+  }),
 ]);
 
 export function bionemoSuperInitialNotebookTool(model, context) {
@@ -61,6 +79,9 @@ export function bionemoSuperCompletedToolTarget(model, context) {
     "bionemo_compare_protein_structures",
     "bionemo_optimize_ligand_complex",
     "bionemo_batch_fold_demo",
+    "bionemo_molmim",
+    "bionemo_openfold2",
+    "bionemo_openfold3",
   ]);
   const modelId = String(model?.id || "").toLowerCase();
   if (String(model?.provider || "").toLowerCase() !== "tokenfactory"
@@ -122,6 +143,9 @@ export function bionemoSuperDeterministicFinalText(model, context) {
     bionemo_compare_protein_structures: "The OpenFold2 and OpenFold3 structure-comparison workflow returned a terminal result. Review the returned scalar confidence summaries and attached structures. Neither prediction is experimental ground truth; this research-only output requires independent computational and wet-lab validation.",
     bionemo_optimize_ligand_complex: "The MolMIM and OpenFold3 ligand-complex workflow returned a terminal result. Review both candidates, the deterministic selection, returned score, confidence, and attached structure. It makes no binding, safety, efficacy, or clinical claim and requires independent validation.",
     bionemo_batch_fold_demo: "The bounded five-protein OpenFold2 workflow returned a terminal result. Review each record status, confidence summary, and attached structure. These research-only predictions require independent computational and experimental validation.",
+    bionemo_molmim: "The bounded MolMIM optimization returned a terminal result. Review the returned candidates and scores as research-only hypotheses. No binding, safety, efficacy, therapeutic, or clinical claim is made; independent computational and wet-lab validation is required.",
+    bionemo_openfold2: "The bounded OpenFold2 prediction returned a terminal result. Review the scalar confidence summary and attached structure. This is not experimental ground truth and requires independent computational and experimental validation.",
+    bionemo_openfold3: "The bounded OpenFold3 prediction returned a terminal result. Review the scalar confidence summary and attached structure. This is not experimental ground truth and requires independent computational and experimental validation.",
   };
   if (!target) return undefined;
   const summary = bionemoSuperBoundedResultSummary(model, context);

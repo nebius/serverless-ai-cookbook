@@ -46,14 +46,14 @@ function minimalConfig(workspace) {
   };
 }
 
-test("nine stable ready examples include four notebook workflows and five bounded workbench tours", () => {
-  assert.equal(EXAMPLE_SESSIONS.length, 9);
+test("eleven stable ready examples include four notebook workflows and seven bounded workbench tours", () => {
+  assert.equal(EXAMPLE_SESSIONS.length, 11);
   assert.equal(NOTEBOOK_EXAMPLE_SESSIONS.length, 4);
-  assert.equal(WORKBENCH_EXAMPLE_SESSIONS.length, 5);
+  assert.equal(WORKBENCH_EXAMPLE_SESSIONS.length, 7);
   assert.equal(NOTEBOOK_EXAMPLE_SESSIONS.every(({ draftSeedGeneration }) => draftSeedGeneration === 1), true);
   assert.equal(WORKBENCH_EXAMPLE_SESSIONS.every(({ draftSeedGeneration }) => draftSeedGeneration === 2), true);
-  assert.equal(new Set(EXAMPLE_SESSIONS.map(({ key }) => key)).size, 9);
-  assert.equal(new Set(EXAMPLE_SESSIONS.map(({ label }) => label)).size, 9);
+  assert.equal(new Set(EXAMPLE_SESSIONS.map(({ key }) => key)).size, 11);
+  assert.equal(new Set(EXAMPLE_SESSIONS.map(({ label }) => label)).size, 11);
   assert.equal(EXAMPLE_SESSIONS.every(({ key }) => key.startsWith("agent:bionemo:dashboard:")), true);
   assert.deepEqual(EXAMPLE_SESSIONS.map(({ label }) => label), [
     "Example 1 · Research-first EGFR",
@@ -65,6 +65,8 @@ test("nine stable ready examples include four notebook workflows and five bounde
     "Example 7 · Browse ClawBio catalog",
     "Example 8 · Run ClawBio GWAS demo",
     "Example 9 · Research with Tavily",
+    "Example 10 · List BioNeMo models",
+    "Example 11 · Optimize a ligand directly",
   ]);
   for (const definition of NOTEBOOK_EXAMPLE_SESSIONS) {
     assert.equal(
@@ -84,6 +86,8 @@ test("nine stable ready examples include four notebook workflows and five bounde
     "clawbio-readonly",
     "clawbio-demo",
     "tavily",
+    "bionemo-model-inventory",
+    "bionemo-molmim",
   ]);
   assert.match(
     EXAMPLE_SESSIONS.find(({ slug }) => slug === "tavily-public-research").prompt,
@@ -96,10 +100,12 @@ test("nine stable ready examples include four notebook workflows and five bounde
 });
 
 test("new workbench prompts preserve exact bounded no-run and exactly-once contracts", () => {
-  const [tour, skills, catalog, demo, tavily] = WORKBENCH_EXAMPLE_SESSIONS;
+  const [tour, skills, catalog, demo, tavily, inventory, molmim] = WORKBENCH_EXAMPLE_SESSIONS;
   for (const definition of [tour, skills]) assert.match(definition.prompt, /Do not call any tool\./u);
-  assert.match(tour.prompt, /raw hosted model, job, and catalog operations are intentionally absent/u);
-  assert.match(tour.prompt, /read-only models_list operation/u);
+  assert.match(tour.prompt, /up to ten clean atomic bionemo_\* tools, seven clean composed workflows/u);
+  assert.match(tour.prompt, /bionemo_molmim, bionemo_openfold2, bionemo_openfold3, and four composed demos select the configured backend/u);
+  assert.match(tour.prompt, /bionemo_models_list is the browser's sanitized read-only inventory tool/u);
+  assert.match(tour.prompt, /raw hosted model, job, status, fetch, and capability operations remain private and absent/u);
 
   assert.match(catalog.prompt, /Call clawbio__list_skills exactly once with query="gwas"/u);
   assert.match(catalog.prompt, /call clawbio__describe_skill exactly once with name="gwas-lookup"/u);
@@ -115,6 +121,16 @@ test("new workbench prompts preserve exact bounded no-run and exactly-once contr
   assert.match(tavily.prompt, /basic search depth, at most five results/u);
   assert.match(tavily.prompt, /stop without substituting another tool or inventing citations/u);
   assert.doesNotMatch(tavily.prompt, /tavily_web__|tavily__|search__search/u);
+
+  assert.match(inventory.prompt, /Call bionemo_models_list exactly once with no arguments/u);
+  assert.match(inventory.prompt, /Do not call any other bionemo_\* tool/u);
+  assert.match(inventory.prompt, /submitted no scientific compute or model job/u);
+  assert.match(inventory.prompt, /do not retry/u);
+
+  assert.match(molmim.prompt, /Call bionemo_molmim exactly once/u);
+  assert.match(molmim.prompt, /num_molecules=2.*particles=2/u);
+  assert.match(molmim.prompt, /ack_research_only=true.*ack_no_safety_or_therapeutic_claims=true/u);
+  assert.match(molmim.prompt, /Do not call OpenFold3, any other bionemo_\* tool/u);
 
   for (const definition of WORKBENCH_EXAMPLE_SESSIONS) {
     assert.doesNotMatch(definition.prompt, /clawbio_models__|bionemo_models__/u);
@@ -253,7 +269,7 @@ test("gateway reconciliation pins only drifted examples and verifies sessions.li
   assert.equal(instances.every(({ stopped }) => stopped), true);
 });
 
-test("exact pinned OpenClaw creates nine visible local starter sessions idempotently", { timeout: 120_000 }, async (t) => {
+test("exact pinned OpenClaw creates eleven visible local starter sessions idempotently", { timeout: 120_000 }, async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-example-seed-pinned-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const stateDir = path.join(root, "state");

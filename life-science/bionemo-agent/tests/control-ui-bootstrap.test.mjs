@@ -158,7 +158,7 @@ test("default-session bootstrap preserves explicit sessions and non-default rout
   }
 });
 
-test("Control UI seeds nine ready per-session drafts once without queues or sends", async () => {
+test("Control UI seeds eleven ready per-session drafts once without queues or sends", async () => {
   const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
   const storage = new Map();
   const first = await runBootstrap(href, { storage });

@@ -524,6 +524,10 @@ test("loopback adapter forwards auth privately and rewrites list/call payloads",
   const adapter = await startMcpSchemaAdapter({ upstreamUrl, apiKey: secret, port: 0 });
   t.after(() => adapter.server.close());
   assert.equal(adapter.server.listenerCount("error"), 0, "startup rejection listener must be removed after listen succeeds");
+  assert.deepEqual(adapter.catalog.get(MODELS_LIST_ALIAS), {
+    mode: "tool-alias",
+    upstreamName: MODELS_LIST_UPSTREAM_NAME,
+  }, "the read-only inventory alias must work before any terminal client issues tools/list");
 
   const listResponse = await fetch(adapter.url, {
     method: "POST",

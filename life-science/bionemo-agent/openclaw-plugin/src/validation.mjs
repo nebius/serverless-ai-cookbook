@@ -24,6 +24,11 @@ export const RESEARCH_DEMO_ACK_FIELDS = Object.freeze([
   "ack_aup_accepted",
   "ack_no_safety_or_therapeutic_claims",
 ]);
+export const CONFIGURED_BACKEND_ATOMIC_ACK_FIELDS = Object.freeze({
+  molmim: Object.freeze(["ack_research_only", "ack_no_safety_or_therapeutic_claims"]),
+  openfold2: Object.freeze(["ack_research_only", "ack_non_clinical"]),
+  openfold3: Object.freeze(["ack_research_only", "ack_non_clinical"]),
+});
 export const BATCH_DEMO_INPUT_FILE = "notebooks/data/five-proteins.fasta";
 export const CROSS_BACKEND_WORKFLOW_IDS = Object.freeze([
   "research_drug_demo",
@@ -413,7 +418,7 @@ export const JSON_SCHEMAS = Object.freeze({
   molmim: {
     type: "object",
     additionalProperties: false,
-    required: ["smi", "num_molecules"],
+    required: ["smi", "num_molecules", ...CONFIGURED_BACKEND_ATOMIC_ACK_FIELDS.molmim],
     properties: {
       smi: { type: "string", description: "Seed molecule as a SMILES string." },
       algorithm: { type: "string", enum: ["CMA-ES", "none"], default: "CMA-ES" },
@@ -424,14 +429,34 @@ export const JSON_SCHEMAS = Object.freeze({
       min_similarity: { type: "number", minimum: 0, maximum: 1, default: 0.7 },
       particles: { type: "integer", minimum: 2, maximum: 100, default: MOLMIM_DEFAULT_PARTICLES, description: "Population size; must be greater than or equal to num_molecules." },
       radius: { type: "number", minimum: 0, maximum: 2, default: 1 },
+      ack_research_only: { type: "boolean", const: true, description: "The user explicitly accepts research-only use." },
+      ack_no_safety_or_therapeutic_claims: { type: "boolean", const: true, description: "The user explicitly accepts that no binding, safety, therapeutic, efficacy, or clinical claim is made." },
     },
   },
   msa_search: { type: "object", additionalProperties: false, properties: { sequence: { type: "string" }, sequences: { type: "array", items: { type: "string" } }, databases: { type: "array", items: { type: "string" } }, e_value: { type: "number" }, iterations: { type: "integer" }, max_msa_sequences: { type: "integer" }, output_alignment_formats: { type: "array", items: { type: "string", enum: ["a3m", "fasta"] } } } },
   // Keep the model-facing OpenFold2 contract deliberately small. Compatibility
   // envelope recovery exists only inside the executor and is not advertised to
   // the model, so it cannot reinforce confusion with remote MCP contracts.
-  openfold2: { type: "object", additionalProperties: false, required: ["sequence"], properties: { sequence: { type: "string", description: "Protein amino-acid sequence to fold directly. Do not wrap or stringify it." } } },
-  openfold3: { type: "object", additionalProperties: false, required: ["inputs"], properties: { inputs: { type: "array", minItems: 1, maxItems: 1 } } },
+  openfold2: {
+    type: "object",
+    additionalProperties: false,
+    required: ["sequence", ...CONFIGURED_BACKEND_ATOMIC_ACK_FIELDS.openfold2],
+    properties: {
+      sequence: { type: "string", description: "Protein amino-acid sequence to fold directly. Do not wrap or stringify it." },
+      ack_research_only: { type: "boolean", const: true, description: "The user explicitly accepts research-only use." },
+      ack_non_clinical: { type: "boolean", const: true, description: "The user explicitly accepts non-clinical use." },
+    },
+  },
+  openfold3: {
+    type: "object",
+    additionalProperties: false,
+    required: ["inputs", ...CONFIGURED_BACKEND_ATOMIC_ACK_FIELDS.openfold3],
+    properties: {
+      inputs: { type: "array", minItems: 1, maxItems: 1 },
+      ack_research_only: { type: "boolean", const: true, description: "The user explicitly accepts research-only use." },
+      ack_non_clinical: { type: "boolean", const: true, description: "The user explicitly accepts non-clinical use." },
+    },
+  },
   proteinmpnn: {
     type: "object",
     additionalProperties: false,
