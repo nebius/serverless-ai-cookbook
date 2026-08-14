@@ -6,7 +6,7 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v8";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v9";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -75,11 +75,17 @@ export function bionemoSuperInitialNotebookTool(model, context) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     if (messages[index]?.role === "user") { userIndex = index; break; }
   }
-  if (userIndex < 0 || messages.slice(userIndex + 1).some((message) => message?.role === "toolResult")) return undefined;
-  const content = messages[userIndex]?.content;
-  const prompt = typeof content === "string" ? content : Array.isArray(content)
-    ? content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text).join("")
-    : "";
+  let prompt;
+  if (userIndex < 0) {
+    if (messages.some((message) => ["toolResult", "tool", "function"].includes(message?.role))) return undefined;
+    prompt = typeof context?.prompt === "string" ? context.prompt : "";
+  } else {
+    if (messages.slice(userIndex + 1).some((message) => message?.role === "toolResult")) return undefined;
+    const content = messages[userIndex]?.content;
+    prompt = typeof content === "string" ? content : Array.isArray(content)
+      ? content.filter((block) => block?.type === "text" && typeof block.text === "string").map((block) => block.text).join("")
+      : "";
+  }
   const match = BIONEMO_SUPER_INITIAL_TURNS.find((entry) => entry.prompt === prompt);
   return match ? { name: match.name, params: { ...match.params } } : undefined;
 }

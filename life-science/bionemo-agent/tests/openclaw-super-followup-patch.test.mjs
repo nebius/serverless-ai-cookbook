@@ -211,6 +211,10 @@ test("Super initial calls are source-owned only for exact reviewed prompts", () 
       messages: [{ role: "user", content: [{ type: "text", text: expected.prompt }] }],
     });
     assert.deepEqual(actual, { name: expected.name, params: { ...expected.params } });
+    assert.deepEqual(
+      bionemoSuperInitialNotebookTool(superModel, { prompt: expected.prompt, messages: [] }),
+      { name: expected.name, params: { ...expected.params } },
+    );
   }
   const [first] = BIONEMO_SUPER_NOTEBOOK_TURNS;
   assert.equal(bionemoSuperInitialNotebookTool(deepSeekModel, { messages: [{ role: "user", content: first.prompt }] }), undefined);
@@ -221,6 +225,14 @@ test("Super initial calls are source-owned only for exact reviewed prompts", () 
     { role: "user", content: first.prompt },
     { role: "toolResult", toolName: first.name },
   ] }), undefined);
+  assert.equal(bionemoSuperInitialNotebookTool(superModel, {
+    prompt: first.prompt,
+    messages: [{ role: "user", content: "Continue from the previous tool call." }],
+  }), undefined);
+  assert.equal(bionemoSuperInitialNotebookTool(superModel, {
+    prompt: first.prompt,
+    messages: [{ role: "toolResult", toolName: first.name }],
+  }), undefined);
 });
 
 test("Super fallback includes only a bounded workflow summary", () => {
@@ -269,7 +281,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v8/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v9/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperFinalText)");
@@ -377,7 +389,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       providerFetchCalls += 1;
       return await new Promise(() => {});
     };
-    const exactTavilyInitialContext = { messages: [{ role: "user", content: [{ type: "text", text: ${JSON.stringify(tavilyInitial.prompt)} }] }] };
+    const exactTavilyInitialContext = { prompt: ${JSON.stringify(tavilyInitial.prompt)}, messages: [] };
     const initialTavilyEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
       apiKey: "test-key",
       emitReasoning: false,
@@ -420,20 +432,41 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       providerFetchCalls += 1;
       return new Response(providerBody, { status: 200, headers: { "content-type": "text/event-stream" } });
     };
+    const replayContext = { prompt: ${JSON.stringify(tavilyInitial.prompt)}, messages: [{ role: "user", content: "Continue from the previous tool call." }] };
+    const replayEvents = await within(collectEvents(transport(model, replayContext, {
+      apiKey: "test-key",
+      emitReasoning: false,
+      onPayload(params) {
+        return { ...params, tools: [{ type: "function", function: { name: expectedTavilyInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
+      },
+    })), 2_000);
+    assert.equal(providerFetchCalls, 1, "a replay user message must retain the provider transport");
+    assert.equal(replayEvents.at(-1).type, "done");
+    assert.deepEqual(replayEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
+    const compactSurfaceEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
+      apiKey: "test-key",
+      emitReasoning: false,
+      onPayload(params) {
+        return { ...params, tools: [{ type: "function", function: { name: "tool_call", description: "compact catalog", parameters: { type: "object" } } }] };
+      },
+    })), 2_000);
+    assert.equal(providerFetchCalls, 2, "an unavailable direct Tavily tool must retain the provider transport");
+    assert.equal(compactSurfaceEvents.at(-1).type, "done");
+    assert.deepEqual(compactSurfaceEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const malformedTavilyBoundary = structuredClone(successfulTavilyBoundary);
     malformedTavilyBoundary.messages.at(-1).details.mcpServer = "untrusted-server";
     assert.equal(patched.__bionemoSuperLocalCompletionText(model, malformedTavilyBoundary), undefined);
     const malformedTavilyEvents = await within(collectEvents(transport(model, malformedTavilyBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 1, "malformed Tavily provenance retains the provider transport");
+    assert.equal(providerFetchCalls, 3, "malformed Tavily provenance retains the provider transport");
     assert.equal(malformedTavilyEvents.at(-1).type, "done");
     assert.deepEqual(malformedTavilyEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const erroredBoundaryForTransport = ${JSON.stringify(turn("bionemo_batch_fold_demo", { isError: true }))};
     const erroredEvents = await within(collectEvents(transport(model, erroredBoundaryForTransport, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 2, "errored Super boundary retains the provider transport");
+    assert.equal(providerFetchCalls, 4, "errored Super boundary retains the provider transport");
     assert.equal(erroredEvents.at(-1).type, "done");
     assert.deepEqual(erroredEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const deepSeekEvents = await within(collectEvents(transport(deepSeekModel, successfulBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 3, "other models retain the provider transport");
+    assert.equal(providerFetchCalls, 5, "other models retain the provider transport");
     assert.equal(deepSeekEvents.at(-1).type, "done");
     assert.deepEqual(deepSeekEvents.at(-1).message.content, [{ type: "text", text: sourceOwnedFinal }]);
 
