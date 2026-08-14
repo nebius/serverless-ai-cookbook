@@ -327,10 +327,25 @@ test("one successful current-turn Tavily search deterministically appends its bo
 
   const alreadyCited = beforeFinalize({
     runId: PRESENTATION_AGENT_RUN_ID,
-    lastAssistantMessage: `Sources already cited: ${derived.sources.map(({ url }) => url).join(" ")}`,
+    lastAssistantMessage: `Sources\n\n${derived.sources.map(pluginInternals.tavilySourceLine).join("\n")}`,
     messages: [user, call, result],
   }, { runId: PRESENTATION_AGENT_RUN_ID });
-  assert.equal(alreadyCited, undefined, "all returned canonical URLs suppress a duplicate Sources block");
+  assert.equal(alreadyCited, undefined, "all exact deterministic citations suppress a duplicate Sources block");
+  const urlsWithoutTitles = pluginInternals.tavilySourcesAppendText(
+    `Sources already cited: ${derived.sources.map(({ url }) => url).join(" ")}`,
+    derived.sources,
+  );
+  assert.equal(urlsWithoutTitles, final.appendFinalAssistantText, "canonical URLs without their exact titles cannot suppress the source block");
+  const wrongTitles = pluginInternals.tavilySourcesAppendText(
+    derived.sources.map((source) => `- Modified title ${pluginInternals.tavilySourceLine(source)}`).join("\n"),
+    derived.sources,
+  );
+  assert.equal(wrongTitles, final.appendFinalAssistantText, "modified titles with the correct URLs cannot suppress the source block");
+  const oneTitleOmitted = pluginInternals.tavilySourcesAppendText([
+    pluginInternals.tavilySourceLine(derived.sources[0]),
+    derived.sources[1].url,
+  ].join("\n"), derived.sources);
+  assert.equal(oneTitleOmitted, final.appendFinalAssistantText, "one omitted title appends the complete deterministic block");
   const oneMissing = pluginInternals.tavilySourcesAppendText(`Only ${derived.sources[0].url}`, derived.sources);
   assert.equal(oneMissing.includes("RCSB PDB \\[Search\\] API"), true, "a partial citation appends the complete deterministic block");
   assert.match(oneMissing, /UniProt Documentation/u);

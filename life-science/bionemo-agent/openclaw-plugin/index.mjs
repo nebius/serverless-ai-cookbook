@@ -338,7 +338,8 @@ function tavilySourceLine(source) {
 
 function tavilySourcesAppendText(text, sources) {
   if (typeof text !== "string" || !Array.isArray(sources) || !sources.length) return undefined;
-  if (sources.every(({ url }) => text.includes(url))) return undefined;
+  const finalLines = new Set(text.split(/\r?\n/u));
+  if (sources.map(tavilySourceLine).every((citation) => finalLines.has(citation))) return undefined;
   return `Sources\n\n${sources.map(tavilySourceLine).join("\n")}`;
 }
 
