@@ -301,6 +301,16 @@ test("one successful current-turn Tavily search deterministically appends its bo
   const oneMissing = pluginInternals.tavilySourcesAppendText(`Only ${derived.sources[0].url}`, derived.sources);
   assert.equal(oneMissing.includes("RCSB PDB \\[Search\\] API"), true, "a partial citation appends the complete deterministic block");
   assert.match(oneMissing, /UniProt Documentation/u);
+
+  const rcsbOnlyResult = tavilyToolResult([results[0]]);
+  const disclosureUser = { role: "user", content: "Compare RCSB PDB and UniProt documentation." };
+  const disclosure = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: "RCSB provides structural data; no claim is made about an unreturned source.",
+    messages: [disclosureUser, call, rcsbOnlyResult],
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.match(disclosure.appendFinalAssistantText, /^No direct UniProt source was returned by this bounded search\./u);
+  assert.match(disclosure.appendFinalAssistantText, /Sources\n\n- RCSB/u);
 });
 
 test("current-turn Tavily presentation fails closed on stale, failed, malformed, duplicated, or mismatched results", () => {
@@ -319,6 +329,7 @@ test("current-turn Tavily presentation fails closed on stale, failed, malformed,
 
   const rejectedHistories = [
     [user, call, { ...result, isError: true }],
+    [user, call, { ...result, isError: undefined }],
     [user, call, { ...result, error: { code: "rate_limited" } }],
     [user, call, result, { ...result, toolCallId: "tavily-call-second" }],
     [user, { role: "assistant", content: [{ type: "toolCall", id: "different-call", name: TAVILY_TOOL_NAME, arguments: {} }] }, result],

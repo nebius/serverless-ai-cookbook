@@ -219,7 +219,7 @@ function currentTurnTavilySources(messages) {
   if (!searchResults.length) return { observed: false };
   if (searchResults.length !== 1) return { observed: true };
   const result = searchResults[0];
-  if (result.isError === true || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "")) {
+  if (result.isError !== false || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "")) {
     return { observed: true };
   }
 
@@ -248,7 +248,13 @@ function currentTurnTavilySources(messages) {
     || structured.results.length < 1 || structured.results.length > MAX_TAVILY_SOURCES) return { observed: true };
   const sources = structured.results.map(normalizedTavilySource);
   if (sources.some((source) => !source)) return { observed: true };
-  return { observed: true, sources };
+  const userMessage = messages[lastUserIndex];
+  const queryText = typeof userMessage?.content === "string"
+    ? userMessage.content
+    : Array.isArray(userMessage?.content)
+      ? userMessage.content.filter((item) => item?.type === "text" && typeof item.text === "string").map((item) => item.text).join("\n")
+      : "";
+  return { observed: true, sources, queryText };
 }
 
 function tavilySourceLine(source) {
@@ -260,6 +266,27 @@ function tavilySourcesAppendText(text, sources) {
   if (typeof text !== "string" || !Array.isArray(sources) || !sources.length) return undefined;
   if (sources.every(({ url }) => text.includes(url))) return undefined;
   return `Sources\n\n${sources.map(tavilySourceLine).join("\n")}`;
+}
+
+function tavilyCoverageAppendText(text, queryText, sources) {
+  if (typeof text !== "string" || typeof queryText !== "string" || !Array.isArray(sources) || !sources.length) return undefined;
+  const sourceHosts = sources.map(({ url }) => new URL(url).hostname.toLowerCase());
+  const requirements = [
+    {
+      requested: /\bUniProt\b/iu.test(queryText),
+      present: sourceHosts.some((host) => host === "uniprot.org" || host.endsWith(".uniprot.org")),
+      sentence: "No direct UniProt source was returned by this bounded search.",
+    },
+    {
+      requested: /\bRCSB\b|\bProtein Data Bank\b/iu.test(queryText),
+      present: sourceHosts.some((host) => host === "rcsb.org" || host.endsWith(".rcsb.org")),
+      sentence: "No direct RCSB source was returned by this bounded search.",
+    },
+  ];
+  const disclosures = requirements
+    .filter(({ requested, present, sentence }) => requested && !present && !text.includes(sentence))
+    .map(({ sentence }) => sentence);
+  return disclosures.length ? disclosures.join("\n") : undefined;
 }
 
 function textBlockPhase(block) {
@@ -516,6 +543,10 @@ export function registerPlugin(api, options = {}) {
         : undefined;
       if (artifactAppendText) appendSegments.push(artifactAppendText);
       const tavily = currentTurnTavilySources(event?.messages);
+      const coverageAppendText = tavily.sources
+        ? tavilyCoverageAppendText(event?.lastAssistantMessage, tavily.queryText, tavily.sources)
+        : undefined;
+      if (coverageAppendText) appendSegments.push(coverageAppendText);
       const sourcesAppendText = tavily.sources
         ? tavilySourcesAppendText(event?.lastAssistantMessage, tavily.sources)
         : undefined;
@@ -554,6 +585,7 @@ export const __test = Object.freeze({
   currentTurnTavilySources,
   registerPlugin,
   tavilySourceLine,
+  tavilyCoverageAppendText,
   tavilySourcesAppendText,
   textBlockPhase,
   visibleAssistantText,
