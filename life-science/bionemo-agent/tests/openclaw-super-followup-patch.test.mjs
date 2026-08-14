@@ -281,7 +281,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v9/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v10/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperFinalText)");
@@ -290,7 +290,8 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   assert.match(source, /delete params\.tools;\s*params\.tool_choice = "none";/su);
   assert.match(source, /const bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText\(model, context\)/u);
   assert.match(source, /const client = bionemoSuperLocalFinalText \? undefined : createOpenAICompletionsClient/u);
-  assert.match(source, /const bionemoSuperLocalResponse = bionemoSuperLocalFinalText \|\| bionemoSuperInitialTool\?\.name === "tavily_web__tavily_search"/u);
+  assert.match(source, /bionemoSuperInitialTool = \{ name: "tool_call", params: \{ id: "mcp:bundle-mcp:tavily_web__tavily_search", args: \{ \.\.\.bionemoSuperInitialTool\.params \} \} \}/u);
+  assert.match(source, /bionemoSuperInitialTool\?\.params\?\.id === "mcp:bundle-mcp:tavily_web__tavily_search"/u);
   assert.match(source, /const responseStream = bionemoSuperLocalResponse\s*\? \(async function\* bionemoSuperCompletedStream\(\) \{\s*yield \{ id: "bionemo-local-completion", choices:/su);
   assert.match(source, /bionemoSuperFinalText,/u);
   assert.match(source, /if \(!bionemoSuperFinalText && !bionemoSuperInitialTool && choiceDelta\.tool_calls/u);
@@ -319,6 +320,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     const deepSeekModel = ${JSON.stringify({ ...deepSeekModel, api: "openai-completions", baseUrl: "https://example.invalid/v1", reasoning: true, input: ["text"], contextWindow: 1_048_576, maxTokens: 8_192 })};
     const expectedInitial = ${JSON.stringify({ name: expectedInitial.name, params: { ...expectedInitial.params } })};
     const expectedTavilyInitial = ${JSON.stringify({ name: expectedTavilyInitial.name, params: { ...expectedTavilyInitial.params } })};
+    const expectedTavilyCatalogId = "mcp:bundle-mcp:tavily_web__tavily_search";
     const output = () => ({ role: "assistant", content: [], api: model.api, provider: model.provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: Date.now() });
     const chunks = () => (async function* providerChunks() { yield { id: "response-1", choices: [{ index: 0, delta: { content: "<tool_call><function=read><parameter=path>artifact.pdb</parameter></function></tool_call>", tool_calls: [{ index: 0, id: "provider-call", type: "function", function: { name: "babel", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }; }());
     const initialOutput = output();
@@ -404,6 +406,26 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.equal(initialTavilyEvents.at(-1).type, "done");
     assert.equal(initialTavilyEvents.at(-1).message.stopReason, "toolUse");
     assert.deepEqual(initialTavilyEvents.at(-1).message.content.filter(({ type }) => type === "toolCall").map(({ name, arguments: args }) => ({ name, args })), [{ name: expectedTavilyInitial.name, args: expectedTavilyInitial.params }]);
+    const compactTavilyEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
+      apiKey: "test-key",
+      emitReasoning: false,
+      signal: AbortSignal.timeout(500),
+      onPayload(params) {
+        return { ...params, tools: [{ type: "function", function: { name: "tool_call", description: "compact catalog", parameters: { type: "object" } } }] };
+      },
+    })), 750);
+    assert.equal(providerFetchCalls, 0, "the exact compact Tavily surface must not start a zero-byte provider request");
+    assert.equal(compactTavilyEvents.some(({ type }) => type === "error"), false, JSON.stringify(compactTavilyEvents));
+    assert.equal(compactTavilyEvents.at(0).type, "start");
+    assert.equal(compactTavilyEvents.at(-1).type, "done");
+    assert.equal(compactTavilyEvents.at(-1).message.stopReason, "toolUse");
+    assert.deepEqual(compactTavilyEvents.at(-1).message.content, [{
+      type: "toolCall",
+      id: compactTavilyEvents.at(-1).message.content[0].id,
+      name: "tool_call",
+      arguments: { id: expectedTavilyCatalogId, args: expectedTavilyInitial.params },
+      partialArgs: JSON.stringify({ id: expectedTavilyCatalogId, args: expectedTavilyInitial.params }),
+    }]);
     const localEvents = await within(collectEvents(transport(model, successfulBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
     assert.equal(providerFetchCalls, 0, "completed Super boundary must not start the zero-byte provider follow-up");
     assert.equal(localEvents.some(({ type }) => type === "error"), false, JSON.stringify(localEvents));
@@ -443,30 +465,49 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.equal(providerFetchCalls, 1, "a replay user message must retain the provider transport");
     assert.equal(replayEvents.at(-1).type, "done");
     assert.deepEqual(replayEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
-    const compactSurfaceEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
+    const wrongMetaSurfaceEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
+      apiKey: "test-key",
+      emitReasoning: false,
+      onPayload(params) {
+        return { ...params, tools: [{ type: "function", function: { name: "tool_calls", description: "wrong compact catalog", parameters: { type: "object" } } }] };
+      },
+    })), 2_000);
+    assert.equal(providerFetchCalls, 2, "a wrong compact meta-tool must retain the provider transport");
+    assert.equal(wrongMetaSurfaceEvents.at(-1).type, "done");
+    assert.deepEqual(wrongMetaSurfaceEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
+    const missingSurfaceEvents = await within(collectEvents(transport(model, exactTavilyInitialContext, {
+      apiKey: "test-key",
+      emitReasoning: false,
+      onPayload(params) { return { ...params, tools: [] }; },
+    })), 2_000);
+    assert.equal(providerFetchCalls, 3, "a missing direct and compact Tavily surface must retain the provider transport");
+    assert.equal(missingSurfaceEvents.at(-1).type, "done");
+    assert.deepEqual(missingSurfaceEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
+    const wrongProviderModel = { ...model, provider: "nvidia" };
+    const wrongProviderEvents = await within(collectEvents(transport(wrongProviderModel, exactTavilyInitialContext, {
       apiKey: "test-key",
       emitReasoning: false,
       onPayload(params) {
         return { ...params, tools: [{ type: "function", function: { name: "tool_call", description: "compact catalog", parameters: { type: "object" } } }] };
       },
     })), 2_000);
-    assert.equal(providerFetchCalls, 2, "an unavailable direct Tavily tool must retain the provider transport");
-    assert.equal(compactSurfaceEvents.at(-1).type, "done");
-    assert.deepEqual(compactSurfaceEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
+    assert.equal(providerFetchCalls, 4, "the exact compact surface on another provider must retain the provider transport");
+    assert.equal(wrongProviderEvents.at(-1).type, "done");
+    assert.deepEqual(wrongProviderEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const malformedTavilyBoundary = structuredClone(successfulTavilyBoundary);
     malformedTavilyBoundary.messages.at(-1).details.mcpServer = "untrusted-server";
     assert.equal(patched.__bionemoSuperLocalCompletionText(model, malformedTavilyBoundary), undefined);
     const malformedTavilyEvents = await within(collectEvents(transport(model, malformedTavilyBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 3, "malformed Tavily provenance retains the provider transport");
+    assert.equal(providerFetchCalls, 5, "malformed Tavily provenance retains the provider transport");
     assert.equal(malformedTavilyEvents.at(-1).type, "done");
     assert.deepEqual(malformedTavilyEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const erroredBoundaryForTransport = ${JSON.stringify(turn("bionemo_batch_fold_demo", { isError: true }))};
     const erroredEvents = await within(collectEvents(transport(model, erroredBoundaryForTransport, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 4, "errored Super boundary retains the provider transport");
+    assert.equal(providerFetchCalls, 6, "errored Super boundary retains the provider transport");
     assert.equal(erroredEvents.at(-1).type, "done");
     assert.deepEqual(erroredEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const deepSeekEvents = await within(collectEvents(transport(deepSeekModel, successfulBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, 5, "other models retain the provider transport");
+    assert.equal(providerFetchCalls, 7, "other models retain the provider transport");
     assert.equal(deepSeekEvents.at(-1).type, "done");
     assert.deepEqual(deepSeekEvents.at(-1).message.content, [{ type: "text", text: sourceOwnedFinal }]);
 
