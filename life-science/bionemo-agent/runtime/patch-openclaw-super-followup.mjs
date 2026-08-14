@@ -6,7 +6,7 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v14";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v15";
 const NOTEBOOK_WORKFLOW_IDS = Object.freeze({
   "egfr-research-drug-demo": "research_drug_demo",
   "compare-protein-structures": "compare_protein_structures",
@@ -64,6 +64,11 @@ export const BIONEMO_SUPER_INITIAL_TURNS = Object.freeze([
       include_images: false,
     }),
   }),
+  Object.freeze({
+    prompt: WORKBENCH_EXAMPLE_SESSIONS.find(({ slug }) => slug === "bionemo-model-inventory").prompt,
+    name: "bionemo_models_list",
+    params: Object.freeze({}),
+  }),
 ]);
 
 export function bionemoNormalizeStrictOpenClawPrompt(prompt) {
@@ -96,6 +101,90 @@ export function bionemoSuperInitialNotebookTool(model, context) {
   const match = BIONEMO_SUPER_INITIAL_TURNS.find((entry) => entry.prompt === normalizedPrompt);
   return match ? { name: match.name, params: { ...match.params } } : undefined;
 }
+
+export function bionemoSuperValidatedModelInventory(model, context) {
+  const superModel = "nvidia/nemotron-3-super-120b-a12b";
+  const inventoryTool = "bionemo_models_list";
+  if (String(model?.provider || "").toLowerCase() !== "tokenfactory"
+    || String(model?.id || "").toLowerCase() !== superModel) return undefined;
+  const expected = BIONEMO_SUPER_INITIAL_TURNS.find((entry) => entry.name === inventoryTool);
+  if (!expected || Object.keys(expected.params).length !== 0) return undefined;
+
+  const messages = Array.isArray(context?.messages) ? context.messages : [];
+  let userIndex = -1;
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === "user") { userIndex = index; break; }
+  }
+  if (userIndex < 0) return undefined;
+  const userContent = messages[userIndex]?.content;
+  if (typeof userContent !== "string"
+    || bionemoNormalizeStrictOpenClawPrompt(userContent) !== expected.prompt) return undefined;
+  const currentTurn = messages.slice(userIndex + 1);
+  if (currentTurn.length !== 2) return undefined;
+  const assistant = currentTurn[0];
+  const result = currentTurn[1];
+  if (assistant?.role !== "assistant" || result?.role !== "toolResult"
+    || !Array.isArray(assistant.content) || assistant.content.length !== 1) return undefined;
+  const call = assistant.content[0];
+  const projectedCallId = /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u;
+  if (assistant.stopReason !== "toolUse"
+    || call?.type !== "toolCall" || call.name !== inventoryTool
+    || result.toolName !== inventoryTool
+    || typeof call.id !== "string" || !projectedCallId.test(call.id)
+    || typeof result.toolCallId !== "string" || !projectedCallId.test(result.toolCallId)
+    || call.id !== result.toolCallId
+    || !call.arguments || typeof call.arguments !== "object" || Array.isArray(call.arguments)
+    || Object.keys(call.arguments).length !== 0 || call.partialArgs !== JSON.stringify(expected.params)
+    || !Object.hasOwn(result, "isError") || result.isError !== false
+    || Object.hasOwn(result, "error") || result.error !== undefined
+    || Object.hasOwn(result, "details") || result.details !== undefined
+    || Object.hasOwn(result, "structuredContent") || result.structuredContent !== undefined
+    || !Array.isArray(result.content) || result.content.length !== 1) return undefined;
+  const contentBlock = result.content[0];
+  const contentKeys = contentBlock && typeof contentBlock === "object" && !Array.isArray(contentBlock)
+    ? Object.keys(contentBlock).sort()
+    : [];
+  if (contentKeys.length !== 2 || contentKeys[0] !== "text" || contentKeys[1] !== "type"
+    || contentBlock.type !== "text" || typeof contentBlock.text !== "string"
+    || contentBlock.text.length > 65_536) return undefined;
+
+  let structured;
+  try { structured = JSON.parse(contentBlock.text); } catch { return undefined; }
+  let canonical;
+  try { canonical = JSON.stringify(structured, null, 2); } catch { return undefined; }
+  if (canonical !== contentBlock.text || !structured || typeof structured !== "object" || Array.isArray(structured)) return undefined;
+  const topKeys = Object.keys(structured).sort();
+  const expectedTopKeys = ["computeSubmitted", "modelCount", "models", "notice", "readOnly", "readyCount"];
+  if (topKeys.length !== expectedTopKeys.length
+    || topKeys.some((key, index) => key !== expectedTopKeys[index])
+    || structured.readOnly !== true || structured.computeSubmitted !== false
+    || !Number.isInteger(structured.modelCount) || structured.modelCount < 1 || structured.modelCount > 64
+    || !Array.isArray(structured.models) || structured.models.length !== structured.modelCount
+    || !Number.isInteger(structured.readyCount) || structured.readyCount < 0 || structured.readyCount > structured.modelCount
+    || structured.notice !== "Sanitized model inventory only; no scientific compute or job was submitted.") return undefined;
+
+  const identifiers = new Set();
+  let readyCount = 0;
+  for (const entry of structured.models) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return undefined;
+    const entryKeys = Object.keys(entry).sort();
+    if (entryKeys.length !== 4
+      || entryKeys[0] !== "displayName" || entryKeys[1] !== "family"
+      || entryKeys[2] !== "id" || entryKeys[3] !== "readiness"
+      || typeof entry.id !== "string" || !/^[a-z0-9][a-z0-9_]{0,79}$/u.test(entry.id)
+      || typeof entry.family !== "string" || !/^[a-z0-9][a-z0-9_]{0,79}$/u.test(entry.family)
+      || typeof entry.displayName !== "string"
+      || entry.displayName.replace(/[\u0000-\u001f\u007f]/gu, " ").replace(/\s+/gu, " ").trim() !== entry.displayName
+      || entry.displayName.includes("://")
+      || !/^[A-Za-z0-9][A-Za-z0-9 ._+()/-]{0,127}$/u.test(entry.displayName)
+      || !["ready", "not_ready", "unknown"].includes(entry.readiness)
+      || identifiers.has(entry.id)) return undefined;
+    identifiers.add(entry.id);
+    if (entry.readiness === "ready") readyCount += 1;
+  }
+  return readyCount === structured.readyCount ? structured : undefined;
+}
+
 export function bionemoSuperCompletedToolTarget(model, context) {
   const superModel = "nvidia/nemotron-3-super-120b-a12b";
   const deepSeekModel = "deepseek-ai/deepseek-v4-pro";
@@ -136,6 +225,9 @@ export function bionemoSuperCompletedToolTarget(model, context) {
     || (result.error !== undefined && result.error !== null && result.error !== false && result.error !== "");
   if (failed) return undefined;
   if (wrappers.has(target)) return target;
+  if (target === "bionemo_models_list") {
+    return bionemoSuperValidatedModelInventory(model, context) ? target : undefined;
+  }
   if (modelId !== superModel || target !== tavilySearch || call.name !== tavilySearch
     || result.toolName !== tavilySearch || result.isError !== false || result.structuredContent !== undefined) return undefined;
 
@@ -265,6 +357,14 @@ export function bionemoSuperDeterministicFinalText(model, context) {
     tavily_web__tavily_search: "The bounded Tavily search completed for the requested RCSB PDB and UniProt documentation comparison. Source claims: none are restated from untrusted search content. Source-owned comparison (not derived from the returned snippets): RCSB PDB is structure-centered, while UniProt is sequence- and annotation-centered; their cross-references connect structures with protein identity and biological context. Validated Tavily response metadata records only that the bounded search returned the source titles and canonical URLs appended below. No BioNeMo, ClawBio, or scientific compute was run.",
   };
   if (!target) return undefined;
+  if (target === "bionemo_models_list") {
+    const inventory = bionemoSuperValidatedModelInventory(model, context);
+    if (!inventory) return undefined;
+    const models = inventory.models.map(({ id, displayName, family, readiness }) => (
+      `- id: ${id}; displayName: ${displayName}; family: ${family}; readiness: ${readiness}`
+    )).join("\n");
+    return `Configured BioNeMo model inventory: ${inventory.modelCount} models; ${inventory.readyCount} ready.\n\n${models}\n\nThe inventory was read-only and submitted no scientific compute or model job. No inference is made that any listed inventory entry has a browser compute wrapper or that readiness establishes scientific validity.`;
+  }
   const summary = bionemoSuperBoundedResultSummary(model, context);
   return summary ? `${text[target]}\n\nReturned workflow summary:\n${summary}` : text[target];
 }
@@ -277,7 +377,9 @@ export function bionemoSuperLocalCompletionText(model, context) {
   if (!target) return undefined;
   const result = Array.isArray(context?.messages) ? context.messages.at(-1) : undefined;
   if (result?.isError !== false) return undefined;
-  if (target === "tavily_web__tavily_search") return bionemoSuperDeterministicFinalText(model, context);
+  if (target === "tavily_web__tavily_search" || target === "bionemo_models_list") {
+    return bionemoSuperDeterministicFinalText(model, context);
+  }
   let structured = result?.structuredContent;
   if (!structured || typeof structured !== "object" || Array.isArray(structured)) {
     const text = Array.isArray(result?.content)
@@ -336,7 +438,7 @@ export async function patchOpenClawSuperFollowup(distRoot) {
   let source = replaceExactlyOnce(
     original,
     HELPER_ANCHOR,
-    `/* ${PATCH_MARKER} */\nconst BIONEMO_SUPER_INITIAL_TURNS = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS)};\n${bionemoNormalizeStrictOpenClawPrompt.toString()}\n${bionemoSuperInitialNotebookTool.toString()}\n${bionemoSuperCompletedToolTarget.toString()}\n${bionemoSuperShouldFinalizeWithoutTools.toString()}\n${bionemoSuperBoundedResultSummary.toString()}\n${bionemoSuperDeterministicFinalText.toString()}\n${bionemoSuperLocalCompletionText.toString()}\n${HELPER_ANCHOR}`,
+    `/* ${PATCH_MARKER} */\nconst BIONEMO_SUPER_INITIAL_TURNS = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS)};\n${bionemoNormalizeStrictOpenClawPrompt.toString()}\n${bionemoSuperInitialNotebookTool.toString()}\n${bionemoSuperValidatedModelInventory.toString()}\n${bionemoSuperCompletedToolTarget.toString()}\n${bionemoSuperShouldFinalizeWithoutTools.toString()}\n${bionemoSuperBoundedResultSummary.toString()}\n${bionemoSuperDeterministicFinalText.toString()}\n${bionemoSuperLocalCompletionText.toString()}\n${HELPER_ANCHOR}`,
     "helper insertion",
   );
   source = replaceExactlyOnce(source, CLIENT_ANCHOR, CLIENT_REPLACEMENT, "local completion client bypass");

@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
+import { WORKBENCH_EXAMPLE_SESSIONS } from "../runtime/example-session-catalog.mjs";
 import {
   BIONEMO_SUPER_INITIAL_TURNS,
   BIONEMO_SUPER_NOTEBOOK_TURNS,
@@ -15,6 +16,7 @@ import {
   bionemoSuperInitialNotebookTool,
   bionemoSuperLocalCompletionText,
   bionemoSuperShouldFinalizeWithoutTools,
+  bionemoSuperValidatedModelInventory,
   patchOpenClawSuperFollowup,
 } from "../runtime/patch-openclaw-super-followup.mjs";
 
@@ -32,6 +34,8 @@ function turn(name, { id = name, isError = false, arguments: args = {}, status =
 }
 
 const tavilyInitial = BIONEMO_SUPER_INITIAL_TURNS.find(({ name }) => name === "tavily_web__tavily_search");
+const inventoryInitial = BIONEMO_SUPER_INITIAL_TURNS.find(({ name }) => name === "bionemo_models_list");
+const INVENTORY_NOTICE = "Sanitized model inventory only; no scientific compute or job was submitted.";
 
 function tavilyTurn() {
   return { messages: [
@@ -64,6 +68,7 @@ function tavilyTurn() {
 }
 
 const EPHEMERAL_TAVILY_CALL_ID = "callbionemosuper0123456789ab4cde8f012345";
+const EPHEMERAL_INVENTORY_CALL_ID = "callbionemosuperabcdefabcdef4abc8abcdef0";
 
 function ephemeralTavilyTurn() {
   const persisted = tavilyTurn();
@@ -92,6 +97,57 @@ function ephemeralTavilyTurn() {
       content: [{ type: "text", text: `structuredContent:\n${JSON.stringify(structured, null, 2)}` }],
     },
   ] };
+}
+
+function inventoryValue() {
+  return {
+    readOnly: true,
+    computeSubmitted: false,
+    modelCount: 3,
+    readyCount: 1,
+    models: [
+      { id: "openfold3", displayName: "OpenFold3", family: "bionemo_nim", readiness: "ready" },
+      { id: "scvi_scanvi", displayName: "scVI/scANVI", family: "clawbio_custom", readiness: "not_ready" },
+      { id: "unknown_model", displayName: "Unknown Model", family: "clawbio_custom", readiness: "unknown" },
+    ],
+    notice: INVENTORY_NOTICE,
+  };
+}
+
+function inventoryTurn() {
+  const structured = inventoryValue();
+  return { messages: [
+    {
+      role: "user",
+      content: `[Fri 2026-08-14 18:06 UTC] ${inventoryInitial.prompt}`,
+    },
+    {
+      role: "assistant",
+      stopReason: "toolUse",
+      content: [{
+        type: "toolCall",
+        id: EPHEMERAL_INVENTORY_CALL_ID,
+        name: inventoryInitial.name,
+        arguments: {},
+        partialArgs: "{}",
+      }],
+    },
+    {
+      role: "toolResult",
+      toolCallId: EPHEMERAL_INVENTORY_CALL_ID,
+      toolName: inventoryInitial.name,
+      isError: false,
+      content: [{ type: "text", text: JSON.stringify(structured, null, 2) }],
+    },
+  ] };
+}
+
+function rewriteInventory(context, mutate) {
+  const changed = structuredClone(context);
+  const value = JSON.parse(changed.messages[2].content[0].text);
+  mutate(value);
+  changed.messages[2].content[0].text = JSON.stringify(value, null, 2);
+  return changed;
 }
 
 test("Token Factory Super and DeepSeek finalize after successful atomic wrappers only", () => {
@@ -388,9 +444,152 @@ test("host-local Tavily completion accepts only the exact stripped ephemeral LLM
   assert.equal(bionemoSuperCompletedToolTarget({ ...superModel, provider: "nvidia" }, completed), undefined);
 });
 
+test("host-local model inventory completion accepts only the exact sanitized synthetic boundary", () => {
+  const completed = inventoryTurn();
+  assert.equal(EPHEMERAL_INVENTORY_CALL_ID.length, 40);
+  assert.match(EPHEMERAL_INVENTORY_CALL_ID, /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u);
+  assert.deepEqual(bionemoSuperValidatedModelInventory(superModel, completed), inventoryValue());
+  assert.equal(bionemoSuperCompletedToolTarget(superModel, completed), inventoryInitial.name);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, completed), true);
+  const final = bionemoSuperLocalCompletionText(superModel, completed);
+  assert.match(final, /3 models; 1 ready/u);
+  for (const { id, displayName, family, readiness } of inventoryValue().models) {
+    assert.equal(final.includes(`id: ${id}; displayName: ${displayName}; family: ${family}; readiness: ${readiness}`), true);
+  }
+  assert.match(final, /submitted no scientific compute or model job/u);
+  assert.match(final, /No inference is made that any listed inventory entry has a browser compute wrapper/u);
+  assert.match(final, /readiness establishes scientific validity/u);
+
+  const rejected = [];
+  const malformed = structuredClone(completed);
+  malformed.messages[2].content[0].text = "{";
+  rejected.push(["malformed JSON", malformed]);
+  const compact = structuredClone(completed);
+  compact.messages[2].content[0].text = JSON.stringify(inventoryValue());
+  rejected.push(["non-pretty JSON", compact]);
+  const trailing = structuredClone(completed);
+  trailing.messages[2].content[0].text += "\n";
+  rejected.push(["trailing JSON data", trailing]);
+  const duplicateJsonKey = structuredClone(completed);
+  duplicateJsonKey.messages[2].content[0].text = duplicateJsonKey.messages[2].content[0].text.replace(
+    "{\n",
+    "{\n  \"readOnly\": true,\n",
+  );
+  rejected.push(["duplicate JSON key", duplicateJsonKey]);
+  rejected.push(["extra top key", rewriteInventory(completed, (value) => { value.status = "completed"; })]);
+  rejected.push(["missing top key", rewriteInventory(completed, (value) => { delete value.notice; })]);
+  rejected.push(["wrong read-only flag", rewriteInventory(completed, (value) => { value.readOnly = false; })]);
+  rejected.push(["wrong compute flag", rewriteInventory(completed, (value) => { value.computeSubmitted = true; })]);
+  rejected.push(["wrong notice", rewriteInventory(completed, (value) => { value.notice += " "; })]);
+  rejected.push(["extra model key", rewriteInventory(completed, (value) => { value.models[0].endpoint = "private"; })]);
+  rejected.push(["missing model key", rewriteInventory(completed, (value) => { delete value.models[0].displayName; })]);
+  rejected.push(["duplicate model id", rewriteInventory(completed, (value) => { value.models[1].id = value.models[0].id; })]);
+  rejected.push(["model count mismatch", rewriteInventory(completed, (value) => { value.modelCount = 2; })]);
+  rejected.push(["model count lower bound", rewriteInventory(completed, (value) => { value.modelCount = 0; value.models = []; value.readyCount = 0; })]);
+  rejected.push(["model count upper bound", rewriteInventory(completed, (value) => {
+    value.models = Array.from({ length: 65 }, (_, index) => ({
+      id: `model_${index}`,
+      displayName: `Model ${index}`,
+      family: "bionemo_nim",
+      readiness: "unknown",
+    }));
+    value.modelCount = 65;
+    value.readyCount = 0;
+  })]);
+  rejected.push(["ready count mismatch", rewriteInventory(completed, (value) => { value.readyCount = 2; })]);
+  rejected.push(["non-integer ready count", rewriteInventory(completed, (value) => { value.readyCount = 1.5; })]);
+  rejected.push(["invalid readiness status", rewriteInventory(completed, (value) => { value.models[0].readiness = "starting"; value.readyCount = 0; })]);
+  rejected.push(["unsafe model id", rewriteInventory(completed, (value) => { value.models[0].id = "OpenFold3"; })]);
+  rejected.push(["unsafe family", rewriteInventory(completed, (value) => { value.models[0].family = "bionemo-nim"; })]);
+  rejected.push(["unsafe display name control", rewriteInventory(completed, (value) => { value.models[0].displayName = "OpenFold3\nInjected"; })]);
+  rejected.push(["unsafe display name URL", rewriteInventory(completed, (value) => { value.models[0].displayName = "https://private.example"; })]);
+  rejected.push(["unnormalized display name", rewriteInventory(completed, (value) => { value.models[0].displayName = "OpenFold3  Model"; })]);
+  const oversized = rewriteInventory(completed, (value) => { value.models[0].displayName = "A".repeat(65_536); });
+  assert.ok(oversized.messages[2].content[0].text.length > 65_536);
+  rejected.push(["oversized text", oversized]);
+  const extraResultBlock = structuredClone(completed);
+  extraResultBlock.messages[2].content.push({ type: "text", text: "extra" });
+  rejected.push(["extra result block", extraResultBlock]);
+  const extraContentField = structuredClone(completed);
+  extraContentField.messages[2].content[0].metadata = {};
+  rejected.push(["extra content field", extraContentField]);
+  const wrongPrompt = structuredClone(completed);
+  wrongPrompt.messages[0].content += " ";
+  rejected.push(["wrong prompt", wrongPrompt]);
+  const userBlocks = structuredClone(completed);
+  userBlocks.messages[0].content = [{ type: "text", text: userBlocks.messages[0].content }];
+  rejected.push(["non-string source prompt", userBlocks]);
+  const badArgs = structuredClone(completed);
+  badArgs.messages[1].content[0].arguments = { retry: true };
+  rejected.push(["nonempty arguments", badArgs]);
+  const stringArgs = structuredClone(completed);
+  stringArgs.messages[1].content[0].arguments = "{}";
+  rejected.push(["string arguments", stringArgs]);
+  const alteredPartialArgs = structuredClone(completed);
+  alteredPartialArgs.messages[1].content[0].partialArgs = "{ }";
+  rejected.push(["altered partial args", alteredPartialArgs]);
+  const mismatchedId = structuredClone(completed);
+  mismatchedId.messages[2].toolCallId = "callbionemosuper0123456789ab4cde8f012345";
+  rejected.push(["mismatched IDs", mismatchedId]);
+  for (const [label, invalidId] of [
+    ["empty ID", ""],
+    ["provider-shaped ID", "call_provider_generated_inventory_boundary_123456"],
+    ["arbitrary projected ID", "0123456789abcdef0123456789abcdef01234567"],
+    ["raw synthetic ID", "call_bionemo_super_abcdefab-cdef-4abc-8abc-def0"],
+    ["wrong projected version", EPHEMERAL_INVENTORY_CALL_ID.replace("4abc8", "5abc8")],
+    ["wrong projected variant", EPHEMERAL_INVENTORY_CALL_ID.replace("4abc8", "4abc7")],
+  ]) {
+    const invalid = structuredClone(completed);
+    invalid.messages[1].content[0].id = invalidId;
+    invalid.messages[2].toolCallId = invalidId;
+    rejected.push([label, invalid]);
+  }
+  const missingSuccess = structuredClone(completed);
+  delete missingSuccess.messages[2].isError;
+  rejected.push(["missing explicit success", missingSuccess]);
+  const errored = structuredClone(completed);
+  errored.messages[2].isError = true;
+  rejected.push(["errored result", errored]);
+  for (const [label, field, value] of [
+    ["own error", "error", null],
+    ["own details", "details", undefined],
+    ["own top structured content", "structuredContent", undefined],
+  ]) {
+    const ambiguous = structuredClone(completed);
+    ambiguous.messages[2][field] = value;
+    rejected.push([label, ambiguous]);
+  }
+  const extraAssistantBlock = structuredClone(completed);
+  extraAssistantBlock.messages[1].content.push({ type: "text", text: "extra" });
+  rejected.push(["extra assistant block", extraAssistantBlock]);
+  const wrongStopReason = structuredClone(completed);
+  wrongStopReason.messages[1].stopReason = "stop";
+  rejected.push(["wrong stop reason", wrongStopReason]);
+  const wrongCallType = structuredClone(completed);
+  wrongCallType.messages[1].content[0].type = "toolUse";
+  rejected.push(["wrong call type", wrongCallType]);
+  const wrongTool = structuredClone(completed);
+  wrongTool.messages[1].content[0].name = "tool_call";
+  wrongTool.messages[2].toolName = "tool_call";
+  rejected.push(["non-direct tool", wrongTool]);
+  const earlierBoundary = structuredClone(completed);
+  earlierBoundary.messages.splice(1, 0, { role: "assistant", content: [{ type: "text", text: "earlier" }] });
+  rejected.push(["non-sole current turn", earlierBoundary]);
+
+  for (const [label, boundary] of rejected) {
+    assert.equal(bionemoSuperValidatedModelInventory(superModel, boundary), undefined, label);
+    assert.equal(bionemoSuperCompletedToolTarget(superModel, boundary), undefined, label);
+    assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, boundary), false, label);
+    assert.equal(bionemoSuperLocalCompletionText(superModel, boundary), undefined, label);
+  }
+  assert.equal(bionemoSuperValidatedModelInventory(deepSeekModel, completed), undefined);
+  assert.equal(bionemoSuperCompletedToolTarget(deepSeekModel, completed), undefined);
+  assert.equal(bionemoSuperValidatedModelInventory({ ...superModel, provider: "nvidia" }, completed), undefined);
+});
+
 test("Super initial calls are source-owned only for exact reviewed prompts", () => {
   assert.equal(BIONEMO_SUPER_NOTEBOOK_TURNS.length, 4);
-  assert.equal(BIONEMO_SUPER_INITIAL_TURNS.length, 6);
+  assert.equal(BIONEMO_SUPER_INITIAL_TURNS.length, 7);
   assert.deepEqual(BIONEMO_SUPER_INITIAL_TURNS.slice(0, 4), BIONEMO_SUPER_NOTEBOOK_TURNS);
   assert.equal(BIONEMO_SUPER_INITIAL_TURNS[4].name, "bionemo_molmim");
   assert.deepEqual(BIONEMO_SUPER_INITIAL_TURNS[4].params, {
@@ -415,6 +614,9 @@ test("Super initial calls are source-owned only for exact reviewed prompts", () 
     include_raw_content: false,
     include_images: false,
   });
+  assert.equal(BIONEMO_SUPER_INITIAL_TURNS[6], inventoryInitial);
+  assert.equal(inventoryInitial.prompt, WORKBENCH_EXAMPLE_SESSIONS.find(({ slug }) => slug === "bionemo-model-inventory")?.prompt);
+  assert.deepEqual(inventoryInitial.params, {});
   for (const expected of BIONEMO_SUPER_INITIAL_TURNS) {
     const actual = bionemoSuperInitialNotebookTool(superModel, {
       messages: [{ role: "user", content: [{ type: "text", text: expected.prompt }] }],
@@ -512,7 +714,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v14/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v15/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperFinalText)");
@@ -521,7 +723,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   assert.match(source, /delete params\.tools;\s*params\.tool_choice = "none";/su);
   assert.match(source, /const bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText\(model, context\)/u);
   assert.match(source, /const client = bionemoSuperLocalFinalText \? undefined : createOpenAICompletionsClient/u);
-  assert.equal(source.match(/bionemoNormalizeStrictOpenClawPrompt\(/gu)?.length, 4);
+  assert.equal(source.match(/bionemoNormalizeStrictOpenClawPrompt\(/gu)?.length, 5);
   assert.match(source, /bionemoSuperInitialTool && Array\.isArray\(params\.tools\)\s*&& params\.tools\.some\(\(tool\) => tool\?\.function\?\.name === bionemoSuperInitialTool\.name\)/su);
   assert.doesNotMatch(source, /bionemoSuperContextTavilyTool|mcp:bundle-mcp:tavily_web__tavily_search/u);
   assert.equal(source.includes(["BIONEMO", "TEMP", "TAVILY", "POST", "RESULT", "TRANSPORT", "DIAGNOSTIC"].join("_")), false);
@@ -550,6 +752,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   await writeFile(path.join(distRoot, file), testingSource);
   const expectedInitial = BIONEMO_SUPER_NOTEBOOK_TURNS[1];
   const expectedTavilyInitial = tavilyInitial;
+  const expectedInventoryInitial = inventoryInitial;
   const integrationScript = `
     import assert from "node:assert/strict";
     const patched = await import("file:///app/dist/${file}?test=" + Date.now());
@@ -557,6 +760,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     const deepSeekModel = ${JSON.stringify({ ...deepSeekModel, api: "openai-completions", baseUrl: "https://example.invalid/v1", reasoning: true, input: ["text"], contextWindow: 1_048_576, maxTokens: 8_192 })};
     const expectedInitial = ${JSON.stringify({ name: expectedInitial.name, params: { ...expectedInitial.params } })};
     const expectedTavilyInitial = ${JSON.stringify({ name: expectedTavilyInitial.name, params: { ...expectedTavilyInitial.params } })};
+    const expectedInventoryInitial = ${JSON.stringify({ name: expectedInventoryInitial.name, params: { ...expectedInventoryInitial.params } })};
     const expectedInitialTurns = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS.map(({ prompt, name, params }) => ({ prompt, name, params: { ...params } })))};
     const output = () => ({ role: "assistant", content: [], api: model.api, provider: model.provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: Date.now() });
     const chunks = () => (async function* providerChunks() { yield { id: "response-1", choices: [{ index: 0, delta: { content: "<tool_call><function=read><parameter=path>artifact.pdb</parameter></function></tool_call>", tool_calls: [{ index: 0, id: "provider-call", type: "function", function: { name: "babel", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }; }());
@@ -600,6 +804,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     const successfulBoundary = ${JSON.stringify(turn("bionemo_batch_fold_demo"))};
     const successfulTavilyBoundary = ${JSON.stringify(tavilyTurn())};
     const successfulEphemeralTavilyBoundary = ${JSON.stringify(ephemeralTavilyTurn())};
+    const successfulInventoryBoundary = ${JSON.stringify(inventoryTurn())};
     assert.equal(patched.__bionemoSuperShouldFinalizeWithoutTools(deepSeekModel, successfulBoundary), true);
     const sourceOwnedFinal = patched.__bionemoSuperDeterministicFinalText(deepSeekModel, successfulBoundary);
     assert.match(sourceOwnedFinal, /five-protein OpenFold2 workflow returned a terminal result/u);
@@ -694,6 +899,24 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.equal(ephemeralTavilyLocalEvents.at(-1).type, "done");
     assert.deepEqual(ephemeralTavilyLocalEvents.at(-1).message.content, [{ type: "text", text: ephemeralTavilyLocalFinal }]);
     assert.equal(ephemeralTavilyLocalEvents.at(-1).message.stopReason, "stop");
+
+    assert.equal(successfulInventoryBoundary.messages[1].content[0].id.length, 40);
+    assert.match(successfulInventoryBoundary.messages[1].content[0].id, /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u);
+    const inventoryLocalFinal = patched.__bionemoSuperLocalCompletionText(model, successfulInventoryBoundary);
+    assert.match(inventoryLocalFinal, /3 models; 1 ready/u);
+    for (const entry of ${JSON.stringify(inventoryValue().models)}) {
+      assert.equal(inventoryLocalFinal.includes("id: " + entry.id + "; displayName: " + entry.displayName + "; family: " + entry.family + "; readiness: " + entry.readiness), true);
+    }
+    assert.match(inventoryLocalFinal, /submitted no scientific compute or model job/u);
+    assert.match(inventoryLocalFinal, /browser compute wrapper/u);
+    assert.match(inventoryLocalFinal, /scientific validity/u);
+    const inventoryLocalEvents = await within(collectEvents(transport(model, successfulInventoryBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
+    assert.equal(providerFetchCalls, 0, "exact stripped inventory boundary must not start a provider request");
+    assert.equal(inventoryLocalEvents.some(({ type }) => type === "error"), false, JSON.stringify(inventoryLocalEvents));
+    assert.equal(inventoryLocalEvents.at(0).type, "start");
+    assert.equal(inventoryLocalEvents.at(-1).type, "done");
+    assert.deepEqual(inventoryLocalEvents.at(-1).message.content, [{ type: "text", text: inventoryLocalFinal }]);
+    assert.equal(inventoryLocalEvents.at(-1).message.stopReason, "stop");
 
     const providerBody = 'data: {"id":"normal-response","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Provider normal path."},"finish_reason":"stop"}]}\\n\\ndata: [DONE]\\n\\n';
     globalThis.__bionemoTestFetch = async () => {
@@ -826,6 +1049,73 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       assert.deepEqual(events.at(-1).message.content, [{ type: "text", text: "Provider normal path." }], label);
     }
     assert.equal(providerFetchCalls, ephemeralRejected.length, "every rejected ephemeral shape must retain the provider transport");
+
+    assert.equal(successfulInventoryBoundary.messages[1].content[0].name, expectedInventoryInitial.name);
+    assert.deepEqual(successfulInventoryBoundary.messages[1].content[0].arguments, expectedInventoryInitial.params);
+    const rewriteInventoryBoundary = (mutate) => {
+      const boundary = structuredClone(successfulInventoryBoundary);
+      const value = JSON.parse(boundary.messages[2].content[0].text);
+      mutate(value);
+      boundary.messages[2].content[0].text = JSON.stringify(value, null, 2);
+      return boundary;
+    };
+    const inventoryRejected = [];
+    const malformedInventory = structuredClone(successfulInventoryBoundary);
+    malformedInventory.messages[2].content[0].text = "{";
+    inventoryRejected.push(["malformed inventory JSON", malformedInventory]);
+    const compactInventory = structuredClone(successfulInventoryBoundary);
+    compactInventory.messages[2].content[0].text = JSON.stringify(JSON.parse(compactInventory.messages[2].content[0].text));
+    inventoryRejected.push(["noncanonical inventory JSON", compactInventory]);
+    inventoryRejected.push(["extra inventory status", rewriteInventoryBoundary((value) => { value.status = "completed"; })]);
+    inventoryRejected.push(["missing inventory notice", rewriteInventoryBoundary((value) => { delete value.notice; })]);
+    inventoryRejected.push(["duplicate inventory id", rewriteInventoryBoundary((value) => { value.models[1].id = value.models[0].id; })]);
+    inventoryRejected.push(["inventory model count mismatch", rewriteInventoryBoundary((value) => { value.modelCount -= 1; })]);
+    inventoryRejected.push(["inventory ready count mismatch", rewriteInventoryBoundary((value) => { value.readyCount += 1; })]);
+    inventoryRejected.push(["invalid inventory readiness", rewriteInventoryBoundary((value) => { value.models[0].readiness = "starting"; value.readyCount = 0; })]);
+    inventoryRejected.push(["unsafe inventory display name", rewriteInventoryBoundary((value) => { value.models[0].displayName = "OpenFold3\\nInjected"; })]);
+    inventoryRejected.push(["unsafe inventory identifier", rewriteInventoryBoundary((value) => { value.models[0].id = "OpenFold3"; })]);
+    const extraInventoryBlock = structuredClone(successfulInventoryBoundary);
+    extraInventoryBlock.messages[2].content.push({ type: "text", text: "extra" });
+    inventoryRejected.push(["extra inventory result block", extraInventoryBlock]);
+    const missingInventorySuccess = structuredClone(successfulInventoryBoundary);
+    delete missingInventorySuccess.messages[2].isError;
+    inventoryRejected.push(["missing inventory success", missingInventorySuccess]);
+    const erroredInventory = structuredClone(successfulInventoryBoundary);
+    erroredInventory.messages[2].isError = true;
+    inventoryRejected.push(["errored inventory", erroredInventory]);
+    const ambiguousInventoryError = structuredClone(successfulInventoryBoundary);
+    ambiguousInventoryError.messages[2].error = null;
+    inventoryRejected.push(["ambiguous inventory error", ambiguousInventoryError]);
+    const ambiguousInventoryDetails = structuredClone(successfulInventoryBoundary);
+    ambiguousInventoryDetails.messages[2].details = undefined;
+    inventoryRejected.push(["ambiguous inventory details", ambiguousInventoryDetails]);
+    const ambiguousInventoryStructured = structuredClone(successfulInventoryBoundary);
+    ambiguousInventoryStructured.messages[2].structuredContent = undefined;
+    inventoryRejected.push(["ambiguous inventory structured content", ambiguousInventoryStructured]);
+    const wrongInventoryPrompt = structuredClone(successfulInventoryBoundary);
+    wrongInventoryPrompt.messages[0].content += " ";
+    inventoryRejected.push(["wrong inventory prompt", wrongInventoryPrompt]);
+    const badInventoryArgs = structuredClone(successfulInventoryBoundary);
+    badInventoryArgs.messages[1].content[0].arguments = { retry: true };
+    inventoryRejected.push(["bad inventory arguments", badInventoryArgs]);
+    const badInventoryPartialArgs = structuredClone(successfulInventoryBoundary);
+    badInventoryPartialArgs.messages[1].content[0].partialArgs = "{ }";
+    inventoryRejected.push(["bad inventory partial arguments", badInventoryPartialArgs]);
+    const mismatchedInventoryId = structuredClone(successfulInventoryBoundary);
+    mismatchedInventoryId.messages[2].toolCallId = successfulEphemeralTavilyBoundary.messages[1].content[0].id;
+    inventoryRejected.push(["mismatched inventory ID", mismatchedInventoryId]);
+    const providerInventoryId = structuredClone(successfulInventoryBoundary);
+    providerInventoryId.messages[1].content[0].id = "provider-generated-inventory-call-boundary-123456";
+    providerInventoryId.messages[2].toolCallId = providerInventoryId.messages[1].content[0].id;
+    inventoryRejected.push(["provider inventory ID", providerInventoryId]);
+    const inventoryProviderStart = providerFetchCalls;
+    for (const [label, boundary] of inventoryRejected) {
+      assert.equal(patched.__bionemoSuperLocalCompletionText(model, boundary), undefined, label);
+      const events = await within(collectEvents(transport(model, boundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
+      assert.equal(events.at(-1).type, "done", label);
+      assert.deepEqual(events.at(-1).message.content, [{ type: "text", text: "Provider normal path." }], label);
+    }
+    assert.equal(providerFetchCalls, inventoryProviderStart + inventoryRejected.length, "every rejected inventory shape must retain the provider transport");
     const providerBaseline = providerFetchCalls;
     const malformedTimestampContext = { messages: [{ role: "user", content: "[Fri 2026-8-14 18:06 UTC] " + expectedScienceInitial.prompt }] };
     const malformedTimestampEvents = await within(collectEvents(transport(model, malformedTimestampContext, {
