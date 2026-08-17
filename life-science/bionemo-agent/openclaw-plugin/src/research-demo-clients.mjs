@@ -3,9 +3,9 @@ import { InputError, redactText } from "./errors.mjs";
 import { LIMITS } from "./validation.mjs";
 
 export const TAVILY_SEARCH_URL = "https://api.tavily.com/search";
-export const DEFAULT_CEREBRIUM_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
+export const DEFAULT_BIONEMO_MCP_URL = "https://clawbio-mcp.89-169-122-161.sslip.io/mcp";
 export const TAVILY_EGFR_QUERY = "EGFR gefitinib resistance mechanism medicinal chemistry current public research evidence";
-export const RESEARCH_DEMO_USER_AGENT = "nebius-bionemo-agent/3.3.2";
+export const RESEARCH_DEMO_USER_AGENT = "nebius-bionemo-agent/3.3.3";
 export const TAVILY_PRIMARY_DOMAINS = Object.freeze([
   "pubmed.ncbi.nlm.nih.gov",
   "pmc.ncbi.nlm.nih.gov",
@@ -192,7 +192,7 @@ export class TavilySearchClient {
 }
 
 function validatedMcpUrl(value, env) {
-  const url = new URL(value || DEFAULT_CEREBRIUM_MCP_URL);
+  const url = new URL(value || DEFAULT_BIONEMO_MCP_URL);
   if (url.username || url.password || url.search || url.hash) throw new InputError("MCP URL must not contain credentials, a query, or a fragment");
   const allowInsecure = ["1", "true", "yes", "on"].includes(String(env.BIONEMO_ALLOW_INSECURE_MCP || "").toLowerCase());
   if (url.protocol !== "https:" && !(url.protocol === "http:" && allowInsecure)) {
@@ -204,7 +204,7 @@ function validatedMcpUrl(value, env) {
 function internalMcpUrl(url, env) {
   if (url) return validatedMcpUrl(url, env);
   if (env.BIONEMO_MCP_UPSTREAM_URL) return validatedMcpUrl(env.BIONEMO_MCP_UPSTREAM_URL, env);
-  const configured = validatedMcpUrl(env.BIONEMO_MCP_URL || DEFAULT_CEREBRIUM_MCP_URL, env);
+  const configured = validatedMcpUrl(env.BIONEMO_MCP_URL || DEFAULT_BIONEMO_MCP_URL, env);
   const parsed = new URL(configured);
   const requested = String(env.BIONEMO_BACKEND || "auto").toLowerCase();
   const mcpMode = requested === "mcp" || (requested === "auto" && Boolean(env.BIONEMO_MCP_API_KEY || env.CLAWBIO_API_KEY));
@@ -237,20 +237,20 @@ function parsedRpcMessage(text, contentType) {
   if (String(contentType || "").toLowerCase().includes("text/event-stream")) candidates = sseMessages(text);
   else {
     try { candidates = [JSON.parse(text)]; } catch {
-      throw codedError("Cerebrium MCP returned an invalid JSON-RPC response.", { code: "invalid_mcp_response" });
+      throw codedError("BioNeMo MCP returned an invalid JSON-RPC response.", { code: "invalid_mcp_response" });
     }
   }
   const message = candidates.findLast((item) => item && typeof item === "object" && (Object.hasOwn(item, "result") || Object.hasOwn(item, "error")));
-  if (!message) throw codedError("Cerebrium MCP returned no JSON-RPC result.", { code: "invalid_mcp_response" });
+  if (!message) throw codedError("BioNeMo MCP returned no JSON-RPC result.", { code: "invalid_mcp_response" });
   if (message.error) {
     const remoteCode = String(message.error?.code ?? "rpc_error").slice(0, 80);
-    throw codedError(`Cerebrium MCP rejected the tool call (${remoteCode}).`, { code: "mcp_rpc_error" });
+    throw codedError(`BioNeMo MCP rejected the tool call (${remoteCode}).`, { code: "mcp_rpc_error" });
   }
   const result = message.result;
-  if (!result || typeof result !== "object") throw codedError("Cerebrium MCP returned an invalid tool result.", { code: "invalid_mcp_response" });
+  if (!result || typeof result !== "object") throw codedError("BioNeMo MCP returned an invalid tool result.", { code: "invalid_mcp_response" });
   if (result.isError) {
     const textBlock = Array.isArray(result.content) ? result.content.find((item) => item?.type === "text" && typeof item.text === "string") : null;
-    throw codedError(`Cerebrium MCP tool failed${textBlock ? `: ${textBlock.text.slice(0, 500)}` : "."}`, { code: "mcp_tool_error" });
+    throw codedError(`BioNeMo MCP tool failed${textBlock ? `: ${textBlock.text.slice(0, 500)}` : "."}`, { code: "mcp_tool_error" });
   }
   if (result.structuredContent && typeof result.structuredContent === "object") return unwrappedStructuredContent(result.structuredContent);
   if (Array.isArray(result.content)) {
@@ -447,16 +447,16 @@ export class CerebriumMcpModelClient {
       });
       const text = await readBodyLimited(response, MCP_BODY_LIMIT);
       if (!response.ok) {
-        throw codedError(`Cerebrium MCP returned HTTP ${response.status}.`, {
+        throw codedError(`BioNeMo MCP returned HTTP ${response.status}.`, {
           code: response.status === 401 || response.status === 403 ? "mcp_auth_or_entitlement" : "mcp_http_error",
           retryable: response.status === 429 || response.status >= 500,
         });
       }
       return parsedRpcMessage(text, response.headers?.get?.("content-type"));
     } catch (error) {
-      if (error?.name === "AbortError") throw codedError(`Cerebrium MCP tool ${name} exceeded its bounded request timeout.`, { code: "mcp_request_timeout", retryable: true });
+      if (error?.name === "AbortError") throw codedError(`BioNeMo MCP tool ${name} exceeded its bounded request timeout.`, { code: "mcp_request_timeout", retryable: true });
       if (error?.code) throw error;
-      throw codedError(`Cerebrium MCP network error while calling ${name}: ${error?.name || "request failed"}.`, { code: "mcp_network_error", retryable: true });
+      throw codedError(`BioNeMo MCP network error while calling ${name}: ${error?.name || "request failed"}.`, { code: "mcp_network_error", retryable: true });
     } finally {
       timeout.clear();
     }
@@ -544,7 +544,7 @@ export class CerebriumMcpModelClient {
       idempotency_key: key,
     });
     const jobId = submission?.job_id;
-    if (typeof jobId !== "string" || !JOB_ID.test(jobId)) throw codedError("Cerebrium MCP submission did not return a valid job ID.", { code: "invalid_mcp_submission" });
+    if (typeof jobId !== "string" || !JOB_ID.test(jobId)) throw codedError("BioNeMo MCP submission did not return a valid job ID.", { code: "invalid_mcp_submission" });
     await onSubmitted({ jobId, state: submission.state, idempotentReplay: Boolean(submission.idempotent_replay) });
 
     let delayMs = TERMINAL_STATES.has(submission.state) ? 0 : Math.max(0, Math.min(Number(submission.poll_after_ms) || this.pollIntervalMs, 10_000));

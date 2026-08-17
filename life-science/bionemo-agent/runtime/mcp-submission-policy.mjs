@@ -1,7 +1,7 @@
 export const MCP_TURN_ID_FIELD = "__bionemo_agent_run_id";
 
 // These are the asynchronous, compute-submitting tools exposed by the
-// Cerebrium BioNeMo MCP server. Administrative tools such as job status/list
+// BioNeMo MCP server. Administrative tools such as job status/list
 // and model discovery are intentionally absent.
 export const MCP_SUBMISSION_TOOL_NAMES = Object.freeze([
   "clawbio_alphagenome_predict",

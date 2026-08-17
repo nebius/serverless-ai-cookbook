@@ -13,7 +13,7 @@ if ((${#AUTH_TOKEN} < 24)); then
   exit 2
 fi
 
-IMAGE="${IMAGE:-bionemo-agent:3.3.2-local}"
+IMAGE="${IMAGE:-bionemo-agent:3.3.3-local}"
 PORT="${PORT:-18789}"
 STATE_VOLUME="${STATE_VOLUME:-bionemo-agent-state}"
 ARTIFACT_VOLUME="${ARTIFACT_VOLUME:-bionemo-agent-artifacts}"

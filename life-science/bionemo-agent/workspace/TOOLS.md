@@ -10,7 +10,7 @@ The workbench plugin has exactly eighteen clean tools:
   `bionemo_msa_to_structure`, and `bionemo_protein_binder_design`.
 - Four backend-neutral composed workflows: `bionemo_research_drug_demo`,
   `bionemo_compare_protein_structures`, `bionemo_optimize_ligand_complex`, and
-  `bionemo_batch_fold_demo`. They use the configured NVIDIA or Cerebrium MCP
+  `bionemo_batch_fold_demo`. They use the configured NVIDIA or BioNeMo MCP
   backend. The research demo can optionally start with bounded Tavily research.
 - One read-only model inventory tool: `bionemo_models_list`. It returns only
   sanitized model identities, families, and readiness, and never submits a

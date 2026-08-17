@@ -1,4 +1,4 @@
-# BioNeMo Agent Workbench 3.3.2 on Nebius Serverless
+# BioNeMo Agent Workbench 3.3.3 on Nebius Serverless
 
 This recipe packages a ready-to-start life-science agent environment for a
 Nebius Serverless CPU endpoint. The image contains:
@@ -12,7 +12,7 @@ Nebius Serverless CPU endpoint. The image contains:
   shared by OpenClaw, Codex, and Claude;
 - a source-pinned RDKit conformer preflight that prevents an unusable MolMIM
   candidate from being handed to OpenFold3;
-- the public Cerebrium BioNeMo MCP URL in all three clients;
+- the public event BioNeMo MCP URL in all three clients;
 - ten bounded hosted-NIM adapters, seven composed research workflows, one
   sanitized read-only model-inventory tool, and a bundled interactive 3Dmol
   structure viewer;
@@ -118,7 +118,7 @@ their fixed NVIDIA-hosted routes and are hidden when no NVIDIA credential is
 configured.
 
 The browser exposes only image-owned, schema-bounded plugin tools appropriate
-to the configured credentials. Raw Cerebrium model/job MCP tools are never
+to the configured credentials. Raw upstream model/job MCP tools are never
 materialized in the OpenClaw UI. `bionemo_models_list` is a no-argument,
 read-only wrapper that returns only sanitized model identity, family, and
 readiness fields and submits no compute job. The browser-launch process also
@@ -133,13 +133,16 @@ operation IDs. OpenClaw never sees those raw operations or duplicated
 The default MCP endpoint is:
 
 ```text
-https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp
+https://clawbio-mcp.89-169-122-161.sslip.io/mcp
 ```
 
-Set `BIONEMO_MCP_URL` to use a private Kubernetes MCP deployment. HTTPS is
-required unless a trusted private HTTP deployment is explicitly enabled with
-`BIONEMO_ALLOW_INSECURE_MCP=true`. `CLAWBIO_API_KEY` remains a compatibility
-alias for `BIONEMO_MCP_API_KEY`.
+This is the authenticated, externally reachable Kubernetes event gateway. The
+image stores this endpoint URL but no bearer value. Inject
+`BIONEMO_MCP_API_KEY` at runtime; generated Codex and Claude configuration uses
+only an environment-variable placeholder. Set `BIONEMO_MCP_URL` to use another
+deployment. HTTPS is required unless a trusted private HTTP deployment is
+explicitly enabled with `BIONEMO_ALLOW_INSECURE_MCP=true`. `CLAWBIO_API_KEY`
+remains a compatibility alias for `BIONEMO_MCP_API_KEY`.
 
 Set `TAVILY_API_KEY` to enable the Tavily remote MCP server. The default search
 parameters use basic depth, at most five results, and omit raw content and
@@ -195,7 +198,7 @@ OpenClaw workbench without pretending they are notebooks or precomputed runs:
     explicit research acknowledgements and no OpenFold3 or job/status fallback.
 
 Each notebook calls one low-arity, backend-neutral `bionemo_*` wrapper. The
-wrapper selects direct NVIDIA or the Cerebrium MCP backend, owns all model
+wrapper selects direct NVIDIA or the configured MCP backend, owns all model
 handoffs, prevents duplicate same-turn execution, and stores artifacts and 3D
 viewer links. Tavily is optional: `use_tavily=true` runs the bounded research
 step when configured, while `use_tavily=false` runs the same scientific model
@@ -219,7 +222,7 @@ candidate-specific conformer failure as a general model-service outage.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.3.2` |
+| Workbench | `3.3.3` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
@@ -271,7 +274,7 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.2"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.3"
 ./scripts/build_image.sh
 ```
 
@@ -289,7 +292,7 @@ The deployment interface has one positional choice and two required selectors:
 - `AUTH_TOKEN_SECRET` points to a MysteryBox secret containing `AUTH_TOKEN`;
 - `MODEL_CREDENTIALS_SECRET` points to a secret containing `NVIDIA_API_KEY`
   for NVIDIA, or both `NEBIUS_API_KEY` and `BIONEMO_MCP_API_KEY` for Token
-  Factory plus Cerebrium MCP.
+  Factory plus the BioNeMo MCP gateway.
 
 Tavily is optional. Set `TAVILY_SECRET` to a selector containing
 `TAVILY_API_KEY` to enable the research step; without it, the same notebook
@@ -353,9 +356,9 @@ deployment script derives or fixes them and does not require them from users.
 | `NEBIUS_API_KEY` | yes | no | Nebius Token Factory reasoning |
 | `OPENAI_API_KEY` | yes | no | OpenAI reasoning |
 | `ANTHROPIC_API_KEY` | yes | no | Anthropic Claude reasoning |
-| `BIONEMO_MCP_API_KEY` | yes | no | Cerebrium or private BioNeMo MCP bearer |
+| `BIONEMO_MCP_API_KEY` | yes | no | BioNeMo MCP bearer, injected only at runtime |
 | `TAVILY_API_KEY` | yes | no | Tavily MCP search |
-| `BIONEMO_MCP_URL` | no | no | Override the default live Cerebrium gateway |
+| `BIONEMO_MCP_URL` | no | no | Override the default public event gateway |
 | `AGENT_PROVIDER` | no | no | `auto`, `nvidia`, `nebius`, `openai`, `anthropic`/`claude`, or `setup` |
 | `AGENT_MODEL` | no | no | Override the selected provider's model ID |
 | `AGENT_BASE_URL` | no | no | Override the selected provider's API base |
@@ -371,8 +374,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build -t bionemo-agent:3.3.2-test .
-docker run --rm bionemo-agent:3.3.2-test doctor
+docker build --platform linux/amd64 -t bionemo-agent:3.3.3-test .
+docker run --rm bionemo-agent:3.3.3-test doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`

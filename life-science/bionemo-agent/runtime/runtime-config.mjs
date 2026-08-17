@@ -8,7 +8,7 @@ import {
   NVIDIA_ONLY_TOOL_NAMES,
 } from "../openclaw-plugin/src/catalog.mjs";
 
-export const DEFAULT_MCP_URL = "https://api.cerebrium.ai/v4/p-12ff482a/clawbio-models-mcp-public/mcp";
+export const DEFAULT_MCP_URL = "https://clawbio-mcp.89-169-122-161.sslip.io/mcp";
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 export const NEBIUS_MODEL = NVIDIA_MODEL;
 export const OPENAI_MODEL = "gpt-5.6";

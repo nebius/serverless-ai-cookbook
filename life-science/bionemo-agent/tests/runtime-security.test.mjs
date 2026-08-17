@@ -789,7 +789,7 @@ test("all pins and model identity are immutable in the shipped configuration", a
   const templateConfig = JSON.parse(config);
   const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
   assert.match(dockerfile, /openclaw:2026\.7\.1-2@sha256:8789721d/u);
-  assert.match(dockerfile, /org\.opencontainers\.image\.version="3\.3\.2"/u);
+  assert.match(dockerfile, /org\.opencontainers\.image\.version="3\.3\.3"/u);
   assert.match(dockerfile, /CLOUDFLARED_VERSION="2026\.7\.3"/u);
   assert.match(dockerfile, new RegExp(TOOLKIT_COMMIT));
   assert.match(dockerfile, /libgnutls30=3\.7\.9-2\+deb12u7/u);
@@ -800,9 +800,9 @@ test("all pins and model identity are immutable in the shipped configuration", a
   assert.match(dockerfile, /BIONEMO_NOTEBOOK_ROOT=\/workspace\/agent\/notebooks/u);
   assert.match(config, /setup\/setup-required/u);
   assert.equal(templateConfig.plugins.entries["bionemo-agent-toolkit"].hooks.allowConversationAccess, true, "before_agent_finalize and agent_end require explicit conversation access in pinned OpenClaw");
-  assert.deepEqual([packageManifest.version, pluginPackageManifest.version, pluginManifest.version], ["3.3.2", "3.3.2", "3.3.2"]);
-  assert.match(readme, /^# BioNeMo Agent Workbench 3\.3\.2 on Nebius Serverless$/mu);
-  assert.match(uiInternals.dashboardHtml("test-nonce"), /BioNeMo Agent Workbench 3\.3\.2/u);
+  assert.deepEqual([packageManifest.version, pluginPackageManifest.version, pluginManifest.version], ["3.3.3", "3.3.3", "3.3.3"]);
+  assert.match(readme, /^# BioNeMo Agent Workbench 3\.3\.3 on Nebius Serverless$/mu);
+  assert.match(uiInternals.dashboardHtml("test-nonce"), /BioNeMo Agent Workbench 3\.3\.3/u);
   assert.equal((await readFile(new URL("../vendor/bionemo-agent-toolkit/UPSTREAM_COMMIT", import.meta.url), "utf8")).trim(), TOOLKIT_COMMIT);
 });
 
@@ -821,6 +821,20 @@ test("credential resolution supports all reasoning providers, MCP override, and 
   assert.equal(keyless.reasoningProvider, "setup");
   assert.equal(keyless.modelBackend, "unavailable");
   assert.equal(keyless.mcpUrl, DEFAULT_MCP_URL);
+});
+
+test("the keyless image default is the authenticated public event MCP endpoint without embedded credentials", async () => {
+  assert.equal(DEFAULT_MCP_URL, "https://clawbio-mcp.89-169-122-161.sslip.io/mcp");
+  const parsed = new URL(DEFAULT_MCP_URL);
+  assert.equal(parsed.username, "");
+  assert.equal(parsed.password, "");
+  assert.equal(parsed.search, "");
+  assert.equal(parsed.hash, "");
+
+  const dockerfile = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
+  assert.match(dockerfile, /BIONEMO_MCP_URL=https:\/\/clawbio-mcp\.89-169-122-161\.sslip\.io\/mcp/u);
+  assert.doesNotMatch(dockerfile, /^\s*(?:ENV\s+)?(?:BIONEMO_MCP_API_KEY|CLAWBIO_API_KEY)=/mu);
+  assert.doesNotMatch(dockerfile, /Authorization:\s*Bearer\s+\S+/iu);
 });
 
 test("NVIDIA defaults to the tool-reliable Super profile", () => {

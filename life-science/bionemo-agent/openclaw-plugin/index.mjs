@@ -21,7 +21,7 @@ import { CONFIGURED_BACKEND_ATOMIC_ACK_FIELDS, JSON_SCHEMAS, VALIDATORS, normali
 import { generatedMolecules, ResearchDrugDemoRunner, structureConfidenceSummary, WorkflowRunner } from "./src/workflows.mjs";
 import { MCP_TURN_ID_FIELD, submissionToolBaseName, validMcpTurnId } from "../runtime/mcp-submission-policy.mjs";
 
-export const PLUGIN_VERSION = "3.3.2";
+export const PLUGIN_VERSION = "3.3.3";
 export const NVIDIA_BATCH_INTER_REQUEST_DELAY_MS = 5_000;
 
 function summaryForSkill(skillId, input) {
@@ -625,7 +625,7 @@ export function registerPlugin(api, options = {}) {
         name: definition.tool,
         label: definition.label,
         description: configuredBackend
-          ? `${definition.description} It uses the configured NVIDIA or Cerebrium MCP backend; research use only.`
+          ? `${definition.description} It uses the configured NVIDIA or BioNeMo MCP backend; research use only.`
           : `${definition.description} NVIDIA-hosted route only; research use only.`,
         parameters: JSON_SCHEMAS[definition.id],
         async execute(_toolCallId, params) {
@@ -653,7 +653,7 @@ export function registerPlugin(api, options = {}) {
         name: definition.tool,
         label: definition.label,
         description: definition.crossBackend
-          ? `${definition.description} It selects the configured NVIDIA or Cerebrium MCP model backend${definition.id === "research_drug_demo" ? " and can optionally run bounded Tavily research first" : ""}; research use only.`
+          ? `${definition.description} It selects the configured NVIDIA or BioNeMo MCP model backend${definition.id === "research_drug_demo" ? " and can optionally run bounded Tavily research first" : ""}; research use only.`
           : `${definition.description} Bounded event-sized hosted NIM calls only; research use only.`,
         parameters: JSON_SCHEMAS[definition.id],
         async execute(_toolCallId, params) {

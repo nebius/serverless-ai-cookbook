@@ -131,7 +131,7 @@ function parsedJsonObject(value, label) {
 }
 
 // Recovery for a known small-model failure mode: the model sometimes applies
-// the remote Cerebrium MCP envelope to the direct OpenFold2 tool and serializes
+// the remote BioNeMo MCP envelope to the direct OpenFold2 tool and serializes
 // its nested objects. The compatibility envelope is stripped before sample
 // resolution and the normal strict OpenFold2 validator still owns the payload.
 export function normalizeDirectSkillInput(skillId, input) {

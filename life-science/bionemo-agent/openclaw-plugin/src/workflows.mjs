@@ -299,7 +299,7 @@ export class ResearchDrugDemoRunner {
   }
 
   assertBackendConfigured() {
-    if (this.backend === "mcp" && !this.mcpClient) throw Object.assign(new Error("Cerebrium BioNeMo MCP client is unavailable."), { code: "missing_bionemo_backend", status: 500 });
+    if (this.backend === "mcp" && !this.mcpClient) throw Object.assign(new Error("BioNeMo MCP client is unavailable."), { code: "missing_bionemo_backend", status: 500 });
     if (this.backend === "mcp") this.mcpClient.assertConfigured?.();
     else if (this.backend === "nvidia" && !this.directClient) throw Object.assign(new Error("NVIDIA BioNeMo client is unavailable."), { code: "missing_bionemo_backend", status: 500 });
     else if (!["mcp", "nvidia"].includes(this.backend)) throw Object.assign(new Error("No BioNeMo model backend is configured for this workflow."), { code: "missing_bionemo_backend", status: 500 });
