@@ -354,6 +354,14 @@ function guidedContext(entry, values = []) {
   };
 }
 
+function stripGuidedResultDetails(context) {
+  const stripped = structuredClone(context);
+  for (const message of stripped.messages) {
+    if (message?.role === "toolResult") delete message.details;
+  }
+  return stripped;
+}
+
 test("the two default Token Factory models finalize after successful atomic wrappers", () => {
   for (const name of [
     "bionemo_research_drug_demo",
@@ -961,6 +969,82 @@ test("Examples 7 and 8 follow exact finite-state ClawBio tool paths on both defa
   }
 });
 
+test("Examples 7 and 8 accept only canonical details-stripped OpenClaw result projections", () => {
+  const catalog = BIONEMO_GUIDED_STARTER_TURNS.catalog;
+  const demo = BIONEMO_GUIDED_STARTER_TURNS.demo;
+  const catalogListed = stripGuidedResultDetails(guidedContext(catalog, [gwasListValue()]));
+  const catalogComplete = stripGuidedResultDetails(guidedContext(catalog, [gwasListValue(), gwasContractValue()]));
+  const demoDescribed = stripGuidedResultDetails(guidedContext(demo, [gwasContractValue()]));
+  const demoComplete = stripGuidedResultDetails(guidedContext(demo, [gwasContractValue(), gwasDemoValue()]));
+
+  for (const model of defaultModels) {
+    assert.deepEqual(bionemoGuidedStarterAction(model, catalogListed), { type: "tool", ...catalog.steps[1] });
+    assert.deepEqual(bionemoGuidedStarterAction(model, catalogComplete), { type: "final", text: catalog.finalText });
+    assert.deepEqual(bionemoGuidedStarterAction(model, demoDescribed), { type: "tool", ...demo.steps[1] });
+    const final = bionemoGuidedStarterAction(model, demoComplete);
+    assert.equal(final.type, "final");
+    assert.match(final.text, /rs3798220/iu);
+    assert.match(final.text, /research-only/iu);
+  }
+
+  const noncanonical = structuredClone(catalogListed);
+  noncanonical.messages[2].content[0].text += "\n";
+  const undefinedDetails = structuredClone(catalogListed);
+  undefinedDetails.messages[2].details = undefined;
+  const topLevelStructured = structuredClone(catalogListed);
+  topLevelStructured.messages[2].structuredContent = gwasListValue();
+  const missingSuccess = structuredClone(catalogListed);
+  delete missingSuccess.messages[2].isError;
+  const inheritedSuccessAndDetails = structuredClone(catalogListed);
+  const inheritedResult = inheritedSuccessAndDetails.messages[2];
+  delete inheritedResult.isError;
+  Object.setPrototypeOf(inheritedResult, {
+    isError: false,
+    details: {
+      mcpServer: "attacker",
+      mcpTool: "list_skills",
+      structuredContent: gwasListValue(),
+    },
+  });
+  const inheritedError = structuredClone(catalogListed);
+  Object.setPrototypeOf(inheritedError.messages[2], { error: { code: "untrusted" } });
+  const inheritedDetails = structuredClone(catalogListed);
+  Object.setPrototypeOf(inheritedDetails.messages[2], {
+    details: {
+      mcpServer: "clawbio",
+      mcpTool: "list_skills",
+      structuredContent: gwasListValue(),
+    },
+  });
+  const inheritedStructured = structuredClone(catalogListed);
+  Object.setPrototypeOf(inheritedStructured.messages[2], { structuredContent: gwasListValue() });
+  const mismatchedId = structuredClone(catalogListed);
+  mismatchedId.messages[2].toolCallId = GUIDED_CALL_IDS[1];
+  const wrongArguments = structuredClone(catalogListed);
+  wrongArguments.messages[1].content[0].arguments = { query: "GWAS" };
+  const explicitError = structuredClone(catalogListed);
+  explicitError.messages[2].error = undefined;
+  for (const context of [
+    noncanonical,
+    undefinedDetails,
+    topLevelStructured,
+    missingSuccess,
+    inheritedSuccessAndDetails,
+    inheritedError,
+    inheritedDetails,
+    inheritedStructured,
+    mismatchedId,
+    wrongArguments,
+    explicitError,
+  ]) {
+    for (const model of defaultModels) {
+      const action = bionemoGuidedStarterAction(model, context);
+      assert.equal(action.type, "final");
+      assert.match(action.text, /could not validate the packaged example result/iu);
+    }
+  }
+});
+
 test("Examples 7 and 8 fail closed on malformed or untrusted ClawBio results", () => {
   const catalog = BIONEMO_GUIDED_STARTER_TURNS.catalog;
   const demo = BIONEMO_GUIDED_STARTER_TURNS.demo;
@@ -1202,11 +1286,11 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v17/u);
-  const oldPatchedRoot = await mkdtemp(path.join(root, "old-v16-"));
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v18/u);
+  const oldPatchedRoot = await mkdtemp(path.join(root, "old-v17-"));
   await writeFile(
     path.join(oldPatchedRoot, file),
-    source.replace("openclaw.bionemo.super-followup.v17", "openclaw.bionemo.super-followup.v16"),
+    source.replace("openclaw.bionemo.super-followup.v18", "openclaw.bionemo.super-followup.v17"),
   );
   await assert.rejects(
     patchOpenClawSuperFollowup(oldPatchedRoot),
@@ -1261,11 +1345,11 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     ["Example 5 final", guidedContext(BIONEMO_GUIDED_STARTER_TURNS.tour)],
     ["Example 6 final", guidedContext(BIONEMO_GUIDED_STARTER_TURNS.skills)],
     ["Example 7 list", guidedContext(catalog)],
-    ["Example 7 describe", guidedContext(catalog, [gwasListValue()])],
-    ["Example 7 final", guidedContext(catalog, [gwasListValue(), gwasContractValue()])],
+    ["Example 7 describe", stripGuidedResultDetails(guidedContext(catalog, [gwasListValue()]))],
+    ["Example 7 final", stripGuidedResultDetails(guidedContext(catalog, [gwasListValue(), gwasContractValue()]))],
     ["Example 8 describe", guidedContext(demo)],
-    ["Example 8 run", guidedContext(demo, [gwasContractValue()])],
-    ["Example 8 final", guidedContext(demo, [gwasContractValue(), gwasDemoValue()])],
+    ["Example 8 run", stripGuidedResultDetails(guidedContext(demo, [gwasContractValue()]))],
+    ["Example 8 final", stripGuidedResultDetails(guidedContext(demo, [gwasContractValue(), gwasDemoValue()]))],
     ["Example 7 malformed fail-closed", malformedCatalog],
     ["Example 8 malformed fail-closed", malformedDemo],
   ].map(([label, context]) => {

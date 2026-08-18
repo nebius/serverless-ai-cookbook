@@ -6,7 +6,7 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v17";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v18";
 const SOURCE_OWNED_TOKEN_FACTORY_MODELS = Object.freeze([
   "nvidia/nemotron-3-super-120b-a12b",
   "zai-org/glm-5.2",
@@ -191,29 +191,45 @@ function bionemoStrictSha256(value) {
 export function bionemoValidatedClawBioStep(pair, expected) {
   if (!Array.isArray(pair) || pair.length !== 2) return undefined;
   const [assistant, result] = pair;
+  const success = result && typeof result === "object"
+    ? Object.getOwnPropertyDescriptor(result, "isError")
+    : undefined;
   if (assistant?.role !== "assistant" || assistant.stopReason !== "toolUse"
     || !Array.isArray(assistant.content) || assistant.content.length !== 1
     || result?.role !== "toolResult" || result.toolName !== expected.name
-    || result.isError !== false || Object.hasOwn(result, "error")
+    || !success || !Object.hasOwn(success, "value") || success.value !== false
+    || "error" in result || "structuredContent" in result
     || !Array.isArray(result.content) || result.content.length !== 1) return undefined;
   const call = assistant.content[0];
   if (call?.type !== "toolCall" || call.name !== expected.name
     || !bionemoStrictProjectedCallId(call.id) || call.id !== result.toolCallId
     || !bionemoStrictArgsEqual(call.arguments, expected.params)
     || call.partialArgs !== JSON.stringify(expected.params)) return undefined;
-  const details = result.details;
-  if (!details || typeof details !== "object" || Array.isArray(details)
-    || details.mcpServer !== "clawbio"
-    || details.mcpTool !== expected.name.slice("clawbio__".length)
-    || !details.structuredContent || typeof details.structuredContent !== "object"
-    || Array.isArray(details.structuredContent)) return undefined;
   const block = result.content[0];
   if (!block || typeof block !== "object" || Array.isArray(block)
     || Object.keys(block).sort().join(",") !== "text,type"
     || block.type !== "text" || typeof block.text !== "string" || block.text.length > 131_072) return undefined;
+  const marker = "structuredContent:\n";
+  if (!block.text.startsWith(marker)) return undefined;
+  let structured;
+  const detailsProperty = Object.getOwnPropertyDescriptor(result, "details");
+  if (detailsProperty) {
+    if (!Object.hasOwn(detailsProperty, "value")) return undefined;
+    const details = detailsProperty.value;
+    if (!details || typeof details !== "object" || Array.isArray(details)
+      || details.mcpServer !== "clawbio"
+      || details.mcpTool !== expected.name.slice("clawbio__".length)
+      || !details.structuredContent || typeof details.structuredContent !== "object"
+      || Array.isArray(details.structuredContent)) return undefined;
+    structured = details.structuredContent;
+  } else {
+    if ("details" in result) return undefined;
+    try { structured = JSON.parse(block.text.slice(marker.length)); } catch { return undefined; }
+    if (!structured || typeof structured !== "object" || Array.isArray(structured)) return undefined;
+  }
   let canonical;
-  try { canonical = `structuredContent:\n${JSON.stringify(details.structuredContent, null, 2)}`; } catch { return undefined; }
-  return block.text === canonical ? details.structuredContent : undefined;
+  try { canonical = `${marker}${JSON.stringify(structured, null, 2)}`; } catch { return undefined; }
+  return block.text === canonical ? structured : undefined;
 }
 
 export function bionemoValidatedGwasList(structured) {
