@@ -6,7 +6,7 @@ import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "./example-session-catalog.mjs";
 
 export const PINNED_OPENCLAW_SUPER_FOLLOWUP_HASH = "82712e39d2863f055210df3a33f4a725872bcbf3dfef1b7ba181dba882f60edc";
-const PATCH_MARKER = "openclaw.bionemo.super-followup.v16";
+const PATCH_MARKER = "openclaw.bionemo.super-followup.v17";
 const SOURCE_OWNED_TOKEN_FACTORY_MODELS = Object.freeze([
   "nvidia/nemotron-3-super-120b-a12b",
   "zai-org/glm-5.2",
@@ -635,7 +635,7 @@ export function bionemoSuperDeterministicFinalText(model, context) {
   const text = {
     bionemo_research_drug_demo: "The Tavily, OpenFold2, MolMIM, and OpenFold3 research workflow returned a terminal result. Review the cited evidence, model confidence, selected candidate, and attached structures. This is research-only, non-clinical output that requires independent computational and wet-lab validation.",
     bionemo_compare_protein_structures: "The OpenFold2 and OpenFold3 structure-comparison workflow returned a terminal result. Review the returned scalar confidence summaries and attached structures. Neither prediction is experimental ground truth; this research-only output requires independent computational and wet-lab validation.",
-    bionemo_optimize_ligand_complex: "The MolMIM and OpenFold3 ligand-complex workflow returned a terminal result. Review both candidates, the deterministic selection, returned score, confidence, and attached structure. It makes no binding, safety, efficacy, or clinical claim and requires independent validation.",
+    bionemo_optimize_ligand_complex: "The MolMIM and OpenFold3 ligand-complex workflow returned a terminal result after generating two gefitinib-like candidates with the requested QED optimization and seed-similarity objective, then modeling the deterministically selected highest-scoring embeddable candidate. Review both candidate SMILES and MolMIM scores, the selection basis, OpenFold3 confidence, and the attached structure. These proxy and predicted values make no binding, safety, efficacy, or clinical claim and require independent validation.",
     bionemo_batch_fold_demo: "The bounded five-protein OpenFold2 workflow returned a terminal result. Review each record status, confidence summary, and attached structure. These research-only predictions require independent computational and experimental validation.",
     bionemo_molmim: "The bounded MolMIM optimization returned a terminal result. Review the returned candidates and scores as research-only hypotheses. No binding, safety, efficacy, therapeutic, or clinical claim is made; independent computational and wet-lab validation is required.",
     bionemo_openfold2: "The bounded OpenFold2 prediction returned a terminal result. Review the scalar confidence summary and attached structure. This is not experimental ground truth and requires independent computational and experimental validation.",
@@ -643,6 +643,33 @@ export function bionemoSuperDeterministicFinalText(model, context) {
     tavily_web__tavily_search: "The bounded Tavily search completed for the requested RCSB PDB and UniProt documentation comparison. Source claims: none are restated from untrusted search content. Source-owned comparison (not derived from the returned snippets): RCSB PDB is structure-centered, while UniProt is sequence- and annotation-centered; their cross-references connect structures with protein identity and biological context. Validated Tavily response metadata records only that the bounded search returned the source titles and canonical URLs appended below. No BioNeMo, ClawBio, or scientific compute was run.",
   };
   if (!target) return undefined;
+  if (target === "tavily_web__tavily_search") {
+    const result = Array.isArray(context?.messages) ? context.messages.at(-1) : undefined;
+    let structured = result?.details?.structuredContent;
+    if (!structured || typeof structured !== "object" || Array.isArray(structured)) {
+      const textBlock = Array.isArray(result?.content)
+        ? result.content.find((block) => block?.type === "text" && typeof block.text === "string")
+        : undefined;
+      const marker = "structuredContent:\n";
+      if (textBlock?.text?.startsWith(marker)) {
+        try { structured = JSON.parse(textBlock.text.slice(marker.length)); } catch { structured = undefined; }
+      }
+    }
+    const sources = Array.isArray(structured?.results) ? structured.results.map(({ title, url }) => ({
+      title: title.replace(/[\u0000-\u001f\u007f]/gu, " ").replace(/\s+/gu, " ").trim(),
+      url: new URL(url).toString(),
+    })) : [];
+    const sourceLines = sources.map(({ title, url }) => (
+      `- ${title.replace(/([\\`*_[\]{}()<>#+\-.!|])/gu, "\\$1")} — ${url}`
+    )).join("\n");
+    const hosts = new Set(sources.map(({ url }) => new URL(url).hostname.toLowerCase()));
+    const hasDomain = (domain) => [...hosts].some((host) => host === domain || host.endsWith(`.${domain}`));
+    const coverage = [
+      ...(!hasDomain("uniprot.org") ? ["No direct UniProt source was returned by this bounded search."] : []),
+      ...(!hasDomain("rcsb.org") ? ["No direct RCSB source was returned by this bounded search."] : []),
+    ];
+    return `${text[target]}\n\nSources\n\n${sourceLines}${coverage.length ? `\n\n${coverage.join("\n")}` : ""}`;
+  }
   if (target === "bionemo_models_list") {
     const inventory = bionemoSuperValidatedModelInventory(model, context);
     if (!inventory) return undefined;

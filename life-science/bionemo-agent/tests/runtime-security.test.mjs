@@ -370,13 +370,13 @@ test("one successful current-turn Tavily search deterministically appends its bo
 
   const exactTurn = BIONEMO_SUPER_INITIAL_TURNS.find(({ name }) => name === TAVILY_TOOL_NAME);
   const exactResult = tavilyToolResult([
-    { title: "RCSB PDB documentation", url: "https://www.rcsb.org/docs/" },
+    { title: "RCSB  PDB documentation  ", url: "HTTPS://WWW.RCSB.ORG:443/docs/../docs/" },
   ], { details: {
     mcpServer: "tavily_web",
     mcpTool: "tavily_search",
     structuredContent: {
       query: exactTurn.params.query,
-      results: [{ title: "RCSB PDB documentation", url: "https://www.rcsb.org/docs/" }],
+      results: [{ title: "RCSB  PDB documentation  ", url: "HTTPS://WWW.RCSB.ORG:443/docs/../docs/" }],
     },
   } });
   const exactMessages = [
@@ -386,14 +386,14 @@ test("one successful current-turn Tavily search deterministically appends its bo
   ];
   const localFinal = bionemoSuperLocalCompletionText({ provider: "tokenfactory", id: "nvidia/nemotron-3-super-120b-a12b" }, { messages: exactMessages });
   assert.match(localFinal, /Source-owned comparison/u);
+  assert.match(localFinal, /No direct UniProt source was returned by this bounded search\./u);
+  assert.match(localFinal, /Sources\n\n- RCSB PDB documentation — https:\/\/www\.rcsb\.org\/docs\//u);
   const crossHook = beforeFinalize({
     runId: PRESENTATION_AGENT_RUN_ID,
     lastAssistantMessage: localFinal,
     messages: exactMessages,
   }, { runId: PRESENTATION_AGENT_RUN_ID });
-  assert.equal(crossHook.action, "continue");
-  assert.match(crossHook.appendFinalAssistantText, /^No direct UniProt source was returned by this bounded search\./u);
-  assert.match(crossHook.appendFinalAssistantText, /Sources\n\n- RCSB PDB documentation — https:\/\/www\.rcsb\.org\/docs\//u);
+  assert.equal(crossHook, undefined, "source-owned final suppresses duplicate Tavily coverage and citation blocks");
 });
 
 test("current-turn Tavily presentation fails closed on stale, failed, malformed, duplicated, or mismatched results", () => {

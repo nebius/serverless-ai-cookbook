@@ -379,6 +379,48 @@ test("the two default Token Factory models finalize after successful atomic wrap
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(deepSeekModel, errored), false);
 });
 
+test("Example 3 final names the requested QED and similarity objective on both default models", () => {
+  const completed = turn("bionemo_optimize_ligand_complex");
+  const summary = {
+    seed: { name: "gefitinib" },
+    requestedCandidateCount: 2,
+    candidates: [
+      { smiles: "CCN", molmimScore: 0.79, preflight: { embeddable: true } },
+      { smiles: "CCC", molmimScore: 0.77, preflight: { embeddable: true } },
+    ],
+    selectedCandidate: { smiles: "CCN", molmimScore: 0.79, preflight: { embeddable: true } },
+    candidateSelection: {
+      basis: "highest_molmim_score_among_openfold3_embeddable_candidates",
+      tieBreak: "earliest_candidate_in_molmim_response",
+    },
+    complexConfidence: { confidence_score: 0.25 },
+  };
+  completed.messages.at(-1).content = [{
+    type: "text",
+    text: JSON.stringify({ status: "completed", summary }),
+  }];
+
+  const finals = defaultModels.map((model) => bionemoSuperLocalCompletionText(model, completed));
+  assert.equal(finals[0], finals[1]);
+  for (const final of finals) {
+    for (const pattern of [
+      /gefitinib/iu,
+      /QED/iu,
+      /similarity/iu,
+      /MolMIM/iu,
+      /OpenFold3/iu,
+      /deterministically selected highest-scoring embeddable candidate/iu,
+      /confidence/iu,
+      /binding|safety|efficacy|clinical/iu,
+      /independent validation/iu,
+    ]) assert.match(final, pattern);
+    for (const candidate of summary.candidates) {
+      assert.match(final, new RegExp(candidate.smiles, "u"));
+      assert.match(final, new RegExp(String(candidate.molmimScore).replace(".", "\\."), "u"));
+    }
+  }
+});
+
 test("host-local completion is limited to exact completed default-model tool boundaries", () => {
   const completed = turn("bionemo_molmim");
   for (const model of defaultModels) {
@@ -416,6 +458,17 @@ test("host-local Tavily completion requires the exact source-owned turn and trus
   assert.match(final, /Source claims:/u);
   assert.match(final, /Source-owned comparison/iu);
   assert.match(final, /source titles and canonical URLs appended below/iu);
+  for (const source of completed.messages[2].details.structuredContent.results) {
+    assert.match(final, new RegExp(source.title, "u"));
+    assert.match(final, new RegExp(source.url.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), "u"));
+    assert.equal(final.split(source.url).length - 1, 1, "each canonical source is rendered exactly once");
+  }
+
+  const rcsbOnly = structuredClone(completed);
+  rcsbOnly.messages[2].details.structuredContent.results.splice(1, 1);
+  const rcsbOnlyFinal = bionemoSuperLocalCompletionText(superModel, rcsbOnly);
+  assert.match(rcsbOnlyFinal, /No direct UniProt source was returned by this bounded search/iu);
+  assert.doesNotMatch(rcsbOnlyFinal, /No direct RCSB source was returned by this bounded search/iu);
 
   const timestamped = structuredClone(completed);
   timestamped.messages[0].content[0].text = `[Fri 2026-08-14 18:06 UTC] ${tavilyInitial.prompt}`;
@@ -497,8 +550,24 @@ test("host-local Tavily completion accepts only the exact stripped ephemeral LLM
   assert.equal(bionemoSuperCompletedToolTarget(glmModel, completed), tavilyInitial.name);
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, completed), true);
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(glmModel, completed), true);
-  assert.match(bionemoSuperLocalCompletionText(superModel, completed), /RCSB PDB/u);
-  assert.equal(bionemoSuperLocalCompletionText(glmModel, completed), bionemoSuperLocalCompletionText(superModel, completed));
+  const final = bionemoSuperLocalCompletionText(superModel, completed);
+  assert.match(final, /RCSB PDB/u);
+  assert.equal(bionemoSuperLocalCompletionText(glmModel, completed), final);
+  const marker = "structuredContent:\n";
+  const structured = JSON.parse(completed.messages[2].content[0].text.slice(marker.length));
+  for (const source of structured.results) {
+    assert.ok(final.includes(source.title));
+    assert.ok(final.includes(source.url));
+    assert.equal(final.split(source.url).length - 1, 1, "stripped projection renders each source exactly once");
+  }
+
+  const rcsbOnly = structuredClone(completed);
+  const rcsbOnlyStructured = structuredClone(structured);
+  rcsbOnlyStructured.results.splice(1, 1);
+  rcsbOnly.messages[2].content[0].text = `${marker}${JSON.stringify(rcsbOnlyStructured, null, 2)}`;
+  const rcsbOnlyFinal = bionemoSuperLocalCompletionText(superModel, rcsbOnly);
+  assert.match(rcsbOnlyFinal, /No direct UniProt source was returned by this bounded search/iu);
+  assert.doesNotMatch(rcsbOnlyFinal, /No direct RCSB source was returned by this bounded search/iu);
 
   const rejected = [];
   const bareJson = structuredClone(completed);
@@ -1133,7 +1202,16 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v16/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v17/u);
+  const oldPatchedRoot = await mkdtemp(path.join(root, "old-v16-"));
+  await writeFile(
+    path.join(oldPatchedRoot, file),
+    source.replace("openclaw.bionemo.super-followup.v17", "openclaw.bionemo.super-followup.v16"),
+  );
+  await assert.rejects(
+    patchOpenClawSuperFollowup(oldPatchedRoot),
+    /Pinned OpenClaw Super compatibility hash mismatch/u,
+  );
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperFinalText)");
