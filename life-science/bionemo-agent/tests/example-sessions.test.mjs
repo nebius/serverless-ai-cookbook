@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -18,6 +19,43 @@ import {
 
 const execFileAsync = promisify(execFile);
 const PINNED_IMAGE = "ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac";
+
+const LEGACY_FIRST_DEFINITION = Object.freeze({
+  title: "Research-first EGFR drug discovery demo",
+  description: "Optional Tavily evidence gathering followed by a bounded, cross-backend structure and molecule workflow.",
+  steps: Object.freeze([
+    "Optionally research current public EGFR/gefitinib evidence with Tavily",
+    "Characterize the fixed public EGFR kinase sequence with OpenFold2",
+    "Optimize two gefitinib-derived candidates with MolMIM",
+    "Model the selected candidate with the same EGFR sequence using OpenFold3",
+    "Review citations, confidence summaries, artifacts, and limitations",
+  ]),
+  notebookPath: "/plugins/bionemo/notebooks/egfr-research-drug-demo",
+  prompt: "Run the backend-neutral research-first EGFR demo. Call bionemo_research_drug_demo exactly once with use_tavily=true, ack_research_only=true, ack_non_clinical=true, ack_non_commercial=true, ack_aup_accepted=true, and ack_no_safety_or_therapeutic_claims=true. I explicitly accept those five research-only acknowledgements. Do not call its Tavily, OpenFold2, MolMIM, or OpenFold3 steps separately. Report whether optional Tavily research ran, cite its sources if present, summarize every model step and confidence value, include every artifact viewerMarkdown link verbatim, and state the scientific limitations.",
+});
+
+function buildLegacyStarterText(definition) {
+  const steps = definition.steps.map((step, index) => `${index + 1}. ${step}`).join("\n");
+  return `# STATIC STARTER — NOT EXECUTED
+
+This is a local template baked into the BioNeMo image. No model, tool, MCP call, remote job, or result has been run or produced. The fenced prompt below is inert reference text; execute it only after you explicitly send it in a later user turn.
+
+## ${definition.title}
+
+${definition.description}
+
+## Workflow steps
+
+${steps}
+
+Notebook: [Open the guided notebook](.${definition.notebookPath})
+
+## Exact reviewed prompt
+
+\`\`\`text
+${definition.prompt}
+\`\`\``;
+}
 
 function minimalConfig(workspace) {
   return {
@@ -46,7 +84,7 @@ function minimalConfig(workspace) {
   };
 }
 
-test("eleven stable ready examples include four notebook workflows and seven bounded workbench tours", () => {
+test("eleven stable ready examples read like relatable user requests", () => {
   assert.equal(EXAMPLE_SESSIONS.length, 11);
   assert.equal(NOTEBOOK_EXAMPLE_SESSIONS.length, 4);
   assert.equal(WORKBENCH_EXAMPLE_SESSIONS.length, 7);
@@ -56,17 +94,17 @@ test("eleven stable ready examples include four notebook workflows and seven bou
   assert.equal(new Set(EXAMPLE_SESSIONS.map(({ label }) => label)).size, 11);
   assert.equal(EXAMPLE_SESSIONS.every(({ key }) => key.startsWith("agent:bionemo:dashboard:")), true);
   assert.deepEqual(EXAMPLE_SESSIONS.map(({ label }) => label), [
-    "Example 1 · Research-first EGFR",
-    "Example 2 · Compare protein structures",
-    "Example 3 · Optimize ligand complex",
-    "Example 4 · Batch-fold five proteins",
-    "Example 5 · Tour the workbench",
-    "Example 6 · Understand skills",
-    "Example 7 · Browse ClawBio catalog",
-    "Example 8 · Run ClawBio GWAS demo",
-    "Example 9 · Research with Tavily",
-    "Example 10 · List BioNeMo models",
-    "Example 11 · Optimize a ligand directly",
+    "Example 1 · Explore EGFR and gefitinib",
+    "Example 2 · Compare crambin predictions",
+    "Example 3 · Improve a gefitinib-like ligand",
+    "Example 4 · Fold five public proteins",
+    "Example 5 · Discover the workbench",
+    "Example 6 · Understand agent skills",
+    "Example 7 · Find a GWAS workflow",
+    "Example 8 · Try a GWAS lookup",
+    "Example 9 · Compare PDB and UniProt",
+    "Example 10 · Check available models",
+    "Example 11 · Explore gefitinib analogs",
   ]);
   for (const definition of NOTEBOOK_EXAMPLE_SESSIONS) {
     assert.equal(
@@ -78,7 +116,7 @@ test("eleven stable ready examples include four notebook workflows and seven bou
     const starter = buildExampleStarterText(definition);
     assert.equal(Object.hasOwn(definition, "notebookPath"), false);
     assert.doesNotMatch(starter, /Open the guided notebook/u);
-    assert.match(starter, /source-owned starter has no executable notebook/u);
+    assert.match(starter, /opens directly in chat/u);
   }
   assert.deepEqual(WORKBENCH_EXAMPLE_SESSIONS.map(({ surface }) => surface), [
     "openclaw",
@@ -89,62 +127,52 @@ test("eleven stable ready examples include four notebook workflows and seven bou
     "bionemo-model-inventory",
     "bionemo-molmim",
   ]);
-  assert.match(
-    EXAMPLE_SESSIONS.find(({ slug }) => slug === "tavily-public-research").prompt,
-    /include_domains exactly to \["rcsb\.org", "uniprot\.org"\]/u,
-  );
-  assert.match(
-    EXAMPLE_SESSIONS.find(({ slug }) => slug === "tavily-public-research").prompt,
-    /No direct UniProt source was returned by this bounded search\./u,
-  );
+  const prompts = EXAMPLE_SESSIONS.map(({ prompt }) => prompt);
+  assert.equal(new Set(prompts).size, 11);
+  for (const definition of EXAMPLE_SESSIONS) {
+    const visibleCopy = [definition.label, definition.title, definition.description, ...definition.steps, definition.prompt].join("\n");
+    assert.doesNotMatch(visibleCopy, /\b(?:bionemo_|bionemo_models__|clawbio__|tavily_web__)/u);
+    assert.doesNotMatch(visibleCopy, /\b(?:ack_[a-z_]+|input_file|viewerMarkdown|demo_runnable_in_image)\b/u);
+    assert.doesNotMatch(visibleCopy, /\bcall\s+[a-z0-9_*]+\s+exactly\s+once\b/iu);
+    assert.doesNotMatch(visibleCopy, /Do not call/u);
+    assert.ok(definition.prompt.length >= 180, `${definition.slug} should provide enough user context`);
+  }
 });
 
-test("new workbench prompts preserve exact bounded no-run and exactly-once contracts", () => {
+test("example questions express outcomes while hidden routing remains out of the copy", () => {
   const [tour, skills, catalog, demo, tavily, inventory, molmim] = WORKBENCH_EXAMPLE_SESSIONS;
-  for (const definition of [tour, skills]) assert.match(definition.prompt, /Do not call any tool\./u);
-  assert.equal(
-    skills.description,
-    "A no-tool explanation of skill instructions, tool boundaries, and the complete packaged catalog shared with terminal clients.",
-  );
-  assert.deepEqual(skills.steps, [
-    "Explain what a loaded skill contract contributes",
-    "Compare catalog, research, and composed-workflow guidance",
-    "Separate reading instructions from executing a tool",
-    "Explain workspace precedence and dependency-gated packaged contracts",
-  ]);
-  assert.doesNotMatch(skills.description, /terminal-only/u);
-  assert.match(tour.prompt, /If bionemo_models__\* tools are displayed/u);
-  assert.match(tour.prompt, /complete adapted MCP compute surface for all 16 inventory services/u);
-  assert.match(tour.prompt, /bionemo_models_list is the sanitized read-only inventory wrapper when displayed/u);
-  assert.match(tour.prompt, /resumable upload, cross-job listing, status, and artifact fetch without exposing credentials, remote-host local-path staging, or upstream clawbio_\* compatibility names/u);
+  assert.match(tour.prompt, /I’m new to this BioNeMo research workspace/u);
+  assert.match(tour.prompt, /what I can do here/u);
+  assert.match(tour.prompt, /don’t start a scientific job/u);
 
-  assert.match(catalog.prompt, /Call clawbio__list_skills exactly once with query="gwas"/u);
-  assert.match(catalog.prompt, /call clawbio__describe_skill exactly once with name="gwas-lookup"/u);
-  assert.match(catalog.prompt, /Do not call clawbio__run_skill/u);
-  assert.match(catalog.prompt, /demo_runnable_in_image/u);
+  assert.match(skills.prompt, /^How do the packaged skills/u);
+  assert.match(skills.prompt, /learning about a capability is different from running it/u);
+  assert.match(skills.prompt, /don’t run anything yet/u);
 
-  assert.match(demo.prompt, /Call clawbio__describe_skill exactly once with name="gwas-lookup"/u);
-  assert.match(demo.prompt, /call clawbio__run_skill exactly once with skill="gwas-lookup" and demo=true/u);
-  assert.match(demo.prompt, /only if it returns demo_runnable_in_image=true/u);
-  assert.match(demo.prompt, /do not retry or duplicate the demo/u);
+  assert.match(catalog.prompt, /public dbSNP variant such as rs3798220/u);
+  assert.match(catalog.prompt, /what reports, tables, figures, and reproducibility files/u);
+  assert.match(catalog.prompt, /don’t run the lookup/u);
 
-  assert.match(tavily.prompt, /configured Tavily MCP search tool exactly once/u);
-  assert.match(tavily.prompt, /basic search depth, at most five results/u);
-  assert.match(tavily.prompt, /stop without substituting another tool or inventing citations/u);
-  assert.doesNotMatch(tavily.prompt, /tavily_web__|tavily__|search__search/u);
+  assert.match(demo.prompt, /generate the bundled offline variant report/u);
+  assert.match(demo.prompt, /GWAS, PheWAS, eQTL, and fine-mapping/u);
+  assert.match(demo.prompt, /do not interpret it as diagnosis/u);
 
-  assert.match(inventory.prompt, /Call bionemo_models_list exactly once with no arguments/u);
-  assert.match(inventory.prompt, /Do not call any other tool/u);
-  assert.match(inventory.prompt, /submitted no scientific compute or model job/u);
-  assert.match(inventory.prompt, /every returned service has a corresponding adapted bionemo_models__\* compute operation/u);
-  assert.match(inventory.prompt, /do not retry/u);
+  assert.match(tavily.prompt, /only `rcsb\.org` and `uniprot\.org`/u);
+  assert.match(tavily.prompt, /up to five current, authoritative public pages/u);
+  assert.match(tavily.prompt, /title and URL of every page/u);
 
-  assert.match(molmim.prompt, /Call bionemo_molmim exactly once/u);
-  assert.match(molmim.prompt, /num_molecules=2.*particles=2/u);
-  assert.match(molmim.prompt, /ack_research_only=true.*ack_no_safety_or_therapeutic_claims=true/u);
-  assert.match(molmim.prompt, /Do not call OpenFold3, any other bionemo_\* tool/u);
+  assert.match(inventory.prompt, /^Which BioNeMo models are available right now\?/u);
+  assert.match(inventory.prompt, /public ID, display name, family, and readiness/u);
+  assert.match(inventory.prompt, /whether checking the inventory launches any scientific computation/u);
 
-  for (const definition of WORKBENCH_EXAMPLE_SESSIONS) assert.doesNotMatch(definition.prompt, /clawbio_models__/u);
+  assert.match(molmim.prompt, /^Starting from gefitinib SMILES/u);
+  assert.match(molmim.prompt, /two similar candidate molecules optimized for QED/u);
+  assert.match(molmim.prompt, /at least 0\.7 similarity/u);
+
+  const crambin = EXAMPLE_SESSIONS.find(({ slug }) => slug === "compare-protein-structures");
+  assert.match(crambin.prompt, /^Please compare OpenFold2 and OpenFold3 predictions/u);
+  assert.match(crambin.prompt, /point out the important similarities and differences/u);
+  assert.match(crambin.prompt, /TTCCPSIVARSNFNVCRLPGTPEAICATYTGCIIIPGATCPGDYAN/u);
 });
 
 test("native seeding writes one explicit local user starter without starting a run", async (t) => {
@@ -196,8 +224,79 @@ test("native seeding writes one explicit local user starter without starting a r
         content: [{ type: "text", text: buildExampleStarterText(definition) }],
       },
     }]);
-    assert.match(state.entries[0].message.content[0].text, /^# STATIC STARTER — NOT EXECUTED\n/u);
+    assert.match(state.entries[0].message.content[0].text, /^# EXAMPLE — READY TO TRY\n/u);
+    assert.match(state.entries[0].message.content[0].text, /## Example question\n/u);
   }
+});
+
+test("native seeding migrates only an exact prior image-owned starter", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-example-seed-migrate-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const configPath = path.join(root, "openclaw.json");
+  await writeFile(configPath, JSON.stringify(minimalConfig(path.join(root, "workspace"))));
+
+  const legacyText = buildLegacyStarterText(LEGACY_FIRST_DEFINITION);
+  assert.equal(
+    createHash("sha256").update(legacyText, "utf8").digest("hex"),
+    "d118986d5b39c9704b0190734637bec484d2067568cf01a362c821d0fc9e6900",
+  );
+  const first = EXAMPLE_SESSIONS[0];
+  const states = new Map();
+  for (const [index, definition] of EXAMPLE_SESSIONS.entries()) {
+    const sessionId = `migration-${index + 1}`;
+    const sessionFile = path.join(root, `${sessionId}.jsonl`);
+    const text = definition.key === first.key ? legacyText : `Preserved user work ${index + 1}`;
+    const entry = {
+      type: "message",
+      id: `message-${index + 1}`,
+      parentId: null,
+      timestamp: "2026-08-18T12:00:00.000Z",
+      message: { role: "user", content: [{ type: "text", text }] },
+    };
+    const header = {
+      type: "session",
+      version: 3,
+      id: sessionId,
+      timestamp: "2026-08-18T12:00:00.000Z",
+      cwd: "/workspace/agent",
+    };
+    await writeFile(sessionFile, `${JSON.stringify(header)}\n${JSON.stringify(entry)}\n`, { mode: 0o600 });
+    states.set(definition.key, { sessionId, sessionFile, entry });
+  }
+  class FakeSessionManager {
+    static open(sessionFile) {
+      const state = [...states.values()].find((candidate) => candidate.sessionFile === sessionFile);
+      assert.ok(state);
+      return {
+        getSessionId: () => state.sessionId,
+        getSessionFile: () => state.sessionFile,
+        getEntries: () => [structuredClone(state.entry)],
+        appendMessage: () => assert.fail("migration must not append a second entry"),
+        rewriteFile: () => assert.fail("migration must use its exact atomic replacement"),
+      };
+    }
+  }
+  const createSession = async ({ key }) => {
+    const state = states.get(key);
+    return { ok: true, key, entry: { sessionId: state.sessionId, sessionFile: state.sessionFile } };
+  };
+
+  await seedExampleSessions({ configPath, createSession, SessionManager: FakeSessionManager });
+  const migrated = (await readFile(states.get(first.key).sessionFile, "utf8")).trimEnd().split("\n").map(JSON.parse);
+  assert.equal(migrated.length, 2);
+  assert.equal(migrated[0].id, states.get(first.key).sessionId);
+  assert.equal(migrated[1].id, states.get(first.key).entry.id);
+  assert.equal(migrated[1].timestamp, states.get(first.key).entry.timestamp);
+  assert.equal(migrated[1].message.content[0].text, buildExampleStarterText(first));
+  for (const definition of EXAMPLE_SESSIONS.slice(1)) {
+    const body = await readFile(states.get(definition.key).sessionFile, "utf8");
+    assert.match(body, new RegExp(`Preserved user work ${EXAMPLE_SESSIONS.indexOf(definition) + 1}`, "u"));
+  }
+
+  const afterFirstPass = await readFile(states.get(first.key).sessionFile, "utf8");
+  states.get(first.key).entry = migrated[1];
+  await seedExampleSessions({ configPath, createSession, SessionManager: FakeSessionManager });
+  assert.equal(await readFile(states.get(first.key).sessionFile, "utf8"), afterFirstPass);
 });
 
 test("native seeding preserves a nonempty user transcript without inserting a starter", async (t) => {
@@ -330,11 +429,41 @@ test("exact pinned OpenClaw creates eleven visible local starter sessions idempo
       role: "user",
       content: [{ type: "text", text: buildExampleStarterText(definition) }],
     });
-    assert.match(lines[1].message.content[0].text, /^# STATIC STARTER — NOT EXECUTED\n/u);
+    assert.match(lines[1].message.content[0].text, /^# EXAMPLE — READY TO TRY\n/u);
     assert.equal(lines.some(({ message }) => message?.role === "assistant" || message?.role === "tool"), false);
     assert.equal(Object.hasOwn(lines[1].message, "model"), false);
     assert.equal(Object.hasOwn(lines[1].message, "toolCall"), false);
     assert.equal(Object.hasOwn(lines[1].message, "toolResult"), false);
     assert.equal((await stat(entry.sessionFile)).mode & 0o777, 0o600);
   }
+
+  const exactLegacyEntry = store[EXAMPLE_SESSIONS[0].key];
+  const editedEntry = store[EXAMPLE_SESSIONS[1].key];
+  const exactLegacyLines = (await readFile(exactLegacyEntry.sessionFile, "utf8")).trimEnd().split("\n").map(JSON.parse);
+  const editedLines = (await readFile(editedEntry.sessionFile, "utf8")).trimEnd().split("\n").map(JSON.parse);
+  const exactLegacyMessageId = exactLegacyLines[1].id;
+  exactLegacyLines[1].message.content[0].text = buildLegacyStarterText(LEGACY_FIRST_DEFINITION);
+  editedLines[1].message.content[0].text = `${buildLegacyStarterText(LEGACY_FIRST_DEFINITION)}\nUser edit`;
+  await writeFile(exactLegacyEntry.sessionFile, `${exactLegacyLines.map((line) => JSON.stringify(line)).join("\n")}\n`, { mode: 0o600 });
+  await writeFile(editedEntry.sessionFile, `${editedLines.map((line) => JSON.stringify(line)).join("\n")}\n`, { mode: 0o600 });
+
+  const migratedRun = await execFileAsync("docker", [
+    "run", "--rm", "--network", "none",
+    "--user", `${process.getuid()}:${process.getgid()}`,
+    "--volume", `${root}:${root}`,
+    "--volume", `${recipeRoot}:${recipeRoot}:ro`,
+    "--env", `OPENCLAW_STATE_DIR=${stateDir}`,
+    "--env", `OPENCLAW_CONFIG_PATH=${configPath}`,
+    "--entrypoint", "node",
+    PINNED_IMAGE,
+    "--input-type=module", "--eval", script,
+  ]);
+  const migratedResult = JSON.parse(migratedRun.stdout);
+  assert.deepEqual(migratedResult.first, migratedResult.second);
+  const migratedLegacyLines = (await readFile(exactLegacyEntry.sessionFile, "utf8")).trimEnd().split("\n").map(JSON.parse);
+  assert.equal(migratedLegacyLines[1].id, exactLegacyMessageId, "migration preserves the native message identity");
+  assert.equal(migratedLegacyLines[1].message.content[0].text, buildExampleStarterText(EXAMPLE_SESSIONS[0]));
+  const preservedEdit = await readFile(editedEntry.sessionFile, "utf8");
+  assert.match(preservedEdit, /User edit/u);
+  assert.doesNotMatch(preservedEdit, new RegExp(buildExampleStarterText(EXAMPLE_SESSIONS[1]).slice(0, 40), "u"));
 });

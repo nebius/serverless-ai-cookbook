@@ -4,74 +4,35 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { WORKFLOWS } from "../openclaw-plugin/src/catalog.mjs";
+import { NOTEBOOK_CATALOG } from "../openclaw-plugin/src/notebooks.mjs";
 
 const recipe = new URL("../", import.meta.url);
 const notebookDirectory = fileURLToPath(new URL("workspace/notebooks/", recipe));
-const ACK_FIELDS = Object.freeze([
-  "ack_research_only",
-  "ack_non_clinical",
-  "ack_non_commercial",
-  "ack_aup_accepted",
-  "ack_no_safety_or_therapeutic_claims",
-]);
-
 const NOTEBOOKS = Object.freeze([
   {
     file: "01-egfr-research-drug-demo.ipynb",
     id: "egfr-research-drug-demo",
-    title: "Research-first EGFR drug discovery demo",
     tool: "bionemo_research_drug_demo",
     optionalTavily: true,
-    steps: [
-      "Optionally research current public EGFR/gefitinib evidence with Tavily",
-      "Characterize the fixed public EGFR kinase sequence with OpenFold2",
-      "Optimize two gefitinib-derived candidates with MolMIM",
-      "Model the selected candidate with the same EGFR sequence using OpenFold3",
-      "Review citations, confidence summaries, artifacts, and limitations",
-    ],
   },
   {
     file: "02-compare-protein-structures.ipynb",
     id: "compare-protein-structures",
-    title: "Compare protein structure predictions",
     tool: "bionemo_compare_protein_structures",
     optionalTavily: false,
-    steps: [
-      "Load the fixed public crambin sequence",
-      "Predict one structure with OpenFold2",
-      "Independently predict the same sequence with OpenFold3",
-      "Compare scalar confidence summaries and structure artifacts",
-      "Review limitations and experimental-validation requirements",
-    ],
   },
   {
     file: "03-optimize-ligand-complex.ipynb",
     id: "optimize-ligand-complex",
-    title: "Optimize a ligand and model its complex",
     tool: "bionemo_optimize_ligand_complex",
     optionalTavily: false,
-    steps: [
-      "Load the fixed public EGFR target and gefitinib seed",
-      "Generate two bounded candidates with MolMIM",
-      "Select one candidate deterministically from returned scores",
-      "Model the selected ligand with the same EGFR sequence using OpenFold3",
-      "Review artifacts, confidence, chemistry, and limitations",
-    ],
   },
   {
     file: "04-bulk-openfold2-five-proteins.ipynb",
     id: "bulk-openfold2-five-proteins",
-    title: "Batch-fold five public proteins",
     tool: "bionemo_batch_fold_demo",
     optionalTavily: false,
     sourceFixture: "notebooks/data/five-proteins.fasta",
-    steps: [
-      "Read and validate the fixed five-record public FASTA fixture",
-      "Fold each protein sequentially with OpenFold2",
-      "Retain per-record success or durable failure status",
-      "Collect confidence summaries, artifacts, and viewer links",
-      "Review batch counts, limitations, and validation requirements",
-    ],
   },
 ]);
 
@@ -104,11 +65,14 @@ function parseFasta(value) {
   return records;
 }
 
-test("four bundled notebooks are clean nbformat v4 provider-neutral launch templates", async () => {
+test("four bundled notebooks are clean user-oriented launch templates", async () => {
   assert.equal(NOTEBOOKS.length, 4);
   const catalogByTool = new Map(Object.values(WORKFLOWS).map((workflow) => [workflow.tool, workflow]));
+  const notebookBySlug = new Map(NOTEBOOK_CATALOG.map((definition) => [definition.slug, definition]));
 
   for (const expected of NOTEBOOKS) {
+    const definition = notebookBySlug.get(expected.id);
+    assert.ok(definition, `${expected.id} must exist in the public notebook catalog`);
     const serialized = await readFile(path.join(notebookDirectory, expected.file), "utf8");
     const notebook = JSON.parse(serialized);
     const metadata = notebook.metadata?.bionemo;
@@ -132,19 +96,21 @@ test("four bundled notebooks are clean nbformat v4 provider-neutral launch templ
 
     assert.equal(metadata.schemaVersion, 1);
     assert.equal(metadata.id, expected.id);
-    assert.equal(metadata.title, expected.title);
+    assert.equal(metadata.title, definition.title);
     assert.equal(metadata.tool, expected.tool);
-    assert.deepEqual(metadata.steps, expected.steps);
+    assert.deepEqual(metadata.steps, definition.steps);
+    assert.equal(metadata.prompt, definition.prompt);
     assert.equal(metadata.optionalTavily, expected.optionalTavily);
     assert.equal(metadata.backendNeutral, true);
     assert.equal(metadata.executionStatus, "template-unexecuted");
     assert.equal(metadata.sourceFixture, expected.sourceFixture);
     assert.ok(source.includes(metadata.prompt), "visible launch prompt must exactly match launch metadata");
     assert.match(source, /unexecuted launch template/iu);
-    assert.match(metadata.prompt, new RegExp(`Call ${expected.tool} exactly once`, "u"));
-    for (const field of ACK_FIELDS) assert.match(metadata.prompt, new RegExp(`${field}=true`, "u"));
-    if (expected.sourceFixture) assert.match(metadata.prompt, new RegExp(`input_file=${expected.sourceFixture.replaceAll(".", "\\.")}`, "u"));
-    assert.doesNotMatch(metadata.prompt, /\b(?:clawbio_|bionemo_(?:openfold|molmim|genmol|diffdock|boltz|rfdiffusion|proteinmpnn|msa_))/u);
+    assert.doesNotMatch(source, /\b(?:bionemo_|bionemo_models__|clawbio__|tavily_web__)/u);
+    assert.doesNotMatch(source, /\b(?:ack_[a-z_]+|input_file|viewerMarkdown)\b/u);
+    assert.doesNotMatch(source, /\bcall\s+[a-z0-9_*]+\s+exactly\s+once\b/iu);
+    assert.match(metadata.prompt, /research/u);
+    assert.match(metadata.prompt, /independent validation/u);
     assert.doesNotMatch(serialized, /\b(?:tvly|nvapi|sk-ant|sk-proj)-[A-Za-z0-9_-]{8,}/u);
     assert.doesNotMatch(serialized, /\b(?:NVIDIA|NEBIUS|OPENAI|ANTHROPIC|BIONEMO_MCP|TAVILY)_API_KEY\b/u);
     assert.equal(serialized.includes("output_type"), false, "serialized execution output is forbidden");

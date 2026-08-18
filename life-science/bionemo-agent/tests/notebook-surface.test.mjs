@@ -174,7 +174,14 @@ test("notebook route rejects unknown paths, traversal, methods, stored output, l
   t.after(() => rm(root, { recursive: true, force: true }));
   const definition = NOTEBOOK_CATALOG[0];
   const valid = JSON.parse(await readFile(new URL(definition.file, notebookRoot), "utf8"));
-  valid.cells.find((cell) => cell.cell_type === "code").outputs = [{ output_type: "stream", name: "stdout", text: ["unsafe"] }];
+  valid.cells.push({
+    cell_type: "code",
+    execution_count: null,
+    id: "injected-stored-output",
+    metadata: {},
+    outputs: [{ output_type: "stream", name: "stdout", text: ["unsafe"] }],
+    source: ["print('must not render')"],
+  });
   await writeFile(path.join(root, definition.file), `${JSON.stringify(valid)}\n`);
   let res = response();
   await createNotebookHandler({ root })(request("GET", `${NOTEBOOK_ROUTE_PREFIX}/${definition.slug}`), res);

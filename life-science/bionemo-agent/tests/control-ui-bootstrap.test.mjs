@@ -11,12 +11,15 @@ import { CONTROL_UI_BOOTSTRAP_NAME, prepareControlUi, renderExampleSessionPrelud
 const bootstrapUrl = new URL("../runtime/control-ui-default-session.js", import.meta.url);
 const defaultDemoPrompt = NOTEBOOK_CATALOG[0].prompt;
 const NATIVE_COMPOSER_SESSION_CAP = 20;
+const PREVIOUS_FIRST_PROMPT = "Run the backend-neutral research-first EGFR demo. Call bionemo_research_drug_demo exactly once with use_tavily=true, ack_research_only=true, ack_non_clinical=true, ack_non_commercial=true, ack_aup_accepted=true, and ack_no_safety_or_therapeutic_claims=true. I explicitly accept those five research-only acknowledgements. Do not call its Tavily, OpenFold2, MolMIM, or OpenFold3 steps separately. Report whether optional Tavily research ran, cite its sources if present, summarize every model step and confidence value, include every artifact viewerMarkdown link verbatim, and state the scientific limitations.";
 
-test("startup draft is the exact Tavily-enabled first notebook prompt", async () => {
+test("startup draft is the exact public-evidence EGFR question", async () => {
   const firstNotebook = JSON.parse(await readFile(new URL(`../workspace/notebooks/${NOTEBOOK_CATALOG[0].file}`, import.meta.url), "utf8"));
   assert.equal(defaultDemoPrompt, firstNotebook.metadata.bionemo.prompt);
   assert.equal(firstNotebook.metadata.bionemo.optionalTavily, true);
-  assert.match(defaultDemoPrompt, /use_tavily=true/u);
+  assert.match(defaultDemoPrompt, /^Please run a small EGFR research study/u);
+  assert.match(defaultDemoPrompt, /Begin with current public evidence/u);
+  assert.doesNotMatch(defaultDemoPrompt, /\b(?:bionemo_|tavily_web__|ack_)/u);
 });
 
 function composerStorageKey(href) {
@@ -36,8 +39,8 @@ function simulateNativeComposerPersist(storage, href) {
   return parsed;
 }
 
-async function runBootstrap(href, { storage = new Map(), failWrites = false } = {}) {
-  const source = `${renderExampleSessionPrelude()}${await readFile(bootstrapUrl, "utf8")}`;
+async function runBootstrap(href, { storage = new Map(), failWrites = false, examples = EXAMPLE_SESSIONS } = {}) {
+  const source = `${renderExampleSessionPrelude(examples)}${await readFile(bootstrapUrl, "utf8")}`;
   const location = new URL(href);
   const calls = [];
   const history = {
@@ -172,18 +175,18 @@ test("Control UI seeds eleven ready per-session drafts once without queues or se
     assert.equal(entry.draft, definition.prompt);
     assert.equal(Object.hasOwn(entry, "queue"), false);
   }
-  assert.equal(storage.get(storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v2:")), "1");
+  assert.equal(storage.get(storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v3:")), "1");
 
   const serialized = storage.get(storageKey);
   await runBootstrap(href, { storage });
   assert.equal(storage.get(storageKey), serialized, "a reload must not replace user-owned composer state");
 });
 
-test("Control UI v2 draft migration adds only new examples and preserves edited or cleared v1 drafts", async () => {
+test("Control UI v3 draft migration adds only new examples and preserves edited or cleared v1 drafts", async () => {
   const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
   const storageKey = composerStorageKey(href);
   const oldMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v1:");
-  const newMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v2:");
+  const newMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v3:");
   const firstKey = `${EXAMPLE_SESSIONS[0].key}\u0000agent:bionemo`;
   const storage = new Map([
     [storageKey, JSON.stringify({
@@ -206,6 +209,74 @@ test("Control UI v2 draft migration adds only new examples and preserves edited 
   }
   assert.equal(storage.get(oldMarkerKey), "1");
   assert.equal(storage.get(newMarkerKey), "1");
+});
+
+test("Control UI v3 replaces only exact prior source drafts, preserves clears and edits, and seeds new keys once", async () => {
+  const href = "https://workbench.example/chat?session=agent:bionemo:dashboard:egfr-research-drug-demo";
+  const storageKey = composerStorageKey(href);
+  const previousMarkerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v2:");
+  const markerKey = storageKey.replace("openclaw.control.chatComposer.v1:", "bionemo.demoDraftSeed.v3:");
+  const rewrittenExamples = EXAMPLE_SESSIONS.map((definition, index) => ({
+    ...definition,
+    prompt: `Reviewed v3 prompt ${index + 1}`,
+  }));
+  const newDefinition = {
+    key: "agent:bionemo:dashboard:new-v3-example",
+    agentId: "bionemo",
+    label: "New v3 example",
+    prompt: "Brand-new reviewed v3 prompt",
+    draftSeedGeneration: 3,
+  };
+  const examples = [...rewrittenExamples, newDefinition];
+  const [first, second, third, fourth, fifth] = EXAMPLE_SESSIONS;
+  const firstKey = `${first.key}\u0000agent:bionemo`;
+  const secondKey = `${second.key}\u0000agent:bionemo`;
+  const thirdKey = `${third.key}\u0000agent:bionemo`;
+  const fourthKey = `${fourth.key}\u0000agent:bionemo`;
+  const fifthKey = `${fifth.key}\u0000agent:bionemo`;
+  const newKey = `${newDefinition.key}\u0000agent:bionemo`;
+  const storage = new Map([
+    [storageKey, JSON.stringify({
+      version: 1,
+      sessions: {
+        [firstKey]: { draft: PREVIOUS_FIRST_PROMPT, queue: [{ id: "preserved-queue" }], updatedAt: 10 },
+        [secondKey]: { draft: "user-edited draft 🧬", queue: [{ id: "edited-queue" }], updatedAt: 20 },
+        [thirdKey]: { draft: "", queue: [{ id: "cleared-queue" }], updatedAt: 30 },
+        // An old source prompt under the wrong session key is user-owned text.
+        [fifthKey]: { draft: PREVIOUS_FIRST_PROMPT, updatedAt: 40 },
+      },
+    })],
+    [previousMarkerKey, "1"],
+  ]);
+
+  await runBootstrap(href, { storage, examples });
+
+  const migrated = JSON.parse(storage.get(storageKey));
+  assert.deepEqual(migrated.sessions[firstKey], {
+    draft: rewrittenExamples[0].prompt,
+    queue: [{ id: "preserved-queue" }],
+    updatedAt: 10,
+  });
+  assert.deepEqual(migrated.sessions[secondKey], {
+    draft: "user-edited draft 🧬",
+    queue: [{ id: "edited-queue" }],
+    updatedAt: 20,
+  });
+  assert.deepEqual(migrated.sessions[thirdKey], {
+    draft: "",
+    queue: [{ id: "cleared-queue" }],
+    updatedAt: 30,
+  });
+  assert.equal(Object.hasOwn(migrated.sessions, fourthKey), false, "a removed v2 draft must remain cleared");
+  assert.deepEqual(migrated.sessions[fifthKey], { draft: PREVIOUS_FIRST_PROMPT, updatedAt: 40 });
+  assert.equal(migrated.sessions[newKey].draft, newDefinition.prompt);
+  assert.ok(migrated.sessions[newKey].updatedAt < 10);
+  assert.equal(storage.get(previousMarkerKey), "1");
+  assert.equal(storage.get(markerKey), "1");
+
+  const serialized = storage.get(storageKey);
+  await runBootstrap(href, { storage, examples });
+  assert.equal(storage.get(storageKey), serialized, "the v3 marker must make migration idempotent");
 });
 
 test("Control UI migration never evicts user composer records at the native retention boundary", async () => {

@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { lstat, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { EXAMPLE_SESSION_CATALOG } from "./example-session-catalog.mjs";
@@ -15,26 +15,111 @@ export const PINNED_OPENCLAW_SESSION_RUNTIME = Object.freeze({
 
 export const EXAMPLE_SESSIONS = EXAMPLE_SESSION_CATALOG;
 
+const LEGACY_STARTER_SHA256 = Object.freeze({
+  "egfr-research-drug-demo": "d118986d5b39c9704b0190734637bec484d2067568cf01a362c821d0fc9e6900",
+  "compare-protein-structures": "7b1d970f1f9e3469a0b3c5a26cf3967ef6145021431686f0469858f5842c2102",
+  "optimize-ligand-complex": "81ad58d1590a96ce2bc0bc5cf0a503f9be2ed25510ec312931689c9e02b96e2d",
+  "bulk-openfold2-five-proteins": "b64afa9146142f2152a963509a0e9b66e655fff390614476fe65a6186d56f8f9",
+  "openclaw-workbench-tour": "12eaa570d82114f9b80bdd6b30496563a88fab971bf71660ef7ae84f422a2846",
+  "openclaw-skill-guidance": "fd2a7a83d2d2a9002e79deaa3b34829fc84a97e3406fe766c8cc17ccf1be7709",
+  "clawbio-readonly-catalog": "8ee925c6e8f95acd6c672ceda67af0aadedcf2de786e4a65437976ee23c81e1d",
+  "clawbio-gwas-demo": "e1ae102389b1d1817c8125cdd88f7351f1620085189aa569eb445c4f7e66fa7c",
+  "tavily-public-research": "700557d592d2154151f84df11161cc382ab6c0d45c4e4cc62c4aaff836b81fbf",
+  "bionemo-model-inventory": "8697fb7f67c154331ee50d29252827f40a281d3292f4a174dcd295181888c3a0",
+  "molmim-direct-mcp": "79e3d0e2ee286d61a51654a783cadabfccf6b9442f22cf08d317976a1b271938",
+});
+
+function exactKeys(value, expected) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function exactStaticStarterEntry(manager, definition, replacementText) {
+  const legacyDigest = LEGACY_STARTER_SHA256[definition.slug];
+  if (!legacyDigest) return undefined;
+  const entries = manager.getEntries();
+  if (!Array.isArray(entries) || entries.length !== 1) return undefined;
+  const [entry] = entries;
+  if (!exactKeys(entry, ["id", "message", "parentId", "timestamp", "type"])
+    || entry.type !== "message" || entry.parentId !== null
+    || typeof entry.id !== "string" || !entry.id
+    || typeof entry.timestamp !== "string" || !entry.timestamp
+    || !exactKeys(entry.message, ["content", "role"])
+    || entry.message.role !== "user" || !Array.isArray(entry.message.content)
+    || entry.message.content.length !== 1
+    || !exactKeys(entry.message.content[0], ["text", "type"])
+    || entry.message.content[0].type !== "text"
+    || typeof entry.message.content[0].text !== "string") return undefined;
+  const text = entry.message.content[0].text;
+  if (text === replacementText
+    || createHash("sha256").update(text, "utf8").digest("hex") !== legacyDigest) return undefined;
+
+  return entry;
+}
+
+async function migrateLegacyStaticStarter({ manager, definition, starter }) {
+  const matched = exactStaticStarterEntry(manager, definition, starter.content[0].text);
+  if (!matched || typeof manager.getSessionFile !== "function") return false;
+  const sessionFile = manager.getSessionFile();
+  if (typeof sessionFile !== "string" || !sessionFile) return false;
+  const beforeStat = await lstat(sessionFile);
+  if (!beforeStat.isFile() || beforeStat.isSymbolicLink() || (beforeStat.mode & 0o777) !== 0o600) return false;
+  const before = await readFile(sessionFile, "utf8");
+  if (!before.endsWith("\n")) return false;
+  const lines = before.slice(0, -1).split("\n");
+  if (lines.length !== 2 || lines[1] !== JSON.stringify(matched)) return false;
+  let header;
+  let entry;
+  try {
+    header = JSON.parse(lines[0]);
+    entry = JSON.parse(lines[1]);
+  } catch {
+    return false;
+  }
+  if (!exactKeys(header, ["cwd", "id", "timestamp", "type", "version"])
+    || header.type !== "session" || header.version !== 3
+    || header.id !== manager.getSessionId()
+    || typeof header.cwd !== "string" || typeof header.timestamp !== "string") return false;
+  entry.message.content[0].text = starter.content[0].text;
+  const replacement = `${lines[0]}\n${JSON.stringify(entry)}\n`;
+
+  const temporary = `${sessionFile}.bionemo-starter-${process.pid}-${randomUUID()}.tmp`;
+  await writeFile(temporary, replacement, { encoding: "utf8", flag: "wx", mode: 0o600 });
+  try {
+    const afterStat = await lstat(sessionFile);
+    if (!afterStat.isFile() || afterStat.isSymbolicLink()
+      || afterStat.dev !== beforeStat.dev || afterStat.ino !== beforeStat.ino
+      || afterStat.size !== beforeStat.size || afterStat.mtimeMs !== beforeStat.mtimeMs
+      || await readFile(sessionFile, "utf8") !== before
+      || await readFile(temporary, "utf8") !== replacement) return false;
+    await rename(temporary, sessionFile);
+    return true;
+  } finally {
+    await rm(temporary, { force: true });
+  }
+}
+
 export function buildExampleStarterText(definition) {
   const steps = definition.steps.map((step, index) => `${index + 1}. ${step}`).join("\n");
   const companion = definition.notebookPath
     ? `Notebook: [Open the guided notebook](.${definition.notebookPath})`
-    : "Companion: This source-owned starter has no executable notebook; its fenced prompt remains inert until sent.";
-  return `# STATIC STARTER — NOT EXECUTED
+    : "This example opens directly in chat. Its question stays unsent until you choose to send it.";
+  return `# EXAMPLE — READY TO TRY
 
-This is a local template baked into the BioNeMo image. No model, tool, MCP call, remote job, or result has been run or produced. The fenced prompt below is inert reference text; execute it only after you explicitly send it in a later user turn.
+This example is pre-filled but has not been sent. No model, scientific job, or external request has run. Review or edit the question, then send it when you are ready.
 
 ## ${definition.title}
 
 ${definition.description}
 
-## Workflow steps
+## What you’ll explore
 
 ${steps}
 
 ${companion}
 
-## Exact reviewed prompt
+## Example question
 
 \`\`\`text
 ${definition.prompt}
@@ -131,9 +216,11 @@ export async function seedExampleSessions({
       // Pinned SessionManager intentionally buffers a user-only session until
       // an assistant exists. Its native rewrite is the bounded, no-run flush.
       manager.rewriteFile();
+    } else {
+      await migrateLegacyStaticStarter({ manager, definition, starter });
     }
-    // A nonempty transcript belongs to the user. Never append, overwrite, or
-    // branch it during startup; exact starter sessions are naturally idempotent.
+    // Every nonempty transcript belongs to the user unless its sole entry is
+    // an exact source-owned starter from the immediately preceding image.
     seeded.push(Object.freeze({ key: result.key, sessionId: result.entry.sessionId }));
   }
   return Object.freeze(seeded);

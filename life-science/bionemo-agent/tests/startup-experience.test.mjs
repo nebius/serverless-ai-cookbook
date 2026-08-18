@@ -21,7 +21,8 @@ test("credential-free Tavily research skill is loaded by OpenClaw, Codex, and Cl
   assert.match(skill, /OpenFold2, optimizes two candidates with MolMIM/u);
   assert.match(skill, /models the\s+best target-ligand complex with OpenFold3/u);
   assert.doesNotMatch(skill, /tvly-[A-Za-z0-9]/u);
-  assert.match(metadata, /default_prompt: "Use \$tavily-research/u);
+  assert.match(metadata, /default_prompt: "Compare what RCSB PDB and UniProt contribute/u);
+  assert.doesNotMatch(metadata, /Use \$tavily-research/u);
 
   assert.equal(config.agents.defaults.skills, undefined);
   assert.equal(config.agents.list[0].skills, undefined);
@@ -33,19 +34,22 @@ test("credential-free Tavily research skill is loaded by OpenClaw, Codex, and Cl
   assert.match(dockerfile, /test "\$\(find "\$\{CLAWBIO_SKILL_ROOT\}"[^\n]+" -eq 95/u);
 });
 
-test("dashboard exposes exact research-first prompts and canonical chat links", () => {
+test("dashboard exposes natural research questions and canonical chat links", () => {
   const html = uiInternals.dashboardHtml("startup-nonce");
 
   assert.equal(DEMO_STARTERS.length, 4);
   assert.equal(CANONICAL_CHAT_PATH, "/chat?session=agent%3Abionemo%3Amain");
   for (const starter of DEMO_STARTERS) {
-    assert.match(starter.prompt, /ack_research_only=true/u);
-    assert.match(starter.prompt, /ack_non_clinical=true/u);
+    assert.match(starter.prompt, /research/u);
+    assert.match(starter.prompt, /independent validation/u);
+    assert.doesNotMatch(starter.prompt, /\b(?:bionemo_|bionemo_models__|clawbio__|tavily_web__)/u);
+    assert.doesNotMatch(starter.prompt, /\b(?:ack_[a-z_]+|input_file|viewerMarkdown)\b/u);
+    assert.doesNotMatch(starter.prompt, /exactly once/iu);
     assert.ok(html.includes(starter.prompt));
   }
   assert.deepEqual(DEMO_STARTERS[0].steps, NOTEBOOK_CATALOG[0].steps);
-  assert.match(DEMO_STARTERS[0].prompt, /bionemo_research_drug_demo exactly once/u);
-  assert.match(DEMO_STARTERS[0].prompt, /ack_no_safety_or_therapeutic_claims=true/u);
+  assert.match(DEMO_STARTERS[0].prompt, /^Please run a small EGFR research study/u);
+  assert.match(DEMO_STARTERS[1].prompt, /^Please compare OpenFold2 and OpenFold3 predictions/u);
   assert.equal(DEMO_STARTERS[0].prompt, NOTEBOOK_CATALOG[0].prompt);
   assert.ok(html.includes(CANONICAL_CHAT_PATH));
   assert.match(html, /canonicalChatPath\+'&draft='\+encodeURIComponent\(x\.prompt\)/u);

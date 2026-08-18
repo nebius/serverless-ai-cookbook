@@ -180,37 +180,39 @@ safe read-only preview, an exact `.ipynb` download, and a one-click launch into
 its own ready example chat. At startup, OpenClaw's native session lifecycle
 creates and pins eleven stable, distinctly labelled starter-only sessions in the
 Sessions sidebar. Each contains one visible static user template labelled
-`STATIC STARTER — NOT EXECUTED`, while its reviewed prompt is also loaded as an
-unsent draft. Opening the page or a session never sends a model request, starts
-a tool, or runs scientific compute. They do not contain credentials, fake
-assistant output, executed output, or a Python kernel.
+`EXAMPLE — READY TO TRY`, while its natural-language question is also loaded as
+an unsent draft. The examples describe research goals in the same words a user
+might choose; internal tool names, acknowledgement fields, routing, retries, and
+idempotency remain runtime-owned implementation details. Opening the page or a
+session never sends a model request, starts a tool, or runs scientific compute.
+They do not contain credentials, fake assistant output, executed output, or a
+Python kernel.
 
-Four notebook-backed sessions demonstrate the composed BioNeMo workflows:
+Four notebook-backed questions explore common research tasks:
 
-1. an optional Tavily-first EGFR/gefitinib research workflow using OpenFold2,
-   MolMIM, and OpenFold3;
-2. a side-by-side Crambin OpenFold2/OpenFold3 structure comparison;
-3. bounded MolMIM ligand optimization followed by OpenFold3 complex modeling;
-4. a bulk workflow that reads the bundled, reviewed five-protein FASTA and
-   invokes OpenFold2 once per record, sequentially.
+1. explore public EGFR/gefitinib evidence, candidate molecules, and a modeled
+   target complex;
+2. compare OpenFold2 and OpenFold3 predictions for the same public crambin
+   sequence and explain the differences;
+3. explore two gefitinib-like candidates and model the stronger usable one with
+   the public EGFR target; and
+4. predict structures for five bundled public proteins and report a clear
+   result for every record.
 
-Seven additional source-owned session starters demonstrate the surrounding
-OpenClaw workbench without pretending they are notebooks or precomputed runs:
+Seven additional source-owned questions introduce the surrounding workbench:
 
-5. a no-tool tour of the browser agent, its complete adapted BioNeMo MCP model
-   surface, sanitized inventory, notebooks, and artifacts;
-6. a no-tool explanation of the complete packaged skill catalog, including
-   dependency-gated skills and the ClawBio on-demand catalog tools;
-7. one read-only ClawBio catalog search followed by one contract description;
-8. one readiness-gated, image-qualified local `gwas-lookup` demo with no
-   hosted model compute; and
-9. one bounded Tavily search that returns cited public sources, or reports the
-   safe availability/authentication category and stops without substitution;
-   and
-10. one sanitized, read-only BioNeMo model inventory call that reports model
-    families and readiness without launching scientific compute; and
-11. one direct, bounded MolMIM call through the configured backend, with two
-    explicit research acknowledgements and no OpenFold3 or job/status fallback.
+5. discover what the BioNeMo research workspace can do;
+6. understand how packaged agent skills guide research work;
+7. find the packaged workflow for a public GWAS variant without running it;
+8. generate an offline report for public variant rs3798220;
+9. compare what RCSB PDB and UniProt contribute using cited public sources;
+10. check which configured BioNeMo models are ready without launching compute;
+    and
+11. generate and compare two QED-optimized gefitinib analogs.
+
+The natural questions are mapped to bounded, reviewed behavior behind the
+scenes. Users do not need to know a function name or reproduce a transport
+schema to try an example.
 
 Each notebook calls one low-arity, backend-neutral `bionemo_*` wrapper. The
 wrapper selects direct NVIDIA or the configured MCP backend, owns all model
