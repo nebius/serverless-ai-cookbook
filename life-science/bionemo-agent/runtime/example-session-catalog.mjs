@@ -52,7 +52,7 @@ export const WORKBENCH_EXAMPLE_SESSIONS = Object.freeze([
       "Separate reading instructions from executing a tool",
       "Distinguish bounded OpenClaw skills from terminal client catalogs",
     ],
-    prompt: "Explain how the skills loaded into this OpenClaw agent guide behavior without running anything. Do not call any tool. Compare the roles of the clawbio-catalog skill, the tavily-research skill, and one BioNeMo composed-workflow skill; explain when skill instructions may lead to a tool call, why reading a skill is not execution, and why the broader ClawBio contracts copied for Codex and Claude are not all injected as native OpenClaw skills. Keep the explanation nonclinical and do not claim a tool or credential is configured unless it is visible.",
+    prompt: "Explain how the skills loaded into this OpenClaw agent guide behavior without running anything. Do not call any tool. Compare the roles of the clawbio-catalog skill, the tavily-research skill, and one BioNeMo composed-workflow skill; explain when skill instructions may lead to a tool call, why reading a skill is not execution, and how the complete packaged skill root remains discoverable while contracts that require a missing binary or external credential are marked dependency-gated until the owner supplies it. Keep the explanation nonclinical and do not claim a tool or credential is configured unless it is visible.",
     slug: "openclaw-skill-guidance",
     surface: "skills",
     draftSeedGeneration: 2,

@@ -841,6 +841,8 @@ test("all pins and model identity are immutable in the shipped configuration", a
   assert.match(dockerfile, /CLAUDE_CODE_VERSION="2\.1\.228"/u);
   assert.match(dockerfile, /NPM_VERSION="12\.0\.2"/u);
   assert.match(dockerfile, /PNPM_VERSION="11\.22\.0"/u);
+  assert.match(dockerfile, /io\.nebius\.npm\.version="\$\{NPM_VERSION\}"/u);
+  assert.match(dockerfile, /io\.nebius\.pnpm\.version="\$\{PNPM_VERSION\}"/u);
   assert.match(dockerfile, /"npm@\$\{NPM_VERSION\}"/u);
   assert.match(dockerfile, /corepack install --global "pnpm@\$\{PNPM_VERSION\}"/u);
   assert.match(dockerfile, /USER root\s+EXPOSE 18789/u);

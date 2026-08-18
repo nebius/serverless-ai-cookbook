@@ -165,10 +165,10 @@ images. The same `tavily-research` skill is available to OpenClaw, Codex, and
 Claude; credentials remain runtime-only and are never part of the skill.
 
 The image also packages ClawBio from immutable upstream commit
-`794dd1f5aacc1af308694c9b2f7966d0e396916e`. Codex and Claude can discover all
-95 redistributed skill contracts directly. OpenClaw gets a small
-`clawbio-catalog` router and three local MCP tools to search the catalog, read a
-contract, or run an explicitly requested qualified demo. The browser MCP
+`794dd1f5aacc1af308694c9b2f7966d0e396916e`. OpenClaw, Codex, and Claude can
+discover all 95 redistributed skill contracts directly. OpenClaw also gets a
+small `clawbio-catalog` router and three local MCP tools to search the catalog,
+read a contract, or run an explicitly requested qualified demo. The browser MCP
 surface deliberately has no input/output-path parameters, cannot read patient
 or customer files, and marks demo readiness separately from upstream CLI
 registration. Two upstream proprietary clinical-report skills are excluded;
@@ -199,8 +199,8 @@ OpenClaw workbench without pretending they are notebooks or precomputed runs:
 
 5. a no-tool tour of the browser agent, its complete adapted BioNeMo MCP model
    surface, sanitized inventory, notebooks, and artifacts;
-6. a no-tool explanation of native OpenClaw skills versus the broader ClawBio
-   contracts available to terminal Codex and Claude clients;
+6. a no-tool explanation of the complete packaged skill catalog, including
+   dependency-gated skills and the ClawBio on-demand catalog tools;
 7. one read-only ClawBio catalog search followed by one contract description;
 8. one readiness-gated, image-qualified local `gwas-lookup` demo with no
    hosted model compute; and
@@ -236,6 +236,8 @@ candidate-specific conformer failure as a general model-service outage.
 | Cloudflared | `2026.7.3` with pinned Linux amd64 SHA-256 |
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
+| npm | `12.0.2` |
+| pnpm | `11.22.0` |
 | 3Dmol.js | `2.5.5` |
 | Workbench | `3.4.0` |
 
@@ -243,10 +245,16 @@ The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
 directories, the 95 sanitized ClawBio directories, and the image-owned
 `tavily-research` skill are copied to `/etc/codex/skills` and
-`/root/.claude/skills` (127 direct skills per CLI). OpenClaw keeps its bounded
-native catalog at 15 skills and reaches the wider ClawBio catalog through the
-local hardened MCP server. Runtime client files contain only endpoint URLs,
-local executable paths, and environment-variable placeholders.
+`/root/.claude/skills`. OpenClaw scans the same 127-contract root in addition to
+its 15 concise workspace contracts; overlapping names retain the workbench's
+bounded browser-specific wording, while every other packaged contract remains
+discoverable on demand. The additional `clawbio-catalog` skill provides indexed
+access to the sanitized ClawBio set and its four image-qualified demos. A skill
+whose own contract requires a missing external binary or service credential is
+reported as dependency-gated until the owner installs or supplies that
+dependency; it is not removed from the packaged catalog. Runtime client files
+contain only endpoint URLs, local executable paths, and environment-variable
+placeholders.
 
 ## Owner-admin trust boundary
 

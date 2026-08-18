@@ -5,7 +5,7 @@ import { configureOpenClaw } from "../runtime/runtime-config.mjs";
 
 const root = new URL("../", import.meta.url);
 
-test("ClawBio is source-pinned, license-filtered, and copied only to terminal-capable skill roots", async () => {
+test("ClawBio is source-pinned, license-filtered, and copied to shared direct skill roots", async () => {
   const [dockerfile, sanitizer, wrapper, templateText, router] = await Promise.all([
     readFile(new URL("Dockerfile", root), "utf8"),
     readFile(new URL("runtime/prepare-clawbio.py", root), "utf8"),
@@ -40,10 +40,13 @@ test("ClawBio is source-pinned, license-filtered, and copied only to terminal-ca
   assert.match(sanitizer, /symbolic links are not allowed/u);
   assert.match(sanitizer, /65_536/u);
 
-  assert.equal(template.agents.defaults.skills.at(-1), "clawbio-catalog");
-  assert.deepEqual(template.agents.defaults.skills, template.agents.list[0].skills);
-  assert.equal(template.agents.defaults.skills.length, 15);
-  assert.ok(template.skills.limits.maxSkillsInPrompt >= template.agents.defaults.skills.length);
+  assert.equal(template.agents.defaults.skills, undefined);
+  assert.equal(template.agents.list[0].skills, undefined);
+  assert.deepEqual(template.skills.load.extraDirs, ["/etc/codex/skills"]);
+  assert.ok(template.skills.limits.maxCandidatesPerRoot >= 128);
+  assert.ok(template.skills.limits.maxSkillsLoadedPerSource >= 128);
+  assert.ok(template.skills.limits.maxSkillsInPrompt >= 128);
+  assert.ok(template.skills.limits.maxSkillsPromptChars >= 120_000);
   assert.match(router, /demo_runnable_in_image/u);
   assert.match(router, /cannot use it to inspect patient or customer files/u);
   assert.match(wrapper, /Only explicit ClawBio demo runs are enabled/u);

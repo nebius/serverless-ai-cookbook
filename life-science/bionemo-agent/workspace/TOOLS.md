@@ -37,6 +37,15 @@ NVIDIA credential; the corresponding cluster services remain available through
 their `bionemo_models__*` MCP tools. These scientific contracts coexist with
 the general-purpose container-admin tools below.
 
+## Skill catalog
+
+OpenClaw scans the same 127 packaged BioNeMo, ClawBio, and Tavily contracts as
+the terminal clients, plus the image-owned `clawbio-catalog` router. Concise
+workspace contracts take precedence where names overlap. Skills that declare a
+missing external executable or service credential remain packaged and
+discoverable but become model-eligible only after the owner installs or
+supplies that dependency.
+
 ## Owner-admin tools
 
 This private image enables OpenClaw's full tool profile. The agent process and

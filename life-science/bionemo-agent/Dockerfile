@@ -67,6 +67,8 @@ LABEL org.opencontainers.image.title="Nebius BioNeMo Agent Workbench" \
       io.nebius.cloudflared.version="${CLOUDFLARED_VERSION}" \
       io.nebius.codex.version="${CODEX_VERSION}" \
       io.nebius.claude-code.version="${CLAUDE_CODE_VERSION}" \
+      io.nebius.npm.version="${NPM_VERSION}" \
+      io.nebius.pnpm.version="${PNPM_VERSION}" \
       io.nebius.3dmol.version="${THREEDMOL_VERSION}"
 
 USER root

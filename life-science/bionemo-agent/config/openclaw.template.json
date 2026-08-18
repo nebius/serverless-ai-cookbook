@@ -42,23 +42,6 @@
       "compaction": {
         "reserveTokensFloor": 20000
       },
-      "skills": [
-        "boltz2-nim",
-        "diffdock-nim",
-        "evo2-nim",
-        "genmol-nim",
-        "molmim-nim",
-        "msa-search-nim",
-        "openfold2-nim",
-        "openfold3-nim",
-        "proteinmpnn-nim",
-        "rfdiffusion-nim",
-        "tavily-research",
-        "drug-discovery-pipeline",
-        "msa-structure-prediction-pipeline",
-        "protein-binder-design",
-        "clawbio-catalog"
-      ],
       "skipBootstrap": true,
       "thinkingDefault": "medium",
       "reasoningDefault": "off",
@@ -88,23 +71,6 @@
           "theme": "careful, reproducible nonclinical scientific research",
           "emoji": "🧬"
         },
-        "skills": [
-          "boltz2-nim",
-          "diffdock-nim",
-          "evo2-nim",
-          "genmol-nim",
-          "molmim-nim",
-          "msa-search-nim",
-          "openfold2-nim",
-          "openfold3-nim",
-          "proteinmpnn-nim",
-          "rfdiffusion-nim",
-          "tavily-research",
-          "drug-discovery-pipeline",
-          "msa-structure-prediction-pipeline",
-          "protein-binder-design",
-          "clawbio-catalog"
-        ],
         "sandbox": {
           "mode": "off"
         },
@@ -173,11 +139,14 @@
     }
   },
   "skills": {
+    "load": {
+      "extraDirs": ["/etc/codex/skills"]
+    },
     "limits": {
-      "maxCandidatesPerRoot": 32,
-      "maxSkillsLoadedPerSource": 16,
-      "maxSkillsInPrompt": 15,
-      "maxSkillsPromptChars": 60000,
+      "maxCandidatesPerRoot": 256,
+      "maxSkillsLoadedPerSource": 256,
+      "maxSkillsInPrompt": 256,
+      "maxSkillsPromptChars": 120000,
       "maxSkillFileBytes": 65536
     }
   },

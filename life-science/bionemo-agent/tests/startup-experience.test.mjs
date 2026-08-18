@@ -23,12 +23,11 @@ test("credential-free Tavily research skill is loaded by OpenClaw, Codex, and Cl
   assert.doesNotMatch(skill, /tvly-[A-Za-z0-9]/u);
   assert.match(metadata, /default_prompt: "Use \$tavily-research/u);
 
-  assert.equal(config.agents.defaults.skills.filter((name) => name === "tavily-research").length, 1);
-  assert.equal(config.agents.list[0].skills.filter((name) => name === "tavily-research").length, 1);
-  assert.equal(config.agents.defaults.skills.filter((name) => name === "clawbio-catalog").length, 1);
-  assert.equal(config.agents.list[0].skills.filter((name) => name === "clawbio-catalog").length, 1);
-  assert.ok(config.skills.limits.maxSkillsInPrompt >= config.agents.defaults.skills.length);
-  assert.ok(config.skills.limits.maxSkillsLoadedPerSource >= config.agents.defaults.skills.length);
+  assert.equal(config.agents.defaults.skills, undefined);
+  assert.equal(config.agents.list[0].skills, undefined);
+  assert.deepEqual(config.skills.load.extraDirs, ["/etc/codex/skills"]);
+  assert.ok(config.skills.limits.maxSkillsInPrompt >= 128);
+  assert.ok(config.skills.limits.maxSkillsLoadedPerSource >= 128);
   assert.match(dockerfile, /cp -a \/workspace\/agent\/skills\/tavily-research \/etc\/codex\/skills\//u);
   assert.match(dockerfile, /cp -a \/workspace\/agent\/skills\/tavily-research \/root\/\.claude\/skills\//u);
   assert.match(dockerfile, /test "\$\(find "\$\{CLAWBIO_SKILL_ROOT\}"[^\n]+" -eq 95/u);
