@@ -50,6 +50,8 @@ ARG BIONEMO_TOOLKIT_COMMIT="23d483511e0b42221bdafd7259ff43c05220ee86"
 ARG CODEX_VERSION="0.147.0"
 ARG CLAUDE_CODE_VERSION="2.1.228"
 ARG THREEDMOL_VERSION="2.5.5"
+ARG NPM_VERSION="12.0.2"
+ARG PNPM_VERSION="11.22.0"
 ARG CLAWBIO_COMMIT="794dd1f5aacc1af308694c9b2f7966d0e396916e"
 ARG RDKIT_VERSION="2025.9.6"
 
@@ -93,9 +95,12 @@ RUN apt-get update \
       wget \
       zip \
     && npm install --global --omit=dev \
+      "npm@${NPM_VERSION}" \
       "@openai/codex@${CODEX_VERSION}" \
       "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
       "3dmol@${THREEDMOL_VERSION}" \
+    && rm -rf /usr/local/share/corepack/v1/pnpm \
+    && corepack install --global "pnpm@${PNPM_VERSION}" \
     && install -d -o root -g root -m 0700 /opt/bionemo/assets /opt/bionemo/licenses \
     && install -o root -g root -m 0400 /usr/local/lib/node_modules/3dmol/build/3Dmol-min.js /opt/bionemo/assets/3Dmol-min.js \
     && install -o root -g root -m 0400 /usr/local/lib/node_modules/3dmol/LICENSE /opt/bionemo/licenses/3dmol-LICENSE \

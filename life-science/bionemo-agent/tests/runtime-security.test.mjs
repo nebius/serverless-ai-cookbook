@@ -839,6 +839,10 @@ test("all pins and model identity are immutable in the shipped configuration", a
   assert.match(dockerfile, /PIP_BREAK_SYSTEM_PACKAGES=1/u);
   assert.match(dockerfile, /CODEX_VERSION="0\.147\.0"/u);
   assert.match(dockerfile, /CLAUDE_CODE_VERSION="2\.1\.228"/u);
+  assert.match(dockerfile, /NPM_VERSION="12\.0\.2"/u);
+  assert.match(dockerfile, /PNPM_VERSION="11\.22\.0"/u);
+  assert.match(dockerfile, /"npm@\$\{NPM_VERSION\}"/u);
+  assert.match(dockerfile, /corepack install --global "pnpm@\$\{PNPM_VERSION\}"/u);
   assert.match(dockerfile, /USER root\s+EXPOSE 18789/u);
   assert.doesNotMatch(dockerfile, /chmod -R a-w \/workspace\/agent\/notebooks/u);
   assert.match(dockerfile, /BIONEMO_NOTEBOOK_ROOT=\/workspace\/agent\/notebooks/u);
