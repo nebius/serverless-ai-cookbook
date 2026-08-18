@@ -5,7 +5,7 @@ import { LIMITS } from "./validation.mjs";
 export const TAVILY_SEARCH_URL = "https://api.tavily.com/search";
 export const DEFAULT_BIONEMO_MCP_URL = "https://clawbio-mcp.89-169-122-161.sslip.io/mcp";
 export const TAVILY_EGFR_QUERY = "EGFR gefitinib resistance mechanism medicinal chemistry current public research evidence";
-export const RESEARCH_DEMO_USER_AGENT = "nebius-bionemo-agent/3.3.3";
+export const RESEARCH_DEMO_USER_AGENT = "nebius-bionemo-agent/3.4.0";
 export const TAVILY_PRIMARY_DOMAINS = Object.freeze([
   "pubmed.ncbi.nlm.nih.gov",
   "pmc.ncbi.nlm.nih.gov",

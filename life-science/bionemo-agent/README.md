@@ -1,9 +1,16 @@
-# BioNeMo Agent Workbench 3.3.3 on Nebius Serverless
+# BioNeMo Agent Workbench 3.4.0 on Nebius Serverless
 
 This recipe packages a ready-to-start life-science agent environment for a
 Nebius Serverless CPU endpoint. The image contains:
 
-- a single-step, token-authenticated OpenClaw browser agent;
+- a single-step, token-authenticated OpenClaw browser agent running as root
+  inside its owner-controlled container;
+- the full OpenClaw admin profile: general-purpose root shell/process execution
+  inside the container's normal capability, seccomp, and mount boundary,
+  filesystem read/write/edit/patch, Python and other interpreters, runtime
+  package installation, the operator terminal, sessions, subagents, and
+  gateway automation, plus browser/web integrations when separately enabled
+  and configured;
 - Codex CLI `0.147.0` and Claude Code `2.1.228`, installed without auth caches;
 - all 31 skills from NVIDIA's pinned BioNeMo Agent Toolkit plugin, 95
   redistributable ClawBio skill contracts, and a credential-free Tavily
@@ -122,11 +129,13 @@ operations: `scvi_fit_transform` and `scanvi_fit_transform`.
 The adapter flattens the upstream request envelopes, requires every declared
 research acknowledgement, derives per-turn idempotency keys, and privately
 maps clean operation names back to the compatibility API. OpenClaw also gets
-the bounded `models_list`, `model_describe`, upload, `job_status`, and
-`model_fetch` helpers needed to use those models. Cross-job `jobs_list` and
-host-local path staging are deliberately not browser tools. The upstream
-credential and `clawbio_*` compatibility names never reach the model-facing
-surface.
+`models_list`, `model_describe`, resumable upload, cross-job `jobs_list`,
+`job_status`, and `model_fetch` helpers needed to use those models. The upstream
+host-local `input_stage_local` operation is omitted because its path would not
+refer to this owner container. The credential and `clawbio_*` compatibility
+names are not embedded in MCP schemas, results, or generated client
+configuration; an authenticated root admin can still inspect the process
+environment as described below.
 
 The existing `bionemo_molmim`, `bionemo_openfold2`, and `bionemo_openfold3`
 atomics and the four composed demos remain bounded convenience wrappers over
@@ -228,32 +237,42 @@ candidate-specific conformer failure as a general model-service outage.
 | Codex CLI | `0.147.0` |
 | Claude Code | `2.1.228` |
 | 3Dmol.js | `2.5.5` |
-| Workbench | `3.3.3` |
+| Workbench | `3.4.0` |
 
 The canonical NVIDIA plugin is vendored under
 `vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit`. Its 31 skill
 directories, the 95 sanitized ClawBio directories, and the image-owned
 `tavily-research` skill are copied to `/etc/codex/skills` and
-`~/.claude/skills` (127 direct skills per CLI). OpenClaw keeps its bounded
+`/root/.claude/skills` (127 direct skills per CLI). OpenClaw keeps its bounded
 native catalog at 15 skills and reaches the wider ClawBio catalog through the
 local hardened MCP server. Runtime client files contain only endpoint URLs,
 local executable paths, and environment-variable placeholders.
 
-## Security boundaries
+## Owner-admin trust boundary
 
 The browser gateway requires `AUTH_TOKEN` with at least 24 characters. The
 token is passed to OpenClaw in memory as `OPENCLAW_GATEWAY_TOKEN`; it is not
-written into the generated configuration. The public readiness routes reveal
-only capability presence. The event-workbench default disables OpenClaw's
-additional per-browser device approval, so entering the gateway token is the
-only interactive login step. Set `BIONEMO_REQUIRE_DEVICE_PAIRING=true` for a
-private deployment that should require both the token and explicit one-time
-approval of every browser.
+written into the generated configuration. Readiness routes reveal only
+capability presence. The default disables OpenClaw's additional per-browser
+device approval, so entering the gateway token is the only interactive login
+step. Set `BIONEMO_REQUIRE_DEVICE_PAIRING=true` to require both the token and
+explicit one-time approval of every browser.
 
-Token-only mode is a deliberate security/usability tradeoff for the bounded
-event image. Keep the token secret: anyone who has it can use the Control UI.
-Terminal, exec, general filesystem/network tools, subagents, and unbounded
-OpenClaw capabilities remain disabled.
+This image is intentionally for a private environment owned by the person who
+holds that token. An authenticated user is an administrator: the agent and
+Control UI terminal run as root inside the container, execution approvals are
+set to full/no-prompt, the agent sandbox is off, filesystem paths are not
+restricted to the workspace, and the complete OpenClaw tool profile is enabled.
+Root exec and terminal processes inherit the gateway environment, including any
+runtime-injected model, MCP, or Tavily credentials. Do not share the endpoint or
+its token with someone who should not have owner-equivalent access.
+
+Container root is not automatically root on the Nebius worker, Kubernetes
+cluster, or another host. Those external systems become reachable only when the
+owner explicitly supplies their clients, credentials, sockets, mounts, or
+network access. Within the container, the agent may use `apt`, `pip`, `uv`,
+`npm`, shell scripts, Python, and arbitrary writable paths to customize the
+environment.
 
 The local ClawBio MCP server is the sole bounded exception for ClawBio demos:
 it exposes list, describe, and demo-run operations, accepts no arbitrary local
@@ -261,15 +280,15 @@ paths or extra command arguments, and runs only the image-qualified demo
 allowlist. Its catalog and demos are research/education aids, not clinical
 decision support.
 
-OpenClaw uses the minimal tool profile. General runtime, filesystem, arbitrary
-network, browser, automation, session, node, agent, messaging, and media tool
-groups are denied. Exec, elevated mode, the browser terminal, and gateway tools
-are disabled. The ten direct NVIDIA adapters accept bounded schemas and fixed
-NVIDIA HTTPS routes, reject redirects and arbitrary paths, cap responses, and
-redact credentials.
+OpenClaw uses the full tool profile. Exec targets the gateway container with
+`security=full`, `ask=off`, and a matching full host-approval file. Filesystem
+and `apply_patch` operations may leave the workspace, the browser terminal is
+enabled, and up to four top-level/subagent runs may execute concurrently. The
+typed scientific adapters still enforce their acknowledgement, validation,
+exact-once submission, timeout, and artifact contracts.
 
-Generated artifacts live under the agent workspace so OpenClaw can attach
-them without broad filesystem access. PDB and CIF results also get an
+Generated scientific artifacts live under the agent workspace. PDB and CIF
+results also get an
 unguessable, per-run viewer link. The link is a bearer capability for only
 that run's structure files, loads the image-bundled 3Dmol.js asset, carries no
 gateway or provider key, uses no external CDN, and is not persisted in run
@@ -280,11 +299,11 @@ manifests.
 From this directory:
 
 ```bash
-export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:3.3.3"
+export IMAGE="cr.eu-north1.nebius.cloud/<registry-id>/models/bionemo-agent:latest"
 ./scripts/build_image.sh
 ```
 
-The script builds and pushes the version tag, resolves its digest, writes an
+The script builds and pushes the explicit tag, resolves its digest, writes an
 SPDX SBOM and Grype/Trivy reports under `.task-output/image`, and blocks the
 release on fixable Critical findings or detected image secrets. Deploy the printed digest or a unique,
 digest-derived short alias when Serverless label limits make the full digest
@@ -380,8 +399,8 @@ Run source tests and a local keyless smoke test:
 
 ```bash
 npm test
-docker build --platform linux/amd64 -t bionemo-agent:3.3.3-test .
-docker run --rm bionemo-agent:3.3.3-test doctor
+docker build --platform linux/amd64 -t bionemo-agent:latest .
+docker run --rm bionemo-agent:latest doctor
 ```
 
 For a running endpoint, obtain its managed URL from `status.public_endpoints`

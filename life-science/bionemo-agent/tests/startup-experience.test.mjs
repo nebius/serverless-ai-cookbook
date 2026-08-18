@@ -30,7 +30,7 @@ test("credential-free Tavily research skill is loaded by OpenClaw, Codex, and Cl
   assert.ok(config.skills.limits.maxSkillsInPrompt >= config.agents.defaults.skills.length);
   assert.ok(config.skills.limits.maxSkillsLoadedPerSource >= config.agents.defaults.skills.length);
   assert.match(dockerfile, /cp -a \/workspace\/agent\/skills\/tavily-research \/etc\/codex\/skills\//u);
-  assert.match(dockerfile, /cp -a \/workspace\/agent\/skills\/tavily-research \/home\/node\/\.claude\/skills\//u);
+  assert.match(dockerfile, /cp -a \/workspace\/agent\/skills\/tavily-research \/root\/\.claude\/skills\//u);
   assert.match(dockerfile, /test "\$\(find "\$\{CLAWBIO_SKILL_ROOT\}"[^\n]+" -eq 95/u);
 });
 

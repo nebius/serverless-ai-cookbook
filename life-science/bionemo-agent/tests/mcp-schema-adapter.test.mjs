@@ -12,7 +12,7 @@ import {
   productToolName,
   startMcpSchemaAdapter,
 } from "../runtime/mcp-schema-adapter.mjs";
-import { MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
+import { MCP_EXPOSED_UPSTREAM_TOOL_NAMES, MCP_SUBMISSION_TOOL_NAMES, MCP_SUPPORT_TOOL_NAMES, MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
 
 const ACKNOWLEDGEMENTS = {
   additionalProperties: false,
@@ -121,6 +121,75 @@ const DEEPVARIANT = wrappedTool("clawbio_deepvariant_call", "ParabricksDeepVaria
 }, { InputReference: INPUT_REFERENCE, ParabricksInputSource: PARABRICKS_INPUT_SOURCE });
 
 const TOOLS_LIST = { jsonrpc: "2.0", id: 1, result: { tools: [OPENFOLD2, ESM2] } };
+
+test("adapter exposes and reverses exactly the 25 hosted-transport operations", () => {
+  assert.deepEqual(
+    Object.keys(adapterTest.REQUIRED_ACKNOWLEDGEMENTS).sort(),
+    [...MCP_SUBMISSION_TOOL_NAMES].sort(),
+    "every exposed compute operation must retain the flattened acknowledgement/idempotency path",
+  );
+  const supportTools = MCP_SUPPORT_TOOL_NAMES.map((name) => ({
+    name,
+    description: `Support ${name}`,
+    inputSchema: { type: "object", additionalProperties: true, properties: {} },
+  }));
+  const computeTools = MCP_SUBMISSION_TOOL_NAMES.map((name, index) => wrappedTool(name, `Request${index}`, {
+    type: "object",
+    additionalProperties: false,
+    properties: { value: { type: "string" } },
+    required: ["value"],
+  }));
+  const excluded = [
+    { name: "clawbio_input_stage_local", inputSchema: { type: "object", properties: {} } },
+    { name: "clawbio_future_unsafe_operation", inputSchema: { type: "object", properties: {} } },
+  ];
+  const catalog = new Map();
+  const adapted = adaptToolsListPayload({
+    jsonrpc: "2.0",
+    id: 1,
+    result: { tools: [...supportTools, ...computeTools, ...excluded] },
+  }, catalog);
+  const publicNames = MCP_EXPOSED_UPSTREAM_TOOL_NAMES.map(productToolName);
+  assert.equal(publicNames.length, 25);
+  assert.deepEqual(adapted.result.tools.map(({ name }) => name), publicNames);
+  assert.deepEqual([...catalog.keys()], publicNames);
+
+  for (const upstreamName of MCP_SUPPORT_TOOL_NAMES) {
+    const publicName = productToolName(upstreamName);
+    const call = adaptToolCallPayload({
+      jsonrpc: "2.0",
+      id: `support-${publicName}`,
+      method: "tools/call",
+      params: { name: publicName, arguments: { marker: publicName } },
+    }, catalog);
+    assert.equal(call.params.name, upstreamName, publicName);
+    assert.deepEqual(call.params.arguments, { marker: publicName }, publicName);
+  }
+
+  for (const upstreamName of MCP_SUBMISSION_TOOL_NAMES) {
+    const publicName = productToolName(upstreamName);
+    const acknowledgements = adapterTest.REQUIRED_ACKNOWLEDGEMENTS[upstreamName];
+    const args = Object.fromEntries(acknowledgements.map((field) => [`ack_${field}`, true]));
+    const call = adaptToolCallPayload({
+      jsonrpc: "2.0",
+      id: `compute-${publicName}`,
+      method: "tools/call",
+      params: { name: publicName, arguments: { value: "test", ...args } },
+    }, catalog, { idempotencyKeyFactory: () => `key-${publicName}` });
+    assert.equal(call.params.name, upstreamName, publicName);
+    assert.deepEqual(call.params.arguments.request, { value: "test" }, publicName);
+    assert.equal(call.params.arguments.idempotency_key, `key-${publicName}`, publicName);
+  }
+
+  for (const name of ["input_stage_local", "future_unsafe_operation"]) {
+    assert.throws(() => adaptToolCallPayload({
+      jsonrpc: "2.0",
+      id: `excluded-${name}`,
+      method: "tools/call",
+      params: { name, arguments: {} },
+    }, catalog), /not an exposed BioNeMo MCP operation/u);
+  }
+});
 
 test("adapter neutralizes upstream initialize branding and compatibility operation names", () => {
   const original = {

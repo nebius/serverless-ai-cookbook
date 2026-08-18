@@ -28,9 +28,9 @@ test("ClawBio is source-pinned, license-filtered, and copied only to terminal-ca
   assert.doesNotMatch(dockerfile, /COPY --from=clawbio-builder[\s\S]+chmod -R a-w \/opt\/clawbio/u);
   assert.match(dockerfile, /uv sync[\s\S]+--frozen[\s\S]+--extra mcp[\s\S]+--no-editable/u);
   assert.match(dockerfile, /cp -a "\$\{skill\}" \/etc\/codex\/skills\//u);
-  assert.match(dockerfile, /cp -a "\$\{skill\}" \/home\/node\/\.claude\/skills\//u);
+  assert.match(dockerfile, /cp -a "\$\{skill\}" \/root\/\.claude\/skills\//u);
   assert.match(dockerfile, /find \/etc\/codex\/skills[^\n]+wc -l\)" -eq 127/u);
-  assert.match(dockerfile, /find \/home\/node\/\.claude\/skills[^\n]+wc -l\)" -eq 127/u);
+  assert.match(dockerfile, /find \/root\/\.claude\/skills[^\n]+wc -l\)" -eq 127/u);
   assert.doesNotMatch(dockerfile, /cp -a[^\n]+clawbio[^\n]+\/workspace\/agent\/skills/u);
 
   assert.match(sanitizer, /EXPECTED_UPSTREAM_SKILLS = 97/u);

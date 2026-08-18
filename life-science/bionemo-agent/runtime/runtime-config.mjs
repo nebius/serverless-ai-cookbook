@@ -7,7 +7,7 @@ import {
   MODEL_INVENTORY_TOOL,
   NVIDIA_ONLY_TOOL_NAMES,
 } from "../openclaw-plugin/src/catalog.mjs";
-import { MCP_SUBMISSION_TOOL_NAMES } from "./mcp-submission-policy.mjs";
+import { MCP_EXPOSED_UPSTREAM_TOOL_NAMES } from "./mcp-submission-policy.mjs";
 
 export const DEFAULT_MCP_URL = "https://clawbio-mcp.89-169-122-161.sslip.io/mcp";
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
@@ -16,14 +16,7 @@ export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
 const productMcpToolName = (name) => name.replace(/^clawbio_/u, "");
 export const BIONEMO_MCP_BROWSER_TOOL_NAMES = Object.freeze([
-  "models_list",
-  "model_describe",
-  "upload_create",
-  "upload_status",
-  "upload_delete",
-  "job_status",
-  "model_fetch",
-  ...MCP_SUBMISSION_TOOL_NAMES.map(productMcpToolName),
+  ...MCP_EXPOSED_UPSTREAM_TOOL_NAMES.map(productMcpToolName),
 ]);
 const NEMOTRON_SUPER_PARAMS = Object.freeze({
   chat_template_kwargs: Object.freeze({ enable_thinking: false, force_nonempty_content: true }),
@@ -224,9 +217,9 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     // before this configuration is generated. That adapter product-renames
     // the upstream operations, flattens request envelopes, requires explicit
     // acknowledgements, and owns the upstream credential. Materialize every
-    // model-submit contract plus the bounded discovery/upload/status/fetch
-    // helpers needed to use them. Deliberately exclude cross-job listing and
-    // host-local path staging from the browser surface.
+    // model-submit contract plus every support helper that is meaningful over
+    // the hosted transport. input_stage_local is intentionally omitted because
+    // its path would resolve on the remote MCP host, not in this container.
     config.mcp.servers.bionemo_models = {
       url: state.mcpUrl,
       transport: "streamable-http",
@@ -236,9 +229,9 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   }
   if (state.tavily) {
     // Avoid the reserved official-plugin id `tavily`: OpenClaw otherwise
-    // attempts a runtime npm install of @openclaw/tavily-plugin. This image
-    // intentionally ships without a package manager, so use the generic
-    // Streamable HTTP MCP transport under a distinct stable alias.
+    // attempts an unrelated runtime npm install of @openclaw/tavily-plugin.
+    // Keep this source-owned generic Streamable HTTP MCP transport under a
+    // distinct stable alias; owner-admin package managers remain available.
     config.mcp.servers.tavily_web = {
       url: "https://mcp.tavily.com/mcp/", transport: "streamable-http", timeout: 120,
       headers: { Authorization: "Bearer ${BIONEMO_TAVILY_API_KEY}", DEFAULT_PARAMETERS: "{\"search_depth\":\"basic\",\"max_results\":5,\"include_raw_content\":false,\"include_images\":false}" },

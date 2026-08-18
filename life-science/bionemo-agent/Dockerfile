@@ -54,9 +54,9 @@ ARG CLAWBIO_COMMIT="794dd1f5aacc1af308694c9b2f7966d0e396916e"
 ARG RDKIT_VERSION="2025.9.6"
 
 LABEL org.opencontainers.image.title="Nebius BioNeMo Agent Workbench" \
-      org.opencontainers.image.description="Authenticated BioNeMo browser agent plus Codex and Claude Code CLIs with NVIDIA BioNeMo and redistributable ClawBio skills" \
+      org.opencontainers.image.description="Owner-controlled root-admin BioNeMo browser agent plus Codex and Claude Code CLIs with NVIDIA BioNeMo and redistributable ClawBio skills" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook/tree/main/life-science/bionemo-agent" \
-      org.opencontainers.image.version="3.3.3" \
+      org.opencontainers.image.version="3.4.0" \
       org.opencontainers.image.licenses="Apache-2.0 AND CC-BY-4.0 AND BSD-3-Clause AND MIT AND GPL-3.0-only" \
       io.nebius.bionemo.toolkit.commit="${BIONEMO_TOOLKIT_COMMIT}" \
       io.nebius.clawbio.commit="${CLAWBIO_COMMIT}" \
@@ -68,34 +68,53 @@ LABEL org.opencontainers.image.title="Nebius BioNeMo Agent Workbench" \
       io.nebius.3dmol.version="${THREEDMOL_VERSION}"
 
 USER root
+COPY --from=clawbio-uv /uv /usr/local/bin/uv
 RUN apt-get update \
     && apt-get install --only-upgrade --yes --no-install-recommends \
       libgnutls30=3.7.9-2+deb12u7 \
+    && apt-get install --yes --no-install-recommends \
+      build-essential \
+      ca-certificates \
+      curl \
+      file \
+      git \
+      jq \
+      less \
+      lsof \
+      openssh-client \
+      pkg-config \
+      procps \
+      python3-dev \
+      python3-pip \
+      python3-venv \
+      ripgrep \
+      sudo \
+      unzip \
+      wget \
+      zip \
     && npm install --global --omit=dev \
       "@openai/codex@${CODEX_VERSION}" \
       "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
       "3dmol@${THREEDMOL_VERSION}" \
-    && install -d -o node -g node -m 0700 /opt/bionemo/assets /opt/bionemo/licenses \
-    && install -o node -g node -m 0400 /usr/local/lib/node_modules/3dmol/build/3Dmol-min.js /opt/bionemo/assets/3Dmol-min.js \
-    && install -o node -g node -m 0400 /usr/local/lib/node_modules/3dmol/LICENSE /opt/bionemo/licenses/3dmol-LICENSE \
+    && install -d -o root -g root -m 0700 /opt/bionemo/assets /opt/bionemo/licenses \
+    && install -o root -g root -m 0400 /usr/local/lib/node_modules/3dmol/build/3Dmol-min.js /opt/bionemo/assets/3Dmol-min.js \
+    && install -o root -g root -m 0400 /usr/local/lib/node_modules/3dmol/LICENSE /opt/bionemo/licenses/3dmol-LICENSE \
     && rm -rf /var/lib/apt/lists/* \
       /root/.npm \
-      /usr/local/lib/node_modules/npm \
       /usr/local/lib/node_modules/3dmol \
-      /usr/local/share/corepack \
       /app/node_modules/@vitest \
       /app/node_modules/vitest
 ADD --chmod=0755 --checksum=sha256:${CLOUDFLARED_SHA256} \
   https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64 \
   /usr/local/bin/cloudflared
 
-COPY --from=clawbio-builder --chown=node:node /opt/clawbio /opt/clawbio
-COPY --chown=node:node openclaw-plugin /opt/bionemo/openclaw-plugin
-COPY --chown=node:node config /opt/bionemo/config
-COPY --chown=node:node runtime /opt/bionemo/runtime
+COPY --from=clawbio-builder --chown=root:root /opt/clawbio /opt/clawbio
+COPY --chown=root:root openclaw-plugin /opt/bionemo/openclaw-plugin
+COPY --chown=root:root config /opt/bionemo/config
+COPY --chown=root:root runtime /opt/bionemo/runtime
 COPY --chmod=0755 runtime/bionemo-agent /usr/local/bin/bionemo-agent
-COPY --chown=node:node workspace /workspace/agent
-COPY --chown=node:node vendor /opt/bionemo/vendor
+COPY --chown=root:root workspace /workspace/agent
+COPY --chown=root:root vendor /opt/bionemo/vendor
 
 RUN node /opt/bionemo/runtime/patch-openclaw-mcp-turn-context.mjs /app/dist \
     && node /opt/bionemo/runtime/patch-openclaw-final-presentation.mjs /app/dist \
@@ -104,33 +123,33 @@ RUN node /opt/bionemo/runtime/patch-openclaw-mcp-turn-context.mjs /app/dist \
       /app/dist/control-ui \
       /opt/bionemo/control-ui \
       /opt/bionemo/runtime/control-ui-default-session.js \
-    && install -d -o node -g node -m 0700 \
-      /workspace/agent/artifacts /workspace/agent/artifacts/clawbio /workspace/state /home/node/.claude/skills \
+    && install -d -o root -g root -m 0700 \
+      /workspace/agent/artifacts /workspace/agent/artifacts/clawbio /workspace/state /root/.claude/skills /root/.codex \
     && install -d -o root -g root -m 0755 /etc/codex/skills \
     && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /etc/codex/skills/ \
-    && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /home/node/.claude/skills/ \
+    && cp -a /opt/bionemo/vendor/bionemo-agent-toolkit/plugins/bionemo-agent-toolkit/skills/. /root/.claude/skills/ \
     && cp -a /workspace/agent/skills/tavily-research /etc/codex/skills/ \
-    && cp -a /workspace/agent/skills/tavily-research /home/node/.claude/skills/ \
+    && cp -a /workspace/agent/skills/tavily-research /root/.claude/skills/ \
     && CLAWBIO_SKILL_ROOT="$(/opt/clawbio/bin/python -c 'from clawbio.cli import SKILLS_DIR; print(SKILLS_DIR)')" \
     && for skill in "${CLAWBIO_SKILL_ROOT}"/*; do \
       test -f "${skill}/SKILL.md" || continue; \
       cp -a "${skill}" /etc/codex/skills/; \
-      cp -a "${skill}" /home/node/.claude/skills/; \
+      cp -a "${skill}" /root/.claude/skills/; \
     done \
     && test "$(find "${CLAWBIO_SKILL_ROOT}" -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)" -eq 95 \
     && test "$(find /etc/codex/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)" -eq 127 \
-    && test "$(find /home/node/.claude/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)" -eq 127 \
-    && install -o node -g node -m 0400 /opt/clawbio/share/clawbio/LICENSE /opt/bionemo/licenses/clawbio-LICENSE \
-    && install -o node -g node -m 0400 /opt/clawbio/share/clawbio/Apache-2.0 /opt/bionemo/licenses/clawbio-Apache-2.0 \
-    && install -o node -g node -m 0400 /opt/clawbio/share/clawbio/GPL-3.0 /opt/bionemo/licenses/clawbio-GPL-3.0 \
-    && install -o node -g node -m 0400 /opt/clawbio/share/clawbio/RDKit-LICENSE /opt/bionemo/licenses/rdkit-LICENSE \
-    && chown -R node:node /opt/bionemo /home/node/.claude \
-    && chmod -R a-w /etc/codex/skills /home/node/.claude/skills \
-    && chmod -R a-w /workspace/agent/notebooks \
-    && chmod -R go-rwx /opt/bionemo /workspace/agent
+    && test "$(find /root/.claude/skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l)" -eq 127 \
+    && install -o root -g root -m 0400 /opt/clawbio/share/clawbio/LICENSE /opt/bionemo/licenses/clawbio-LICENSE \
+    && install -o root -g root -m 0400 /opt/clawbio/share/clawbio/Apache-2.0 /opt/bionemo/licenses/clawbio-Apache-2.0 \
+    && install -o root -g root -m 0400 /opt/clawbio/share/clawbio/GPL-3.0 /opt/bionemo/licenses/clawbio-GPL-3.0 \
+    && install -o root -g root -m 0400 /opt/clawbio/share/clawbio/RDKit-LICENSE /opt/bionemo/licenses/rdkit-LICENSE \
+    && chmod -R go-rwx /opt/bionemo /workspace/agent /root/.claude
 
 ENV PORT=18789 \
-    PATH=/opt/clawbio/bin:${PATH} \
+    HOME=/root \
+    SHELL=/bin/bash \
+    PATH=/root/.local/bin:/opt/clawbio/bin:${PATH} \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     OPENCLAW_GATEWAY_PORT=18789 \
     OPENCLAW_STATE_DIR=/workspace/state \
@@ -143,12 +162,10 @@ ENV PORT=18789 \
     BIONEMO_MCP_URL=https://clawbio-mcp.89-169-122-161.sslip.io/mcp \
     BIONEMO_ENABLE_HTTPS_TUNNEL=false \
     BIONEMO_REQUIRE_DEVICE_PAIRING=false \
-    DISABLE_UPDATES=1 \
-    DISABLE_AUTOUPDATER=1 \
     NODE_ENV=production
 
 WORKDIR /workspace/agent
-USER node
+USER root
 EXPOSE 18789
 HEALTHCHECK --interval=15s --timeout=5s --start-period=45s --retries=4 CMD ["node", "/opt/bionemo/runtime/healthcheck.mjs"]
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/bionemo-agent"]

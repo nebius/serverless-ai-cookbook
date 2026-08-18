@@ -23,6 +23,25 @@ export const MCP_SUBMISSION_TOOL_NAMES = Object.freeze([
   "clawbio_scvi_fit_transform",
 ]);
 
+// Product-visible support operations that are meaningful through the hosted
+// Streamable HTTP transport. `clawbio_input_stage_local` is intentionally not
+// exposed: its path resolves on the remote MCP host, not in the owner container.
+export const MCP_SUPPORT_TOOL_NAMES = Object.freeze([
+  "clawbio_models_list",
+  "clawbio_model_describe",
+  "clawbio_upload_create",
+  "clawbio_upload_status",
+  "clawbio_upload_delete",
+  "clawbio_jobs_list",
+  "clawbio_job_status",
+  "clawbio_model_fetch",
+]);
+
+export const MCP_EXPOSED_UPSTREAM_TOOL_NAMES = Object.freeze([
+  ...MCP_SUPPORT_TOOL_NAMES,
+  ...MCP_SUBMISSION_TOOL_NAMES,
+]);
+
 const SUBMISSION_TOOL_SET = new Set(MCP_SUBMISSION_TOOL_NAMES);
 const PRODUCT_SUBMISSION_TOOL_SET = new Set(
   MCP_SUBMISSION_TOOL_NAMES.map((name) => name.replace(/^clawbio_/u, "")),

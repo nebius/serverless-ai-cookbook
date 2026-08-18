@@ -40,7 +40,7 @@ export async function prepareClients(env = process.env) {
     codex.push("", "[mcp_servers.tavily_web]", 'url = "https://mcp.tavily.com/mcp/"', 'bearer_token_env_var = "TAVILY_API_KEY"', "tool_timeout_sec = 120");
     claude.mcpServers.tavily_web = { type: "http", url: "https://mcp.tavily.com/mcp/", headers: { Authorization: "Bearer ${TAVILY_API_KEY}" } };
   }
-  const home = env.HOME || "/home/node";
+  const home = env.HOME || "/root";
   await atomicWrite(path.join(home, ".codex", "config.toml"), `${codex.join("\n")}\n`);
   await atomicWrite(path.join(env.BIONEMO_CLIENT_WORKSPACE || "/workspace/agent", ".mcp.json"), `${JSON.stringify(claude, null, 2)}\n`);
   return state;

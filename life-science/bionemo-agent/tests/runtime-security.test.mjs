@@ -11,7 +11,7 @@ import { createUiHandlers, __test as uiInternals } from "../openclaw-plugin/src/
 import { __test as launcher } from "../runtime/launcher.mjs";
 import { BIONEMO_MCP_BROWSER_TOOL_NAMES, capabilities, configureOpenClaw, DEFAULT_MCP_URL, TOKEN_FACTORY_MODELS } from "../runtime/runtime-config.mjs";
 import { prepareClients } from "../runtime/prepare-clients.mjs";
-import { MCP_SUBMISSION_TOOL_NAMES, MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
+import { MCP_SUBMISSION_TOOL_NAMES, MCP_SUPPORT_TOOL_NAMES, MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
 import { BIONEMO_SUPER_INITIAL_TURNS, bionemoSuperLocalCompletionText } from "../runtime/patch-openclaw-super-followup.mjs";
 
 function fakeApi() {
@@ -72,13 +72,18 @@ test("plugin registers exactly the manifest-declared 18 clean tools", async () =
   assert.deepEqual(api.captured.hooks.map(({ event }) => event), ["before_tool_call", "before_agent_finalize", "agent_end", "before_prompt_build"]);
   const promptHook = api.captured.hooks.find(({ event }) => event === "before_prompt_build");
   const systemContext = (await promptHook.handler()).prependSystemContext;
+  assert.match(systemContext, /owner-controlled private environment/u);
+  assert.match(systemContext, /full OpenClaw admin tool profile/u);
+  assert.match(systemContext, /runs the agent as root inside the container/u);
+  assert.match(systemContext, /exec\/process\/read\/write\/edit\/apply_patch/u);
+  assert.match(systemContext, /install packages and change the container when asked/u);
   assert.match(systemContext, /MEDIA:<downloadPath>/u);
   assert.match(systemContext, /local demo-only clawbio__\* catalog tools/u);
   assert.match(systemContext, /When bionemo_models__\* tools are displayed, the configured BioNeMo MCP server is available under that namespace/u);
   assert.match(systemContext, /In that MCP-enabled surface, every entry returned by bionemo_models_list has a browser compute operation/u);
   assert.match(systemContext, /esm2_650m to bionemo_models__esm2_embed/u);
   assert.match(systemContext, /scvi_scanvi to bionemo_models__scvi_fit_transform or bionemo_models__scanvi_fit_transform/u);
-  assert.match(systemContext, /jobs_list and host-local input staging are not exposed/u);
+  assert.match(systemContext, /jobs_list, job_status, and model_fetch helpers/u);
   assert.match(systemContext, /poll bionemo_models__job_status only for that exact job ID, at most four times/u);
   assert.match(systemContext, /For every artifact that has viewerMarkdown/u);
   assert.match(systemContext, /same-origin path beginning with \/; preserve it verbatim/u);
@@ -523,7 +528,7 @@ test("plugin injects trusted per-turn identity into wrappers and every adapted M
     assert.equal(adapted.params[MCP_TURN_ID_FIELD], runId, publicName);
     assert.equal(adapted.params.marker, publicName);
   }
-  for (const supportName of ["models_list", "model_describe", "upload_create", "upload_status", "upload_delete", "job_status", "model_fetch"]) {
+  for (const supportName of MCP_SUPPORT_TOOL_NAMES.map((name) => name.replace(/^clawbio_/u, ""))) {
     assert.equal(await hook({ toolName: `bionemo_models__${supportName}`, params: { marker: supportName } }, { runId }), undefined, supportName);
   }
   const wrapperEvent = { toolName: "bionemo_research_drug_demo", params: { ack_research_only: true } };
@@ -758,7 +763,14 @@ test("runtime config omits private MCP credentials and persists only required pl
   assert.equal(parsedConfig.gateway.controlUi.dangerouslyDisableDeviceAuth, true);
   assert.equal(parsedConfig.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, false);
   assert.equal(parsedConfig.agents.defaults.compaction.reserveTokensFloor, 20_000);
-  assert.deepEqual(approvals.defaults, { security: "deny", ask: "off", askFallback: "deny", autoAllowSkills: false });
+  assert.deepEqual(approvals.defaults, { security: "full", ask: "off", askFallback: "full", autoAllowSkills: true });
+  assert.deepEqual(approvals.agents.bionemo, {
+    security: "full",
+    ask: "off",
+    askFallback: "full",
+    autoAllowSkills: true,
+    allowlist: [],
+  });
   assert.deepEqual(approvals.agents.bionemo.allowlist, []);
 });
 
@@ -774,20 +786,33 @@ test("private deployments can require one-time Control UI device pairing", async
   assert.equal(config.gateway.controlUi.dangerouslyDisableDeviceAuth, false);
 });
 
-test("static OpenClaw policy denies every general-purpose capability", async () => {
+test("static OpenClaw policy grants the private owner full container-admin capability", async () => {
   const config = JSON.parse(await readFile(new URL("../config/openclaw.template.json", import.meta.url), "utf8"));
-  assert.equal(config.tools.profile, "minimal");
+  assert.equal(config.tools.profile, "full");
   assert.deepEqual(config.tools.alsoAllow, EXACT_TOOL_NAMES);
-  for (const group of ["group:runtime", "group:fs", "group:web", "group:ui", "group:automation", "group:nodes", "group:agents", "group:sessions"]) {
-    assert.ok(config.tools.deny.includes(group), group);
-  }
-  assert.equal(config.tools.exec.mode, "deny");
-  assert.equal(config.tools.elevated.enabled, false);
-  assert.equal(config.gateway.terminal.enabled, false);
+  assert.deepEqual(config.tools.deny, ["bundle-mcp"]);
+  assert.equal(config.tools.fs.workspaceOnly, false);
+  assert.equal(config.tools.exec.host, "gateway");
+  assert.equal(config.tools.exec.mode, "full");
+  assert.equal(config.tools.exec.timeoutSec, 7_200);
+  assert.equal(config.tools.exec.applyPatch.enabled, true);
+  assert.equal(config.tools.exec.applyPatch.workspaceOnly, false);
+  assert.equal(config.gateway.terminal.enabled, true);
+  assert.equal(config.gateway.terminal.shell, "/bin/bash");
+  assert.equal(config.gateway.terminal.detachedSessionTimeoutSeconds, 3_600);
   assert.equal(config.gateway.controlUi.root, "/opt/bionemo/control-ui");
   assert.equal(config.gateway.auth.mode, "token");
   assert.equal(config.gateway.auth.token, "${OPENCLAW_GATEWAY_TOKEN}");
-  assert.deepEqual(config.gateway.tools.deny, ["*"]);
+  assert.equal(config.gateway.tools, undefined, "direct HTTP /tools/invoke keeps OpenClaw's default denial");
+  assert.equal(config.agents.defaults.sandbox.mode, "off");
+  assert.equal(config.agents.list[0].sandbox.mode, "off");
+  assert.equal(config.agents.defaults.maxConcurrent, 4);
+  assert.equal(config.agents.defaults.timeoutSeconds, 7_200);
+  assert.deepEqual(config.agents.defaults.subagents.allowAgents, ["*"]);
+  assert.equal(config.agents.defaults.subagents.maxConcurrent, 4);
+  assert.equal(config.agents.defaults.subagents.maxSpawnDepth, 3);
+  assert.equal(config.agents.defaults.subagents.maxChildrenPerAgent, 8);
+  assert.deepEqual(config.agents.list[0].subagents.allowAgents, ["*"]);
   assert.deepEqual(config.plugins.allow, ["bionemo-agent-toolkit"]);
   assert.deepEqual(config.models.providers, {});
   assert.equal(config.agents.defaults.model.primary, "setup/setup-required");
@@ -805,20 +830,23 @@ test("all pins and model identity are immutable in the shipped configuration", a
   const templateConfig = JSON.parse(config);
   const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
   assert.match(dockerfile, /openclaw:2026\.7\.1-2@sha256:8789721d/u);
-  assert.match(dockerfile, /org\.opencontainers\.image\.version="3\.3\.3"/u);
+  assert.match(dockerfile, /org\.opencontainers\.image\.version="3\.4\.0"/u);
   assert.match(dockerfile, /CLOUDFLARED_VERSION="2026\.7\.3"/u);
   assert.match(dockerfile, new RegExp(TOOLKIT_COMMIT));
   assert.match(dockerfile, /libgnutls30=3\.7\.9-2\+deb12u7/u);
-  assert.match(dockerfile, /\/usr\/local\/lib\/node_modules\/npm/u);
+  assert.match(dockerfile, /python3-pip/u);
+  assert.match(dockerfile, /COPY --from=clawbio-uv \/uv \/usr\/local\/bin\/uv/u);
+  assert.match(dockerfile, /PIP_BREAK_SYSTEM_PACKAGES=1/u);
   assert.match(dockerfile, /CODEX_VERSION="0\.147\.0"/u);
   assert.match(dockerfile, /CLAUDE_CODE_VERSION="2\.1\.228"/u);
-  assert.match(dockerfile, /chmod -R a-w \/workspace\/agent\/notebooks/u);
+  assert.match(dockerfile, /USER root\s+EXPOSE 18789/u);
+  assert.doesNotMatch(dockerfile, /chmod -R a-w \/workspace\/agent\/notebooks/u);
   assert.match(dockerfile, /BIONEMO_NOTEBOOK_ROOT=\/workspace\/agent\/notebooks/u);
   assert.match(config, /setup\/setup-required/u);
   assert.equal(templateConfig.plugins.entries["bionemo-agent-toolkit"].hooks.allowConversationAccess, true, "before_agent_finalize and agent_end require explicit conversation access in pinned OpenClaw");
-  assert.deepEqual([packageManifest.version, pluginPackageManifest.version, pluginManifest.version], ["3.3.3", "3.3.3", "3.3.3"]);
-  assert.match(readme, /^# BioNeMo Agent Workbench 3\.3\.3 on Nebius Serverless$/mu);
-  assert.match(uiInternals.dashboardHtml("test-nonce"), /BioNeMo Agent Workbench 3\.3\.3/u);
+  assert.deepEqual([packageManifest.version, pluginPackageManifest.version, pluginManifest.version], ["3.4.0", "3.4.0", "3.4.0"]);
+  assert.match(readme, /^# BioNeMo Agent Workbench 3\.4\.0 on Nebius Serverless$/mu);
+  assert.match(uiInternals.dashboardHtml("test-nonce"), /BioNeMo Agent Workbench 3\.4\.0/u);
   assert.equal((await readFile(new URL("../vendor/bionemo-agent-toolkit/UPSTREAM_COMMIT", import.meta.url), "utf8")).trim(), TOOLKIT_COMMIT);
 });
 
@@ -878,7 +906,7 @@ test("NVIDIA defaults to the tool-reliable Super profile", () => {
   assert.deepEqual(custom.agents.defaults.models["nvidia/example/custom"], {});
 });
 
-test("OpenClaw materializes the adapted BioNeMo MCP model surface without exposing private host operations", () => {
+test("OpenClaw materializes the full adapted BioNeMo MCP surface for the private owner", () => {
   const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
   const state = configureOpenClaw(config, { NVIDIA_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", TAVILY_API_KEY: "t" });
   assert.equal(state.reasoningProvider, "nvidia");
@@ -893,12 +921,12 @@ test("OpenClaw materializes the adapted BioNeMo MCP model surface without exposi
     toolFilter: { include: [...BIONEMO_MCP_BROWSER_TOOL_NAMES] },
   });
   assert.deepEqual(BIONEMO_MCP_BROWSER_TOOL_NAMES, [
-    "models_list", "model_describe", "upload_create", "upload_status", "upload_delete", "job_status", "model_fetch",
+    "models_list", "model_describe", "upload_create", "upload_status", "upload_delete", "jobs_list", "job_status", "model_fetch",
     "alphagenome_predict", "boltz2_predict", "cellpose_segment", "deepvariant_call", "diffdock_dock", "esm2_embed",
     "esmc_analyze", "evo2_generate", "genmol_generate", "molmim_optimize", "msa_search", "openfold2_predict",
     "openfold3_predict", "proteinmpnn_design", "rfdiffusion_generate", "scanvi_fit_transform", "scvi_fit_transform",
   ]);
-  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("jobs_list"), false);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("jobs_list"), true);
   assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("input_stage_local"), false);
   assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("esm2_embed"), true);
   assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("scanvi_fit_transform"), true);

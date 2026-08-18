@@ -16,14 +16,17 @@ The workbench plugin has exactly eighteen clean tools:
   sanitized model identities, families, and readiness, and never submits a
   model job or exposes routes or credentials.
 
-When MCP is configured, the browser also materializes `bionemo_models` with 24
+When MCP is configured, the browser also materializes `bionemo_models` with 25
 product-neutral operations: all 17 compute contracts covering the 16 inventory
-services, plus bounded inventory/description, upload, status, and fetch helpers.
+services, plus inventory/description, resumable upload, cross-job listing,
+status, and fetch helpers. The upstream host-local path-staging operation is not
+displayed because its path would not refer to this owner container.
 Examples include `bionemo_models__alphagenome_predict`,
 `bionemo_models__esm2_embed`, `bionemo_models__deepvariant_call`, and
-`bionemo_models__scanvi_fit_transform`. The adapter supplies the private
-request envelope and per-turn idempotency key. It does not expose `jobs_list`,
-host-local path staging, credentials, or upstream `clawbio_*` names.
+`bionemo_models__scanvi_fit_transform`. For compute submissions, the adapter
+supplies the private request envelope and per-turn idempotency key. It
+product-renames upstream operations and does not expose upstream `clawbio_*`
+names.
 
 All requests are validated by task-owned adapters, bounded by timeout and size
 limits, and saved under an isolated artifact root. `bionemo_molmim`,
@@ -31,7 +34,29 @@ limits, and saved under an isolated artifact root. `bionemo_molmim`,
 workflows use the configured NVIDIA or MCP backend. The remaining seven atomics
 and three direct workflows use fixed NVIDIA routes and are hidden without an
 NVIDIA credential; the corresponding cluster services remain available through
-their `bionemo_models__*` MCP tools. No general-purpose execution tool is enabled.
+their `bionemo_models__*` MCP tools. These scientific contracts coexist with
+the general-purpose container-admin tools below.
+
+## Owner-admin tools
+
+This private image enables OpenClaw's full tool profile. The agent process and
+the Control UI operator terminal run as root inside the container,
+with sandbox mode off and exec approvals set to full/no-prompt. Available
+general-purpose capabilities include:
+
+- `exec` and `process` for shell commands, background jobs,
+  Python, and other interpreters;
+- `read`, `write`, `edit`, and `apply_patch` without a workspace-only path
+  restriction;
+- browser, web, session, subagent, automation, gateway, memory, media, and node
+  tools from the full OpenClaw policy profile when their required runtime or
+  external service is configured;
+- `apt`, `pip`, `uv`, `npm`, and the normal root-owned system paths for installing
+  additional tooling at runtime.
+
+These admin tools complement the typed scientific tools; they do not relax the
+acknowledgement, exact-once submission, job-polling, or research-only contracts
+for BioNeMo compute.
 
 After a compute submission, never submit it again in the same turn. Poll only
 the exact returned job through `bionemo_models__job_status`, at most four times.

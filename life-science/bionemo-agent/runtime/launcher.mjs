@@ -99,8 +99,8 @@ async function writeRuntimeFiles({ templatePath, configPath, stateDir, origins, 
   await chmod(configPath, 0o600);
   const approvals = {
     version: 1,
-    defaults: { security: "deny", ask: "off", askFallback: "deny", autoAllowSkills: false },
-    agents: { bionemo: { security: "deny", ask: "off", askFallback: "deny", autoAllowSkills: false, allowlist: [] } },
+    defaults: { security: "full", ask: "off", askFallback: "full", autoAllowSkills: true },
+    agents: { bionemo: { security: "full", ask: "off", askFallback: "full", autoAllowSkills: true, allowlist: [] } },
   };
   const approvalsPath = path.join(stateDir, "exec-approvals.json");
   await writeFile(approvalsPath, `${JSON.stringify(approvals, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });

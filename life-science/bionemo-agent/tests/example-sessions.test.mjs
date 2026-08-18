@@ -105,7 +105,7 @@ test("new workbench prompts preserve exact bounded no-run and exactly-once contr
   assert.match(tour.prompt, /If bionemo_models__\* tools are displayed/u);
   assert.match(tour.prompt, /complete adapted MCP compute surface for all 16 inventory services/u);
   assert.match(tour.prompt, /bionemo_models_list is the sanitized read-only inventory wrapper when displayed/u);
-  assert.match(tour.prompt, /without exposing credentials, cross-job listing, host-local staging, or upstream clawbio_\* compatibility names/u);
+  assert.match(tour.prompt, /resumable upload, cross-job listing, status, and artifact fetch without exposing credentials, remote-host local-path staging, or upstream clawbio_\* compatibility names/u);
 
   assert.match(catalog.prompt, /Call clawbio__list_skills exactly once with query="gwas"/u);
   assert.match(catalog.prompt, /call clawbio__describe_skill exactly once with name="gwas-lookup"/u);

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${IMAGE:?Set IMAGE to a versioned Nebius Container Registry tag, for example cr.eu-north1.nebius.cloud/<registry>/models/bionemo-agent:3.3.3}"
+: "${IMAGE:?Set IMAGE to a Nebius Container Registry tag, for example cr.eu-north1.nebius.cloud/<registry>/models/bionemo-agent:latest}"
 
 if [[ "$IMAGE" != cr.*.nebius.cloud/*:* || "$IMAGE" == *@sha256:* ]]; then
-  echo "IMAGE must be a versioned tag in an approved Nebius Container Registry." >&2
+  echo "IMAGE must be an explicit tag (including latest) in an approved Nebius Container Registry." >&2
   exit 2
 fi
 

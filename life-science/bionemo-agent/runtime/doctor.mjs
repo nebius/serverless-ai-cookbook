@@ -17,7 +17,7 @@ let clawbio = { validation: "missing" };
 try {
   const manifest = JSON.parse(await readFile("/opt/clawbio/share/clawbio/image-manifest.json", "utf8"));
   const codexInstalled = await skillCount("/etc/codex/skills");
-  const claudeInstalled = await skillCount("/home/node/.claude/skills");
+  const claudeInstalled = await skillCount("/root/.claude/skills");
   clawbio = {
     packaged: manifest.distributedSkillCount,
     cataloged: manifest.distributedCatalogCount,
@@ -33,7 +33,15 @@ try {
 const report = {
   status: state.reasoning && state.modelBackend !== "unavailable" ? "ready" : "setup_required",
   agents: { openclaw: version("node", ["/app/openclaw.mjs", "--version"]), codex: version("codex"), claude: version("claude") },
-  skills: { codex: await skillCount("/etc/codex/skills"), claude: await skillCount("/home/node/.claude/skills"), clawbio },
+  skills: { codex: await skillCount("/etc/codex/skills"), claude: await skillCount("/root/.claude/skills"), clawbio },
+  ownerAdmin: {
+    root: typeof process.getuid === "function" && process.getuid() === 0,
+    shell: version("bash"),
+    python: version("python3"),
+    pip: version("pip"),
+    npm: version("npm"),
+    uv: version("uv"),
+  },
   configured: { reasoning: state.reasoning, reasoningProvider: state.reasoningProvider, modelBackend: state.modelBackend, nvidia: state.nvidia, nebius: state.nebius, openai: state.openai, anthropic: state.anthropic, mcp: state.mcp, tavily: state.tavily },
   mcpUrl: state.mcpUrl,
   credentialsStoredInImage: false,

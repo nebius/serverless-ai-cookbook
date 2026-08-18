@@ -27,11 +27,9 @@
       "allowedOrigins": []
     },
     "terminal": {
-      "enabled": false,
-      "detachedSessionTimeoutSeconds": 0
-    },
-    "tools": {
-      "deny": ["*"]
+      "enabled": true,
+      "shell": "/bin/bash",
+      "detachedSessionTimeoutSeconds": 3600
     }
   },
   "agents": {
@@ -65,8 +63,16 @@
       "thinkingDefault": "medium",
       "reasoningDefault": "off",
       "toolProgressDetail": "explain",
-      "timeoutSeconds": 1800,
-      "maxConcurrent": 1,
+      "timeoutSeconds": 7200,
+      "maxConcurrent": 4,
+      "subagents": {
+        "delegationMode": "prefer",
+        "allowAgents": ["*"],
+        "maxConcurrent": 4,
+        "maxSpawnDepth": 3,
+        "maxChildrenPerAgent": 8,
+        "runTimeoutSeconds": 7200
+      },
       "sandbox": {
         "mode": "off"
       }
@@ -103,7 +109,7 @@
           "mode": "off"
         },
         "subagents": {
-          "allowAgents": []
+          "allowAgents": ["*"]
         }
       }
     ]
@@ -111,7 +117,7 @@
   "models": { "mode": "merge", "providers": {} },
   "mcp": { "sessionIdleTtlMs": 600000, "servers": {} },
   "tools": {
-    "profile": "minimal",
+    "profile": "full",
     "alsoAllow": [
       "bionemo_boltz2",
       "bionemo_diffdock",
@@ -132,29 +138,20 @@
       "bionemo_protein_binder_design",
       "bionemo_models_list"
     ],
-    "deny": [
-      "group:runtime",
-      "group:fs",
-      "group:web",
-      "group:ui",
-      "group:automation",
-      "group:messaging",
-      "group:nodes",
-      "group:agents",
-      "group:sessions",
-      "group:memory",
-      "group:media",
-      "bundle-mcp",
-      "gateway",
-      "cron",
-      "sessions_spawn",
-      "subagents"
-    ],
-    "exec": {
-      "mode": "deny"
+    "deny": ["bundle-mcp"],
+    "fs": {
+      "workspaceOnly": false
     },
-    "elevated": {
-      "enabled": false
+    "exec": {
+      "host": "gateway",
+      "mode": "full",
+      "timeoutSec": 7200,
+      "cleanupMs": 7200000,
+      "notifyOnExit": true,
+      "applyPatch": {
+        "enabled": true,
+        "workspaceOnly": false
+      }
     }
   },
   "plugins": {

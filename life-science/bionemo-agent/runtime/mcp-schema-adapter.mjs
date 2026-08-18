@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import http from "node:http";
 import { Readable } from "node:stream";
-import { MCP_TURN_ID_FIELD, validMcpTurnId } from "./mcp-submission-policy.mjs";
+import { MCP_EXPOSED_UPSTREAM_TOOL_NAMES, MCP_TURN_ID_FIELD, validMcpTurnId } from "./mcp-submission-policy.mjs";
 
 const DEFAULT_MAX_REQUEST_BYTES = 2_500_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 25_000_000;
@@ -25,6 +25,8 @@ const PRODUCT_SERVER_INFO = Object.freeze({
   description: "Product-neutral, typed asynchronous access to the configured BioNeMo model services.",
 });
 const PRODUCT_SERVER_INSTRUCTIONS = "Discover available BioNeMo services with models_list. Compute tools enqueue one job and return a job_id; poll only job_status for that exact ID, then use model_fetch for explicit artifact access. Stage large browser inputs with upload_create, upload_status, and upload_delete. Accept every displayed research acknowledgement, submit each compute request once, and never infer clinical validity from research-model output.";
+const EXPOSED_UPSTREAM_TOOL_SET = new Set(MCP_EXPOSED_UPSTREAM_TOOL_NAMES);
+const EXPOSED_PRODUCT_TOOL_SET = new Set(MCP_EXPOSED_UPSTREAM_TOOL_NAMES.map((name) => productToolName(name)));
 
 export function productToolName(upstreamName) {
   if (typeof upstreamName !== "string") return upstreamName;
@@ -226,7 +228,10 @@ export function adaptToolsListPayload(payload, catalog = new Map()) {
   }
   if (!plainObject(payload) || !Array.isArray(payload.result?.tools)) return clone(payload);
   const next = clone(payload);
-  next.result.tools = payload.result.tools.map((tool) => {
+  catalog.clear();
+  next.result.tools = payload.result.tools.filter((tool) => (
+    plainObject(tool) && EXPOSED_UPSTREAM_TOOL_SET.has(tool.name)
+  )).map((tool) => {
     const adapted = adaptMcpToolDefinition(tool);
     if (adapted.mapping) catalog.set(adapted.tool.name, adapted.mapping);
     return adapted.tool;
@@ -334,13 +339,17 @@ export function adaptToolCallPayload(payload, catalog, { idempotencyKeyFactory =
   if (Array.isArray(payload)) return payload.map((item) => adaptToolCallPayload(item, catalog, { idempotencyKeyFactory }));
   if (!plainObject(payload) || payload.method !== "tools/call" || !plainObject(payload.params)) return clone(payload);
   const toolName = payload.params.name;
+  if (typeof toolName !== "string" || !EXPOSED_PRODUCT_TOOL_SET.has(toolName)) {
+    throw new McpAdapterInputError(`${String(toolName)} is not an exposed BioNeMo MCP operation`);
+  }
   const mapping = catalog.get(toolName);
   if (mapping?.mode === "tool-alias" && typeof mapping.upstreamName === "string") {
     const next = clone(payload);
     next.params.name = mapping.upstreamName;
     return next;
   }
-  if (!mapping || mapping.mode !== "flat-request") return clone(payload);
+  if (!mapping) throw new McpAdapterInputError(`${toolName} was not negotiated through tools/list`);
+  if (mapping.mode !== "flat-request") throw new McpAdapterInputError(`${toolName} has an unsupported adapter mapping`);
   const upstreamName = mapping.upstreamName || toolName;
   const rawSupplied = plainObject(payload.params.arguments) ? payload.params.arguments : {};
   const turnId = rawSupplied[MCP_TURN_ID_FIELD];
