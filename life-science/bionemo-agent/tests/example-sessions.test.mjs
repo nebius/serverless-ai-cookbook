@@ -102,6 +102,17 @@ test("eleven stable ready examples include four notebook workflows and seven bou
 test("new workbench prompts preserve exact bounded no-run and exactly-once contracts", () => {
   const [tour, skills, catalog, demo, tavily, inventory, molmim] = WORKBENCH_EXAMPLE_SESSIONS;
   for (const definition of [tour, skills]) assert.match(definition.prompt, /Do not call any tool\./u);
+  assert.equal(
+    skills.description,
+    "A no-tool explanation of skill instructions, tool boundaries, and the complete packaged catalog shared with terminal clients.",
+  );
+  assert.deepEqual(skills.steps, [
+    "Explain what a loaded skill contract contributes",
+    "Compare catalog, research, and composed-workflow guidance",
+    "Separate reading instructions from executing a tool",
+    "Explain workspace precedence and dependency-gated packaged contracts",
+  ]);
+  assert.doesNotMatch(skills.description, /terminal-only/u);
   assert.match(tour.prompt, /If bionemo_models__\* tools are displayed/u);
   assert.match(tour.prompt, /complete adapted MCP compute surface for all 16 inventory services/u);
   assert.match(tour.prompt, /bionemo_models_list is the sanitized read-only inventory wrapper when displayed/u);
