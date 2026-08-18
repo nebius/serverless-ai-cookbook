@@ -7,12 +7,24 @@ import {
   MODEL_INVENTORY_TOOL,
   NVIDIA_ONLY_TOOL_NAMES,
 } from "../openclaw-plugin/src/catalog.mjs";
+import { MCP_SUBMISSION_TOOL_NAMES } from "./mcp-submission-policy.mjs";
 
 export const DEFAULT_MCP_URL = "https://clawbio-mcp.89-169-122-161.sslip.io/mcp";
 export const NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b";
 export const NEBIUS_MODEL = NVIDIA_MODEL;
 export const OPENAI_MODEL = "gpt-5.6";
 export const ANTHROPIC_MODEL = "claude-sonnet-5";
+const productMcpToolName = (name) => name.replace(/^clawbio_/u, "");
+export const BIONEMO_MCP_BROWSER_TOOL_NAMES = Object.freeze([
+  "models_list",
+  "model_describe",
+  "upload_create",
+  "upload_status",
+  "upload_delete",
+  "job_status",
+  "model_fetch",
+  ...MCP_SUBMISSION_TOOL_NAMES.map(productMcpToolName),
+]);
 const NEMOTRON_SUPER_PARAMS = Object.freeze({
   chat_template_kwargs: Object.freeze({ enable_thinking: false, force_nonempty_content: true }),
 });
@@ -207,6 +219,21 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
     timeout: 300,
     toolFilter: { include: ["list_skills", "describe_skill", "run_skill"] },
   };
+  if (state.mcp) {
+    // The launcher rewrites state.mcpUrl to the image-local schema adapter
+    // before this configuration is generated. That adapter product-renames
+    // the upstream operations, flattens request envelopes, requires explicit
+    // acknowledgements, and owns the upstream credential. Materialize every
+    // model-submit contract plus the bounded discovery/upload/status/fetch
+    // helpers needed to use them. Deliberately exclude cross-job listing and
+    // host-local path staging from the browser surface.
+    config.mcp.servers.bionemo_models = {
+      url: state.mcpUrl,
+      transport: "streamable-http",
+      timeout: 900,
+      toolFilter: { include: [...BIONEMO_MCP_BROWSER_TOOL_NAMES] },
+    };
+  }
   if (state.tavily) {
     // Avoid the reserved official-plugin id `tavily`: OpenClaw otherwise
     // attempts a runtime npm install of @openclaw/tavily-plugin. This image
@@ -222,10 +249,11 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
   // and Tavily servers remain credential-gated above.
   config.tools.deny = config.tools.deny.filter((name) => name !== "bundle-mcp");
   if (!config.tools.alsoAllow.includes("bundle-mcp")) config.tools.alsoAllow.push("bundle-mcp");
-  // These are image-owned, schema-bounded plugin wrappers, not raw hosted MCP
-  // operations. The three configured-backend atomics and four composed demos
-  // work through either supported backend. The remaining wrappers keep their
-  // fixed NVIDIA routes and must not be shown without an NVIDIA credential.
+  // These image-owned plugin wrappers remain available alongside the adapted
+  // BioNeMo MCP tools. The three configured-backend atomics and four composed
+  // demos work through either supported backend. The remaining plugin wrappers
+  // keep their fixed NVIDIA routes, while their product-neutral MCP equivalents
+  // are materialized above whenever MCP is the configured scientific backend.
   const configuredBackendReady = state.modelBackend === "mcp" || state.modelBackend === "nvidia";
   const visiblePluginTools = new Set([
     ...(configuredBackendReady ? CROSS_BACKEND_TOOL_NAMES : []),

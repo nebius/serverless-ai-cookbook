@@ -122,6 +122,39 @@ const DEEPVARIANT = wrappedTool("clawbio_deepvariant_call", "ParabricksDeepVaria
 
 const TOOLS_LIST = { jsonrpc: "2.0", id: 1, result: { tools: [OPENFOLD2, ESM2] } };
 
+test("adapter neutralizes upstream initialize branding and compatibility operation names", () => {
+  const original = {
+    jsonrpc: "2.0",
+    id: 1,
+    result: {
+      protocolVersion: "2025-03-26",
+      capabilities: { tools: { listChanged: false } },
+      serverInfo: {
+        name: "clawbio-models",
+        title: "ClawBio Kubernetes Models",
+        description: "ClawBio compatibility server",
+        version: "0.1.0",
+      },
+      instructions: "Use clawbio_models_list, clawbio_job_status, and clawbio_model_fetch.",
+    },
+  };
+  const adapted = adaptToolsListPayload(original);
+  assert.equal(adapted.result.serverInfo.name, "bionemo-models");
+  assert.equal(adapted.result.serverInfo.title, "BioNeMo Models");
+  assert.match(adapted.result.serverInfo.description, /Product-neutral/u);
+  assert.equal(adapted.result.serverInfo.version, "0.1.0");
+  assert.match(adapted.result.instructions, /models_list/u);
+  assert.match(adapted.result.instructions, /job_status/u);
+  assert.match(adapted.result.instructions, /model_fetch/u);
+  assert.doesNotMatch(JSON.stringify(adapted), /clawbio/iu);
+  assert.deepEqual(original.result.serverInfo, {
+    name: "clawbio-models",
+    title: "ClawBio Kubernetes Models",
+    description: "ClawBio compatibility server",
+    version: "0.1.0",
+  });
+});
+
 test("the read-only model catalog uses one stable short alias and reverses it upstream", () => {
   const catalog = new Map();
   const original = {

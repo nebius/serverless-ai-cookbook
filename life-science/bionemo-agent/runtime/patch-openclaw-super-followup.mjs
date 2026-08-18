@@ -363,7 +363,7 @@ export function bionemoSuperDeterministicFinalText(model, context) {
     const models = inventory.models.map(({ id, displayName, family, readiness }) => (
       `- id: ${id}; displayName: ${displayName}; family: ${family}; readiness: ${readiness}`
     )).join("\n");
-    return `Configured BioNeMo model inventory: ${inventory.modelCount} models; ${inventory.readyCount} ready.\n\n${models}\n\nThe inventory was read-only and submitted no scientific compute or model job. No inference is made that any listed inventory entry has a browser compute wrapper or that readiness establishes scientific validity.`;
+    return `Configured BioNeMo model inventory: ${inventory.modelCount} models; ${inventory.readyCount} ready.\n\n${models}\n\nThe inventory was read-only and submitted no scientific compute or model job. Every listed service is callable through its corresponding adapted bionemo_models__* compute operation in this browser; scvi_scanvi has separate scvi_fit_transform and scanvi_fit_transform operations. Readiness does not establish scientific validity.`;
   }
   const summary = bionemoSuperBoundedResultSummary(model, context);
   return summary ? `${text[target]}\n\nReturned workflow summary:\n${summary}` : text[target];

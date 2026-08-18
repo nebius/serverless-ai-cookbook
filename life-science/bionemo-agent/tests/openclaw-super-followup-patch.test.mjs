@@ -457,8 +457,9 @@ test("host-local model inventory completion accepts only the exact sanitized syn
     assert.equal(final.includes(`id: ${id}; displayName: ${displayName}; family: ${family}; readiness: ${readiness}`), true);
   }
   assert.match(final, /submitted no scientific compute or model job/u);
-  assert.match(final, /No inference is made that any listed inventory entry has a browser compute wrapper/u);
-  assert.match(final, /readiness establishes scientific validity/u);
+  assert.match(final, /Every listed service is callable through its corresponding adapted bionemo_models__\* compute operation/u);
+  assert.match(final, /scvi_scanvi has separate scvi_fit_transform and scanvi_fit_transform operations/u);
+  assert.match(final, /Readiness does not establish scientific validity/u);
 
   const rejected = [];
   const malformed = structuredClone(completed);
@@ -908,7 +909,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       assert.equal(inventoryLocalFinal.includes("id: " + entry.id + "; displayName: " + entry.displayName + "; family: " + entry.family + "; readiness: " + entry.readiness), true);
     }
     assert.match(inventoryLocalFinal, /submitted no scientific compute or model job/u);
-    assert.match(inventoryLocalFinal, /browser compute wrapper/u);
+    assert.match(inventoryLocalFinal, /adapted bionemo_models__\\* compute operation/u);
     assert.match(inventoryLocalFinal, /scientific validity/u);
     const inventoryLocalEvents = await within(collectEvents(transport(model, successfulInventoryBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
     assert.equal(providerFetchCalls, 0, "exact stripped inventory boundary must not start a provider request");

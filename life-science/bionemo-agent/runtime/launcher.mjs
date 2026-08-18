@@ -182,17 +182,16 @@ async function main() {
   if (publicOrigin) origins.push(publicOrigin);
 
   const initialCapabilities = capabilities(runtimeEnv);
-  if (initialCapabilities.modelBackend === "mcp") {
+  if (initialCapabilities.mcp) {
     mcpAdapter = await startMcpSchemaAdapter({
       upstreamUrl: initialCapabilities.mcpUrl,
       apiKey: runtimeEnv.BIONEMO_MCP_API_KEY,
       port: mcpAdapterPort,
     });
-    // Codex and Claude consume the flattened loopback MCP contract. The
-    // adapter alone holds and forwards the upstream credential. OpenClaw does
-    // not materialize raw hosted-model tools; its composed plugin workflows
-    // keep the validated raw upstream URL in a private child environment field
-    // because they speak the gateway's native typed envelope.
+    // OpenClaw, Codex, and Claude consume the flattened loopback MCP contract.
+    // The adapter owns credential forwarding for those adapted client calls.
+    // Composed plugin workflows keep the validated raw upstream URL and use the
+    // same injected credential through their native typed gateway client.
     mcpAdapter.server.unref();
     configureMcpAdapterEnvironment(runtimeEnv, {
       upstreamUrl: initialCapabilities.mcpUrl,

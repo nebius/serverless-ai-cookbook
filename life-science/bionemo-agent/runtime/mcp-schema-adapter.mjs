@@ -19,6 +19,12 @@ const ACKNOWLEDGEMENT_FIELDS = Object.freeze([
 // operation names and translate them back only at this private boundary.
 export const MODELS_LIST_ALIAS = "models_list";
 export const MODELS_LIST_UPSTREAM_NAME = "clawbio_models_list";
+const PRODUCT_SERVER_INFO = Object.freeze({
+  name: "bionemo-models",
+  title: "BioNeMo Models",
+  description: "Product-neutral, typed asynchronous access to the configured BioNeMo model services.",
+});
+const PRODUCT_SERVER_INSTRUCTIONS = "Discover available BioNeMo services with models_list. Compute tools enqueue one job and return a job_id; poll only job_status for that exact ID, then use model_fetch for explicit artifact access. Stage large browser inputs with upload_create, upload_status, and upload_delete. Accept every displayed research acknowledgement, submit each compute request once, and never infer clinical validity from research-model output.";
 
 export function productToolName(upstreamName) {
   if (typeof upstreamName !== "string") return upstreamName;
@@ -207,6 +213,17 @@ export function adaptMcpToolDefinition(tool) {
 
 export function adaptToolsListPayload(payload, catalog = new Map()) {
   if (Array.isArray(payload)) return payload.map((item) => adaptToolsListPayload(item, catalog));
+  if (plainObject(payload) && plainObject(payload.result)
+    && typeof payload.result.protocolVersion === "string"
+    && plainObject(payload.result.serverInfo)) {
+    const next = clone(payload);
+    next.result.serverInfo = {
+      ...next.result.serverInfo,
+      ...PRODUCT_SERVER_INFO,
+    };
+    next.result.instructions = PRODUCT_SERVER_INSTRUCTIONS;
+    return next;
+  }
   if (!plainObject(payload) || !Array.isArray(payload.result?.tools)) return clone(payload);
   const next = clone(payload);
   next.result.tools = payload.result.tools.map((tool) => {

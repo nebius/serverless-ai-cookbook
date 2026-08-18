@@ -102,10 +102,10 @@ test("eleven stable ready examples include four notebook workflows and seven bou
 test("new workbench prompts preserve exact bounded no-run and exactly-once contracts", () => {
   const [tour, skills, catalog, demo, tavily, inventory, molmim] = WORKBENCH_EXAMPLE_SESSIONS;
   for (const definition of [tour, skills]) assert.match(definition.prompt, /Do not call any tool\./u);
-  assert.match(tour.prompt, /up to ten clean atomic bionemo_\* tools, seven clean composed workflows/u);
-  assert.match(tour.prompt, /bionemo_molmim, bionemo_openfold2, bionemo_openfold3, and four composed demos select the configured backend/u);
-  assert.match(tour.prompt, /bionemo_models_list is the browser's sanitized read-only inventory tool/u);
-  assert.match(tour.prompt, /raw hosted model, job, status, fetch, and capability operations remain private and absent/u);
+  assert.match(tour.prompt, /If bionemo_models__\* tools are displayed/u);
+  assert.match(tour.prompt, /complete adapted MCP compute surface for all 16 inventory services/u);
+  assert.match(tour.prompt, /bionemo_models_list is the sanitized read-only inventory wrapper when displayed/u);
+  assert.match(tour.prompt, /without exposing credentials, cross-job listing, host-local staging, or upstream clawbio_\* compatibility names/u);
 
   assert.match(catalog.prompt, /Call clawbio__list_skills exactly once with query="gwas"/u);
   assert.match(catalog.prompt, /call clawbio__describe_skill exactly once with name="gwas-lookup"/u);
@@ -123,8 +123,9 @@ test("new workbench prompts preserve exact bounded no-run and exactly-once contr
   assert.doesNotMatch(tavily.prompt, /tavily_web__|tavily__|search__search/u);
 
   assert.match(inventory.prompt, /Call bionemo_models_list exactly once with no arguments/u);
-  assert.match(inventory.prompt, /Do not call any other bionemo_\* tool/u);
+  assert.match(inventory.prompt, /Do not call any other tool/u);
   assert.match(inventory.prompt, /submitted no scientific compute or model job/u);
+  assert.match(inventory.prompt, /every returned service has a corresponding adapted bionemo_models__\* compute operation/u);
   assert.match(inventory.prompt, /do not retry/u);
 
   assert.match(molmim.prompt, /Call bionemo_molmim exactly once/u);
@@ -132,9 +133,7 @@ test("new workbench prompts preserve exact bounded no-run and exactly-once contr
   assert.match(molmim.prompt, /ack_research_only=true.*ack_no_safety_or_therapeutic_claims=true/u);
   assert.match(molmim.prompt, /Do not call OpenFold3, any other bionemo_\* tool/u);
 
-  for (const definition of WORKBENCH_EXAMPLE_SESSIONS) {
-    assert.doesNotMatch(definition.prompt, /clawbio_models__|bionemo_models__/u);
-  }
+  for (const definition of WORKBENCH_EXAMPLE_SESSIONS) assert.doesNotMatch(definition.prompt, /clawbio_models__/u);
 });
 
 test("native seeding writes one explicit local user starter without starting a run", async (t) => {

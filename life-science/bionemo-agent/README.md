@@ -13,9 +13,10 @@ Nebius Serverless CPU endpoint. The image contains:
 - a source-pinned RDKit conformer preflight that prevents an unusable MolMIM
   candidate from being handed to OpenFold3;
 - the public event BioNeMo MCP URL in all three clients;
-- ten bounded hosted-NIM adapters, seven composed research workflows, one
-  sanitized read-only model-inventory tool, and a bundled interactive 3Dmol
-  structure viewer;
+- all 17 adapted MCP compute operations covering the 16-service event
+  inventory, ten bounded hosted-NIM convenience adapters, seven composed
+  research workflows, one sanitized read-only model-inventory tool, and a
+  bundled interactive 3Dmol structure viewer;
 - four image-baked, provider-neutral nbformat notebooks, including a fixed
   five-protein batch dataset and safe same-origin notebook previews; and
 - eleven static, distinctly labelled OpenClaw example sessions whose reviewed
@@ -111,24 +112,29 @@ The four backend-neutral BioNeMo workflows use `BIONEMO_BACKEND=auto`:
 - otherwise those workflows report that model access is unavailable.
 
 The sanitized `bionemo_models_list` inventory requires the configured MCP
-credential. Three atomic tools—`bionemo_molmim`, `bionemo_openfold2`, and
-`bionemo_openfold3`—and the four composed demos select the configured NVIDIA or
-MCP backend. The other seven atomic and three direct workflow wrappers retain
-their fixed NVIDIA-hosted routes and are hidden when no NVIDIA credential is
-configured.
+credential. When MCP is the scientific backend, OpenClaw also materializes the
+image-local schema adapter as `bionemo_models`. It exposes all 17 compute
+operations covering the 16 inventory services, using product-neutral browser
+names such as `bionemo_models__esm2_embed` and
+`bionemo_models__alphagenome_predict`. The scVI/scANVI inventory service has two
+operations: `scvi_fit_transform` and `scanvi_fit_transform`.
 
-The browser exposes only image-owned, schema-bounded plugin tools appropriate
-to the configured credentials. Raw upstream model/job MCP tools are never
-materialized in the OpenClaw UI. `bionemo_models_list` is a no-argument,
-read-only wrapper that returns only sanitized model identity, family, and
-readiness fields and submits no compute job. The browser-launch process also
-provides a loopback schema adapter for colocated Codex/Claude clients, with
-product-facing operations such as `models_list`, `molmim_optimize`, and
-`job_status`.
-Standalone CLI entrypoints still connect directly under the clean server alias
-`bionemo_models`; that upstream compatibility surface may retain `clawbio_*`
-operation IDs. OpenClaw never sees those raw operations or duplicated
-`server__tool` branding.
+The adapter flattens the upstream request envelopes, requires every declared
+research acknowledgement, derives per-turn idempotency keys, and privately
+maps clean operation names back to the compatibility API. OpenClaw also gets
+the bounded `models_list`, `model_describe`, upload, `job_status`, and
+`model_fetch` helpers needed to use those models. Cross-job `jobs_list` and
+host-local path staging are deliberately not browser tools. The upstream
+credential and `clawbio_*` compatibility names never reach the model-facing
+surface.
+
+The existing `bionemo_molmim`, `bionemo_openfold2`, and `bionemo_openfold3`
+atomics and the four composed demos remain bounded convenience wrappers over
+the configured NVIDIA or MCP backend. Other image-owned `bionemo_*` wrappers
+retain their fixed NVIDIA routes, but all corresponding cluster models are
+still callable through the adapted `bionemo_models__*` MCP operations.
+Codex and Claude use the same loopback adapter under the server key
+`bionemo_models`.
 
 The default MCP endpoint is:
 
@@ -182,8 +188,8 @@ Four notebook-backed sessions demonstrate the composed BioNeMo workflows:
 Seven additional source-owned session starters demonstrate the surrounding
 OpenClaw workbench without pretending they are notebooks or precomputed runs:
 
-5. a no-tool tour of the browser agent, bounded tool surface, sanitized model
-   inventory, notebooks, artifacts, and hidden raw hosted operations;
+5. a no-tool tour of the browser agent, its complete adapted BioNeMo MCP model
+   surface, sanitized inventory, notebooks, and artifacts;
 6. a no-tool explanation of native OpenClaw skills versus the broader ClawBio
    contracts available to terminal Codex and Claude clients;
 7. one read-only ClawBio catalog search followed by one contract description;

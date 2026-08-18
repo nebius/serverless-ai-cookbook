@@ -9,9 +9,9 @@ import manifest from "../openclaw-plugin/openclaw.plugin.json" with { type: "jso
 import { CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES, CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, NVIDIA_ONLY_TOOL_NAMES, TOOLKIT_COMMIT } from "../openclaw-plugin/src/catalog.mjs";
 import { createUiHandlers, __test as uiInternals } from "../openclaw-plugin/src/ui.mjs";
 import { __test as launcher } from "../runtime/launcher.mjs";
-import { capabilities, configureOpenClaw, DEFAULT_MCP_URL, TOKEN_FACTORY_MODELS } from "../runtime/runtime-config.mjs";
+import { BIONEMO_MCP_BROWSER_TOOL_NAMES, capabilities, configureOpenClaw, DEFAULT_MCP_URL, TOKEN_FACTORY_MODELS } from "../runtime/runtime-config.mjs";
 import { prepareClients } from "../runtime/prepare-clients.mjs";
-import { MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
+import { MCP_SUBMISSION_TOOL_NAMES, MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
 import { BIONEMO_SUPER_INITIAL_TURNS, bionemoSuperLocalCompletionText } from "../runtime/patch-openclaw-super-followup.mjs";
 
 function fakeApi() {
@@ -73,19 +73,21 @@ test("plugin registers exactly the manifest-declared 18 clean tools", async () =
   const promptHook = api.captured.hooks.find(({ event }) => event === "before_prompt_build");
   const systemContext = (await promptHook.handler()).prependSystemContext;
   assert.match(systemContext, /MEDIA:<downloadPath>/u);
-  assert.match(systemContext, /local demo-only ClawBio catalog tools/u);
-  assert.match(systemContext, /up to ten clean atomic BioNeMo tools, seven clean composed workflow tools, and the read-only bionemo_models_list/u);
-  assert.match(systemContext, /bionemo_molmim, bionemo_openfold2, and bionemo_openfold3 atomics plus the four backend-neutral composed demos select the configured NVIDIA or private MCP backend/u);
-  assert.match(systemContext, /raw hosted-model MCP.*remain private and are not available in the OpenClaw browser/u);
-  assert.match(systemContext, /bionemo_models_list with no arguments.*submits no compute job/u);
+  assert.match(systemContext, /local demo-only clawbio__\* catalog tools/u);
+  assert.match(systemContext, /When bionemo_models__\* tools are displayed, the configured BioNeMo MCP server is available under that namespace/u);
+  assert.match(systemContext, /In that MCP-enabled surface, every entry returned by bionemo_models_list has a browser compute operation/u);
+  assert.match(systemContext, /esm2_650m to bionemo_models__esm2_embed/u);
+  assert.match(systemContext, /scvi_scanvi to bionemo_models__scvi_fit_transform or bionemo_models__scanvi_fit_transform/u);
+  assert.match(systemContext, /jobs_list and host-local input staging are not exposed/u);
+  assert.match(systemContext, /poll bionemo_models__job_status only for that exact job ID, at most four times/u);
   assert.match(systemContext, /For every artifact that has viewerMarkdown/u);
   assert.match(systemContext, /same-origin path beginning with \/; preserve it verbatim/u);
   assert.doesNotMatch(systemContext, /viewerUrl, use that exact absolute URL/u);
   assert.doesNotMatch(systemContext, /clawbio_models__/u);
   assert.doesNotMatch(systemContext, /clawbio_models_list/u);
   assert.doesNotMatch(systemContext, /poll only clawbio_job_status/u);
-  assert.match(systemContext, /call the selected composed or configured-backend atomic tool exactly once/u);
-  assert.match(systemContext, /After that tool returns a successful completed result, call no other tool in the turn/u);
+  assert.match(systemContext, /submit the selected compute tool exactly once/u);
+  assert.match(systemContext, /After a successful completed result, call no other tool in the turn/u);
 });
 
 test("the browser model inventory tool returns only the sanitized read-only contract", async () => {
@@ -498,7 +500,7 @@ test("agent instructions require exact clickable viewer links", async () => {
   assert.match(workspaceInstructions, /Never reconstruct it from `viewerUrl`/u);
 });
 
-test("plugin injects trusted per-turn identity into wrappers and defensively guards private compute names", async () => {
+test("plugin injects trusted per-turn identity into wrappers and every adapted MCP compute name", async () => {
   const api = fakeApi();
   plugin.register(api);
   const hook = api.captured.hooks.find(({ event }) => event === "before_tool_call").handler;
@@ -510,6 +512,20 @@ test("plugin injects trusted per-turn identity into wrappers and defensively gua
   const injected = await hook(event, { runId });
   assert.equal(injected.params[MCP_TURN_ID_FIELD], runId);
   assert.deepEqual(event.params, { sequences: ["MKTII"], ack_research_only: true, ack_non_clinical: true });
+  const productNeutral = await hook({
+    toolName: "bionemo_models__esm2_embed",
+    params: { sequences: ["MKTII"], ack_research_only: true, ack_non_clinical: true },
+  }, { runId });
+  assert.equal(productNeutral.params[MCP_TURN_ID_FIELD], runId);
+  for (const upstreamName of MCP_SUBMISSION_TOOL_NAMES) {
+    const publicName = upstreamName.replace(/^clawbio_/u, "");
+    const adapted = await hook({ toolName: `bionemo_models__${publicName}`, params: { marker: publicName } }, { runId });
+    assert.equal(adapted.params[MCP_TURN_ID_FIELD], runId, publicName);
+    assert.equal(adapted.params.marker, publicName);
+  }
+  for (const supportName of ["models_list", "model_describe", "upload_create", "upload_status", "upload_delete", "job_status", "model_fetch"]) {
+    assert.equal(await hook({ toolName: `bionemo_models__${supportName}`, params: { marker: supportName } }, { runId }), undefined, supportName);
+  }
   const wrapperEvent = { toolName: "bionemo_research_drug_demo", params: { ack_research_only: true } };
   const wrapperInjected = await hook(wrapperEvent, { runId });
   assert.equal(wrapperInjected.params[MCP_TURN_ID_FIELD], runId);
@@ -862,15 +878,30 @@ test("NVIDIA defaults to the tool-reliable Super profile", () => {
   assert.deepEqual(custom.agents.defaults.models["nvidia/example/custom"], {});
 });
 
-test("OpenClaw keeps hosted BioNeMo MCP private and enables only local or optional browser MCP servers", () => {
+test("OpenClaw materializes the adapted BioNeMo MCP model surface without exposing private host operations", () => {
   const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
   const state = configureOpenClaw(config, { NVIDIA_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", TAVILY_API_KEY: "t" });
   assert.equal(state.reasoningProvider, "nvidia");
-  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio", "tavily_web"]);
+  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio", "bionemo_models", "tavily_web"]);
   assert.equal(config.mcp.servers.clawbio.transport, "stdio");
   assert.deepEqual(config.mcp.servers.clawbio.toolFilter, { include: ["list_skills", "describe_skill", "run_skill"] });
   assert.equal(config.mcp.servers.clawbio_models, undefined);
-  assert.equal(config.mcp.servers.bionemo_models, undefined);
+  assert.deepEqual(config.mcp.servers.bionemo_models, {
+    url: DEFAULT_MCP_URL,
+    transport: "streamable-http",
+    timeout: 900,
+    toolFilter: { include: [...BIONEMO_MCP_BROWSER_TOOL_NAMES] },
+  });
+  assert.deepEqual(BIONEMO_MCP_BROWSER_TOOL_NAMES, [
+    "models_list", "model_describe", "upload_create", "upload_status", "upload_delete", "job_status", "model_fetch",
+    "alphagenome_predict", "boltz2_predict", "cellpose_segment", "deepvariant_call", "diffdock_dock", "esm2_embed",
+    "esmc_analyze", "evo2_generate", "genmol_generate", "molmim_optimize", "msa_search", "openfold2_predict",
+    "openfold3_predict", "proteinmpnn_design", "rfdiffusion_generate", "scanvi_fit_transform", "scvi_fit_transform",
+  ]);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("jobs_list"), false);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("input_stage_local"), false);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("esm2_embed"), true);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("scanvi_fit_transform"), true);
   assert.equal(config.mcp.servers.tavily_web.headers.Authorization, "Bearer ${BIONEMO_TAVILY_API_KEY}");
   assert.equal(config.mcp.servers.tavily, undefined);
   assert.equal(capabilities({ BIONEMO_TAVILY_API_KEY: "private-alias" }).tavily, true);
@@ -899,7 +930,7 @@ test("OpenClaw keeps hosted BioNeMo MCP private and enables only local or option
   assert.deepEqual(Object.values(allowedModels).filter(({ alias }) => alias).map(({ alias }) => alias), TOKEN_FACTORY_MODELS.map(({ alias }) => alias));
 });
 
-test("MCP-only OpenClaw exposes configured-backend atomics but hides NVIDIA-only wrappers", () => {
+test("MCP-only OpenClaw exposes all adapted model operations while retaining bounded plugin wrappers", () => {
   const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [...EXACT_TOOL_NAMES], deny: ["bundle-mcp"] } };
   const state = configureOpenClaw(config, {
     AGENT_PROVIDER: "nebius",
@@ -913,7 +944,13 @@ test("MCP-only OpenClaw exposes configured-backend atomics but hides NVIDIA-only
   assert.equal(config.tools.alsoAllow.includes("bionemo_models_list"), true);
   assert.equal(config.tools.deny.includes("bionemo_models_list"), false);
   assert.equal(NVIDIA_ONLY_TOOL_NAMES.every((name) => !config.tools.alsoAllow.includes(name) && config.tools.deny.includes(name)), true);
-  assert.equal(config.mcp.servers.bionemo_models, undefined);
+  assert.deepEqual(config.mcp.servers.bionemo_models.toolFilter.include, [...BIONEMO_MCP_BROWSER_TOOL_NAMES]);
+  assert.equal(config.mcp.servers.bionemo_models.toolFilter.include.filter((name) => [
+    "alphagenome_predict", "boltz2_predict", "cellpose_segment", "deepvariant_call",
+    "diffdock_dock", "esm2_embed", "esmc_analyze", "evo2_generate", "genmol_generate",
+    "molmim_optimize", "msa_search", "openfold2_predict", "openfold3_predict",
+    "proteinmpnn_design", "rfdiffusion_generate", "scanvi_fit_transform", "scvi_fit_transform",
+  ].includes(name)).length, 17);
 });
 
 test("gateway child hides OpenClaw's reserved Tavily auto-install trigger", () => {
@@ -933,7 +970,7 @@ test("gateway child hides OpenClaw's reserved Tavily auto-install trigger", () =
   assert.equal(child.NVIDIA_API_KEY, "nvidia-secret");
 });
 
-test("launcher keeps the flattened adapter URL distinct from the private native MCP workflow upstream", async (t) => {
+test("launcher gives OpenClaw, Codex, and Claude the flattened adapter but never persists its private upstream", async (t) => {
   const runtimeEnv = {
     BIONEMO_MCP_API_KEY: "not-persisted",
     BIONEMO_MCP_URL: "https://native.example/mcp",
@@ -962,7 +999,9 @@ test("launcher keeps the flattened adapter URL distinct from the private native 
   await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
   await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://example.test"], env: runtimeEnv });
   const persisted = await readFile(configPath, "utf8");
-  assert.doesNotMatch(persisted, /http:\/\/127\.0\.0\.1:18791\/mcp/u);
+  assert.match(persisted, /http:\/\/127\.0\.0\.1:18791\/mcp/u);
+  const persistedConfig = JSON.parse(persisted);
+  assert.deepEqual(persistedConfig.mcp.servers.bionemo_models.toolFilter.include, [...BIONEMO_MCP_BROWSER_TOOL_NAMES]);
   assert.equal(persisted.includes("https://native.example/mcp"), false);
   assert.equal(persisted.includes("not-persisted"), false);
   await prepareClients(runtimeEnv);
@@ -978,7 +1017,7 @@ test("launcher keeps the flattened adapter URL distinct from the private native 
   );
 });
 
-test("an explicit NVIDIA BioNeMo backend does not also expose the incompatible MCP contracts", () => {
+test("an explicit NVIDIA wrapper backend still exposes the configured adapted MCP model server", () => {
   const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [...EXACT_TOOL_NAMES], deny: ["bundle-mcp"] } };
   const state = configureOpenClaw(config, {
     BIONEMO_BACKEND: "nvidia",
@@ -986,7 +1025,8 @@ test("an explicit NVIDIA BioNeMo backend does not also expose the incompatible M
     BIONEMO_MCP_API_KEY: "m",
   });
   assert.equal(state.modelBackend, "nvidia");
-  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio"]);
+  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio", "bionemo_models"]);
+  assert.deepEqual(config.mcp.servers.bionemo_models.toolFilter.include, [...BIONEMO_MCP_BROWSER_TOOL_NAMES]);
   assert.deepEqual(config.tools.alsoAllow, [...EXACT_TOOL_NAMES, "bundle-mcp"]);
   assert.equal(config.tools.deny.includes("bundle-mcp"), false);
 });
