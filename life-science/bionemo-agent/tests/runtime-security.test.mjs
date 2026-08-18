@@ -560,6 +560,38 @@ test("model-facing OpenFold2 schema exposes only sequence and explicit configure
   assert.equal(tool.parameters.properties.ack_non_clinical.const, true);
 });
 
+test("MolMIM bounded summaries retain the user's optimization contract without mislabeling arbitrary inputs", () => {
+  const exactInput = {
+    smi: "COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4",
+    algorithm: "CMA-ES",
+    num_molecules: 2,
+    property_name: "QED",
+    min_similarity: 0.7,
+  };
+  const data = { molecules: [
+    { smiles: "CCO", score: 0.81 },
+    { smiles: "CCN", score: 0.79 },
+  ] };
+  assert.deepEqual(pluginInternals.configuredAtomicOutputSummary("molmim", data, exactInput), {
+    startingMolecule: "gefitinib",
+    optimizationObjective: "QED",
+    minimumSimilarity: 0.7,
+    requestedCandidateCount: 2,
+    algorithm: "CMA-ES",
+    candidateCount: 2,
+    candidates: [
+      { candidateIndex: 0, smiles: "CCO", optimizationScore: 0.81 },
+      { candidateIndex: 1, smiles: "CCN", optimizationScore: 0.79 },
+    ],
+  });
+  const generic = pluginInternals.configuredAtomicOutputSummary("molmim", data, {
+    ...exactInput,
+    smi: "CCO",
+  });
+  assert.equal(generic.startingMolecule, "caller-supplied SMILES");
+  assert.equal(JSON.stringify(generic).includes("gefitinib"), false);
+});
+
 test("configured-backend atomic text result round-trips compact bounded step evidence", async () => {
   const api = fakeApi();
   const remoteJobId = "a".repeat(32);
@@ -898,7 +930,7 @@ test("NVIDIA defaults to the tool-reliable Super profile", () => {
   assert.deepEqual(superModel.compat, { maxTokensField: "max_tokens", requiresStringContent: true });
   assert.equal(superModel.params, undefined);
   assert.equal(config.models.providers.nvidia.timeoutSeconds, 240);
-  assert.equal(config.models.providers.tokenfactory.timeoutSeconds, undefined);
+  assert.equal(config.models.providers.tokenfactory.timeoutSeconds, 300);
   assert.deepEqual(config.agents.defaults.models["nvidia/nvidia/nemotron-3-super-120b-a12b"].params, {
     chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true },
   });

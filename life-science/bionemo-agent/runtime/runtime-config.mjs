@@ -173,7 +173,17 @@ export function configureOpenClaw(config, env = process.env, setupPort = 18790) 
         : undefined,
     }],
   });
-  config.models.providers.tokenfactory = compatibleProvider({ configured: state.nebius, baseUrl: state.reasoningProvider === "nebius" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.tokenfactory.nebius.com/v1", apiKey: "${NEBIUS_API_KEY}", api: "openai-completions", models: tokenFactoryModels.map((model) => ({ ...model, name: `${model.alias || model.id} via Nebius Token Factory` })) });
+  config.models.providers.tokenfactory = compatibleProvider({
+    configured: state.nebius,
+    baseUrl: state.reasoningProvider === "nebius" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.tokenfactory.nebius.com/v1",
+    apiKey: "${NEBIUS_API_KEY}",
+    api: "openai-completions",
+    // Both event models have occasionally exceeded OpenClaw's 120-second
+    // first-byte default with the full owner-admin tool catalog. Preserve one
+    // request instead of triggering the framework's same-model idle replay.
+    timeoutSeconds: 300,
+    models: tokenFactoryModels.map((model) => ({ ...model, name: `${model.alias || model.id} via Nebius Token Factory` })),
+  });
   config.models.providers.openai = compatibleProvider({ configured: state.openai, baseUrl: state.reasoningProvider === "openai" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.openai.com/v1", apiKey: "${OPENAI_API_KEY}", api: "openai-responses", models: [{ id: openaiModel, name: `${openaiModel} via OpenAI` }], agentRuntime: { id: "openclaw" } });
   config.models.providers.claude = compatibleProvider({ configured: state.anthropic, baseUrl: state.reasoningProvider === "anthropic" && state.env.AGENT_BASE_URL ? state.env.AGENT_BASE_URL : "https://api.anthropic.com", apiKey: "${ANTHROPIC_API_KEY}", api: "anthropic-messages", models: [{ id: anthropicModel, name: `${anthropicModel} via Anthropic Claude`, contextWindow: 200000 }] });
   config.models.providers.setup = {

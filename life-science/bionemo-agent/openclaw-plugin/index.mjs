@@ -15,7 +15,7 @@ import {
 import { InputError, publicError } from "./src/errors.mjs";
 import { NOTEBOOK_ROUTE_PREFIX } from "./src/notebooks.mjs";
 import { CerebriumMcpModelClient, MCP_MODEL_CATALOG_ALIAS, TavilySearchClient, selectedResearchBackend } from "./src/research-demo-clients.mjs";
-import { resolveSkillInput, resolveWorkflowInput } from "./src/samples.mjs";
+import { GEFITINIB_KEKULE_SMILES, GEFITINIB_SMILES, resolveSkillInput, resolveWorkflowInput } from "./src/samples.mjs";
 import { createUiHandlers } from "./src/ui.mjs";
 import { CONFIGURED_BACKEND_ATOMIC_ACK_FIELDS, JSON_SCHEMAS, VALIDATORS, normalizeDirectSkillInput } from "./src/validation.mjs";
 import { generatedMolecules, ResearchDrugDemoRunner, structureConfidenceSummary, WorkflowRunner } from "./src/workflows.mjs";
@@ -108,7 +108,7 @@ function configuredAtomicIdentity(skillId, turnId, input) {
   };
 }
 
-function configuredAtomicOutputSummary(skillId, data) {
+function configuredAtomicOutputSummary(skillId, data, input = {}) {
   if (skillId === "molmim") {
     const candidates = generatedMolecules(data).slice(0, 20).map((candidate, index) => ({
       candidateIndex: index,
@@ -116,7 +116,17 @@ function configuredAtomicOutputSummary(skillId, data) {
       optimizationScore: candidate.generationScore,
     }));
     if (!candidates.length) throw new InputError("MolMIM returned no valid bounded candidates");
-    return { candidateCount: candidates.length, candidates };
+    return {
+      startingMolecule: [GEFITINIB_SMILES, GEFITINIB_KEKULE_SMILES].includes(input.smi)
+        ? "gefitinib"
+        : "caller-supplied SMILES",
+      optimizationObjective: input.property_name,
+      minimumSimilarity: input.min_similarity,
+      requestedCandidateCount: input.num_molecules,
+      algorithm: input.algorithm,
+      candidateCount: candidates.length,
+      candidates,
+    };
   }
   if (skillId === "openfold2") {
     return { confidence: structureConfidenceSummary(data) };
@@ -536,7 +546,7 @@ export function createRuntime({ fetchImpl = globalThis.fetch, env = process.env,
       step.remoteJobId ||= result.remoteJobId;
       step.completedAt = new Date().toISOString();
       const resultSummary = CONFIGURED_BACKEND_ATOMIC_SKILL_ID_SET.has(skillId)
-        ? configuredAtomicOutputSummary(skillId, result.data)
+        ? configuredAtomicOutputSummary(skillId, result.data, input)
         : {};
       await store.saveNimResult(run, result);
       await store.complete(run, { steps: [step] });

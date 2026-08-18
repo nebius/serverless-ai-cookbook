@@ -7,8 +7,11 @@ import test from "node:test";
 import { promisify } from "node:util";
 import { WORKBENCH_EXAMPLE_SESSIONS } from "../runtime/example-session-catalog.mjs";
 import {
+  BIONEMO_GUIDED_STARTER_TURNS,
   BIONEMO_SUPER_INITIAL_TURNS,
   BIONEMO_SUPER_NOTEBOOK_TURNS,
+  bionemoGuidedStarterAction,
+  bionemoIsSourceOwnedTokenFactoryModel,
   bionemoNormalizeStrictOpenClawPrompt,
   bionemoSuperBoundedResultSummary,
   bionemoSuperCompletedToolTarget,
@@ -17,13 +20,19 @@ import {
   bionemoSuperLocalCompletionText,
   bionemoSuperShouldFinalizeWithoutTools,
   bionemoSuperValidatedModelInventory,
+  bionemoValidatedClawBioStep,
+  bionemoValidatedGwasContract,
+  bionemoValidatedGwasDemo,
+  bionemoValidatedGwasList,
   patchOpenClawSuperFollowup,
 } from "../runtime/patch-openclaw-super-followup.mjs";
 
 const execFileAsync = promisify(execFile);
 const PINNED_IMAGE = "ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac";
 const superModel = { provider: "tokenfactory", id: "nvidia/nemotron-3-super-120b-a12b" };
+const glmModel = { provider: "tokenfactory", id: "zai-org/GLM-5.2" };
 const deepSeekModel = { provider: "tokenfactory", id: "deepseek-ai/DeepSeek-V4-Pro" };
+const defaultModels = [superModel, glmModel];
 
 function turn(name, { id = name, isError = false, arguments: args = {}, status = "completed" } = {}) {
   return { messages: [
@@ -150,7 +159,202 @@ function rewriteInventory(context, mutate) {
   return changed;
 }
 
-test("Token Factory Super and DeepSeek finalize after successful atomic wrappers only", () => {
+const GWAS_SKILL_SPEC_BASE64 = `
+LS0tCm5hbWU6IGd3YXMtbG9va3VwCmRlc2NyaXB0aW9uOiBGZWRlcmF0ZWQgdmFyaWFudCBsb29rdXAgYWNyb3NzIDkgZ2Vu
+b21pYyBkYXRhYmFzZXMg4oCUIEdXQVMgQ2F0YWxvZywgT3BlbiBUYXJnZXRzLCBQaGVXZWIgKFVLQiwgRmlubkdlbiwgQkJK
+KSwKICBHVEV4LCBlUVRMIENhdGFsb2d1ZSwgYW5kIG1vcmUuCmxpY2Vuc2U6IE1JVAptZXRhZGF0YToKICB2ZXJzaW9uOiAw
+LjEuMAogIG9wZW5jbGF3OgogICAgcmVxdWlyZXM6CiAgICAgIGJpbnM6CiAgICAgIC0gcHl0aG9uMwogICAgYWx3YXlzOiBm
+YWxzZQogICAgZW1vamk6IPCflI0KICAgIGhvbWVwYWdlOiBodHRwczovL2dpdGh1Yi5jb20vQ2xhd0Jpby9DbGF3QmlvCiAg
+ICBvczoKICAgIC0gZGFyd2luCiAgICAtIGxpbnV4CiAgICBpbnN0YWxsOgogICAgLSBraW5kOiBwaXAKICAgICAgcGFja2Fn
+ZTogcmVxdWVzdHMKICAgIC0ga2luZDogcGlwCiAgICAgIHBhY2thZ2U6IG1hdHBsb3RsaWIKLS0tCgojIPCflI0gR1dBUyBM
+b29rdXAKCllvdSBhcmUgKipHV0FTIExvb2t1cCoqLCBhIHNwZWNpYWxpc2VkIENsYXdCaW8gYWdlbnQgZm9yIGZlZGVyYXRl
+ZCB2YXJpYW50IHF1ZXJpZXMuIFlvdXIgcm9sZSBpcyB0byB0YWtlIGEgc2luZ2xlIHJzSUQgYW5kIHF1ZXJ5IDkgZ2Vub21p
+YyBkYXRhYmFzZXMgaW4gcGFyYWxsZWwsIHJldHVybmluZyBhIHVuaWZpZWQgcmVwb3J0IG9mIEdXQVMgYXNzb2NpYXRpb25z
+LCBQaGVXQVMgcmVzdWx0cywgZVFUTCBkYXRhLCBhbmQgZmluZS1tYXBwaW5nIGNyZWRpYmxlIHNldHMuCgpJbnNwaXJlZCBi
+eSBbU2FzaGEgR3VzZXYncyBHV0FTIExvb2t1cF0oaHR0cHM6Ly9zYXNoYWd1c2V2LmdpdGh1Yi5pby9nd2FzX2xvb2t1cC8p
+LgoKIyMgQ29yZSBDYXBhYmlsaXRpZXMKCjEuICoqVmFyaWFudCByZXNvbHV0aW9uKio6IFJlc29sdmUgcnNJRCDihpIgY2hy
+OnBvcyAoR1JDaDM4ICsgR1JDaDM3KSwgYWxsZWxlcywgY29uc2VxdWVuY2UsIE1BRgoyLiAqKkdXQVMgYXNzb2NpYXRpb24g
+bG9va3VwKio6IFF1ZXJ5IEdXQVMgQ2F0YWxvZyArIE9wZW4gVGFyZ2V0cyBmb3IgdHJhaXQgYXNzb2NpYXRpb25zCjMuICoq
+UGhlV0FTIHNjYW5uaW5nKio6IFF1ZXJ5IFVLQi1UT1BNZWQsIEZpbm5HZW4sIGFuZCBCaW9iYW5rIEphcGFuIGZvciBwaGVu
+b3R5cGUtd2lkZSBhc3NvY2lhdGlvbnMKNC4gKiplUVRMIGxvb2t1cCoqOiBRdWVyeSBHVEV4IGFuZCBFQkkgZVFUTCBDYXRh
+bG9ndWUgZm9yIGV4cHJlc3Npb24gYXNzb2NpYXRpb25zCjUuICoqRmluZS1tYXBwaW5nKio6IFJldHJpZXZlIE9wZW4gVGFy
+Z2V0cyBjcmVkaWJsZSBzZXQgbWVtYmVyc2hpcAo2LiAqKlVuaWZpZWQgcmVwb3J0aW5nKio6IE1lcmdlLCBkZWR1cGxpY2F0
+ZSwgYW5kIHJhbmsgcmVzdWx0cyBhY3Jvc3MgYWxsIHNvdXJjZXMKCiMjIElucHV0IEZvcm1hdHMKCi0gKipyc0lEKio6IEFu
+eSB2YWxpZCBkYlNOUCByc0lEIChlLmcuLCByczM3OTgyMjAsIHJzNDI5MzU4LCByczc5MDMxNDYpCgojIyBEYXRhYmFzZXMg
+UXVlcmllZAoKfCBEYXRhYmFzZSB8IEVuZHBvaW50IHwgQ29vcmRpbmF0ZXMgfAp8LS0tLS0tLS0tLXwtLS0tLS0tLS0tfC0t
+LS0tLS0tLS0tLS18CnwgRW5zZW1ibCB8IFJFU1QgL3ZhcmlhdGlvbiArIC92ZXAgfCBHUkNoMzggfAp8IEdXQVMgQ2F0YWxv
+ZyB8IEVCSSBSRVNUIEFQSSB8IEdSQ2gzOCB8CnwgT3BlbiBUYXJnZXRzIHwgR3JhcGhRTCB2NCB8IEdSQ2gzOCB8CnwgVUtC
+LVRPUE1lZCBQaGVXZWIgfCBQaGVXZWIgQVBJIHwgR1JDaDM4IHwKfCBGaW5uR2VuIHIxMiB8IFBoZVdlYiBBUEkgfCBHUkNo
+MzggfAp8IEJpb2JhbmsgSmFwYW4gUGhlV2ViIHwgUGhlV2ViIEFQSSB8ICoqR1JDaDM3KiogfAp8IEdURXggdjggfCBQb3J0
+YWwgQVBJIHYyIHwgR1JDaDM4IHwKfCBFQkkgZVFUTCBDYXRhbG9ndWUgfCBSRVNUIEFQSSB2MyB8IEdSQ2gzOCB8CnwgTG9j
+dXNab29tIFBvcnRhbERldiB8IE9tbmlzZWFyY2ggQVBJIHwgQm90aCB8CgojIyBXb3JrZmxvdwoKV2hlbiB0aGUgdXNlciBh
+c2tzIHRvIGxvb2sgdXAgYSB2YXJpYW50OgoKMS4gKipSZXNvbHZlKio6IFF1ZXJ5IEVuc2VtYmwgZm9yIHZhcmlhbnQgY29v
+cmRpbmF0ZXMsIGFsbGVsZXMsIGNvbnNlcXVlbmNlCjIuICoqRGlzcGF0Y2gqKjogUXVlcnkgYWxsIDggcmVtYWluaW5nIEFQ
+SXMgaW4gcGFyYWxsZWwgKFRocmVhZFBvb2xFeGVjdXRvcikKMy4gKipOb3JtYWxpc2UqKjogTWVyZ2UgcmVzdWx0cywgZGVk
+dXBsaWNhdGUsIHNvcnQgYnkgcC12YWx1ZSwgZmxhZyBHV1MgaGl0cwo0LiAqKlJlcG9ydCoqOiBHZW5lcmF0ZSBtYXJrZG93
+biByZXBvcnQgKyBDU1YgdGFibGVzICsgZmlndXJlcwoKIyMgRXhhbXBsZSBRdWVyaWVzCgotICJMb29rIHVwIHJzMzc5ODIy
+MCIKLSAiV2hhdCBhcmUgdGhlIEdXQVMgYXNzb2NpYXRpb25zIGZvciByczQyOTM1OD8iCi0gIlNlYXJjaCBhbGwgZGF0YWJh
+c2VzIGZvciB2YXJpYW50IHJzNzkwMzE0NiIKLSAiR1dBUyBsb29rdXAgZm9yIHRoZSBMUEEgbWlzc2Vuc2UgdmFyaWFudCIK
+CiMjIE91dHB1dCBTdHJ1Y3R1cmUKCmBgYApvdXRwdXRfZGlyZWN0b3J5LwrilJzilIDilIAgcmVwb3J0Lm1kICAgICAgICAg
+ICAgICAgICAgICAjIEZ1bGwgbWFya2Rvd24gcmVwb3J0CuKUnOKUgOKUgCByYXdfcmVzdWx0cy5qc29uICAgICAgICAgICAg
+ICMgUmF3IEFQSSByZXNwb25zZXMgKGRlYnVnKQrilJzilIDilIAgdGFibGVzLwrilIIgICDilJzilIDilIAgZ3dhc19hc3Nv
+Y2lhdGlvbnMuY3N2CuKUgiAgIOKUnOKUgOKUgCBwaGV3YXNfdWtiLmNzdgrilIIgICDilJzilIDilIAgcGhld2FzX2Zpbm5n
+ZW4uY3N2CuKUgiAgIOKUnOKUgOKUgCBwaGV3YXNfYmJqLmNzdgrilIIgICDilJzilIDilIAgZXF0bF9hc3NvY2lhdGlvbnMu
+Y3N2CuKUgiAgIOKUlOKUgOKUgCBjcmVkaWJsZV9zZXRzLmNzdgrilJzilIDilIAgZmlndXJlcy8K4pSCICAg4pSc4pSA4pSA
+IGd3YXNfdHJhaXRzX2RvdHBsb3QucG5nCuKUgiAgIOKUlOKUgOKUgCBhbGxlbGVfZnJlcV9wb3B1bGF0aW9ucy5wbmcK4pSU
+4pSA4pSAIHJlcHJvZHVjaWJpbGl0eS8KICAgIOKUnOKUgOKUgCBjb21tYW5kcy5zaAogICAg4pSU4pSA4pSAIGFwaV92ZXJz
+aW9ucy5qc29uCmBgYAoKIyMgRGVwZW5kZW5jaWVzCgoqKlJlcXVpcmVkKio6Ci0gYHJlcXVlc3RzYCA+PSAyLjI4IChIVFRQ
+IGNsaWVudCkKLSBQeXRob24gMy4xMCsKCioqT3B0aW9uYWwqKjoKLSBgbWF0cGxvdGxpYmAgPj0gMy41IChmaWd1cmVzOyBz
+a2lwcGVkIGdyYWNlZnVsbHkgaWYgYWJzZW50KQoKIyMgU2FmZXR5CgotIEFsbCBwcm9jZXNzaW5nIGlzIGxvY2FsIOKAlCBn
+ZW5ldGljIGRhdGEgbmV2ZXIgbGVhdmVzIHRoaXMgbWFjaGluZQotIEFQSSBxdWVyaWVzIHVzZSBvbmx5IHB1YmxpYyByc0lE
+cyAobm8gcGF0aWVudCBkYXRhIHRyYW5zbWl0dGVkKQotIDI0LWhvdXIgbG9jYWwgZmlsZSBjYWNoZSB0byByZWR1Y2UgQVBJ
+IGxvYWQKLSBHcmFjZWZ1bCBkZWdyYWRhdGlvbjogZmFpbGVkIEFQSXMgcHJvZHVjZSB3YXJuaW5ncywgbm90IGNyYXNoZXMK
+LSBSYXRlIGxpbWl0aW5nIHBlciBBUEkgdG8gcmVzcGVjdCBzZXJ2ZXIgcG9saWNpZXMKCiMjIEludGVncmF0aW9uIHdpdGgg
+QmlvIE9yY2hlc3RyYXRvcgoKVGhpcyBza2lsbCBpcyBpbnZva2VkIGJ5IHRoZSBCaW8gT3JjaGVzdHJhdG9yIHdoZW46Ci0g
+VXNlciBtZW50aW9ucyAiR1dBUyBsb29rdXAiLCAidmFyaWFudCBsb29rdXAiLCAicnNJRCBzZWFyY2giCi0gVXNlciBwcm92
+aWRlcyBhbiByc0lEIGFuZCBhc2tzIGFib3V0IGFzc29jaWF0aW9ucywgUGhlV0FTLCBvciBlUVRMcwotIFF1ZXJ5IGNvbnRh
+aW5zIGtleXdvcmRzOiAiZ3dhcyBsb29rdXAiLCAidmFyaWFudCBzZWFyY2giLCAicnMgbG9va3VwIgoKSXQgY2FuIGJlIGNo
+YWluZWQgd2l0aDoKLSBgY2xpbnBneGA6IExvb2sgdXAgcGhhcm1hY29nZW5vbWljIGRhdGEgZm9yIGdlbmVzIG5lYXIgdGhl
+IHZhcmlhbnQKLSBgZ3dhcy1wcnNgOiBJZiB0aGUgdmFyaWFudCBpcyBwYXJ0IG9mIGEgcG9seWdlbmljIHNjb3JlLCBjYWxj
+dWxhdGUgUFJTCi0gYGxpdC1zeW50aGVzaXplcmA6IEZpbmQgcHVibGljYXRpb25zIGFib3V0IHRoZSB2YXJpYW50J3MgYXNz
+b2NpYXRlZCB0cmFpdHMK
+`.replace(/\s/gu, "");
+const GWAS_SKILL_SPEC = Buffer.from(GWAS_SKILL_SPEC_BASE64, "base64").toString("utf8");
+const GWAS_NAMES = [
+  "ancestry-risk-profiler",
+  "clinical-trial-finder",
+  "fine-mapping",
+  "gwas-catalog-region-fetch",
+  "gwas-lookup",
+  "gwas-pipeline",
+  "gwas-prs",
+  "locuscompare-region-render",
+  "mendelian-randomisation",
+  "wgs-prs",
+];
+
+function gwasListValue() {
+  return { result: GWAS_NAMES.map((name) => ({
+    cli_alias: name === "gwas-lookup" ? "gwas" : null,
+    demo_command: name === "gwas-lookup" ? "clawbio run gwas --demo" : "",
+    demo_runnable_in_image: name === "gwas-lookup",
+    description: `${name} packaged research workflow`,
+    has_demo: name === "gwas-lookup",
+    maturity_tier: name === "gwas-lookup" ? "ci-validated" : "documented",
+    name,
+    runnable: name === "gwas-lookup",
+    status: name === "gwas-lookup" ? "mvp" : "documented",
+    tags: ["genomics"],
+  })) };
+}
+
+function gwasContractValue() {
+  return {
+    chaining_partners: ["gwas-prs"],
+    cli_alias: "gwas",
+    data_license: "public sources",
+    demo_command: "clawbio run gwas --demo",
+    demo_runnable_in_image: true,
+    dependencies: ["requests"],
+    description: "Federated public-variant lookup",
+    has_demo: true,
+    has_script: true,
+    has_tests: true,
+    license: "MIT",
+    maturity_evidence: "CI validated",
+    maturity_tier: "ci-validated",
+    model_license: null,
+    name: "gwas-lookup",
+    spec: GWAS_SKILL_SPEC,
+    status: "mvp",
+    tags: ["genomics", "gwas"],
+    trigger_keywords: ["GWAS lookup", "rsID"],
+    version: "0.1.0",
+  };
+}
+
+function gwasDemoValue(root = "/workspace/agent/artifacts/clawbio/output/gwas_20260818_123456") {
+  return {
+    demo: true,
+    exit_code: 0,
+    skill: "gwas-lookup",
+    stderr: "",
+    stdout: `GWAS Lookup: rs3798220
+============================================================
+
+  Demo mode: loading demo_rs3798220.json
+
+  Using pre-fetched demo data for rs3798220
+  Resolved: chr6:160540105 (T/C)
+  Consequence: missense_variant
+
+  Loaded 8 pre-fetched API results
+
+  Merging and normalising results...
+    GWAS: 11 associations (11 GWS)
+    PheWAS: UKB=5, FinnGen=3, BBJ=1
+    eQTLs: 5
+    Credible sets: 3
+
+  Writing report...
+  Writing CSV tables...
+  Generating figures...
+  Writing reproducibility bundle...
+  Writing result.json...
+
+  Report: ${root}/report.md
+  Full output: ${root}/
+
+  ClawBio is a research and educational tool. It is not a medical device and does not provide clinical diagnoses. Consult a healthcare professional before making any medical decisions.
+`,
+    success: true,
+  };
+}
+
+const GUIDED_CALL_IDS = [
+  "call_bionemo_super_01234567-89ab-4cde-8f01-23456789abcd",
+  "call_bionemo_super_abcdef01-2345-4678-9abc-def012345678",
+];
+
+function clawBioPair(step, structuredContent, index) {
+  const id = GUIDED_CALL_IDS[index];
+  return [
+    {
+      role: "assistant",
+      stopReason: "toolUse",
+      content: [{
+        type: "toolCall",
+        id,
+        name: step.name,
+        arguments: { ...step.params },
+        partialArgs: JSON.stringify(step.params),
+      }],
+    },
+    {
+      role: "toolResult",
+      toolCallId: id,
+      toolName: step.name,
+      isError: false,
+      content: [{ type: "text", text: `structuredContent:\n${JSON.stringify(structuredContent, null, 2)}` }],
+      details: {
+        mcpServer: "clawbio",
+        mcpTool: step.name.slice("clawbio__".length),
+        structuredContent,
+      },
+    },
+  ];
+}
+
+function guidedContext(entry, values = []) {
+  return {
+    messages: [
+      { role: "user", content: `[Tue 2026-08-18 12:34 UTC] ${entry.prompt}` },
+      ...values.flatMap((value, index) => clawBioPair(entry.steps[index], value, index)),
+    ],
+  };
+}
+
+test("the two default Token Factory models finalize after successful atomic wrappers", () => {
   for (const name of [
     "bionemo_research_drug_demo",
     "bionemo_compare_protein_structures",
@@ -160,7 +364,7 @@ test("Token Factory Super and DeepSeek finalize after successful atomic wrappers
     "bionemo_openfold2",
     "bionemo_openfold3",
   ]) {
-    for (const model of [superModel, deepSeekModel]) {
+    for (const model of [...defaultModels, deepSeekModel]) {
       assert.equal(bionemoSuperShouldFinalizeWithoutTools(model, turn(name)), true);
       assert.equal(bionemoSuperShouldFinalizeWithoutTools(model, turn(name, { isError: true })), false);
       assert.equal(bionemoSuperShouldFinalizeWithoutTools(model, turn("tool_call", { id: `openclaw:bionemo-agent-toolkit:${name}` })), true);
@@ -171,16 +375,21 @@ test("Token Factory Super and DeepSeek finalize after successful atomic wrappers
   const errored = structuredClone(turn("bionemo_compare_protein_structures"));
   errored.messages.at(-1).error = { code: "failed" };
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, errored), false);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(glmModel, errored), false);
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(deepSeekModel, errored), false);
 });
 
-test("host-local completion is limited to exact completed Token Factory Super tool boundaries", () => {
+test("host-local completion is limited to exact completed default-model tool boundaries", () => {
   const completed = turn("bionemo_molmim");
-  assert.match(bionemoSuperLocalCompletionText(superModel, completed), /MolMIM optimization returned a terminal result/u);
+  for (const model of defaultModels) {
+    assert.match(bionemoSuperLocalCompletionText(model, completed), /MolMIM optimization returned a terminal result/u);
+  }
   const structured = structuredClone(completed);
   structured.messages.at(-1).content = [{ type: "text", text: "not-json" }];
   structured.messages.at(-1).structuredContent = { status: "completed", summary: { skill: "MolMIM" } };
-  assert.match(bionemoSuperLocalCompletionText(superModel, structured), /MolMIM optimization returned a terminal result/u);
+  for (const model of defaultModels) {
+    assert.match(bionemoSuperLocalCompletionText(model, structured), /MolMIM optimization returned a terminal result/u);
+  }
   assert.equal(bionemoSuperLocalCompletionText(deepSeekModel, completed), undefined);
   assert.equal(bionemoSuperLocalCompletionText(superModel, turn("bionemo_molmim", { status: "running" })), undefined);
   assert.equal(bionemoSuperLocalCompletionText(superModel, turn("bionemo_molmim", { status: null })), undefined);
@@ -196,9 +405,12 @@ test("host-local completion is limited to exact completed Token Factory Super to
 
 test("host-local Tavily completion requires the exact source-owned turn and trusted result provenance", () => {
   const completed = tavilyTurn();
-  assert.equal(bionemoSuperCompletedToolTarget(superModel, completed), tavilyInitial.name);
-  assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, completed), true);
+  for (const model of defaultModels) {
+    assert.equal(bionemoSuperCompletedToolTarget(model, completed), tavilyInitial.name);
+    assert.equal(bionemoSuperShouldFinalizeWithoutTools(model, completed), true);
+  }
   const final = bionemoSuperLocalCompletionText(superModel, completed);
+  assert.equal(bionemoSuperLocalCompletionText(glmModel, completed), final);
   assert.match(final, /RCSB PDB/u);
   assert.match(final, /UniProt/u);
   assert.match(final, /Source claims:/u);
@@ -282,8 +494,11 @@ test("host-local Tavily completion accepts only the exact stripped ephemeral LLM
   assert.equal(EPHEMERAL_TAVILY_CALL_ID.startsWith("call_bionemo_super_"), false);
   assert.match(EPHEMERAL_TAVILY_CALL_ID, /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u);
   assert.equal(bionemoSuperCompletedToolTarget(superModel, completed), tavilyInitial.name);
+  assert.equal(bionemoSuperCompletedToolTarget(glmModel, completed), tavilyInitial.name);
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, completed), true);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(glmModel, completed), true);
   assert.match(bionemoSuperLocalCompletionText(superModel, completed), /RCSB PDB/u);
+  assert.equal(bionemoSuperLocalCompletionText(glmModel, completed), bionemoSuperLocalCompletionText(superModel, completed));
 
   const rejected = [];
   const bareJson = structuredClone(completed);
@@ -449,9 +664,13 @@ test("host-local model inventory completion accepts only the exact sanitized syn
   assert.equal(EPHEMERAL_INVENTORY_CALL_ID.length, 40);
   assert.match(EPHEMERAL_INVENTORY_CALL_ID, /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u);
   assert.deepEqual(bionemoSuperValidatedModelInventory(superModel, completed), inventoryValue());
+  assert.deepEqual(bionemoSuperValidatedModelInventory(glmModel, completed), inventoryValue());
   assert.equal(bionemoSuperCompletedToolTarget(superModel, completed), inventoryInitial.name);
+  assert.equal(bionemoSuperCompletedToolTarget(glmModel, completed), inventoryInitial.name);
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, completed), true);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(glmModel, completed), true);
   const final = bionemoSuperLocalCompletionText(superModel, completed);
+  assert.equal(bionemoSuperLocalCompletionText(glmModel, completed), final);
   assert.match(final, /3 models; 1 ready/u);
   for (const { id, displayName, family, readiness } of inventoryValue().models) {
     assert.equal(final.includes(`id: ${id}; displayName: ${displayName}; family: ${family}; readiness: ${readiness}`), true);
@@ -588,7 +807,141 @@ test("host-local model inventory completion accepts only the exact sanitized syn
   assert.equal(bionemoSuperValidatedModelInventory({ ...superModel, provider: "nvidia" }, completed), undefined);
 });
 
-test("Super initial calls are source-owned only for exact reviewed prompts", () => {
+test("source-owned routing is restricted to the two configured Token Factory defaults", () => {
+  for (const model of defaultModels) assert.equal(bionemoIsSourceOwnedTokenFactoryModel(model), true);
+  assert.equal(bionemoIsSourceOwnedTokenFactoryModel({ provider: "TOKENFACTORY", id: "ZAI-ORG/GLM-5.2" }), true);
+  assert.equal(bionemoIsSourceOwnedTokenFactoryModel(deepSeekModel), false);
+  assert.equal(bionemoIsSourceOwnedTokenFactoryModel({ ...superModel, provider: "nvidia" }), false);
+  assert.equal(bionemoIsSourceOwnedTokenFactoryModel({ ...glmModel, id: "zai-org/glm-5.1" }), false);
+});
+
+test("Examples 5 and 6 return reviewed orientation text for both default models without tools", () => {
+  for (const entry of [BIONEMO_GUIDED_STARTER_TURNS.tour, BIONEMO_GUIDED_STARTER_TURNS.skills]) {
+    const context = guidedContext(entry);
+    for (const model of defaultModels) {
+      const action = bionemoGuidedStarterAction(model, context);
+      assert.deepEqual(action, { type: "final", text: entry.finalText });
+      assert.equal(bionemoSuperInitialNotebookTool(model, context), undefined);
+      assert.equal(bionemoSuperLocalCompletionText(model, context), entry.finalText);
+      assert.match(entry.finalText, /research|nonclinical/iu);
+    }
+    assert.equal(bionemoGuidedStarterAction(deepSeekModel, context), undefined);
+    const continued = structuredClone(context);
+    continued.messages.push({ role: "assistant", content: [{ type: "text", text: "untrusted continuation" }] });
+    for (const model of defaultModels) {
+      const action = bionemoGuidedStarterAction(model, continued);
+      assert.equal(action.type, "final");
+      assert.match(action.text, /could not validate the packaged example result/iu);
+      assert.equal(bionemoSuperInitialNotebookTool(model, continued), undefined);
+      assert.equal(bionemoSuperLocalCompletionText(model, continued), action.text);
+    }
+  }
+});
+
+test("Examples 7 and 8 follow exact finite-state ClawBio tool paths on both default models", () => {
+  const catalog = BIONEMO_GUIDED_STARTER_TURNS.catalog;
+  const demo = BIONEMO_GUIDED_STARTER_TURNS.demo;
+  const listValue = gwasListValue();
+  const contractValue = gwasContractValue();
+  const demoValue = gwasDemoValue();
+  assert.equal(bionemoValidatedGwasList(listValue), true);
+  assert.equal(bionemoValidatedGwasContract(contractValue), true);
+  assert.deepEqual(bionemoValidatedGwasDemo(demoValue), {
+    root: "/workspace/agent/artifacts/clawbio/output/gwas_20260818_123456",
+    reportPath: "/workspace/agent/artifacts/clawbio/output/gwas_20260818_123456/report.md",
+  });
+
+  const catalogInitial = guidedContext(catalog);
+  const catalogListed = guidedContext(catalog, [listValue]);
+  const catalogComplete = guidedContext(catalog, [listValue, contractValue]);
+  const demoInitial = guidedContext(demo);
+  const demoDescribed = guidedContext(demo, [contractValue]);
+  const demoComplete = guidedContext(demo, [contractValue, demoValue]);
+  assert.deepEqual(
+    bionemoValidatedClawBioStep(catalogListed.messages.slice(1), catalog.steps[0]),
+    listValue,
+  );
+
+  for (const model of defaultModels) {
+    for (const [context, expected] of [
+      [catalogInitial, catalog.steps[0]],
+      [catalogListed, catalog.steps[1]],
+      [demoInitial, demo.steps[0]],
+      [demoDescribed, demo.steps[1]],
+    ]) {
+      assert.deepEqual(bionemoGuidedStarterAction(model, context), { type: "tool", ...expected });
+      assert.deepEqual(bionemoSuperInitialNotebookTool(model, context), { name: expected.name, params: { ...expected.params } });
+      assert.equal(bionemoSuperLocalCompletionText(model, context), undefined);
+    }
+
+    const catalogFinal = bionemoGuidedStarterAction(model, catalogComplete);
+    assert.deepEqual(catalogFinal, { type: "final", text: catalog.finalText });
+    assert.equal(bionemoSuperLocalCompletionText(model, catalogComplete), catalog.finalText);
+    assert.match(catalogFinal.text, /GWAS Lookup.*gwas-lookup/isu);
+    assert.match(catalogFinal.text, /report\.md/iu);
+    assert.match(catalogFinal.text, /lookup was not run/iu);
+
+    const demoFinal = bionemoGuidedStarterAction(model, demoComplete);
+    assert.equal(demoFinal.type, "final");
+    assert.equal(bionemoSuperLocalCompletionText(model, demoComplete), demoFinal.text);
+    assert.match(demoFinal.text, /rs3798220/iu);
+    assert.match(demoFinal.text, /11 merged GWAS associations/iu);
+    assert.match(demoFinal.text, /gwas_20260818_123456\/report\.md/iu);
+    assert.match(demoFinal.text, /research-only/iu);
+    assert.match(demoFinal.text, /not a diagnosis/iu);
+  }
+});
+
+test("Examples 7 and 8 fail closed on malformed or untrusted ClawBio results", () => {
+  const catalog = BIONEMO_GUIDED_STARTER_TURNS.catalog;
+  const demo = BIONEMO_GUIDED_STARTER_TURNS.demo;
+  const malformed = [];
+
+  const mismatchedId = guidedContext(catalog, [gwasListValue()]);
+  mismatchedId.messages[2].toolCallId = GUIDED_CALL_IDS[1];
+  malformed.push(["mismatched call ID", mismatchedId]);
+
+  const wrongArguments = guidedContext(catalog, [gwasListValue()]);
+  wrongArguments.messages[1].content[0].arguments = { query: "GWAS" };
+  malformed.push(["wrong arguments", wrongArguments]);
+
+  const errored = guidedContext(catalog, [gwasListValue()]);
+  errored.messages[2].isError = true;
+  malformed.push(["errored result", errored]);
+
+  const wrongServer = guidedContext(catalog, [gwasListValue()]);
+  wrongServer.messages[2].details.mcpServer = "other";
+  malformed.push(["wrong MCP provenance", wrongServer]);
+
+  const noncanonical = guidedContext(catalog, [gwasListValue()]);
+  noncanonical.messages[2].content[0].text += "\n";
+  malformed.push(["noncanonical projection", noncanonical]);
+
+  const alteredListValue = gwasListValue();
+  alteredListValue.result[4].runnable = false;
+  malformed.push(["non-runnable GWAS entry", guidedContext(catalog, [alteredListValue])]);
+
+  const alteredContractValue = gwasContractValue();
+  alteredContractValue.spec += "\nUnreviewed mutation";
+  malformed.push(["contract hash mismatch", guidedContext(demo, [alteredContractValue])]);
+
+  malformed.push(["unsafe demo output root", guidedContext(demo, [gwasContractValue(), gwasDemoValue("/tmp/gwas_20260818_123456")])]);
+  const failedDemoValue = gwasDemoValue();
+  failedDemoValue.success = false;
+  malformed.push(["reported demo failure", guidedContext(demo, [gwasContractValue(), failedDemoValue])]);
+
+  for (const [label, context] of malformed) {
+    for (const model of defaultModels) {
+      const action = bionemoGuidedStarterAction(model, context);
+      assert.equal(action?.type, "final", label);
+      assert.match(action.text, /could not validate the packaged example result/iu, label);
+      assert.equal(bionemoSuperInitialNotebookTool(model, context), undefined, label);
+      assert.equal(bionemoSuperLocalCompletionText(model, context), action.text, label);
+    }
+  }
+});
+
+test("default-model initial calls are source-owned only for exact reviewed prompts", () => {
   assert.equal(BIONEMO_SUPER_NOTEBOOK_TURNS.length, 4);
   assert.equal(BIONEMO_SUPER_INITIAL_TURNS.length, 7);
   assert.deepEqual(BIONEMO_SUPER_INITIAL_TURNS.slice(0, 4), BIONEMO_SUPER_NOTEBOOK_TURNS);
@@ -619,20 +972,22 @@ test("Super initial calls are source-owned only for exact reviewed prompts", () 
   assert.equal(inventoryInitial.prompt, WORKBENCH_EXAMPLE_SESSIONS.find(({ slug }) => slug === "bionemo-model-inventory")?.prompt);
   assert.deepEqual(inventoryInitial.params, {});
   for (const expected of BIONEMO_SUPER_INITIAL_TURNS) {
-    const actual = bionemoSuperInitialNotebookTool(superModel, {
-      messages: [{ role: "user", content: [{ type: "text", text: expected.prompt }] }],
-    });
-    assert.deepEqual(actual, { name: expected.name, params: { ...expected.params } });
-    assert.deepEqual(
-      bionemoSuperInitialNotebookTool(superModel, { prompt: expected.prompt, messages: [] }),
-      { name: expected.name, params: { ...expected.params } },
-    );
-    assert.deepEqual(
-      bionemoSuperInitialNotebookTool(superModel, {
-        messages: [{ role: "user", content: `[Fri 2026-08-14 18:06 UTC] ${expected.prompt}` }],
-      }),
-      { name: expected.name, params: { ...expected.params } },
-    );
+    for (const model of defaultModels) {
+      const actual = bionemoSuperInitialNotebookTool(model, {
+        messages: [{ role: "user", content: [{ type: "text", text: expected.prompt }] }],
+      });
+      assert.deepEqual(actual, { name: expected.name, params: { ...expected.params } });
+      assert.deepEqual(
+        bionemoSuperInitialNotebookTool(model, { prompt: expected.prompt, messages: [] }),
+        { name: expected.name, params: { ...expected.params } },
+      );
+      assert.deepEqual(
+        bionemoSuperInitialNotebookTool(model, {
+          messages: [{ role: "user", content: `[Fri 2026-08-14 18:06 UTC] ${expected.prompt}` }],
+        }),
+        { name: expected.name, params: { ...expected.params } },
+      );
+    }
   }
   const [first] = BIONEMO_SUPER_NOTEBOOK_TURNS;
   const strictEnvelope = "[Fri 2026-08-14 18:06 UTC] ";
@@ -657,6 +1012,21 @@ test("Super initial calls are source-owned only for exact reviewed prompts", () 
     prompt: first.prompt,
     messages: [{ role: "toolResult", toolName: first.name }],
   }), undefined);
+  assert.equal(bionemoSuperInitialNotebookTool(superModel, {
+    messages: [
+      { role: "user", content: first.prompt },
+      { role: "assistant", content: [{ type: "text", text: "untrusted continuation" }] },
+    ],
+  }), undefined);
+  assert.equal(bionemoSuperInitialNotebookTool(superModel, {
+    messages: [{
+      role: "user",
+      content: [
+        { type: "text", text: first.prompt },
+        { type: "image", image_url: "data:image/png;base64,AA==" },
+      ],
+    }],
+  }), undefined);
   for (const malformed of [
     `[Fri 2026-8-14 18:06 UTC] ${first.prompt}`,
     `[Fri 2026-08-14 18:06 UTC] [Fri 2026-08-14 18:06 UTC] ${first.prompt}`,
@@ -669,16 +1039,62 @@ test("Super initial calls are source-owned only for exact reviewed prompts", () 
   }
 });
 
-test("Super fallback includes only a bounded workflow summary", () => {
+test("default-model fallback includes only bounded summaries and exact safe artifact paths", () => {
   const context = turn("bionemo_compare_protein_structures");
   context.messages.at(-1).content = [{ type: "text", text: JSON.stringify({
     summary: { predictions: { openfold2: { confidence: { ptm_score: 0.81 } }, openfold3: { confidence: { ptm_score: 0.87 } } }, note: "safe" },
     artifacts: [{ viewerMarkdown: "access=must-not-appear" }],
   }) }];
-  const summary = bionemoSuperBoundedResultSummary(superModel, context);
-  assert.match(summary, /ptm_score/u);
-  assert.doesNotMatch(summary, /must-not-appear/u);
-  assert.match(bionemoSuperDeterministicFinalText(superModel, context), /Returned workflow summary/u);
+  for (const model of defaultModels) {
+    const summary = bionemoSuperBoundedResultSummary(model, context);
+    assert.match(summary, /ptm_score/u);
+    assert.doesNotMatch(summary, /must-not-appear/u);
+    assert.match(bionemoSuperDeterministicFinalText(model, context), /Returned workflow summary/u);
+  }
+
+  const runId = "01234567-89ab-4cde-8f01-23456789abcd";
+  const safe = turn("bionemo_molmim");
+  safe.messages.at(-1).content = [{ type: "text", text: JSON.stringify({
+    status: "completed",
+    runId,
+    summary: { startingMolecule: "gefitinib", optimizationObjective: "QED", minimumSimilarity: 0.7 },
+    artifacts: [
+      {
+        name: "molmim_candidates.json",
+        downloadPath: `/workspace/agent/artifacts/${runId}/molmim_candidates.json`,
+        viewerMarkdown: "[secret](?access=must-not-appear)",
+        bytes: 1234,
+      },
+      {
+        name: "molmim_candidates.csv",
+        downloadPath: `/workspace/agent/artifacts/${runId}/molmim_candidates.csv`,
+        viewerUrl: "https://private.invalid/?access=must-not-appear",
+      },
+    ],
+  }) }];
+  for (const model of defaultModels) {
+    const summary = bionemoSuperBoundedResultSummary(model, safe);
+    assert.match(summary, /gefitinib/u);
+    assert.match(summary, /QED/u);
+    assert.match(summary, /molmim_candidates\.json/u);
+    assert.match(summary, new RegExp(`/workspace/agent/artifacts/${runId}/molmim_candidates\\.csv`, "u"));
+    assert.doesNotMatch(summary, /viewerMarkdown|viewerUrl|must-not-appear/u);
+    assert.match(bionemoSuperLocalCompletionText(model, safe), /minimumSimilarity/iu);
+  }
+
+  for (const [label, mutate] of [
+    ["unsafe name", (value) => { value.artifacts[0].name = "../secret"; }],
+    ["mismatched path", (value) => { value.artifacts[0].downloadPath = "/tmp/molmim_candidates.json"; }],
+    ["wrong run ID", (value) => { value.runId = "not-a-run-id"; }],
+  ]) {
+    const rejected = structuredClone(safe);
+    const value = JSON.parse(rejected.messages.at(-1).content[0].text);
+    mutate(value);
+    rejected.messages.at(-1).content[0].text = JSON.stringify(value);
+    const summary = bionemoSuperBoundedResultSummary(superModel, rejected);
+    assert.doesNotMatch(summary, /\/workspace\/agent\/artifacts\//u, label);
+    assert.doesNotMatch(summary, /molmim_candidates\.(?:json|csv)/u, label);
+  }
 });
 
 test("post-success guard leaves initial, unrelated tools/models, errors, and mismatched chains untouched", () => {
@@ -687,11 +1103,13 @@ test("post-success guard leaves initial, unrelated tools/models, errors, and mis
   assert.equal(bionemoSuperShouldFinalizeWithoutTools({ ...deepSeekModel, provider: "nvidia" }, turn("bionemo_batch_fold_demo")), false);
   for (const name of ["openfold2_predict", "job_status", "clawbio__run_skill", "clawbio_run_skill", "tavily_search", "web_search"]) {
     assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, turn(name)), false);
+    assert.equal(bionemoSuperShouldFinalizeWithoutTools(glmModel, turn(name)), false);
     assert.equal(bionemoSuperShouldFinalizeWithoutTools(deepSeekModel, turn(name)), false);
   }
   const mismatch = structuredClone(turn("bionemo_batch_fold_demo"));
   mismatch.messages.at(-1).toolCallId = "other";
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(superModel, mismatch), false);
+  assert.equal(bionemoSuperShouldFinalizeWithoutTools(glmModel, mismatch), false);
   assert.equal(bionemoSuperShouldFinalizeWithoutTools(deepSeekModel, mismatch), false);
   const multipleCalls = structuredClone(turn("bionemo_batch_fold_demo"));
   multipleCalls.messages.at(-2).content.push({ type: "toolCall", id: "call-2", name: "bionemo_batch_fold_demo", arguments: {} });
@@ -715,7 +1133,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const names = (await import("node:fs/promises")).readdir(distRoot);
   const file = (await names).find((name) => name.startsWith("openai-transport-stream-") && name.endsWith(".js"));
   const source = await readFile(path.join(distRoot, file), "utf8");
-  assert.match(source, /openclaw\.bionemo\.super-followup\.v15/u);
+  assert.match(source, /openclaw\.bionemo\.super-followup\.v16/u);
   const callback = source.indexOf("if (nextParams !== void 0) params = nextParams;");
   const codeMode = source.indexOf("if (options?.openclawCodeModeToolSurface === true)", callback);
   const guard = source.indexOf("if (bionemoSuperFinalText)");
@@ -724,14 +1142,16 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   assert.match(source, /delete params\.tools;\s*params\.tool_choice = "none";/su);
   assert.match(source, /const bionemoSuperLocalFinalText = bionemoSuperLocalCompletionText\(model, context\)/u);
   assert.match(source, /const client = bionemoSuperLocalFinalText \? undefined : createOpenAICompletionsClient/u);
-  assert.equal(source.match(/bionemoNormalizeStrictOpenClawPrompt\(/gu)?.length, 5);
+  assert.match(source, /function bionemoNormalizeStrictOpenClawPrompt\(/u);
+  assert.match(source, /function bionemoGuidedStarterAction\(/u);
+  assert.match(source, /function bionemoValidatedGwasDemo\(/u);
   assert.match(source, /bionemoSuperInitialTool && Array\.isArray\(params\.tools\)\s*&& params\.tools\.some\(\(tool\) => tool\?\.function\?\.name === bionemoSuperInitialTool\.name\)/su);
   assert.doesNotMatch(source, /bionemoSuperContextTavilyTool|mcp:bundle-mcp:tavily_web__tavily_search/u);
   assert.equal(source.includes(["BIONEMO", "TEMP", "TAVILY", "POST", "RESULT", "TRANSPORT", "DIAGNOSTIC"].join("_")), false);
   assert.doesNotMatch(source, /bionemoEmitTempTavily/u);
   assert.equal(source.includes(["bionemo", "super", "initial", "diagnostic"].join("-")), false);
   assert.match(source, /const responseStream = bionemoSuperLocalResponse\s*\? \(async function\* bionemoSuperCompletedStream\(\) \{\s*yield \{ id: "bionemo-local-completion", choices:/su);
-  assert.match(source, /const bionemoSuperLocalResponse = bionemoSuperLocalFinalText \|\| Boolean\(bionemoSuperInitialTool\)/u);
+  assert.match(source, /const bionemoSuperLocalResponse = bionemoSuperFinalText \|\| Boolean\(bionemoSuperInitialTool\)/u);
   assert.doesNotMatch(source, /bionemoSuperInitialTool\?\.name === "tavily_web__tavily_search"/u);
   assert.match(source, /bionemoSuperFinalText,/u);
   assert.match(source, /if \(!bionemoSuperFinalText && !bionemoSuperInitialTool && choiceDelta\.tool_calls/u);
@@ -754,15 +1174,39 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
   const expectedInitial = BIONEMO_SUPER_NOTEBOOK_TURNS[1];
   const expectedTavilyInitial = tavilyInitial;
   const expectedInventoryInitial = inventoryInitial;
+  const catalog = BIONEMO_GUIDED_STARTER_TURNS.catalog;
+  const demo = BIONEMO_GUIDED_STARTER_TURNS.demo;
+  const malformedCatalog = guidedContext(catalog, [gwasListValue()]);
+  malformedCatalog.messages[2].toolCallId = GUIDED_CALL_IDS[1];
+  const malformedDemo = guidedContext(demo, [gwasContractValue(), gwasDemoValue("/tmp/gwas_20260818_123456")]);
+  const guidedIntegrationCases = [
+    ["Example 5 final", guidedContext(BIONEMO_GUIDED_STARTER_TURNS.tour)],
+    ["Example 6 final", guidedContext(BIONEMO_GUIDED_STARTER_TURNS.skills)],
+    ["Example 7 list", guidedContext(catalog)],
+    ["Example 7 describe", guidedContext(catalog, [gwasListValue()])],
+    ["Example 7 final", guidedContext(catalog, [gwasListValue(), gwasContractValue()])],
+    ["Example 8 describe", guidedContext(demo)],
+    ["Example 8 run", guidedContext(demo, [gwasContractValue()])],
+    ["Example 8 final", guidedContext(demo, [gwasContractValue(), gwasDemoValue()])],
+    ["Example 7 malformed fail-closed", malformedCatalog],
+    ["Example 8 malformed fail-closed", malformedDemo],
+  ].map(([label, context]) => {
+    const tool = bionemoSuperInitialNotebookTool(superModel, context);
+    const finalText = bionemoSuperLocalCompletionText(superModel, context);
+    assert.equal(Boolean(tool) !== Boolean(finalText), true, label);
+    return { label, context, tool, finalText };
+  });
   const integrationScript = `
     import assert from "node:assert/strict";
     const patched = await import("file:///app/dist/${file}?test=" + Date.now());
     const model = ${JSON.stringify({ ...superModel, api: "openai-completions", baseUrl: "https://example.invalid/v1", reasoning: true, input: ["text"], contextWindow: 262_144, maxTokens: 8_192, compat: { maxTokensField: "max_tokens", requiresStringContent: true } })};
+    const glmModel = ${JSON.stringify({ ...glmModel, api: "openai-completions", baseUrl: "https://example.invalid/v1", reasoning: true, input: ["text"], contextWindow: 262_144, maxTokens: 8_192, compat: { maxTokensField: "max_tokens", requiresStringContent: true } })};
     const deepSeekModel = ${JSON.stringify({ ...deepSeekModel, api: "openai-completions", baseUrl: "https://example.invalid/v1", reasoning: true, input: ["text"], contextWindow: 1_048_576, maxTokens: 8_192 })};
     const expectedInitial = ${JSON.stringify({ name: expectedInitial.name, params: { ...expectedInitial.params } })};
     const expectedTavilyInitial = ${JSON.stringify({ name: expectedTavilyInitial.name, params: { ...expectedTavilyInitial.params } })};
     const expectedInventoryInitial = ${JSON.stringify({ name: expectedInventoryInitial.name, params: { ...expectedInventoryInitial.params } })};
     const expectedInitialTurns = ${JSON.stringify(BIONEMO_SUPER_INITIAL_TURNS.map(({ prompt, name, params }) => ({ prompt, name, params: { ...params } })))};
+    const guidedIntegrationCases = ${JSON.stringify(guidedIntegrationCases)};
     const output = () => ({ role: "assistant", content: [], api: model.api, provider: model.provider, model: model.id, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: "stop", timestamp: Date.now() });
     const chunks = () => (async function* providerChunks() { yield { id: "response-1", choices: [{ index: 0, delta: { content: "<tool_call><function=read><parameter=path>artifact.pdb</parameter></function></tool_call>", tool_calls: [{ index: 0, id: "provider-call", type: "function", function: { name: "babel", arguments: "{}" } }] }, finish_reason: "tool_calls" }] }; }());
     const initialOutput = output();
@@ -835,41 +1279,80 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
       providerFetchCalls += 1;
       return await new Promise(() => {});
     };
-    for (const expected of expectedInitialTurns) {
-      const exactInitialContext = { messages: [{ role: "user", content: "[Fri 2026-08-14 18:06 UTC] " + expected.prompt }] };
-      const initialEvents = await within(collectEvents(transport(model, exactInitialContext, {
-        apiKey: "test-key",
-        emitReasoning: false,
-        signal: AbortSignal.timeout(500),
-        onPayload(params) {
-          return { ...params, tools: [{ type: "function", function: { name: expected.name, description: "bounded test", parameters: { type: "object" } } }] };
-        },
-      })), 750);
-      assert.equal(providerFetchCalls, 0, expected.name + " must not start a zero-byte provider request");
-      assert.equal(initialEvents.some(({ type }) => type === "error"), false, JSON.stringify(initialEvents));
-      assert.equal(initialEvents.at(0).type, "start");
-      assert.equal(initialEvents.at(-1).type, "done");
-      assert.equal(initialEvents.at(-1).message.stopReason, "toolUse");
-      assert.deepEqual(initialEvents.at(-1).message.content, [{
-        type: "toolCall",
-        id: initialEvents.at(-1).message.content[0].id,
-        name: expected.name,
-        arguments: expected.params,
-        partialArgs: JSON.stringify(expected.params),
-      }]);
-      assert.equal(initialEvents.at(-1).message.content[0].id.startsWith("call_bionemo_super_"), true);
+    for (const sourceModel of [model, glmModel]) {
+      for (const expected of expectedInitialTurns) {
+        const exactInitialContext = { messages: [{ role: "user", content: "[Fri 2026-08-14 18:06 UTC] " + expected.prompt }] };
+        const initialEvents = await within(collectEvents(transport(sourceModel, exactInitialContext, {
+          apiKey: "test-key",
+          emitReasoning: false,
+          signal: AbortSignal.timeout(500),
+          onPayload(params) {
+            return { ...params, tools: [{ type: "function", function: { name: expected.name, description: "bounded test", parameters: { type: "object" } } }] };
+          },
+        })), 750);
+        assert.equal(providerFetchCalls, 0, sourceModel.id + ": " + expected.name + " must not start a provider request");
+        assert.equal(initialEvents.some(({ type }) => type === "error"), false, JSON.stringify(initialEvents));
+        assert.equal(initialEvents.at(0).type, "start");
+        assert.equal(initialEvents.at(-1).type, "done");
+        assert.equal(initialEvents.at(-1).message.stopReason, "toolUse");
+        assert.deepEqual(initialEvents.at(-1).message.content, [{
+          type: "toolCall",
+          id: initialEvents.at(-1).message.content[0].id,
+          name: expected.name,
+          arguments: expected.params,
+          partialArgs: JSON.stringify(expected.params),
+        }]);
+        assert.equal(initialEvents.at(-1).message.content[0].id.startsWith("call_bionemo_super_"), true);
+      }
+    }
+    for (const sourceModel of [model, glmModel]) {
+      for (const guidedCase of guidedIntegrationCases) {
+        const before = providerFetchCalls;
+        const guidedEvents = await within(collectEvents(transport(sourceModel, guidedCase.context, {
+          apiKey: "test-key",
+          emitReasoning: false,
+          signal: AbortSignal.timeout(500),
+          onPayload(params) {
+            return guidedCase.tool
+              ? { ...params, tools: [{ type: "function", function: { name: guidedCase.tool.name, description: "bounded test", parameters: { type: "object" } } }] }
+              : params;
+          },
+        })), 750);
+        assert.equal(providerFetchCalls, before, sourceModel.id + ": " + guidedCase.label + " must remain source-owned");
+        assert.equal(guidedEvents.some(({ type }) => type === "error"), false, guidedCase.label + ": " + JSON.stringify(guidedEvents));
+        assert.equal(guidedEvents.at(0).type, "start", guidedCase.label);
+        assert.equal(guidedEvents.at(-1).type, "done", guidedCase.label);
+        if (guidedCase.tool) {
+          assert.equal(guidedEvents.at(-1).message.stopReason, "toolUse", guidedCase.label);
+          assert.deepEqual(guidedEvents.at(-1).message.content, [{
+            type: "toolCall",
+            id: guidedEvents.at(-1).message.content[0].id,
+            name: guidedCase.tool.name,
+            arguments: guidedCase.tool.params,
+            partialArgs: JSON.stringify(guidedCase.tool.params),
+          }], guidedCase.label);
+        } else {
+          assert.equal(guidedEvents.at(-1).message.stopReason, "stop", guidedCase.label);
+          assert.deepEqual(guidedEvents.at(-1).message.content, [{ type: "text", text: guidedCase.finalText }], guidedCase.label);
+          assert.equal(guidedEvents.some(({ type }) => type.startsWith("toolcall_")), false, guidedCase.label);
+        }
+      }
     }
     const expectedScienceInitial = expectedInitialTurns[0];
     const exactScienceInitialContext = { messages: [{ role: "user", content: "[Fri 2026-08-14 18:06 UTC] " + expectedScienceInitial.prompt }] };
-    const localEvents = await within(collectEvents(transport(model, successfulBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
-    assert.equal(providerFetchCalls, 0, "completed Super boundary must not start the zero-byte provider follow-up");
-    assert.equal(localEvents.some(({ type }) => type === "error"), false, JSON.stringify(localEvents));
-    assert.equal(localEvents.at(0).type, "start");
-    assert.equal(localEvents.at(-1).type, "done");
-    assert.equal(localEvents.some(({ type }) => type === "text_start"), true);
-    assert.equal(localEvents.some(({ type }) => type === "text_delta"), true);
-    assert.deepEqual(localEvents.at(-1).message.content, [{ type: "text", text: superLocalFinal }]);
-    assert.equal(localEvents.at(-1).message.stopReason, "stop");
+    for (const sourceModel of [model, glmModel]) {
+      const localFinal = patched.__bionemoSuperLocalCompletionText(sourceModel, successfulBoundary);
+      assert.equal(localFinal, superLocalFinal);
+      const localEvents = await within(collectEvents(transport(sourceModel, successfulBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
+      assert.equal(providerFetchCalls, 0, "completed default-model boundary must not start a provider follow-up");
+      assert.equal(localEvents.some(({ type }) => type === "error"), false, JSON.stringify(localEvents));
+      assert.equal(localEvents.at(0).type, "start");
+      assert.equal(localEvents.at(-1).type, "done");
+      assert.equal(localEvents.some(({ type }) => type === "text_start"), true);
+      assert.equal(localEvents.some(({ type }) => type === "text_delta"), true);
+      assert.deepEqual(localEvents.at(-1).message.content, [{ type: "text", text: localFinal }]);
+      assert.equal(localEvents.at(-1).message.stopReason, "stop");
+    }
 
     const timestampedSuccessfulTavilyBoundary = structuredClone(successfulTavilyBoundary);
     timestampedSuccessfulTavilyBoundary.messages[0].content[0].text = "[Fri 2026-08-14 18:06 UTC] "
@@ -877,6 +1360,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     const tavilyLocalFinal = patched.__bionemoSuperLocalCompletionText(model, timestampedSuccessfulTavilyBoundary);
     assert.match(tavilyLocalFinal, /RCSB PDB/u);
     assert.match(tavilyLocalFinal, /UniProt/u);
+    assert.equal(patched.__bionemoSuperLocalCompletionText(glmModel, timestampedSuccessfulTavilyBoundary), tavilyLocalFinal);
     const tavilyLocalEvents = await within(collectEvents(transport(model, timestampedSuccessfulTavilyBoundary, { apiKey: "test-key", emitReasoning: false, signal: AbortSignal.timeout(500) })), 750);
     assert.equal(providerFetchCalls, 0, "timestamp-prefixed successful Tavily boundary must not start a zero-byte provider follow-up");
     assert.equal(tavilyLocalEvents.some(({ type }) => type === "error"), false, JSON.stringify(tavilyLocalEvents));
@@ -904,6 +1388,7 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     assert.equal(successfulInventoryBoundary.messages[1].content[0].id.length, 40);
     assert.match(successfulInventoryBoundary.messages[1].content[0].id, /^callbionemosuper[0-9a-f]{12}4[0-9a-f]{3}[89ab][0-9a-f]{7}$/u);
     const inventoryLocalFinal = patched.__bionemoSuperLocalCompletionText(model, successfulInventoryBoundary);
+    assert.equal(patched.__bionemoSuperLocalCompletionText(glmModel, successfulInventoryBoundary), inventoryLocalFinal);
     assert.match(inventoryLocalFinal, /3 models; 1 ready/u);
     for (const entry of ${JSON.stringify(inventoryValue().models)}) {
       assert.equal(inventoryLocalFinal.includes("id: " + entry.id + "; displayName: " + entry.displayName + "; family: " + entry.family + "; readiness: " + entry.readiness), true);
@@ -1136,9 +1621,9 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
         return { ...params, tools: [{ type: "function", function: { name: "other_tool", description: "other", parameters: { type: "object" } } }] };
       },
     })), 2_000);
-    assert.equal(providerFetchCalls, providerBaseline + 2, "a missing projected source-owned tool must retain the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 1, "a missing projected source-owned tool must fail closed without a provider request");
     assert.equal(missingSurfaceEvents.at(-1).type, "done");
-    assert.deepEqual(missingSurfaceEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
+    assert.match(missingSurfaceEvents.at(-1).message.content[0].text, /could not validate the packaged example result/iu);
     const wrongProviderModel = { ...model, provider: "nvidia" };
     const wrongProviderEvents = await within(collectEvents(transport(wrongProviderModel, exactScienceInitialContext, {
       apiKey: "test-key",
@@ -1147,23 +1632,23 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
         return { ...params, tools: [{ type: "function", function: { name: expectedScienceInitial.name, description: "bounded test", parameters: { type: "object" } } }] };
       },
     })), 2_000);
-    assert.equal(providerFetchCalls, providerBaseline + 3, "the exact timestamped prompt on another provider must retain the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 2, "the exact timestamped prompt on another provider must retain the provider transport");
     assert.equal(wrongProviderEvents.at(-1).type, "done");
     assert.deepEqual(wrongProviderEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const malformedTavilyBoundary = structuredClone(successfulTavilyBoundary);
     malformedTavilyBoundary.messages.at(-1).details.mcpServer = "untrusted-server";
     assert.equal(patched.__bionemoSuperLocalCompletionText(model, malformedTavilyBoundary), undefined);
     const malformedTavilyEvents = await within(collectEvents(transport(model, malformedTavilyBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, providerBaseline + 4, "malformed Tavily provenance retains the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 3, "malformed Tavily provenance retains the provider transport");
     assert.equal(malformedTavilyEvents.at(-1).type, "done");
     assert.deepEqual(malformedTavilyEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const erroredBoundaryForTransport = ${JSON.stringify(turn("bionemo_batch_fold_demo", { isError: true }))};
     const erroredEvents = await within(collectEvents(transport(model, erroredBoundaryForTransport, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, providerBaseline + 5, "errored Super boundary retains the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 4, "errored Super boundary retains the provider transport");
     assert.equal(erroredEvents.at(-1).type, "done");
     assert.deepEqual(erroredEvents.at(-1).message.content, [{ type: "text", text: "Provider normal path." }]);
     const deepSeekEvents = await within(collectEvents(transport(deepSeekModel, successfulBoundary, { apiKey: "test-key", emitReasoning: false })), 2_000);
-    assert.equal(providerFetchCalls, providerBaseline + 6, "other models retain the provider transport");
+    assert.equal(providerFetchCalls, providerBaseline + 4, "legacy completed-wrapper final must not start a discarded provider request");
     assert.equal(deepSeekEvents.at(-1).type, "done");
     assert.deepEqual(deepSeekEvents.at(-1).message.content, [{ type: "text", text: sourceOwnedFinal }]);
 
@@ -1201,9 +1686,12 @@ test("pinned transport patch is hash-gated, idempotent, and runs after payload c
     await patched.__bionemoProcessOpenAICompletionsStream(chunks(), passThroughOutput, deepSeekModel, { push: () => {} }, { emitReasoning: false, bionemoSuperFinalText: patched.__bionemoSuperDeterministicFinalText(deepSeekModel, erroredBoundary) });
     assert.equal(passThroughOutput.content.some(({ type }) => type === "toolCall"), true);
   `;
+  const integrationPath = path.join(root, "openclaw-super-followup-integration.mjs");
+  await writeFile(integrationPath, integrationScript);
   await execFileAsync("docker", [
     "run", "--rm", "--network", "none", "--entrypoint", "node",
     "--mount", `type=bind,src=${path.join(distRoot, file)},dst=/app/dist/${file},readonly`,
-    PINNED_IMAGE, "--input-type=module", "-e", integrationScript,
+    "--mount", `type=bind,src=${integrationPath},dst=/tmp/openclaw-super-followup-integration.mjs,readonly`,
+    PINNED_IMAGE, "/tmp/openclaw-super-followup-integration.mjs",
   ]);
 });
