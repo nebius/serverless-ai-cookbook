@@ -15,7 +15,8 @@
 #
 # Optional environment variables:
 #   HF_TOKEN            HuggingFace token (for private datasets)
-#   REGISTRY            Docker Hub user or org (default: mnrozhkov)
+#   REGISTRY            Image registry prefix (default: Nebius CR
+#                       cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7)
 #   IMAGE_TAG           Image tag / version (default: v0.1.0)
 #   IMAGE               Full image ref; overrides REGISTRY + IMAGE_TAG if set
 #   SUBNET_ID           Nebius subnet ID (only needed when the project has multiple subnets)
@@ -56,7 +57,7 @@ STEPS="${POSITIONAL_ARGS[2]:-5000}"
 DATASET_SLUG="${DATASET//\//-}"
 
 # --- Image (override REGISTRY / IMAGE_TAG, or set IMAGE to the full ref) ---
-REGISTRY="${REGISTRY:-mnrozhkov}"
+REGISTRY="${REGISTRY:-cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7}"
 IMAGE_TAG="${IMAGE_TAG:-v0.1.0}"
 IMAGE="${IMAGE:-${REGISTRY}/lerobot-finetune:${IMAGE_TAG}}"
 

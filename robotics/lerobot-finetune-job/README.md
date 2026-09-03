@@ -39,7 +39,7 @@ Fine-tune a [LeRobot](https://github.com/huggingface/lerobot) ACT or Diffusion p
 ```bash
 nebius ai job create \
   --name "lerobot-act-pusht" \
-  --image "mnrozhkov/lerobot-finetune:v0.1.0" \
+  --image "cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0" \
   --platform "gpu-h100-sxm" \
   --preset "1gpu-16vcpu-200gb" \
   --disk-size 450Gi \
@@ -107,6 +107,7 @@ Install the [Nebius AI Cloud CLI](https://docs.nebius.com/cli/install) and [conf
 | Nebius CLI (authenticated) | Submit and monitor jobs |
 | Nebius Object Storage bucket | Persist the checkpoint (see setup below) |
 | Docker (optional) | Local smoke test before using cloud credits |
+| `nebius registry configure-helper` (optional) | Lets Docker pull the published image from Nebius Container Registry |
 | HuggingFace account (optional) | Required only for private datasets — `lerobot/pusht` is public |
 | Subnet ID (sometimes) | Only if your project has **multiple subnets** |
 
@@ -114,9 +115,13 @@ Install the [Nebius AI Cloud CLI](https://docs.nebius.com/cli/install) and [conf
 
 Validate the container on your laptop before spending cloud credits.
 
-`scripts/run_docker.sh` mounts **`train/`**, **`configs/`**, and **`lerobot-outputs/`** from this folder into the container so you can edit `train/run.py` on the host and re-run without rebuilding (default skips build; pass `--rebuild` for a fresh image). Or run the container manually:
+`scripts/run_docker.sh` mounts **`train/`**, **`configs/`**, and **`lerobot-outputs/`** from this folder into the container so you can edit `train/run.py` on the host and re-run without rebuilding (default skips build; pass `--rebuild` for a fresh image). Or run the published image:
 
-**Build and run:**
+```bash
+nebius registry configure-helper   # once per machine
+```
+
+**Pull and run:**
 
 ```bash
 mkdir -p lerobot-outputs
@@ -125,7 +130,7 @@ docker run --rm --platform linux/amd64 \
   -v "$(pwd)/train:/lerobot/train" \
   -v "$(pwd)/configs:/lerobot/configs" \
   -v "$(pwd)/lerobot-outputs:/lerobot/outputs" \
-  mnrozhkov/lerobot-finetune:v0.1.0 \
+  cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0 \
   --policy act --dataset lerobot/pusht --steps 20
 ```
 
@@ -181,7 +186,7 @@ If the bucket is empty, the command prints nothing (exit 0).
 ```bash
 nebius ai job create \
   --name "lerobot-act-pusht-5k" \
-  --image "mnrozhkov/lerobot-finetune:v0.1.0" \
+  --image "cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0" \
   --platform "gpu-h100-sxm" \
   --preset "1gpu-16vcpu-200gb" \
   --timeout "6h" \
@@ -284,7 +289,7 @@ docker run --rm --platform linux/amd64 \
   --entrypoint python \
   -v "$(pwd)/train:/lerobot/train" \
   -v "$(pwd)/lerobot-outputs/$RUN_ID/checkpoints/005000/pretrained_model:/lerobot/ckpt" \
-  mnrozhkov/lerobot-finetune:v0.1.0 \
+  cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0 \
   -m train.eval /lerobot/ckpt
 ```
 
@@ -320,7 +325,7 @@ The checkpoint directory must include `config.json` and `model.safetensors` (syn
 - Switch dataset: replace `--dataset` with any compatible LeRobot dataset; for gated sets add `HF_TOKEN` (serverless: `--env HF_TOKEN=...`, Docker: `--env HF_TOKEN=...`); omit `HF_TOKEN` for public datasets like `lerobot/pusht`.
 - Tune resources: adjust `--batch-size`, and for local Docker pass `NUM_WORKERS=0` env on low-RAM hosts.
 - W&B logging: set `WANDB_API_KEY` env (already picked up by `train/run.py`).
-- Build/push your own image: set `REGISTRY` / `IMAGE_TAG`, then `docker build --platform linux/amd64 -t "$REGISTRY/lerobot-finetune:$IMAGE_TAG" .` and push; use that tag in `--image` or `IMAGE` env.
+- Build/push your own image: set `REGISTRY` (default `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7`) / `IMAGE_TAG`, then `docker build --platform linux/amd64 -t "$REGISTRY/lerobot-finetune:$IMAGE_TAG" .` and `docker push`; use that tag in `--image` or `IMAGE` env.
 
 **Serverless (ACT / pusht, with W&B)**  
 Runs ACT on the public pusht dataset; uses cost-optimized L40S GPU and preemptible to save cost.
@@ -334,7 +339,7 @@ RRun serverless job and track metrics in W&B:
 ```bash
 nebius ai job create \
   --name "lerobot-act-pusht-5k" \
-  --image "mnrozhkov/lerobot-finetune:v0.1.0" \
+  --image "cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0" \
   --platform "gpu-l40s-a" \
   --preset "1gpu-16vcpu-64gb" \
   --timeout "6h" \
@@ -356,7 +361,7 @@ Runs Diffusion policy on a gated ALOHA simulation dataset; requires HF_TOKEN; us
 ```bash
 nebius ai job create \
   --name "lerobot-diffusion-aloha-sim-20k" \
-  --image "mnrozhkov/lerobot-finetune:v0.1.0" \
+  --image "cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0" \
   --platform "gpu-l40s-a" \
   --preset "1gpu-16vcpu-64gb" \
   --timeout "6h" --disk-size 450Gi \
@@ -388,7 +393,7 @@ The job (1) downloads the config from S3, (2) runs `lerobot-train`, (3) copies t
 ```bash
 nebius ai job create \
   --name "lerobot-act-pusht-config" \
-  --image "mnrozhkov/lerobot-finetune:v0.1.0" \
+  --image "cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0" \
   --platform "gpu-l40s-a" \
   --preset "1gpu-16vcpu-64gb" \
   --timeout "6h" --disk-size 450Gi \
@@ -425,7 +430,7 @@ nebius ai job create \
 | `No such option: --config-path` (Typer error) | You're hitting the default `python -m train.run` entrypoint. To use upstream `lerobot-train` directly, override it with `--container-command "bash"` and pass the full command via `--args "-c '...'"` (see [Advanced](#adapting-to-your-own-use-case)). |
 | `lerobot-train: error: unrecognized arguments: --config-path …` | draccus uses **underscores**: pass `--config_path=...` (with `=`), not `--config-path`. Same rule for `--output_dir`, `--batch_size`, `--save_freq`. |
 | `ValueError: 'policy.repo_id' argument missing. Please specify it to push the model to the hub.` | `lerobot-train` defaults to pushing the checkpoint to HF Hub. Either set `policy.push_to_hub: false` in the YAML (already done in `configs/act_pusht.yaml`) or pass `--policy.push_to_hub=false` on the CLI. The bundled `train/run.py` wrapper already does this for you. |
-| Want to smoke-test the upstream CLI locally first | `docker run --rm -it --platform linux/amd64 --shm-size 2g --entrypoint bash -v "$(pwd)/configs:/lerobot/configs" -v "$(pwd)/lerobot-outputs:/lerobot/outputs" mnrozhkov/lerobot-finetune:v0.1.0`, then inside: `lerobot-train --config_path=/lerobot/configs/act_pusht.yaml --steps=20 --batch_size=2 --policy.device=cpu`. |
+| Want to smoke-test the upstream CLI locally first | `docker run --rm -it --platform linux/amd64 --shm-size 2g --entrypoint bash -v "$(pwd)/configs:/lerobot/configs" -v "$(pwd)/lerobot-outputs:/lerobot/outputs" cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0`, then inside: `lerobot-train --config_path=/lerobot/configs/act_pusht.yaml --steps=20 --batch_size=2 --policy.device=cpu`. |
 
 ## References
 
@@ -462,7 +467,9 @@ python -m train.run --help
 # Build image locally (dev tag)
 docker build --platform linux/amd64 -t lerobot-finetune:dev .
 
-# Build and push release image
-docker build --platform linux/amd64 -t mnrozhkov/lerobot-finetune:v0.1.0 .
-docker push mnrozhkov/lerobot-finetune:v0.1.0
+# Build and push release image to Nebius Container Registry
+nebius registry configure-helper   # once per machine
+docker build --platform linux/amd64 \
+  -t cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0 .
+docker push cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/lerobot-finetune:v0.1.0
 ```
