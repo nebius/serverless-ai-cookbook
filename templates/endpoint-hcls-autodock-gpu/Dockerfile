@@ -32,6 +32,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION} \
     HCLS_RUN_ROOT=/data/runs \
     AUTODOCK_GPU_EXAMPLE_ROOT=/opt/hcls/examples/autodock-gpu/1stp
+LABEL org.opencontainers.image.title="Nebius HCLS AutoDock-GPU API" \
+      org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
+      org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
+      org.opencontainers.image.licenses="GPL-2.0-only AND LGPL-2.1-only"
 RUN sed -i -e 's|http://archive.ubuntu.com/ubuntu|https://mirror.zetup.net/ubuntu|g' -e 's|http://security.ubuntu.com/ubuntu|https://mirror.zetup.net/ubuntu|g' /etc/apt/sources.list && \
     apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update && \
     apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \

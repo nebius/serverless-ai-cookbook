@@ -7,6 +7,10 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     GROMACS_BINARY=/usr/local/gromacs/avx2_256/bin/gmx HCLS_RUN_ROOT=/data/runs \
     HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION}
+LABEL org.opencontainers.image.title="Nebius HCLS GROMACS API" \
+      org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
+      org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
+      org.opencontainers.image.licenses="LGPL-2.1-only"
 RUN sed -i -e 's|http://archive.ubuntu.com/ubuntu|https://mirror.zetup.net/ubuntu|g' -e 's|http://security.ubuntu.com/ubuntu|https://mirror.zetup.net/ubuntu|g' /etc/apt/sources.list && \
     apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update && \
     apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \

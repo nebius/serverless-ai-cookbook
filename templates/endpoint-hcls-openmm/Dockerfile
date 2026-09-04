@@ -9,6 +9,10 @@ ARG HCLS_IMAGE_REVISION=unknown
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 NVIDIA_DRIVER_CAPABILITIES=compute,utility \
     HCLS_RUN_ROOT=/data/runs HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION}
+LABEL org.opencontainers.image.title="Nebius HCLS OpenMM API" \
+      org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
+      org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
+      org.opencontainers.image.licenses="MIT"
 
 COPY --from=micromamba /bin/micromamba /usr/local/bin/micromamba
 COPY templates/endpoint-hcls-openmm/openmm-linux-64.lock /tmp/openmm-linux-64.lock

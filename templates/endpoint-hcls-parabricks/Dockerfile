@@ -4,6 +4,7 @@ FROM ${PARABRICKS_API_BASE}
 ARG HCLS_IMAGE_REVISION=unknown
 LABEL org.opencontainers.image.title="Nebius HCLS Parabricks DeepVariant API" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
+      org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
       org.opencontainers.image.licenses="LicenseRef-NVIDIA-AI-Product-Agreement" \
       ai.nvidia.parabricks.version="4.7.0-1"
 ENV PARABRICKS_VERSION=4.7.0-1 \

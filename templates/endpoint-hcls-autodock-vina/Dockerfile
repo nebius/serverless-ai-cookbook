@@ -6,6 +6,10 @@ ARG HCLS_IMAGE_REVISION=unknown
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     HCLS_RUN_ROOT=/data/runs VINA_EXAMPLE_ROOT=/opt/hcls/examples/vina \
     HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION}
+LABEL org.opencontainers.image.title="Nebius HCLS AutoDock Vina API" \
+      org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
+      org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
+      org.opencontainers.image.licenses="Apache-2.0"
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates=20250419~deb12u1 \
       curl=7.88.1-10+deb12u15 \
