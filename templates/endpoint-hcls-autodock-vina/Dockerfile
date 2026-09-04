@@ -9,7 +9,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates=20250419~deb12u1 \
       curl=7.88.1-10+deb12u15 \
-      libgomp1=12.2.0-14+deb12u1 && \
+      libgomp1=12.2.0-14+deb12u1 \
+      libgnutls30=3.7.9-2+deb12u7 \
+      libssl3=3.0.20-1~deb12u2 \
+      openssl=3.0.20-1~deb12u2 && \
     rm -rf /var/lib/apt/lists/* && \
     pip install --no-cache-dir fastapi==0.136.1 pydantic==2.12.5 uvicorn==0.34.0 vina==1.2.7 && \
     groupadd --gid 10001 hcls && useradd --uid 10001 --gid hcls --create-home --home-dir /home/hcls hcls && \

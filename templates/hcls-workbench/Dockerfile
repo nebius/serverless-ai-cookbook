@@ -4,7 +4,13 @@ ARG HCLS_IMAGE_REVISION=unknown
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION}
-RUN pip install --no-cache-dir fastapi==0.136.1 httpx==0.28.1 pydantic==2.12.5 uvicorn==0.34.0 && \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates=20250419~deb12u1 \
+      libgnutls30=3.7.9-2+deb12u7 \
+      libssl3=3.0.20-1~deb12u2 \
+      openssl=3.0.20-1~deb12u2 && \
+    rm -rf /var/lib/apt/lists/* && \
+    pip install --no-cache-dir fastapi==0.136.1 httpx==0.28.1 pydantic==2.12.5 uvicorn==0.34.0 && \
     groupadd --gid 10001 hcls && useradd --uid 10001 --gid hcls --create-home --home-dir /home/hcls hcls && \
     mkdir -p /app/static && chown -R 10001:10001 /app /home/hcls
 COPY --chown=10001:10001 templates/hcls-workbench/app.py /app/app.py
