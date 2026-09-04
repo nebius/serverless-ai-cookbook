@@ -14,6 +14,20 @@ async function api(path, options = {}) {
 function setText(id, value) { $(id).textContent = value || ""; }
 function show(id, visible) { $(id).classList.toggle("hidden", !visible); }
 
+function resetRunView() {
+  clearTimeout(state.pollTimer);
+  state.pollTimer = null;
+  $("run-state").textContent = "Idle";
+  $("run-state").className = "run-state idle";
+  $("run-button").disabled = false;
+  setText("run-error", "");
+  $("run-metadata").replaceChildren();
+  $("result-json").textContent = "";
+  $("artifacts").replaceChildren();
+  show("empty-result", true);
+  show("result-content", false);
+}
+
 function authenticated(session) {
   state.csrf = session.csrf_token;
   show("login-panel", false);
@@ -48,6 +62,7 @@ function connected(endpointUrl, capabilities) {
   });
   summary.append(title, description, badges);
   resetExample();
+  resetRunView();
 }
 
 function resetExample() {
@@ -123,7 +138,7 @@ $("connect-form").addEventListener("submit", async (event) => {
 });
 
 $("change-endpoint").addEventListener("click", () => {
-  clearTimeout(state.pollTimer);
+  resetRunView();
   show("connect-card", true); show("work-grid", false);
   $("connection-status").textContent = "Not connected";
   $("connection-status").classList.remove("connected");
