@@ -1,6 +1,8 @@
 # Project specific ignores
 *_dev/
 .DS_Store
+.playwright-cli/
+output/playwright/
 .venv
 .env.*
 semgrep-report-*.json

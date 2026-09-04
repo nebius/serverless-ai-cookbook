@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nebius HCLS Workbench</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="HCLS Workbench home">
+      <span class="brand-mark" aria-hidden="true">N</span>
+      <span><strong>Nebius</strong><small>HCLS Workbench</small></span>
+    </a>
+    <div class="header-actions">
+      <span class="status-pill" id="connection-status">Not connected</span>
+      <button class="button ghost hidden" id="logout-button" type="button">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Serverless scientific compute</p>
+        <h1>From endpoint to result,<br>without writing a client.</h1>
+        <p class="lede">Connect a provisioned HCLS API, launch a bounded research run, and inspect its reproducible artifacts from one workbench.</p>
+      </div>
+      <aside class="notice">
+        <span class="notice-icon" aria-hidden="true">R</span>
+        <div><strong>Research use only</strong><p>Outputs require domain validation and are not clinical, diagnostic, or treatment advice.</p></div>
+      </aside>
+    </section>
+
+    <section class="login-panel card" id="login-panel">
+      <div>
+        <p class="step-label">Secure access</p>
+        <h2>Open the workbench</h2>
+        <p>The access key is supplied separately from this URL.</p>
+      </div>
+      <form id="login-form">
+        <input class="credential-username" type="text" name="username" value="hcls-workbench" autocomplete="username" tabindex="-1" aria-hidden="true">
+        <label for="access-key">Workbench access key</label>
+        <div class="inline-input">
+          <input id="access-key" name="access-key" type="password" autocomplete="current-password" required>
+          <button class="button primary" type="submit">Continue</button>
+        </div>
+        <p class="form-error" id="login-error" role="alert"></p>
+      </form>
+    </section>
+
+    <section class="workspace hidden" id="workspace">
+      <nav class="steps" aria-label="Workflow">
+        <span class="step active" data-step="1"><b>1</b> Connect</span>
+        <span class="step" data-step="2"><b>2</b> Configure</span>
+        <span class="step" data-step="3"><b>3</b> Run & inspect</span>
+      </nav>
+
+      <section class="card connect-card" id="connect-card">
+        <div class="section-heading">
+          <div><p class="step-label">Step 1</p><h2>Connect compute</h2></div>
+          <p>Credentials remain in this container’s memory and expire with your session.</p>
+        </div>
+        <form id="connect-form" class="form-grid">
+          <label for="endpoint-select">Provisioned template</label>
+          <select id="endpoint-select"><option value="">Custom endpoint</option></select>
+          <label for="endpoint-url">Serverless endpoint URL</label>
+          <input id="endpoint-url" type="url" placeholder="https://…tunnel.applications.eu-north1.nebius.cloud" autocomplete="url" required>
+          <label for="endpoint-token">Endpoint bearer token</label>
+          <input id="endpoint-token" type="password" autocomplete="off" required>
+          <div></div><button class="button primary" type="submit">Verify & connect</button>
+        </form>
+        <p class="form-error" id="connect-error" role="alert"></p>
+      </section>
+
+      <div class="work-grid hidden" id="work-grid">
+        <section class="card configure-card">
+          <div class="section-heading compact">
+            <div><p class="step-label">Step 2</p><h2>Configure run</h2></div>
+            <button class="button ghost" id="change-endpoint" type="button">Change endpoint</button>
+          </div>
+          <div class="engine-summary" id="engine-summary"></div>
+          <form id="run-form">
+            <div class="editor-label"><label for="run-input">Input JSON</label><button class="text-button" id="reset-example" type="button">Reset example</button></div>
+            <textarea id="run-input" spellcheck="false" required></textarea>
+            <button class="button primary full" id="run-button" type="submit">Launch research run</button>
+            <p class="form-error" id="run-error" role="alert"></p>
+          </form>
+        </section>
+
+        <section class="card result-card">
+          <div class="section-heading compact">
+            <div><p class="step-label">Step 3</p><h2>Run & inspect</h2></div>
+            <span class="run-state idle" id="run-state">Idle</span>
+          </div>
+          <div class="empty-result" id="empty-result">
+            <div class="orbit" aria-hidden="true"><span></span></div>
+            <p>Your run status, metrics, and downloadable artifacts will appear here.</p>
+          </div>
+          <div class="hidden" id="result-content">
+            <dl class="metadata" id="run-metadata"></dl>
+            <h3>Result</h3>
+            <pre id="result-json"></pre>
+            <h3>Artifacts</h3>
+            <div class="artifacts" id="artifacts"></div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer>Built for reproducible evaluation on Nebius Serverless AI.</footer>
+</body>
+</html>
