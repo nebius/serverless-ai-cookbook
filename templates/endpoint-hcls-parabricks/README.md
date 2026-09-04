@@ -17,12 +17,14 @@ docker build --platform linux/amd64 \
   -t hcls-parabricks-deepvariant-api:local .
 ```
 
-Deploy on a qualified 2-GPU NVIDIA shape with at least 24 CPU threads and 100 GB RAM,
-matching NVIDIA's current recommendation, and mount the approved input bucket. The guided
-chr20 smoke references four public/nonclinical fixtures by basename and SHA-256. A
-remote source can instead provide `filename`, public `https` URL, and mandatory
-SHA-256. Signed URLs are accepted at execution time but are not persisted in results
-or logs.
+NVIDIA recommends two GPUs and at least 24 CPU threads/100 GB RAM for current
+Parabricks releases. Nebius Serverless presently exposes one- or eight-H100 presets,
+so the bounded demo uses one H100 (`PARABRICKS_GPU_COUNT=1`) and production users
+should qualify the eight-GPU preset for their throughput target. The guided chr20
+smoke references the official public Google DeepVariant test fixtures by HTTPS URL
+and SHA-256, so it works without bucket credentials. Mounted inputs remain supported
+for private data. Signed URLs are accepted at execution time but are not persisted in
+results or logs.
 
 Results include compressed VCF output, Parabricks log, input hashes, GPU identity,
 variant record count, and the common artifact manifest. This is research-only variant

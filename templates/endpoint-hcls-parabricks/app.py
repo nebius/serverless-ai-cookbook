@@ -142,7 +142,12 @@ class ParabricksAdapter:
         }
 
     def capabilities(self) -> dict[str, Any]:
-        fixture = lambda filename, sha256: {"filename": filename, "path": filename, "sha256": sha256}
+        fixture_base = "https://storage.googleapis.com/deepvariant/quickstart-testdata"
+        fixture = lambda filename, sha256: {
+            "filename": filename,
+            "url": f"{fixture_base}/{filename}",
+            "sha256": sha256,
+        }
         return {
             "workload": "germline_variant_calling",
             "engine": {"name": "NVIDIA Parabricks DeepVariant", "version": PARABRICKS_VERSION},
@@ -155,8 +160,8 @@ class ParabricksAdapter:
                         "sample_id": "NA12878-smoke",
                         "reference": fixture("ucsc.hg19.chr20.unittest.fasta", "b532f011328adfbc7cf92e37923d6035f251b78ff52e1d570dfa10697cca7fe5"),
                         "reference_index": fixture("ucsc.hg19.chr20.unittest.fasta.fai", "3cc62926bafa8f397679927070c40e970a414bb21fdb92c46dfb497a7a955032"),
-                        "reads": fixture("NA12878_S1.chr20.quickstart.bam", "c40236ad903dbc2686e15d19334755efcd41b2ee96fac804b66f4be91ca1076c"),
-                        "reads_index": fixture("NA12878_S1.chr20.quickstart.bam.bai", "4236c30db18fb74ba4d5a20993c755a4a3e3ed184f1a3c891eae0c2a18c9bbce"),
+                        "reads": fixture("NA12878_S1.chr20.10_10p1mb.bam", "0b82858821bd8817df03b35f90cdfcb2bae53af5ab46e61b8bcff1ad9ba49643"),
+                        "reads_index": fixture("NA12878_S1.chr20.10_10p1mb.bam.bai", "5ce54eede47a7ae2440a877f812fc6c7f101e67d4e84d8d279778aa6165b4d67"),
                         "intervals": ["chr20:10000000-10010000"],
                         "mode": "shortread",
                     },
