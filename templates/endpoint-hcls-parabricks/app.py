@@ -24,6 +24,7 @@ GPU_COUNT = max(1, min(int(os.environ.get("PARABRICKS_GPU_COUNT", "2")), 8))
 INPUT_ROOT = Path(os.environ.get("HCLS_PARABRICKS_INPUT_ROOT", "/data/hcls/parabricks/fixtures")).resolve()
 MAX_INPUT_BYTES = max(1, min(int(os.environ.get("HCLS_MAX_INPUT_GIB", "100")), 1000)) * 1024**3
 MAX_INTERVALS = 32
+GOOGLE_CHR20_BAM_SHA256 = "0b82858821bd8817df03b35f90cdfcb2bae53af5ab46e61b8bcff1ad9ba49643"
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$")
 SAFE_SAMPLE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 SAFE_INTERVAL = re.compile(r"^[A-Za-z0-9_.:+-]{1,160}$")
@@ -115,6 +116,58 @@ def gpu_names() -> list[str]:
     except (OSError, subprocess.TimeoutExpired):
         return []
     return [line.strip() for line in completed.stdout.splitlines() if line.strip()] if completed.returncode == 0 else []
+
+
+def normalize_google_chr20_bam(reads: Path, work_dir: Path) -> tuple[Path, Path]:
+    """Remove empty non-chr20 dictionary entries from Google's bounded demo BAM.
+
+    Parabricks requires every BAM dictionary contig to exist in the supplied
+    reference, while Google's official chr20 quickstart BAM retains empty
+    whole-genome dictionary entries. The input is selected by immutable SHA-256;
+    arbitrary customer BAMs are never rewritten.
+    """
+    samtools = shutil.which("samtools")
+    if not samtools:
+        raise RuntimeError("samtools is required to prepare the guided chr20 fixture")
+    filtered_sam = work_dir / "google-chr20.filtered.sam"
+    normalized_bam = work_dir / "google-chr20.parabricks.bam"
+    normalized_bai = work_dir / "google-chr20.parabricks.bam.bai"
+    view = subprocess.Popen(
+        [samtools, "view", "-h", str(reads)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert view.stdout is not None
+    with filtered_sam.open("x", encoding="utf-8") as output:
+        for line in view.stdout:
+            if line.startswith("@SQ\t") and "\tSN:chr20\t" not in line:
+                continue
+            output.write(line)
+    stderr = view.stderr.read() if view.stderr is not None else ""
+    if view.wait(timeout=120) != 0:
+        filtered_sam.unlink(missing_ok=True)
+        raise RuntimeError(f"samtools could not read the guided BAM: {stderr[-500:]}")
+    converted = subprocess.run(
+        [samtools, "view", "-b", "-o", str(normalized_bam), str(filtered_sam)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    filtered_sam.unlink(missing_ok=True)
+    if converted.returncode != 0:
+        raise RuntimeError(f"samtools could not normalize the guided BAM: {converted.stderr[-500:]}")
+    indexed = subprocess.run(
+        [samtools, "index", str(normalized_bam), str(normalized_bai)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    if indexed.returncode != 0:
+        raise RuntimeError(f"samtools could not index the guided BAM: {indexed.stderr[-500:]}")
+    return normalized_bam, normalized_bai
 
 
 class ParabricksAdapter:
@@ -226,11 +279,17 @@ class ParabricksAdapter:
         for directory in (input_dir, output_dir, temporary_dir):
             directory.mkdir(parents=True, exist_ok=False)
         inputs: dict[str, Path] = {}
+        input_digests: dict[str, str] = {}
         input_records: list[dict[str, Any]] = []
         for role in ("reference", "reference_index", "reads", "reads_index"):
             path, digest = self.source(payload.get(role), role, input_dir)
             inputs[role] = path
+            input_digests[role] = digest
             input_records.append({"role": role, "filename": path.name, "sha256": digest, "bytes": path.stat().st_size})
+
+        guided_bam_normalized = input_digests["reads"] == GOOGLE_CHR20_BAM_SHA256
+        if guided_bam_normalized:
+            inputs["reads"], inputs["reads_index"] = normalize_google_chr20_bam(inputs["reads"], input_dir)
 
         out_variants = output_dir / f"{sample_id}.deepvariant.vcf.gz"
         command = [
@@ -285,6 +344,7 @@ class ParabricksAdapter:
             "gpus": names,
             "variant_records": variant_records,
             "inputs": input_records,
+            "guided_bam_header_normalized": guided_bam_normalized,
             "output_vcf": f"output/{out_variants.name}",
             "research_only": True,
             "clinical_use": False,
