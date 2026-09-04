@@ -12,8 +12,8 @@ browser workbench:
 | OpenMM | 1x NVIDIA L40S | bounded periodic synthetic molecular-dynamics examples and API integration |
 | GROMACS | 1x NVIDIA L40S | GPU-offloaded MD from a prepared TPR or guided public example |
 | AutoDock Vina | CPU | familiar, low-cost interactive docking and small batches |
-| AutoDock-GPU | 1x NVIDIA L40S | CUDA-accelerated batch screening against prepared maps |
-| Parabricks DeepVariant | 2x NVIDIA H100 candidate, at least 24 vCPU/100 GB RAM | bounded BAM/CRAM-to-VCF research workflow |
+| AutoDock-GPU | 1x NVIDIA H100 live-qualified; image also targets L40S | CUDA-accelerated batch screening against prepared maps |
+| Parabricks DeepVariant | 1x NVIDIA H100 bounded demo; 8x is the next available Serverless preset | bounded BAM/CRAM-to-VCF research workflow |
 | HCLS Workbench | CPU | configure a compute endpoint, run guided examples, inspect results/artifacts |
 
 AutoDock Vina and AutoDock-GPU are separate products. AutoDock-GPU accelerates
@@ -66,23 +66,29 @@ downloads. Opening a page never starts compute.
 - Project: `project-e00z6b02t8ddk96c49` (`rene`)
 - Region: `eu-north1`
 - Subnet: `vpcsubnet-e00p701fa30cj5f7wq` (`default-subnet-uou7qfuh`)
-- Registry: `registry-e00jz93pkqx2m4vqj4`
+- Public registry: `registry-e00jz93pkqx2m4vqj4`
+- Private terms-gated registry: `registry-e00j70hx633t3qcj0f`
 - Image namespace: `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/`
 - GPU qualification default: `gpu-l40s-a`, `1gpu-8vcpu-32gb`
 - CPU default: `cpu-d3`, `4vcpu-16gb`
 - Networking: public IP plus Nebius managed HTTPS
-- Authentication: Nebius endpoint token; token values remain outside source,
-  image layers, task files, logs, and URLs
+- Authentication: Nebius endpoint token for compute APIs; the browser workbench
+  uses its own MysteryBox-backed login and a server-side compute-token proxy.
+  Token values remain outside source, image layers, task files, logs, and URLs.
 - Qualification: preemptible when available; final acceptance endpoints use
   regular capacity and remain running for user verification
 
-Parabricks starts with a two-H100 candidate that meets NVIDIA's documented CPU/RAM
-recommendation and may need a larger preset after measured disk/memory qualification.
-The initial build extends the immutable digest of
-the existing public Nebius Parabricks 4.7.0-1 API image used by the approved reference
-deployment because the direct NGC credential is currently unavailable. Promotion is
+NVIDIA recommends two GPUs and at least 24 CPU threads/100 GB RAM for Parabricks,
+but the current H100 Serverless presets expose one or eight GPUs. The bounded public
+chr20 test therefore starts with one H100; production users should qualify the
+eight-GPU shape when its throughput justifies the cost. The build extends the
+immutable digest of the existing public Nebius Parabricks 4.7.0-1 API image used by
+the approved reference deployment because the direct NGC credential is currently
+unavailable. Promotion is
 still conditional on the NVIDIA AI Product Agreement and an explicit distribution
-review; public pull/use rights are not treated as blanket redistribution rights.
+review. The adapted image and live candidate stay in a registry proven to deny
+anonymous pulls; public pull/use rights are not treated as blanket redistribution
+rights.
 
 ## Release and evidence gates
 

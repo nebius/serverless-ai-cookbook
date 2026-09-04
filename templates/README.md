@@ -193,6 +193,59 @@ Templates are quick-start configurations to help you serve models and run jobs i
 </tbody>
 </table>
 
+### 🧬 HCLS APIs and workbench
+
+Deploy a protected compute API first, then deploy the CPU workbench and give it the
+managed HTTPS API URL at runtime. Compute bearer tokens are entered after login and
+remain in workbench server memory; they are never encoded in these links.
+
+<table width="960" border="1" cellpadding="8" cellspacing="0" style="table-layout:fixed;width:960px;min-width:960px;border-collapse:collapse;">
+<colgroup>
+  <col width="220">
+  <col width="160">
+  <col width="580">
+</colgroup>
+<thead>
+<tr>
+  <th width="220" align="left">Template</th>
+  <th width="160" align="center">Deploy</th>
+  <th width="580" align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td width="220" valign="middle"><a href="endpoint-hcls-autodock-vina/README.md"><strong>AutoDock Vina API</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fautodock-vina-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Low-cost CPU redocking and bounded custom PDBQT runs with official Vina 1.2.7.</td>
+</tr>
+<tr>
+  <td width="220" valign="middle"><a href="endpoint-hcls-autodock-gpu/README.md"><strong>AutoDock-GPU API</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fautodock-gpu-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">H100-qualified CUDA virtual screening using AutoDock4 scoring; scores are not comparable to Vina scores.</td>
+</tr>
+<tr>
+  <td width="220" valign="middle"><a href="endpoint-hcls-gromacs/README.md"><strong>GROMACS MD API</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">L40S GPU-offloaded molecular dynamics with guided and prepared-TPR modes.</td>
+</tr>
+<tr>
+  <td width="220" valign="middle"><a href="endpoint-hcls-openmm/README.md"><strong>OpenMM MD API</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fopenmm-md-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">OpenMM 8.5.1 CUDA API with bounded periodic MD examples and explicit performance metadata.</td>
+</tr>
+<tr>
+  <td width="220" valign="middle"><a href="endpoint-hcls-parabricks/README.md"><strong>Parabricks DeepVariant API</strong></a></td>
+  <td width="160" valign="middle" align="center">Private candidate</td>
+  <td width="580" valign="middle">One-H100 bounded genomics API. Kept private pending explicit NVIDIA redistribution approval; internal deployment is documented in the template.</td>
+</tr>
+<tr>
+  <td width="220" valign="middle"><a href="hcls-workbench/README.md"><strong>HCLS Workbench</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fworkbench%3A20260904-2eb701e&amp;targetPort=8000&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;diskSize=50GiB&amp;preemptible=false"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">A reusable browser UI and server-side credential proxy for every HCLS API v1 endpoint. Add the required UI secret before creation.</td>
+</tr>
+</tbody>
+</table>
+
 ## Jobs
 
 ### 🏋️ Fine-tuning

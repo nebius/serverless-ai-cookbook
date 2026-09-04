@@ -2,6 +2,11 @@
 
 OpenMM 8.5.1 with its CUDA platform behind the HCLS asynchronous endpoint contract.
 
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fopenmm-md-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+Before creating the endpoint, enable token authentication in the Console. The link
+uses the live-qualified, unique release tag and regular L40S capacity.
+
 **License:** [MIT](https://github.com/openmm/openmm/blob/master/LICENSE) ·
 **Source:** [OpenMM](https://github.com/openmm/openmm)
 

@@ -3,6 +3,12 @@
 CUDA-accelerated docking and bounded ligand screening with AutoDock-GPU v1.6.
 This is AutoDock 4.2.6 acceleration, not a GPU build of AutoDock Vina.
 
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fautodock-gpu-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+Before creating the endpoint, enable token authentication in the Console. The H100
+configuration above is the live-qualified fallback after L40S capacity was unavailable;
+the image also contains SM89 code for a future L40S qualification.
+
 **License:** GPL-2.0 with bundled LGPL components ·
 **Source:** [AutoDock-GPU](https://github.com/ccsb-scripps/AutoDock-GPU) at
 `e63e6f6280ebfad18caa3e8f48afdc269e79e063`
@@ -17,8 +23,7 @@ docker build --platform linux/amd64 \
   -t hcls-autodock-gpu-api:local .
 ```
 
-Deploy first on `gpu-l40s-a` / `1gpu-8vcpu-32gb`. The guided 1STP/biotin case uses
-bundled public affinity maps:
+The guided 1STP/biotin case uses bundled public affinity maps:
 
 ```json
 {

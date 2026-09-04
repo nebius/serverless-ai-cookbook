@@ -3,7 +3,7 @@
 Parabricks DeepVariant behind the HCLS asynchronous endpoint contract, intended for
 large genomics inputs referenced from mounted storage or validated HTTPS URLs.
 
-**Terms:** [NVIDIA AI Product Agreement](https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-ai-product-agreement/) ·
+**Terms:** [NVIDIA AI product terms](https://www.nvidia.com/en-us/agreements/enterprise-software/product-specific-terms-for-ai-products/) ·
 **Product docs:** [Parabricks](https://docs.nvidia.com/clara/parabricks/latest/)
 
 The Dockerfile extends an existing public, immutable Nebius Parabricks 4.7.0-1 API
@@ -29,6 +29,22 @@ results or logs.
 Results include compressed VCF output, Parabricks log, input hashes, GPU identity,
 variant record count, and the common artifact manifest. This is research-only variant
 calling, not a diagnosis; validate calls with an appropriate truth set and workflow.
+
+## Private candidate deployment
+
+The live-qualified adapter is intentionally not in the public HCLS registry. It is
+stored under the same project in a registry verified to reject anonymous pulls:
+
+```text
+cr.eu-north1.nebius.cloud/e00j70hx633t3qcj0f/hcls/parabricks-deepvariant-api:20260904-deb6e34
+sha256:8ed6541d80d99bc932020dbb9568449d5a1e743cd37f353b4c66c4ce70c23102
+```
+
+Serverless can pull a private Container Registry image from the same project without
+embedding registry credentials. Set `PARABRICKS_GPU_COUNT=1`, expose port 8000, use
+`gpu-h100-sxm` / `1gpu-16vcpu-200gb`, and enable token authentication. A public deploy
+button is withheld until an authorized owner confirms NVIDIA redistribution terms;
+recheck the current product version and terms before promotion.
 
 See [the common API](../hcls-common/README.md) and
 [HCLS Workbench](../hcls-workbench/README.md).

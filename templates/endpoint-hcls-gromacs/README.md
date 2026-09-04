@@ -3,6 +3,11 @@
 GROMACS 2023.2 molecular dynamics behind the HCLS asynchronous endpoint contract,
 using NVIDIA GPU nonbonded offload.
 
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+Before creating the endpoint, enable token authentication in the Console. The link
+uses the live-qualified, unique release tag and regular L40S capacity.
+
 **License:** [LGPL-2.1](https://gitlab.com/gromacs/gromacs/-/blob/main/COPYING) ·
 **Source image:** `nvcr.io/hpc/gromacs:2023.2`, pinned by digest in the Dockerfile
 

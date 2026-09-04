@@ -4,6 +4,12 @@ One browser UI for any HCLS API v1 endpoint. Deploy compute first, then open thi
 endpoint, sign in, select or paste the compute URL, enter its bearer token, and launch
 the endpoint's guided example.
 
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fworkbench%3A20260904-2eb701e&amp;targetPort=8000&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;diskSize=50GiB&amp;preemptible=false"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+Before creating the endpoint, add `HCLS_UI_ACCESS_KEY` from a MysteryBox secret and
+leave Nebius endpoint authentication disabled so a normal browser can reach the login
+page. Optionally add `HCLS_DEFAULT_ENDPOINTS_JSON`; it contains URLs only, never tokens.
+
 The workbench does no scientific compute. It discovers `/v1/capabilities`, submits and
 polls runs, renders JSON results, and proxies bounded artifact downloads. Compute
 tokens remain only in server process memory under an expiring HttpOnly/SameSite

@@ -3,6 +3,11 @@
 Low-cost interactive redocking and small docking runs with official AutoDock Vina
 1.2.7. Vina is CPU software; this template intentionally uses a CPU endpoint.
 
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fautodock-vina-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+Before creating the endpoint, enable token authentication in the Console. The link
+uses the live-qualified, unique release tag and regular CPU capacity.
+
 **License:** [Apache-2.0](https://github.com/ccsb-scripps/AutoDock-Vina/blob/develop/LICENSE) ·
 **Source:** [AutoDock Vina](https://github.com/ccsb-scripps/AutoDock-Vina) ·
 **Bundled example:** official 1IEP/STI redocking assets at commit

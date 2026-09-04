@@ -95,6 +95,10 @@ AI gateway and agent deployments.
 Domain-specific simulation and analysis workloads.
 
 - [`bionemo-agent`](./life-science/bionemo-agent/README.md) — deploy an NVIDIA NeMo Agent Toolkit BioNeMo research assistant with a GPU BioNeMo-compatible service
+- [`hcls-workbench`](./templates/hcls-workbench/README.md) — one browser UI for the HCLS API family; deploy compute first, then connect by managed endpoint URL
+- [`OpenMM API`](./templates/endpoint-hcls-openmm/README.md) and [`GROMACS API`](./templates/endpoint-hcls-gromacs/README.md) — reusable GPU molecular-dynamics endpoints
+- [`AutoDock Vina API`](./templates/endpoint-hcls-autodock-vina/README.md) and [`AutoDock-GPU API`](./templates/endpoint-hcls-autodock-gpu/README.md) — separate CPU redocking and GPU screening templates
+- [`Parabricks DeepVariant API`](./templates/endpoint-hcls-parabricks/README.md) — private, terms-gated GPU genomics endpoint candidate
 - [`openmm-simulation`](./life-science/openmm-simulation/README.md) — run GPU-backed molecular dynamics simulations with OpenMM
 - [`parabricks-deepvariant`](./life-science/parabricks-deepvariant/README.md) — run NVIDIA Parabricks DeepVariant genomics workflows with Nebius AI Jobs
 
