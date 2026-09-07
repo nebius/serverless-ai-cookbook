@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.19.1&amp;command=python3%20-m%20vllm.entrypoints.openai.api_server%20--model%20Qwen%2FQwen3-VL-Embedding-8B%20--runner%20pooling%20--trust-remote-code%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.19.1&amp;command=python3%20-m%20vllm.entrypoints.openai.api_server%20--model%20Qwen%2FQwen3-VL-Embedding-8B%20--runner%20pooling%20--trust-remote-code%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -30,11 +30,11 @@ single L40S — see [CLI alternative](#cli-alternative).
 
 Copy the endpoint's public URL from the console (**Public endpoints**) into `BASE_URL`.
 
-> **Auth.** Like the other templates, this one deploys with **authentication off**
-> by default so you can try it quickly — meaning the endpoint is publicly callable
-> by anyone with the URL, so delete it when you're done. For production, create it
-> with `--auth token` and set `TOKEN` below; the commands add
-> `Authorization: Bearer $TOKEN` only when `TOKEN` is set.
+> **Auth.** This template's 1-click link **enables token authentication** — the create
+> form opens with Token auth selected, and you generate the token there (it is never put
+> in the URL). Call the endpoint with `Authorization: Bearer <token>`; set `TOKEN` below
+> and the commands add the header automatically. For a quick public test, set
+> Authentication to None (or drop `auth=true` from the link).
 
 > **URL note.** The examples below use the `IP:port` form. Nebius is moving public
 > access to a managed HTTPS FQDN
