@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0&amp;command=vllm%20serve%20Wan-AI%2FWan2.1-T2V-1.3B-Diffusers%20--omni%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0&amp;command=vllm%20serve%20Wan-AI%2FWan2.1-T2V-1.3B-Diffusers%20--omni%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -17,7 +17,7 @@ Wan2.1-T2V-1.3B is a compact Apache-2.0 text-to-video Diffusers checkpoint for s
 ## Test request
 
 After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
-This template leaves authentication **off** by default so you can try it quickly.
+This template's 1-click link **enables token authentication** — you generate the token in the create form and call the endpoint with `Authorization: Bearer <token>`. (Set Authentication to None, or drop `auth=true` from the link, for a quick public test.)
 
 **First boot:** Nebius can show RUNNING while weights are still downloading.
 `GET /v1/models` may return `502 failed to connect to local service` until the
