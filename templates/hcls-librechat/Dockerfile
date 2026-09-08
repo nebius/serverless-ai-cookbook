@@ -15,7 +15,9 @@ COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entryp
 RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
  && mkdir -p /data/db /data/hcls-librechat /app/uploads /app/logs \
  && chown -R node:node /data /app/uploads /app/logs \
- && chmod 0700 /data/hcls-librechat
+ && chmod 0700 /data/hcls-librechat \
+ && rm -f /usr/local/bin/npm /usr/local/bin/npx \
+ && rm -rf /usr/local/lib/node_modules/npm
 
 ENV HOST=0.0.0.0 \
     PORT=3080 \
