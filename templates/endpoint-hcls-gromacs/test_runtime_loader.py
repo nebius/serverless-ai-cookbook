@@ -72,5 +72,18 @@ def test_wrapper_uses_pulled_loader_and_driver_paths(tmp_path: Path) -> None:
     assert 'exec "$ROOTFS/lib64/ld-linux-x86-64.so.2"' in wrapper
 
 
+def test_wrapper_can_use_host_elf_loader(tmp_path: Path) -> None:
+    rootfs = tmp_path / "rootfs"
+    loader = rootfs / "lib64/ld-linux-x86-64.so.2"
+    loader.parent.mkdir(parents=True)
+    loader.write_text("loader")
+    binary = rootfs / "usr/local/gromacs/avx2_256/bin/gmx"
+    binary.parent.mkdir(parents=True)
+    binary.write_text("binary")
+    wrapper = runtime_loader.runtime_wrapper(rootfs, binary, "avx2_256", "host_loader")
+    assert 'exec "$ROOTFS/usr/local/gromacs/avx2_256/bin/gmx" "$@"' in wrapper
+    assert "--library-path" not in wrapper
+
+
 def test_parse_engine_version() -> None:
     assert runtime_loader.parse_engine_version("GROMACS version:    2026.2\n") == "2026.2"

@@ -89,7 +89,9 @@ def runtime_library_paths(rootfs: Path, build: str) -> list[str]:
     return paths
 
 
-def runtime_wrapper(rootfs: Path, gmx_binary: Path, build: str) -> str:
+def runtime_wrapper(
+    rootfs: Path, gmx_binary: Path, build: str, execution_mode: str = "nvidia_loader"
+) -> str:
     relative_binary = gmx_binary.relative_to(rootfs).as_posix()
     loader_candidates = (
         "lib64/ld-linux-x86-64.so.2",
@@ -98,6 +100,8 @@ def runtime_wrapper(rootfs: Path, gmx_binary: Path, build: str) -> str:
     loader = next((item for item in loader_candidates if (rootfs / item).exists()), None)
     if loader is None:
         raise RuntimeError("pulled NVIDIA image has no supported x86_64 dynamic loader")
+    if execution_mode not in {"nvidia_loader", "host_loader"}:
+        raise ValueError(f"unsupported execution mode: {execution_mode}")
 
     library_paths = runtime_library_paths(rootfs, build)
     relative_libraries = ":".join(f'${{ROOTFS}}/{item}' for item in library_paths)
@@ -106,6 +110,13 @@ def runtime_wrapper(rootfs: Path, gmx_binary: Path, build: str) -> str:
         if build != "default"
         else "usr/local/gromacs/share/gromacs/top"
     )
+    if execution_mode == "nvidia_loader":
+        command = (
+            f'exec "$ROOTFS/{loader}" --library-path "$LD_LIBRARY_PATH" '
+            f'"$ROOTFS/{relative_binary}" "$@"'
+        )
+    else:
+        command = f'exec "$ROOTFS/{relative_binary}" "$@"'
     return f"""#!/bin/sh
 set -eu
 RUNTIME_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -114,7 +125,7 @@ TARGET_LIBS="{relative_libraries}"
 DRIVER_LIBS="/usr/local/nvidia/lib:/usr/local/nvidia/lib64"
 export GMXLIB="$ROOTFS/{share}"
 export LD_LIBRARY_PATH="$DRIVER_LIBS:$TARGET_LIBS${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"
-exec "$ROOTFS/{loader}" --library-path "$LD_LIBRARY_PATH" "$ROOTFS/{relative_binary}" "$@"
+{command}
 """
 
 
@@ -256,22 +267,36 @@ class RuntimeLoader:
             archive.unlink()
             gmx, selected_build = find_gromacs_binary(rootfs, self.requested_build)
             wrapper = staging / "gmx-runtime"
-            wrapper.write_text(runtime_wrapper(rootfs, gmx, selected_build), encoding="utf-8")
-            wrapper.chmod(0o755)
-            version_probe = self.runner(
-                [str(wrapper), "--version"],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=120,
-            )
-            if version_probe.returncode != 0:
-                raise RuntimeError(
-                    f"pulled GROMACS runtime failed its version probe: {version_probe.stderr[-1200:]}"
+            probe_failures: list[str] = []
+            actual_version = "unknown"
+            execution_mode = "unknown"
+            for candidate_mode in ("nvidia_loader", "host_loader"):
+                wrapper.write_text(
+                    runtime_wrapper(rootfs, gmx, selected_build, candidate_mode),
+                    encoding="utf-8",
                 )
-            actual_version = parse_engine_version(version_probe.stdout)
-            if actual_version == "unknown":
-                raise RuntimeError("pulled GROMACS runtime did not report its version")
+                wrapper.chmod(0o755)
+                version_probe = self.runner(
+                    [str(wrapper), "--version"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=120,
+                )
+                candidate_version = parse_engine_version(version_probe.stdout)
+                if version_probe.returncode == 0 and candidate_version != "unknown":
+                    actual_version = candidate_version
+                    execution_mode = candidate_mode
+                    break
+                detail = (version_probe.stderr or version_probe.stdout or "no output")[-800:]
+                probe_failures.append(
+                    f"{candidate_mode} exit={version_probe.returncode}: {detail}"
+                )
+            if execution_mode == "unknown":
+                raise RuntimeError(
+                    "pulled GROMACS runtime failed all version probes: "
+                    + "; ".join(probe_failures)
+                )
             metadata = {
                 "requested_version": self.requested_version,
                 "resolved_tag": resolved_tag,
@@ -279,6 +304,7 @@ class RuntimeLoader:
                 "resolved_digest": digest,
                 "selected_cpu_build": selected_build,
                 "actual_engine_version": actual_version,
+                "execution_mode": execution_mode,
                 "archive_bytes": archive_bytes,
                 **image_config,
             }
