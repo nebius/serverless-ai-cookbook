@@ -3,22 +3,22 @@ import { writeFile } from 'node:fs/promises';
 const outputPath = process.argv[2];
 if (!outputPath) throw new Error('Expected the output config path');
 
-const kopraApiKey = process.env.KOPRA_API_KEY
-  ? "'${KOPRA_API_KEY}'"
+const scientificModelsApiKey = process.env.SCIENTIFIC_MODELS_API_KEY
+  ? "'${SCIENTIFIC_MODELS_API_KEY}'"
   : "'user_provided'";
 
 const tokenFactoryApiKey = process.env.NEBIUS_API_KEY
   ? "'${NEBIUS_API_KEY}'"
   : "'user_provided'";
 
-const kopraMcpAuthentication = process.env.KOPRA_API_KEY
-  ? "    headers:\n      Authorization: 'Bearer ${KOPRA_API_KEY}'"
+const scientificModelsMcpAuthentication = process.env.SCIENTIFIC_MODELS_API_KEY
+  ? "    headers:\n      Authorization: 'Bearer ${SCIENTIFIC_MODELS_API_KEY}'"
   : `    headers:
-      Authorization: 'Bearer {{KOPRA_API_KEY}}'
+      Authorization: 'Bearer {{SCIENTIFIC_MODELS_API_KEY}}'
     customUserVars:
-      KOPRA_API_KEY:
-        title: 'Kopra inference and MCP key'
-        description: 'Paste the non-admin key issued for the Kopra scientific model gateway.'
+      SCIENTIFIC_MODELS_API_KEY:
+        title: 'Scientific model gateway key'
+        description: 'Paste the non-admin key issued for the scientific model gateway.'
         sensitive: true`;
 
 const gromacsAuthentication = process.env.AUTH_TOKEN
@@ -34,7 +34,7 @@ const gromacsAuthentication = process.env.AUTH_TOKEN
 const config = `version: 1.3.15
 cache: true
 interface:
-  customWelcome: 'Kopra Scientific AI brings protein structure, molecular discovery, biomedical imaging, and GPU simulation into one guided workbench.'
+  customWelcome: 'Nebius Scientific AI Agent brings protein structure, molecular discovery, biomedical imaging, and GPU simulation into one guided workbench.'
   modelSelect: true
   parameters: true
   defaultPinnedTools: ['mcp']
@@ -56,7 +56,7 @@ interface:
   fileSearch: false
 endpoints:
   agents:
-    allowedProviders: ['Nebius Token Factory', 'Kopra Scientific Models']
+    allowedProviders: ['Nebius Token Factory', 'Nebius Scientific Models']
     capabilities: [tools, context, chain]
     recursionLimit: 20
     maxRecursionLimit: 40
@@ -74,23 +74,23 @@ endpoints:
       titleModel: 'zai-org/GLM-5.3-Flash'
       modelDisplayLabel: 'Token Factory'
       dropParams: ['stop']
-    - name: 'Kopra Scientific Models'
-      apiKey: ${kopraApiKey}
-      baseURL: '\${KOPRA_API_BASE_URL}'
+    - name: 'Nebius Scientific Models'
+      apiKey: ${scientificModelsApiKey}
+      baseURL: '\${SCIENTIFIC_MODELS_API_BASE_URL}'
       models:
         default:
           - 'qwen3-8b'
         fetch: true
       titleConvo: false
       titleModel: 'qwen3-8b'
-      modelDisplayLabel: 'Kopra Scientific Models'
+      modelDisplayLabel: 'Nebius Scientific Models'
       dropParams: ['stop']
 modelSpecs:
   prioritize: true
   list:
     - name: 'protein-folding-and-structure'
       label: 'Protein Folding & Structure'
-      description: 'Compare Boltz2, OpenFold2, and OpenFold3 through the live Kopra model gateway.'
+      description: 'Compare Boltz2, OpenFold2, and OpenFold3 through the live scientific model gateway.'
       default: true
       showOnLanding: true
       conversation_starters:
@@ -102,7 +102,7 @@ modelSpecs:
         agent_id: 'agent_protein_structure'
     - name: 'molecular-docking-and-design'
       label: 'Molecular Docking & Design'
-      description: 'Use DiffDock, GenMol, MolMIM, and ProteinMPNN from the Kopra catalog.'
+      description: 'Use DiffDock, GenMol, MolMIM, and ProteinMPNN from the live scientific catalog.'
       showOnLanding: true
       conversation_starters:
         - 'List the available docking and molecular-design models with their live operations.'
@@ -132,7 +132,7 @@ modelSpecs:
         agent_id: 'agent_biomedical_imaging'
     - name: 'genomics-and-aging'
       label: 'Genomics & Biological Age'
-      description: 'Discover Evo2, AltumAge, and PhenoAge workflows available through Kopra.'
+      description: 'Discover Evo2, AltumAge, and PhenoAge workflows from the live scientific catalog.'
       showOnLanding: true
       conversation_starters:
         - 'List the live genomics and biological-age models and their required inputs.'
@@ -146,17 +146,17 @@ modelSpecs:
       showOnLanding: true
       conversation_starters:
         - 'Show the real-time transcription requirements and how a connected model would be evaluated.'
-        - 'Which live Kopra models currently support audio transcription?'
+        - 'Which live scientific models currently support audio transcription?'
       preset:
         endpoint: agents
         agent_id: 'agent_audio_transcription_tutorial'
 mcpServers:
-  kopra:
-    title: 'Kopra Scientific Model Gateway'
-    description: 'Authorized scientific-model catalog and operations for the Kopra tenant.'
+  scientific_models:
+    title: 'Nebius Scientific Model Gateway'
+    description: 'Authorized scientific-model catalog and operations for this Nebius Scientific AI Agent deployment.'
     type: streamable-http
-    url: '\${KOPRA_MCP_URL}'
-${kopraMcpAuthentication}
+    url: '\${SCIENTIFIC_MODELS_MCP_URL}'
+${scientificModelsMcpAuthentication}
     initTimeout: 30000
     timeout: 900000
     serverInstructions: true
@@ -173,5 +173,5 @@ ${gromacsAuthentication}
 
 await writeFile(outputPath, config, { mode: 0o600 });
 process.stdout.write(
-  `Kopra LibreChat config ready (Kopra key: ${process.env.KOPRA_API_KEY ? 'server-managed' : 'per-user'}, Token Factory key: ${process.env.NEBIUS_API_KEY ? 'server-managed' : 'per-user'}, GROMACS token: ${process.env.AUTH_TOKEN ? 'server-managed' : 'per-user'}).\n`,
+  `Nebius Scientific AI Agent config ready (scientific gateway key: ${process.env.SCIENTIFIC_MODELS_API_KEY ? 'server-managed' : 'per-user'}, Token Factory key: ${process.env.NEBIUS_API_KEY ? 'server-managed' : 'per-user'}, GROMACS token: ${process.env.AUTH_TOKEN ? 'server-managed' : 'per-user'}).\n`,
 );
