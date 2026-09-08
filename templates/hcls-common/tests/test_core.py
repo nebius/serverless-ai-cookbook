@@ -100,6 +100,7 @@ def test_storage_root_stages_locally_and_restores(tmp_path, monkeypatch):
     scratch_root = tmp_path / "scratch"
     monkeypatch.setenv("HCLS_STORAGE_ROOT", str(storage_root))
     monkeypatch.setenv("HCLS_SCRATCH_ROOT", str(scratch_root))
+    monkeypatch.setenv("HCLS_SEQUENTIAL_JSON_WRITES", "1")
     monkeypatch.delenv("HCLS_RUN_ROOT", raising=False)
 
     payload = {
@@ -113,6 +114,7 @@ def test_storage_root_stages_locally_and_restores(tmp_path, monkeypatch):
         assert run["status"] == "succeeded"
         assert (storage_root / "fake-engine" / "runs" / run_id / "answer.txt").read_text() == "durable"
         assert run_id in (storage_root / "fake-engine" / "runs-index.json").read_text()
+        assert not list(storage_root.rglob("*.tmp"))
         assert not (scratch_root / "fake-engine" / run_id).exists()
 
     runs_root = (storage_root / "fake-engine" / "runs").resolve()

@@ -49,6 +49,17 @@ def sha256_file(path: Path) -> str:
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded = json.dumps(payload, indent=2, sort_keys=True)
+    if os.environ.get("HCLS_SEQUENTIAL_JSON_WRITES", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }:
+        # Mountpoint for S3 can report rename success while retaining the
+        # source object. A single API worker serializes status updates, so a
+        # direct overwrite avoids leaking temporary objects and is portable to
+        # both supported managed storage lanes.
+        path.write_text(encoded, encoding="utf-8")
+        return
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     temporary.write_text(encoded, encoding="utf-8")
     try:

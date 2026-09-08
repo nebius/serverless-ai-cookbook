@@ -7,6 +7,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
     GROMACS_BINARY=/usr/local/gromacs/avx2_256/bin/gmx \
     HCLS_STORAGE_ROOT=/mnt/hcls HCLS_SCRATCH_ROOT=/tmp/hcls-scratch HCLS_ENABLE_MCP=1 \
+    HCLS_SEQUENTIAL_JSON_WRITES=1 \
     HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION}
 LABEL org.opencontainers.image.title="Nebius HCLS GROMACS API" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
