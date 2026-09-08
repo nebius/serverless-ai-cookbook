@@ -65,7 +65,9 @@ def find_gromacs_binary(rootfs: Path, requested_build: str) -> tuple[Path, str]:
     return selected, selected.parent.parent.name
 
 
-def runtime_library_paths(rootfs: Path, build: str) -> list[str]:
+def runtime_library_paths(
+    rootfs: Path, build: str, *, include_system_libraries: bool = True
+) -> list[str]:
     paths = [
         f"usr/local/gromacs/{build}/lib" if build != "default" else "usr/local/gromacs/lib"
     ]
@@ -85,7 +87,9 @@ def runtime_library_paths(rootfs: Path, build: str) -> list[str]:
                 f"{cuda_root}/compat",
             ]
         )
-    paths.extend(["usr/local/fftw/lib", "usr/lib/x86_64-linux-gnu", "lib/x86_64-linux-gnu"])
+    paths.append("usr/local/fftw/lib")
+    if include_system_libraries:
+        paths.extend(["usr/lib/x86_64-linux-gnu", "lib/x86_64-linux-gnu"])
     return paths
 
 
@@ -103,7 +107,11 @@ def runtime_wrapper(
     if execution_mode not in {"nvidia_loader", "host_loader"}:
         raise ValueError(f"unsupported execution mode: {execution_mode}")
 
-    library_paths = runtime_library_paths(rootfs, build)
+    library_paths = runtime_library_paths(
+        rootfs,
+        build,
+        include_system_libraries=execution_mode == "nvidia_loader",
+    )
     relative_libraries = ":".join(f'${{ROOTFS}}/{item}' for item in library_paths)
     share = (
         f"usr/local/gromacs/{build}/share/gromacs/top"

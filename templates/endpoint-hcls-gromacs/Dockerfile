@@ -31,6 +31,8 @@ COPY --from=crane /ko-app/crane /usr/local/bin/crane
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates=20250419~deb12u1 \
+      libgomp1=12.2.0-14+deb12u1 \
+      libhwloc15=2.9.0-1 \
       tar=1.34+dfsg-1.2+deb12u1 \
  && rm -rf /var/lib/apt/lists/* \
  && python3 -m venv /opt/hcls \

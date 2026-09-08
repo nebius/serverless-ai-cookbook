@@ -83,6 +83,7 @@ def test_wrapper_can_use_host_elf_loader(tmp_path: Path) -> None:
     wrapper = runtime_loader.runtime_wrapper(rootfs, binary, "avx2_256", "host_loader")
     assert 'exec "$ROOTFS/usr/local/gromacs/avx2_256/bin/gmx" "$@"' in wrapper
     assert "--library-path" not in wrapper
+    assert "usr/lib/x86_64-linux-gnu" not in wrapper
 
 
 def test_parse_engine_version() -> None:
