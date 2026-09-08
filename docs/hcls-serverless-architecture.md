@@ -112,5 +112,8 @@ actual accelerator identity, request payload, timestamps, output/artifact
 hashes, and workload metric. OpenMM/GROMACS report `ns/day`; AutoDock-GPU
 reports ligands/hour and GPU utilization; request latency is kept separate.
 
+The 2026-09-08 OpenMM/Parabricks release evidence is recorded in
+[hcls-dynamic-nvidia-rest-mcp-acceptance-20260908.md](./hcls-dynamic-nvidia-rest-mcp-acceptance-20260908.md).
+
 All supplied examples use public nonclinical data. Results are computational
 research outputs, not diagnostic or clinical conclusions.
