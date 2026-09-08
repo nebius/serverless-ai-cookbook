@@ -3,7 +3,7 @@ ARG LIBRECHAT_BASE=cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/ba:librechat-0.2
 FROM ${LIBRECHAT_BASE}
 
 ARG HCLS_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.title="Nebius HCLS LibreChat Workbench" \
+LABEL org.opencontainers.image.title="Kopra Scientific AI" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
       org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
       org.opencontainers.image.licenses="MIT"
@@ -13,7 +13,7 @@ COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-confi
 COPY templates/hcls-librechat/seed-workbench.js /app/seed-hcls-workbench.js
 COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entrypoint
 COPY templates/hcls-librechat/brand-client.mjs /opt/hcls-librechat/brand-client.mjs
-COPY templates/hcls-librechat/assets/nebius-logo.svg /app/client/dist/assets/logo.svg
+COPY templates/hcls-librechat/assets/kopra-scientific-logo.svg /app/client/dist/assets/logo.svg
 RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
  && node /opt/hcls-librechat/brand-client.mjs /app/client/dist \
  && mkdir -p /data/db /data/hcls-librechat /app/uploads /app/logs \
@@ -25,7 +25,7 @@ RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
 ENV HOST=0.0.0.0 \
     PORT=3080 \
     NODE_ENV=production \
-    APP_TITLE="Nebius Scientific AI Agent" \
+    APP_TITLE="Kopra Scientific AI" \
     MONGO_URI=mongodb://127.0.0.1:27017/LibreChat \
     CONFIG_PATH=/data/hcls-librechat/librechat.yaml \
     ALLOW_REGISTRATION=true \
@@ -36,6 +36,8 @@ ENV HOST=0.0.0.0 \
     SEARCH=false \
     SCHEDULES_SINGLE_PROCESS=true \
     ENDPOINTS=agents,custom \
+    KOPRA_API_BASE_URL=https://89.169.99.188/v1 \
+    KOPRA_MCP_URL=https://89.169.99.188/mcp \
     GROMACS_MCP_URL=https://port8000-c2k6fvd25z9max9.tunnel.applications.eu-north1.nebius.cloud/mcp
 
 EXPOSE 3080

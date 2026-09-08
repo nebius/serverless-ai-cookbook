@@ -1,158 +1,74 @@
-# GROMACS LibreChat workbench
+# Kopra Scientific AI
 
-This CPU Serverless endpoint serves LibreChat with two qualified Nebius Token
-Factory chat models and the GROMACS Streamable HTTP MCP server already wired in.
-The seeded `GROMACS GPU Workbench` agent can inspect capabilities and runs, submit
-only the bounded workflow schema, monitor run IDs, and list artifacts. The actual
-simulation continues to run on the separate NVIDIA GPU endpoint.
+Kopra Scientific AI is a self-contained LibreChat Serverless endpoint. It connects
+the Kopra OpenAI-compatible model API and Streamable HTTP MCP gateway, plus the
+existing bounded GROMACS GPU MCP service. The startup page contains six guided
+templates: protein folding, molecular docking and design, molecular dynamics,
+biomedical imaging, genomics and biological age, and a real-time transcription
+readiness tutorial.
 
-The image extends the public, live-tested BioNeMo LibreChat runtime at an immutable
-digest. That runtime is built from LibreChat `v0.8.8-rc2`, includes an embedded
-MongoDB for a self-contained pilot, and was reused here because it already passes
-Nebius Serverless browser acceptance. No model or endpoint credential is present in
-the image.
+The image contains no model or MCP credential. `KOPRA_API_KEY` is one non-admin
+key used for both `https://89.169.99.188/v1` and `https://89.169.99.188/mcp`.
+Store it in MysteryBox under the payload key `KOPRA_API_KEY` and map it to the
+endpoint as a secret environment variable. Do not put it in image tags, source,
+or ordinary environment variables.
 
-## Authentication model
+## Deploy
 
-Use Nebius **Token authentication** on the GPU REST/MCP endpoint. That single
-Serverless-generated bearer token protects both `/v1/...` and `/mcp`; the GROMACS
-application does not implement a second token.
-
-Do not enable Serverless Token authentication on the LibreChat UI endpoint. The
-Nebius gateway requires an `Authorization` header even for the first HTML request,
-which a normal address-bar navigation cannot supply. LibreChat instead provides its
-own email/password login and sends the GPU endpoint token only from its backend.
-
-The wrapper has two credential modes:
-
-- Set `NEBIUS_API_KEY` and `AUTH_TOKEN` as secret environment variables to
-  share administrator-managed credentials with every LibreChat user.
-- Omit either variable and LibreChat asks each signed-in user for that value, then
-  encrypts it in its embedded database. This mode requires no pre-existing
-  MysteryBox or SecretStash resource.
-
-`GROMACS_MCP_URL` is not secret. Set it to the full managed HTTPS URL ending in
-`/mcp`. It defaults to the retained filesystem-backed acceptance endpoint, so it
-must be overridden when a customer deploys their own GROMACS endpoint.
-
-## Create in Serverless
-
-The native Console deep-link contract currently accepts image, platform, preset,
-preemptible, command, and storage defaults. It does **not** accept environment
-variables, secret values, authentication mode, or the application port as query
-parameters. Those values cannot safely or reliably be encoded into a create URL.
-The table below is therefore part of the deploy contract, not an optional set of
-out-of-band assumptions.
-
-Use this link to prefill the editable image tag and CPU shape:
-
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Flibrechat-gromacs%3Alatest&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;preemptible=false"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
-
-Then set the remaining fields explicitly:
-
-| Field | Value |
-| --- | --- |
-| Port | `3080` |
-| Network | Public IP |
-| Authentication | None |
-| Container disk | `100 GiB` |
-| `GROMACS_MCP_URL` | `https://<GPU-endpoint-host>/mcp` |
-| `NEBIUS_API_KEY` | Optional secret; otherwise entered per user |
-| `AUTH_TOKEN` | Optional secret containing the GPU endpoint's generated token; otherwise entered per user |
-
-The Console can create a SecretStash entry inline when adding a secret environment
-variable; customers do not need to prepare one in advance. Secret values must not
-be put in the URL, image, ordinary environment variables, or source repository.
-
-For a complete and reproducible deployment interface, use the CLI script:
+Create the secret once:
 
 ```bash
-export NEBIUS_PROJECT_ID="project-..."
-export NEBIUS_SUBNET_ID="vpcsubnet-..."
-export GROMACS_MCP_URL="https://<GPU-endpoint-host>/mcp"
+nebius mysterybox secret create \
+  --parent-id "$NEBIUS_PROJECT_ID" \
+  --name kopra-scientific-inference-mcp \
+  --description 'Kopra non-admin inference and MCP credential' \
+  --secret-version-payload '[{"key":"KOPRA_API_KEY","string_value":"<key>"}]'
+```
 
-# Optional administrator-managed credential mappings. Omit both to use the
-# encrypted per-user setup screens inside LibreChat.
-export TOKEN_FACTORY_SECRET_SELECTOR="<secret selector with NEBIUS_API_KEY>"
-export GROMACS_AUTH_TOKEN_SECRET_SELECTOR="<secret selector with AUTH_TOKEN>"
+Then create a new endpoint from an immutable image tag. This does not modify the
+public BioNeMo or GROMACS LibreChat releases.
+
+```bash
+export NEBIUS_PROJECT_ID='project-...'
+export NEBIUS_SUBNET_ID='vpcsubnet-...'
+export KOPRA_API_KEY_SECRET_SELECTOR='kopra-scientific-inference-mcp'
+export TOKEN_FACTORY_SECRET_SELECTOR='<secret selector with NEBIUS_API_KEY>'
+export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/kopra-scientific-ai:<release-tag>'
 
 ./templates/hcls-librechat/scripts/deploy.sh
 ```
 
-When mapping the already generated GROMACS Serverless token, reuse its secret: the
-payload key is `AUTH_TOKEN`, and LibreChat sends that same value in the outbound
-MCP `Authorization` header. It is not a second application credential.
+The script creates a public CPU D3 endpoint on port `3080`, with Serverless
+authentication set to `none` so the LibreChat sign-in page remains reachable.
+LibreChat registration and passwords are managed by its embedded database. The
+Kopra key stays server-managed, so users can use the full authorized model catalog
+and MCP tools without receiving that key.
 
-## Image versions
+`GROMACS_MCP_URL` defaults to the retained GROMACS endpoint. To use another
+deployment, set it to its full `/mcp` URL and optionally map the endpoint's
+`AUTH_TOKEN` secret using `GROMACS_AUTH_TOKEN_SECRET_SELECTOR`.
 
-`latest` is useful as an editable Console default, but an accepted deployment
-should use a unique release tag. Moving `latest` makes demos convenient; a
-versioned tag makes them reproducible.
+## What is configured
 
-Current accepted release:
+- **Providers:** `Nebius Token Factory` supplies the default `GLM 5.3 Flash` chat
+  model. `Kopra Scientific Models` fetches the live `/v1/models` catalog.
+- **MCP:** `Kopra Scientific Model Gateway` uses the same non-admin bearer key and
+  exposes the live catalog, scientific operations, artifacts, folding, docking,
+  imaging, genomics, and generation tools.
+- **Design:** the application title, logo, landing welcome, and theme are branded
+  as Kopra Scientific AI.
+- **Templates:** each startup card has model-grouped prompts and an agent with only
+  the relevant MCP tools. The audio card remains a tutorial until an audio model is
+  present in the live catalog.
 
-```text
-cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/librechat-gromacs:20260908-1e064ed
-sha256:0cc3f0cab62e6e5af06840cbe066d4d56c77b69271e69003a8e4cf2349d9f119
-```
-
-The public `latest` tag currently resolves to the same digest.
-
-There are two independent image choices:
-
-- `IMAGE` in `scripts/deploy.sh` selects this deployable LibreChat wrapper tag.
-- `LIBRECHAT_BASE` is a Docker build argument for changing the LibreChat base when
-  building a new wrapper.
-
-For the GPU endpoint, the lean REST/MCP wrapper pulls the official
-`nvcr.io/nvidia/gromacs` runtime at endpoint startup. Set its ordinary Serverless
-environment variable `GROMACS_VERSION` to `latest` or an exact NVIDIA tag, and map
-an NGC key from MysteryBox to secret environment variable `NGC_API_KEY`. Changing
-the NVIDIA runtime therefore does not require rebuilding LibreChat or the API image.
+## Verify
 
 ```bash
-docker build --platform linux/amd64 \
-  --build-arg LIBRECHAT_BASE="cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/ba:librechat-0.2.7-20260908@sha256:1eaa9a5e7dc7e7a141d6f452f46e5547646a7c6113e610348511f801e7b185d1" \
-  -f templates/hcls-librechat/Dockerfile \
-  -t hcls-librechat-gromacs:local .
+curl -fsS 'https://<librechat-host>/health'
+nebius ai endpoint logs <endpoint-id> --tail 200
 ```
 
-## Test
-
-The retained workbench connected to the dynamic NVIDIA runtime deployment is:
-
-```text
-Endpoint: aiendpoint-e00jas4ng4g07ee7xh
-URL: https://port3080-jdmnagta4m8m60q.tunnel.applications.eu-north1.nebius.cloud
-Backend: https://port8000-a9bxpqpgm35c5kc.tunnel.applications.eu-north1.nebius.cloud/mcp
-```
-
-Open the managed LibreChat URL, register an account, and choose `GROMACS
-Workbench · GLM 5.2`. Start with:
-
-```text
-List the available GROMACS capabilities and explain the safety limits.
-```
-
-The response should show an MCP tool step and report the live engine version,
-NVIDIA CUDA requirement, bounded inputs, queue/concurrency limits, and the
-research-only disclaimer. A compute starter intentionally asks for confirmation
-before `submit_run` is called.
-
-Operational checks:
-
-```bash
-curl -fsS "https://<librechat-host>/health"
-nebius ai endpoint logs <librechat-endpoint-id> --tail 200
-```
-
-The logs should include `GROMACS workbench agent is ready`, six initialized
-GROMACS tools, and `Server readiness checks passing`. The embedded database and
-generated LibreChat encryption keys live on the endpoint's container disk. For a
-production multi-replica or durable service, use an external authenticated MongoDB
-and managed application secrets rather than this single-node pilot topology.
-
-If the GPU endpoint is stopped long enough for LibreChat to exhaust its reconnect
-attempts, start the GPU endpoint, wait for authenticated `/healthz` to report ready,
-then restart the LibreChat endpoint. The managed public URLs remain stable across a
-normal stop/start; this sequence was verified during acceptance.
+The logs should report `Kopra Scientific AI tutorials are ready` and initialized
+Kopra and GROMACS MCP servers. Open the landing page, select **Protein Folding &
+Structure**, and ask it to list the live models. It should call `list_models` or
+`list_scientific_models` before proposing any scientific run.

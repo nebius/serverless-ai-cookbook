@@ -3,18 +3,38 @@ import { writeFile } from 'node:fs/promises';
 const outputPath = process.argv[2];
 if (!outputPath) throw new Error('Expected the output config path');
 
+const kopraApiKey = process.env.KOPRA_API_KEY
+  ? "'${KOPRA_API_KEY}'"
+  : "'user_provided'";
+
 const tokenFactoryApiKey = process.env.NEBIUS_API_KEY
   ? "'${NEBIUS_API_KEY}'"
   : "'user_provided'";
 
-const mcpAuthentication = process.env.AUTH_TOKEN
-  ? `    headers:\n      Authorization: 'Bearer \${AUTH_TOKEN}'`
-  : `    headers:\n      Authorization: 'Bearer {{GROMACS_MCP_TOKEN}}'\n    customUserVars:\n      GROMACS_MCP_TOKEN:\n        title: 'GROMACS Serverless endpoint token'\n        description: 'Paste the token generated when the GPU REST/MCP endpoint was created.'\n        sensitive: true`;
+const kopraMcpAuthentication = process.env.KOPRA_API_KEY
+  ? "    headers:\n      Authorization: 'Bearer ${KOPRA_API_KEY}'"
+  : `    headers:
+      Authorization: 'Bearer {{KOPRA_API_KEY}}'
+    customUserVars:
+      KOPRA_API_KEY:
+        title: 'Kopra inference and MCP key'
+        description: 'Paste the non-admin key issued for the Kopra scientific model gateway.'
+        sensitive: true`;
+
+const gromacsAuthentication = process.env.AUTH_TOKEN
+  ? "    headers:\n      Authorization: 'Bearer ${AUTH_TOKEN}'"
+  : `    headers:
+      Authorization: 'Bearer {{GROMACS_MCP_TOKEN}}'
+    customUserVars:
+      GROMACS_MCP_TOKEN:
+        title: 'GROMACS Serverless endpoint token'
+        description: 'Paste the token generated when the GROMACS GPU endpoint was created.'
+        sensitive: true`;
 
 const config = `version: 1.3.15
 cache: true
 interface:
-  customWelcome: 'Nebius Scientific AI Agent: explore scientific AI workflows, live GROMACS GPU molecular dynamics, and guided placeholder tutorials.'
+  customWelcome: 'Kopra Scientific AI brings protein structure, molecular discovery, biomedical imaging, and GPU simulation into one guided workbench.'
   modelSelect: true
   parameters: true
   defaultPinnedTools: ['mcp']
@@ -36,7 +56,7 @@ interface:
   fileSearch: false
 endpoints:
   agents:
-    allowedProviders: ['Nebius Token Factory']
+    allowedProviders: ['Nebius Token Factory', 'Kopra Scientific Models']
     capabilities: [tools, context, chain]
     recursionLimit: 20
     maxRecursionLimit: 40
@@ -48,55 +68,104 @@ endpoints:
       baseURL: 'https://api.tokenfactory.nebius.com/v1'
       models:
         default:
-          - 'nvidia/nemotron-3-super-120b-a12b'
-          - 'zai-org/GLM-5.2'
+          - 'zai-org/GLM-5.3-Flash'
         fetch: false
       titleConvo: false
-      titleModel: 'zai-org/GLM-5.2'
+      titleModel: 'zai-org/GLM-5.3-Flash'
       modelDisplayLabel: 'Token Factory'
+      dropParams: ['stop']
+    - name: 'Kopra Scientific Models'
+      apiKey: ${kopraApiKey}
+      baseURL: '\${KOPRA_API_BASE_URL}'
+      models:
+        default:
+          - 'qwen3-8b'
+        fetch: true
+      titleConvo: false
+      titleModel: 'qwen3-8b'
+      modelDisplayLabel: 'Kopra Scientific Models'
       dropParams: ['stop']
 modelSpecs:
   prioritize: true
   list:
-    - name: 'gromacs-workbench'
-      label: 'Nebius Scientific AI Agent · GLM 5.2'
-      description: 'Scientific AI guide with bounded GROMACS REST/MCP tools on an NVIDIA GPU endpoint.'
+    - name: 'protein-folding-and-structure'
+      label: 'Protein Folding & Structure'
+      description: 'Compare Boltz2, OpenFold2, and OpenFold3 through the live Kopra model gateway.'
       default: true
+      showOnLanding: true
+      conversation_starters:
+        - 'List live protein folding and structure models, their inputs, and model-specific limits.'
+        - 'Prepare one small protein sequence benchmark across Boltz2, OpenFold2, and OpenFold3. Explain the comparison before running anything.'
+        - 'Show how to retrieve a finished structure artifact and inspect its confidence metrics.'
+      preset:
+        endpoint: agents
+        agent_id: 'agent_protein_structure'
+    - name: 'molecular-docking-and-design'
+      label: 'Molecular Docking & Design'
+      description: 'Use DiffDock, GenMol, MolMIM, and ProteinMPNN from the Kopra catalog.'
+      showOnLanding: true
+      conversation_starters:
+        - 'List the available docking and molecular-design models with their live operations.'
+        - 'Outline a reproducible DiffDock versus Boltz2 binding benchmark without submitting it yet.'
+      preset:
+        endpoint: agents
+        agent_id: 'agent_molecular_design'
+    - name: 'molecular-dynamics'
+      label: 'Molecular Dynamics · GROMACS'
+      description: 'Prepare, submit, monitor, and retrieve bounded GPU molecular-dynamics runs.'
       showOnLanding: true
       conversation_starters:
         - 'List the available GROMACS capabilities and explain the safety limits.'
         - 'Prepare a small argon GPU smoke simulation, ask before submitting it, then monitor it and summarize the artifacts.'
-        - 'Show recent GROMACS runs and explain which outputs are useful for validating an MD workflow.'
       preset:
         endpoint: agents
-        agent_id: 'agent_gromacs_workbench'
-    - name: 'audio-transcription-tutorial'
-      label: 'Audio Transcription · Placeholder'
-      description: 'A guided starter for a future audio-to-text workflow; it does not transcribe audio yet.'
+        agent_id: 'agent_molecular_dynamics'
+    - name: 'biomedical-imaging'
+      label: 'Biomedical Imaging'
+      description: 'Explore the live chest X-ray reasoning and CT segmentation models as research workflows.'
       showOnLanding: true
       conversation_starters:
-        - 'Show the planned audio-to-text workflow and the inputs a future transcription model will require.'
-        - 'What audio skills and Token Factory models were discovered when this workbench started?'
+        - 'List the live biomedical imaging models and the inputs they accept.'
+        - 'Explain a research-only CT segmentation evaluation workflow with validation and human review.'
+      preset:
+        endpoint: agents
+        agent_id: 'agent_biomedical_imaging'
+    - name: 'genomics-and-aging'
+      label: 'Genomics & Biological Age'
+      description: 'Discover Evo2, AltumAge, and PhenoAge workflows available through Kopra.'
+      showOnLanding: true
+      conversation_starters:
+        - 'List the live genomics and biological-age models and their required inputs.'
+        - 'Design a reproducible evaluation for a biological-age model with a held-out cohort.'
+      preset:
+        endpoint: agents
+        agent_id: 'agent_genomics_aging'
+    - name: 'audio-transcription'
+      label: 'Audio Transcription · Tutorial'
+      description: 'A readiness checklist for a future real-time transcription service; no audio model is connected.'
+      showOnLanding: true
+      conversation_starters:
+        - 'Show the real-time transcription requirements and how a connected model would be evaluated.'
+        - 'Which live Kopra models currently support audio transcription?'
       preset:
         endpoint: agents
         agent_id: 'agent_audio_transcription_tutorial'
-    - name: 'medical-image-analysis-tutorial'
-      label: 'Medical Image Analysis · Placeholder'
-      description: 'A guided starter for a future CT/X-ray workflow; it does not analyze images or provide a diagnosis.'
-      showOnLanding: true
-      conversation_starters:
-        - 'Show the planned CT/X-ray analysis workflow and its validation requirements.'
-        - 'What imaging skills and Token Factory models were discovered when this workbench started?'
-      preset:
-        endpoint: agents
-        agent_id: 'agent_medical_image_analysis_tutorial'
 mcpServers:
+  kopra:
+    title: 'Kopra Scientific Model Gateway'
+    description: 'Authorized scientific-model catalog and operations for the Kopra tenant.'
+    type: streamable-http
+    url: '\${KOPRA_MCP_URL}'
+${kopraMcpAuthentication}
+    initTimeout: 30000
+    timeout: 900000
+    serverInstructions: true
   gromacs:
     title: 'GROMACS GPU Workflows'
     description: 'Bounded molecular-dynamics runs on the configured Nebius Serverless GPU endpoint.'
     type: streamable-http
     url: '\${GROMACS_MCP_URL}'
-${mcpAuthentication}
+${gromacsAuthentication}
     initTimeout: 30000
     timeout: 900000
     serverInstructions: true
@@ -104,5 +173,5 @@ ${mcpAuthentication}
 
 await writeFile(outputPath, config, { mode: 0o600 });
 process.stdout.write(
-  `HCLS LibreChat config ready (Token Factory: ${process.env.NEBIUS_API_KEY ? 'server-managed' : 'per-user'}, GROMACS token: ${process.env.AUTH_TOKEN ? 'server-managed' : 'per-user'}).\n`,
+  `Kopra LibreChat config ready (Kopra key: ${process.env.KOPRA_API_KEY ? 'server-managed' : 'per-user'}, Token Factory key: ${process.env.NEBIUS_API_KEY ? 'server-managed' : 'per-user'}, GROMACS token: ${process.env.AUTH_TOKEN ? 'server-managed' : 'per-user'}).\n`,
 );
