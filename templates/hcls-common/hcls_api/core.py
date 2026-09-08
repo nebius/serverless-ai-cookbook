@@ -105,7 +105,27 @@ class RunManager:
         self._restore()
 
     def _restore(self) -> None:
+        status_paths: list[Path] = []
+        seen: set[Path] = set()
+        index_path = self.root.parent / "runs-index.json"
+        try:
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            indexed_run_ids = index.get("run_ids", []) if isinstance(index, dict) else []
+        except (OSError, json.JSONDecodeError):
+            indexed_run_ids = []
+        for run_id in indexed_run_ids:
+            if not isinstance(run_id, str) or not re.fullmatch(r"[0-9a-f]{32}", run_id):
+                continue
+            status_path = self.root / run_id / "status.json"
+            status_paths.append(status_path)
+            seen.add(status_path)
+        # POSIX filesystems can be discovered by directory traversal. The fixed
+        # index above is primary because some S3-backed mounts can open an object
+        # by key while omitting implicit directories from glob results.
         for status_path in sorted(self.root.glob("*/status.json")):
+            if status_path not in seen:
+                status_paths.append(status_path)
+        for status_path in status_paths:
             run_id = status_path.parent.name
             if not re.fullmatch(r"[0-9a-f]{32}", run_id):
                 continue
@@ -134,6 +154,8 @@ class RunManager:
             client_request_id = record.get("client_request_id")
             if isinstance(client_request_id, str) and SAFE_CLIENT_ID.fullmatch(client_request_id):
                 self.idempotency[client_request_id] = run_id
+        if self.records:
+            self._persist_index()
 
     def submit(self, request: RunRequest) -> dict[str, Any]:
         with self.lock:
@@ -254,6 +276,18 @@ class RunManager:
 
     def _persist(self, run_id: str) -> None:
         write_json(self.root / run_id / "status.json", self.records[run_id])
+        self._persist_index()
+
+    def _persist_index(self) -> None:
+        write_json(
+            self.root.parent / "runs-index.json",
+            {
+                "api_version": API_VERSION,
+                "service": self.adapter.service_id,
+                "updated_at": utc_now(),
+                "run_ids": sorted(self.records),
+            },
+        )
 
     def snapshot(self, run_id: str) -> dict[str, Any]:
         with self.lock:

@@ -112,8 +112,20 @@ def test_storage_root_stages_locally_and_restores(tmp_path, monkeypatch):
         run = wait_for_terminal(first_client, run_id)
         assert run["status"] == "succeeded"
         assert (storage_root / "fake-engine" / "runs" / run_id / "answer.txt").read_text() == "durable"
+        assert run_id in (storage_root / "fake-engine" / "runs-index.json").read_text()
         assert not (scratch_root / "fake-engine" / run_id).exists()
 
+    runs_root = (storage_root / "fake-engine" / "runs").resolve()
+    real_glob = Path.glob
+
+    def s3_like_glob(path: Path, pattern: str):
+        # Some object-backed mounts can resolve exact keys but do not expose
+        # implicit S3 prefix directories through filesystem globbing.
+        if path.resolve() == runs_root and pattern == "*/status.json":
+            return iter(())
+        return real_glob(path, pattern)
+
+    monkeypatch.setattr(Path, "glob", s3_like_glob)
     with TestClient(create_app(FakeAdapter())) as second_client:
         restored = second_client.get(f"/v1/runs/{run_id}")
         assert restored.status_code == 200
