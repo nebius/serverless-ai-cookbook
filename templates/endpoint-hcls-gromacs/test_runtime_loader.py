@@ -64,9 +64,11 @@ def test_wrapper_uses_pulled_loader_and_driver_paths(tmp_path: Path) -> None:
     binary = rootfs / "usr/local/gromacs/avx2_256/bin/gmx"
     binary.parent.mkdir(parents=True)
     binary.write_text("binary")
+    (rootfs / "usr/local/cuda-13.0/targets/x86_64-linux/lib").mkdir(parents=True)
     wrapper = runtime_loader.runtime_wrapper(rootfs, binary, "avx2_256")
     assert 'DRIVER_LIBS="/usr/local/nvidia/lib:/usr/local/nvidia/lib64"' in wrapper
     assert "usr/local/cuda/targets/x86_64-linux/lib" in wrapper
+    assert "usr/local/cuda-13.0/targets/x86_64-linux/lib" in wrapper
     assert 'exec "$ROOTFS/lib64/ld-linux-x86-64.so.2"' in wrapper
 
 

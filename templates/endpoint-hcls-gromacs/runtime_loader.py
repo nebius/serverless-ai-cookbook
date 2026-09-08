@@ -65,6 +65,30 @@ def find_gromacs_binary(rootfs: Path, requested_build: str) -> tuple[Path, str]:
     return selected, selected.parent.parent.name
 
 
+def runtime_library_paths(rootfs: Path, build: str) -> list[str]:
+    paths = [
+        f"usr/local/gromacs/{build}/lib" if build != "default" else "usr/local/gromacs/lib"
+    ]
+    cuda_roots = {"usr/local/cuda"}
+    cuda_parent = rootfs / "usr/local"
+    if cuda_parent.is_dir():
+        cuda_roots.update(
+            path.relative_to(rootfs).as_posix()
+            for path in cuda_parent.glob("cuda-*")
+            if path.is_dir()
+        )
+    for cuda_root in sorted(cuda_roots):
+        paths.extend(
+            [
+                f"{cuda_root}/lib64",
+                f"{cuda_root}/targets/x86_64-linux/lib",
+                f"{cuda_root}/compat",
+            ]
+        )
+    paths.extend(["usr/local/fftw/lib", "usr/lib/x86_64-linux-gnu", "lib/x86_64-linux-gnu"])
+    return paths
+
+
 def runtime_wrapper(rootfs: Path, gmx_binary: Path, build: str) -> str:
     relative_binary = gmx_binary.relative_to(rootfs).as_posix()
     loader_candidates = (
@@ -75,15 +99,7 @@ def runtime_wrapper(rootfs: Path, gmx_binary: Path, build: str) -> str:
     if loader is None:
         raise RuntimeError("pulled NVIDIA image has no supported x86_64 dynamic loader")
 
-    library_paths = [
-        f"usr/local/gromacs/{build}/lib" if build != "default" else "usr/local/gromacs/lib",
-        "usr/local/cuda/lib64",
-        "usr/local/cuda/targets/x86_64-linux/lib",
-        "usr/local/cuda/compat",
-        "usr/local/fftw/lib",
-        "usr/lib/x86_64-linux-gnu",
-        "lib/x86_64-linux-gnu",
-    ]
+    library_paths = runtime_library_paths(rootfs, build)
     relative_libraries = ":".join(f'${{ROOTFS}}/{item}' for item in library_paths)
     share = (
         f"usr/local/gromacs/{build}/share/gromacs/top"
