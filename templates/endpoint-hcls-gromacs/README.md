@@ -1,25 +1,48 @@
 # GROMACS GPU MD REST and MCP service
 
-GROMACS 2023.2 molecular dynamics behind the HCLS asynchronous endpoint contract,
-using NVIDIA GPU nonbonded offload. One process exposes both the REST API and an
-MCP Streamable HTTP endpoint on port 8000. Nebius endpoint authentication protects
-both protocols with the same bearer token.
+This lean API image pulls the selected official NVIDIA GROMACS runtime when a
+Serverless endpoint starts. It then serves GPU molecular dynamics through the HCLS
+asynchronous REST contract and an MCP Streamable HTTP endpoint on the same port.
+Nebius integrated Token authentication protects both protocols with the same bearer
+token.
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3A20260908-2341ac7&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3Adynamic-latest&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
-Before creating the endpoint, enable token authentication in the Console. The link
-uses the live-qualified, unique release tag and regular L40S capacity. Attach either
-an Object Storage bucket or a Shared Filesystem at `/mnt/hcls` with read-write access.
-Do not attach both resources at the same path. The Console link can prefill the image,
-port, compute, disk, and mount path; authentication and a customer-owned storage
-resource or secret must still be selected in the form. The image itself requires no
-customer-supplied runtime environment variables and no registry credentials.
+Before creating the endpoint, enable Token authentication in the Console. Attach
+either an Object Storage bucket or a Shared Filesystem at `/mnt/hcls` with read-write
+access; do not attach both resources at the same path. The Console link can prefill
+only the image, port, compute, disk, and mount path. Serverless deployment links do
+not support environment or secret-environment parameters, so add these explicit
+values in the form:
+
+| Kind | Name | Value |
+| --- | --- | --- |
+| Environment | `GROMACS_VERSION` | `latest` or an exact NVIDIA tag such as `v2026.2` |
+| Environment | `GROMACS_CPU_BUILD` | `avx2_256` (default) |
+| Secret environment | `NGC_API_KEY` | A MysteryBox payload containing the NVIDIA NGC API key |
+
+Only the key is customer input. The NGC registry's fixed username, `$oauthtoken`, is
+an implementation detail handled inside the launcher. The temporary Docker auth file
+is mode `0600`, never logged, and erased before the API starts.
+
+NVIDIA currently labels `v2026.2` as its latest GROMACS release but does not publish
+a literal `nvcr.io/nvidia/gromacs:latest` tag. `GROMACS_VERSION=latest` therefore
+lists the official repository tags at every endpoint start, filters exact stable
+version tags, and selects the highest numeric version. An exact tag skips this
+selection. In both modes the launcher records the resolved tag and immutable digest
+in `/healthz`, `/v1/capabilities`, and each run result.
+
+The official runtime is downloaded and unpacked into a digest-keyed local cache; it
+is not repackaged into the API image. A continuously running endpoint keeps its
+resolved runtime. Restart the endpoint to resolve `latest` again. If its boot disk is
+retained and the digest is unchanged, the cached runtime is reused.
 
 **License:** [LGPL-2.1](https://gitlab.com/gromacs/gromacs/-/blob/main/COPYING) ·
-**Source image:** `nvcr.io/hpc/gromacs:2023.2`, pinned by digest in the Dockerfile
+**Runtime repository:** `nvcr.io/nvidia/gromacs`
 
 ```bash
 docker build --platform linux/amd64 \
+  --build-arg HCLS_IMAGE_REVISION="$(git rev-parse HEAD)" \
   -f templates/endpoint-hcls-gromacs/Dockerfile \
   -t hcls-gromacs-md-api:local .
 ```
@@ -64,6 +87,8 @@ resource, and published image, then run:
 export NEBIUS_PROJECT_ID="project-..."
 export NEBIUS_SUBNET_ID="vpcsubnet-..."
 export HCLS_STORAGE_SOURCE="computefilesystem-..."
+export NGC_API_KEY_SECRET_SELECTOR="mbsec-...@mbsecver-..."
+export GROMACS_VERSION="latest"
 ./templates/endpoint-hcls-gromacs/scripts/deploy.sh
 ```
 
@@ -79,6 +104,11 @@ export AUTH_TOKEN_SECRET_SELECTOR="mbsec-...@mbsecver-..."
 # Or provide a token directly (do not commit or paste it into a URL):
 export AUTH_TOKEN="$(openssl rand -hex 32)"
 ```
+
+`NGC_API_KEY_SECRET_SELECTOR` must select a MysteryBox version whose payload key is
+`NGC_API_KEY`. The key is injected only as a secret environment variable at endpoint
+startup. To pin or roll back the NVIDIA runtime without rebuilding this API image,
+set `GROMACS_VERSION` to any stable tag available in `nvcr.io/nvidia/gromacs`.
 
 For Object Storage, configure a local AWS profile with its region and Nebius
 Object Storage endpoint, then select the corresponding MysteryBox secret:
@@ -104,13 +134,10 @@ If `AUTH_TOKEN_SECRET_SELECTOR` is used, its MysteryBox payload key must be
 Serverless gateway; it is not an application or NGC credential and must not be
 embedded in a deployment link or image.
 
-The default public release is
-`cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:20260908-2341ac7`,
-which resolves to
-`sha256:e8e06b7657218226d19e90ccef37c72dff8197aca2f1c94314a2856eec9b7e34`.
-The unique release tag is not overwritten. Serverless currently rejects the full
-digest reference because the image string is also copied into a 64-character Compute
-label, so the digest is recorded here and verified separately.
+The public wrapper image is
+`cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:dynamic-latest`.
+Use the immutable release tag documented with each qualification when reproducibility
+matters. This wrapper contains the API, MCP server, and pull launcher—not GROMACS.
 
 The guided argon smoke creates a TPR with `grompp`, runs `mdrun -nb gpu`, and returns
 the TPR, coordinates, energies, checkpoint, log, command output, and result manifest.

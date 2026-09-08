@@ -104,12 +104,11 @@ There are two independent image choices:
 - `LIBRECHAT_BASE` is a Docker build argument for changing the LibreChat base when
   building a new wrapper.
 
-For the GPU endpoint, `GROMACS_BASE` in
-[`../endpoint-hcls-gromacs/Dockerfile`](../endpoint-hcls-gromacs/Dockerfile) selects
-the official NVIDIA base, for example
-`nvcr.io/hpc/gromacs:2023.2`. A Serverless user cannot change that parent tag at
-runtime: each supported NVIDIA tag needs a corresponding tested wrapper build,
-because the raw NVIDIA image does not contain the REST/MCP service.
+For the GPU endpoint, the lean REST/MCP wrapper pulls the official
+`nvcr.io/nvidia/gromacs` runtime at endpoint startup. Set its ordinary Serverless
+environment variable `GROMACS_VERSION` to `latest` or an exact NVIDIA tag, and map
+an NGC key from MysteryBox to secret environment variable `NGC_API_KEY`. Changing
+the NVIDIA runtime therefore does not require rebuilding LibreChat or the API image.
 
 ```bash
 docker build --platform linux/amd64 \

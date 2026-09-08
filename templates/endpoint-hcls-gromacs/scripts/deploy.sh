@@ -4,12 +4,11 @@ set -euo pipefail
 : "${NEBIUS_PROJECT_ID:?Set NEBIUS_PROJECT_ID to the customer project ID}"
 : "${NEBIUS_SUBNET_ID:?Set NEBIUS_SUBNET_ID to a subnet in that project}"
 : "${HCLS_STORAGE_SOURCE:?Set HCLS_STORAGE_SOURCE to s3://BUCKET or a computefilesystem-* resource ID}"
+: "${NGC_API_KEY_SECRET_SELECTOR:?Set NGC_API_KEY_SECRET_SELECTOR to a MysteryBox secret whose payload key is NGC_API_KEY}"
 
-HCLS_IMAGE="${HCLS_IMAGE:-cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:20260908-2341ac7}"
-# The release tag above is non-overwritten and resolves to
-# sha256:e8e06b7657218226d19e90ccef37c72dff8197aca2f1c94314a2856eec9b7e34.
-# Serverless currently rejects a full digest reference because it copies the
-# 136-character image value into a Compute label whose limit is 64 characters.
+HCLS_IMAGE="${HCLS_IMAGE:-cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:dynamic-latest}"
+GROMACS_VERSION="${GROMACS_VERSION:-latest}"
+GROMACS_CPU_BUILD="${GROMACS_CPU_BUILD:-avx2_256}"
 
 case "$HCLS_STORAGE_SOURCE" in
   s3://*)
@@ -47,6 +46,9 @@ CREATE_CMD=(nebius ai endpoint create \
   --disk-size "$DISK_SIZE" \
   --shm-size "$SHM_SIZE" \
   --subnet-id "$NEBIUS_SUBNET_ID" \
+  --env "GROMACS_VERSION=$GROMACS_VERSION" \
+  --env "GROMACS_CPU_BUILD=$GROMACS_CPU_BUILD" \
+  --env-secret "NGC_API_KEY=$NGC_API_KEY_SECRET_SELECTOR" \
   --auth token \
   --volume "$HCLS_VOLUME" \
   --public \

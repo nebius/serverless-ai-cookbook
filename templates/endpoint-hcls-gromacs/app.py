@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import os
 import re
 import shutil
@@ -78,16 +79,26 @@ class GromacsAdapter:
     def __init__(self) -> None:
         self.binary = os.environ.get("GROMACS_BINARY", "/usr/local/gromacs/avx2_256/bin/gmx")
         self.version = "unknown"
+        self.runtime: dict[str, Any] = {}
 
     def load(self) -> None:
         if not shutil.which(self.binary):
             raise RuntimeError(f"GROMACS binary not found: {self.binary}")
         completed = subprocess.run([self.binary, "--version"], capture_output=True, text=True, check=True, timeout=60)
         self.version = next((line.split(":", 1)[1].strip() for line in completed.stdout.splitlines() if "GROMACS version" in line), "unknown")
+        metadata_path = os.environ.get("GROMACS_RUNTIME_METADATA")
+        if metadata_path:
+            self.runtime = json.loads(Path(metadata_path).read_text(encoding="utf-8"))
 
     def health(self) -> dict[str, Any]:
         gpu = self.gpu_available()
-        return {"ready": self.version != "unknown" and gpu, "engine": "GROMACS", "engine_version": self.version, "nvidia_device_detected": gpu}
+        return {
+            "ready": self.version != "unknown" and gpu,
+            "engine": "GROMACS",
+            "engine_version": self.version,
+            "nvidia_device_detected": gpu,
+            "runtime": self.runtime,
+        }
 
     @staticmethod
     def gpu_available() -> bool:
@@ -103,6 +114,7 @@ class GromacsAdapter:
         return {
             "workload": "molecular_dynamics",
             "engine": {"name": "GROMACS", "version": self.version},
+            "runtime": self.runtime,
             "accelerator": {"required": True, "kind": "NVIDIA CUDA", "offload": "nonbonded"},
             "examples": [{"id": "argon-gpu-smoke", "label": "Argon GPU-offload smoke", "input": {"steps": 10000, "gpu_mode": "gpu", "threads": 1}}],
             "accepted_inputs": ["prepared_tpr_base64", "coordinate_gro+topology_top+mdp", "guided_argon"],
@@ -173,6 +185,7 @@ class GromacsAdapter:
         return {
             "engine": "GROMACS",
             "engine_version": self.version,
+            "runtime": self.runtime,
             "input_mode": input_mode,
             "gpu_selected": use_gpu,
             "steps": steps,
