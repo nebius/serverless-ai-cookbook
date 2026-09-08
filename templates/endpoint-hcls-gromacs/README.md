@@ -17,7 +17,7 @@ values in the form:
 
 | Kind | Name | Value |
 | --- | --- | --- |
-| Environment | `GROMACS_VERSION` | `latest` or an exact NVIDIA tag such as `v2026.2` |
+| Environment | `GROMACS_VERSION` | `latest` or an exact NVIDIA tag such as `v2025.1` |
 | Environment | `GROMACS_CPU_BUILD` | `avx2_256` (default) |
 | Secret environment | `NGC_API_KEY` | A MysteryBox payload containing the NVIDIA NGC API key |
 
@@ -28,14 +28,22 @@ is mode `0600`, never logged, and erased before the API starts.
 NVIDIA currently labels `v2026.2` as its latest GROMACS release but does not publish
 a literal `nvcr.io/nvidia/gromacs:latest` tag. `GROMACS_VERSION=latest` therefore
 lists the official repository tags at every endpoint start, filters exact stable
-version tags, and selects the highest numeric version. An exact tag skips this
-selection. In both modes the launcher records the resolved tag and immutable digest
-in `/healthz`, `/v1/capabilities`, and each run result.
+version tags, and tries them newest-first. Each candidate must pass `gmx --version`
+and a one-step GPU MD startup probe. The first passing candidate is selected; newer
+rejections and their reasons are included in the runtime provenance. This prevents a
+new CUDA runtime from breaking an endpoint while its platform driver is catching up.
+
+An exact tag skips selection and never silently falls back: it either passes the same
+GPU probe or endpoint startup fails with the compatibility error. In both modes the
+launcher records the resolved tag and immutable digest in `/healthz`,
+`/v1/capabilities`, and each run result.
 
 The official runtime is downloaded and unpacked into a digest-keyed local cache; it
-is not repackaged into the API image. A continuously running endpoint keeps its
-resolved runtime. Restart the endpoint to resolve `latest` again. If its boot disk is
-retained and the digest is unchanged, the cached runtime is reused.
+is not repackaged into the API image. Initial `latest` startup may download more than
+one candidate when a newer CUDA build is incompatible. A continuously running
+endpoint keeps its resolved runtime. Restart the endpoint to resolve `latest` again.
+If its boot disk is retained and a digest is unchanged, its cached candidate is
+re-probed and reused.
 
 **License:** [LGPL-2.1](https://gitlab.com/gromacs/gromacs/-/blob/main/COPYING) ·
 **Runtime repository:** `nvcr.io/nvidia/gromacs`

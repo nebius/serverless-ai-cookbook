@@ -22,6 +22,10 @@ DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 SAFE_REPOSITORY = "nvcr.io/nvidia/gromacs"
 
 
+class IncompatibleRuntimeError(RuntimeError):
+    pass
+
+
 def validate_requested_version(value: str) -> str:
     value = value.strip()
     if not SAFE_TAG.fullmatch(value):
@@ -29,7 +33,7 @@ def validate_requested_version(value: str) -> str:
     return value
 
 
-def resolve_latest_tag(tags: Sequence[str]) -> str:
+def stable_version_tags(tags: Sequence[str]) -> list[str]:
     candidates: list[tuple[tuple[int, int, int], str]] = []
     for tag in tags:
         match = STABLE_VERSION.fullmatch(tag.strip())
@@ -38,7 +42,18 @@ def resolve_latest_tag(tags: Sequence[str]) -> str:
             candidates.append((version, tag.strip()))
     if not candidates:
         raise RuntimeError("NVIDIA GROMACS repository has no stable version tags")
-    return max(candidates, key=lambda item: (item[0], item[1].startswith("v")))[1]
+    return [
+        item[1]
+        for item in sorted(
+            candidates,
+            key=lambda item: (item[0], item[1].startswith("v")),
+            reverse=True,
+        )
+    ]
+
+
+def resolve_latest_tag(tags: Sequence[str]) -> str:
+    return stable_version_tags(tags)[0]
 
 
 def safe_tar_members(path: Path) -> None:
@@ -144,6 +159,112 @@ def parse_engine_version(output: str) -> str:
     return "unknown"
 
 
+def gpu_startup_smoke(
+    wrapper: Path,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> None:
+    workspace = Path(tempfile.mkdtemp(prefix="gromacs-gpu-probe-", dir="/tmp"))
+    try:
+        (workspace / "input.mdp").write_text(
+            """integrator = md
+nsteps = 1
+dt = 0.001
+cutoff-scheme = Verlet
+nstlist = 10
+rcoulomb = 0.8
+rvdw = 0.8
+coulombtype = Cut-off
+vdwtype = Cut-off
+pbc = xyz
+constraints = none
+tcoupl = no
+pcoupl = no
+gen_vel = yes
+gen_temp = 300
+gen_seed = 17
+nstxout = 0
+nstvout = 0
+nstenergy = 1
+nstlog = 1
+""",
+            encoding="utf-8",
+        )
+        (workspace / "input.gro").write_text(
+            """Argon GPU startup probe
+    4
+    1ARG     AR    1   0.000   0.000   0.000
+    1ARG     AR    2   0.500   0.000   0.000
+    1ARG     AR    3   0.000   0.500   0.000
+    1ARG     AR    4   0.000   0.000   0.500
+   2.00000   2.00000   2.00000
+""",
+            encoding="utf-8",
+        )
+        (workspace / "topol.top").write_text(
+            """[ defaults ]
+1 1 no 1.0 1.0
+[ atomtypes ]
+Ar 18 39.948 0.0 A 0.3405 0.996
+[ moleculetype ]
+ARG 1
+[ atoms ]
+1 Ar 1 ARG AR 1 0.0 39.948
+[ system ]
+Argon GPU startup probe
+[ molecules ]
+ARG 4
+""",
+            encoding="utf-8",
+        )
+        commands = (
+            [
+                str(wrapper),
+                "grompp",
+                "-f",
+                "input.mdp",
+                "-c",
+                "input.gro",
+                "-p",
+                "topol.top",
+                "-o",
+                "input.tpr",
+            ],
+            [
+                str(wrapper),
+                "mdrun",
+                "-s",
+                "input.tpr",
+                "-deffnm",
+                "probe",
+                "-nsteps",
+                "1",
+                "-ntmpi",
+                "1",
+                "-ntomp",
+                "1",
+                "-nb",
+                "gpu",
+            ],
+        )
+        for command in commands:
+            completed = runner(
+                command,
+                cwd=workspace,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=120,
+            )
+            if completed.returncode != 0:
+                detail = (completed.stderr or completed.stdout or "no output")[-1200:]
+                raise IncompatibleRuntimeError(
+                    f"GPU startup probe failed at {command[1]} with exit={completed.returncode}: "
+                    f"{detail}"
+                )
+    finally:
+        shutil.rmtree(workspace)
+
+
 class RuntimeLoader:
     def __init__(
         self,
@@ -188,12 +309,7 @@ class RuntimeLoader:
         config_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
         return {**os.environ, "DOCKER_CONFIG": str(auth_dir)}
 
-    def _resolve(self, env: dict[str, str]) -> tuple[str, str, dict[str, Any]]:
-        if self.requested_version == "latest":
-            tags = self._run(["crane", "ls", self.repository], env, timeout=120).splitlines()
-            resolved_tag = resolve_latest_tag(tags)
-        else:
-            resolved_tag = self.requested_version
+    def _resolve(self, resolved_tag: str, env: dict[str, str]) -> tuple[str, dict[str, Any]]:
         reference = f"{self.repository}:{resolved_tag}"
         digest = self._run(
             ["crane", "digest", "--platform", "linux/amd64", reference], env, timeout=120
@@ -213,7 +329,7 @@ class RuntimeLoader:
             "entrypoint": config.get("config", {}).get("Entrypoint"),
             "nvidia_require_cuda": image_env.get("NVIDIA_REQUIRE_CUDA"),
         }
-        return resolved_tag, digest, selected_config
+        return digest, selected_config
 
     def _cached(self, directory: Path, digest: str) -> dict[str, Any] | None:
         metadata_path = directory / "runtime.json"
@@ -225,26 +341,30 @@ class RuntimeLoader:
             return None
         return metadata
 
-    def load(self) -> tuple[Path, Path, dict[str, Any]]:
-        self.cache_root.mkdir(parents=True, exist_ok=True, mode=0o755)
-        auth_dir = Path(tempfile.mkdtemp(prefix="ngc-auth-", dir="/run"))
-        auth_dir.chmod(0o700)
-        config_path = auth_dir / "config.json"
+    def _load_candidate(
+        self, resolved_tag: str, env: dict[str, str]
+    ) -> tuple[Path, Path, dict[str, Any]]:
+        digest, image_config = self._resolve(resolved_tag, env)
+        digest_key = digest.removeprefix("sha256:")
+        final_directory = self.cache_root / digest_key
+        wrapper = final_directory / "gmx-runtime"
+        metadata_path = final_directory / "runtime.json"
+        cached = self._cached(final_directory, digest)
+        if cached is not None:
+            gpu_startup_smoke(wrapper, self.runner)
+            cached = {**cached, "gpu_startup_probe": "passed"}
+            metadata_path.write_text(
+                json.dumps(cached, indent=2, sort_keys=True), encoding="utf-8"
+            )
+            print(
+                f"NVIDIA GROMACS runtime compatible: resolved={resolved_tag} "
+                f"digest={digest} cache=hit gpu_probe=passed",
+                flush=True,
+            )
+            return wrapper, metadata_path, cached
+
         staging: Path | None = None
         try:
-            env = self._auth_environment(auth_dir)
-            resolved_tag, digest, image_config = self._resolve(env)
-            digest_key = digest.removeprefix("sha256:")
-            final_directory = self.cache_root / digest_key
-            cached = self._cached(final_directory, digest)
-            if cached is not None:
-                print(
-                    f"NVIDIA GROMACS runtime ready: requested={self.requested_version} "
-                    f"resolved={resolved_tag} digest={digest} cache=hit",
-                    flush=True,
-                )
-                return final_directory / "gmx-runtime", final_directory / "runtime.json", cached
-
             staging = self.cache_root / f".staging-{uuid.uuid4().hex}"
             staging.mkdir(mode=0o755)
             archive = staging / "runtime.tar"
@@ -274,18 +394,18 @@ class RuntimeLoader:
             archive_bytes = archive.stat().st_size
             archive.unlink()
             gmx, selected_build = find_gromacs_binary(rootfs, self.requested_build)
-            wrapper = staging / "gmx-runtime"
+            staging_wrapper = staging / "gmx-runtime"
             probe_failures: list[str] = []
             actual_version = "unknown"
             execution_mode = "unknown"
             for candidate_mode in ("nvidia_loader", "host_loader"):
-                wrapper.write_text(
+                staging_wrapper.write_text(
                     runtime_wrapper(rootfs, gmx, selected_build, candidate_mode),
                     encoding="utf-8",
                 )
-                wrapper.chmod(0o755)
+                staging_wrapper.chmod(0o755)
                 version_probe = self.runner(
-                    [str(wrapper), "--version"],
+                    [str(staging_wrapper), "--version"],
                     capture_output=True,
                     text=True,
                     check=False,
@@ -306,7 +426,7 @@ class RuntimeLoader:
                     + "; ".join(probe_failures)
                 )
             metadata = {
-                "requested_version": self.requested_version,
+                "requested_version": resolved_tag,
                 "resolved_tag": resolved_tag,
                 "resolved_reference": reference,
                 "resolved_digest": digest,
@@ -322,20 +442,72 @@ class RuntimeLoader:
             if final_directory.exists():
                 shutil.rmtree(final_directory)
             staging.rename(final_directory)
+            staging = None
+            gpu_startup_smoke(wrapper, self.runner)
+            metadata["gpu_startup_probe"] = "passed"
+            metadata_path.write_text(
+                json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8"
+            )
             print(
-                f"NVIDIA GROMACS runtime ready: actual={actual_version} "
-                f"build={selected_build} cache=miss",
+                f"NVIDIA GROMACS runtime compatible: actual={actual_version} "
+                f"resolved={resolved_tag} build={selected_build} cache=miss gpu_probe=passed",
                 flush=True,
             )
-            return final_directory / "gmx-runtime", final_directory / "runtime.json", metadata
+            return wrapper, metadata_path, metadata
+        finally:
+            if staging is not None and staging.exists():
+                shutil.rmtree(staging)
+
+    def load(self) -> tuple[Path, Path, dict[str, Any]]:
+        self.cache_root.mkdir(parents=True, exist_ok=True, mode=0o755)
+        auth_dir = Path(tempfile.mkdtemp(prefix="ngc-auth-", dir="/run"))
+        auth_dir.chmod(0o700)
+        config_path = auth_dir / "config.json"
+        try:
+            env = self._auth_environment(auth_dir)
+            if self.requested_version == "latest":
+                tags = self._run(["crane", "ls", self.repository], env, timeout=120).splitlines()
+                candidates = stable_version_tags(tags)
+            else:
+                candidates = [self.requested_version]
+
+            rejected: list[dict[str, str]] = []
+            for resolved_tag in candidates:
+                try:
+                    binary, metadata_path, metadata = self._load_candidate(resolved_tag, env)
+                except IncompatibleRuntimeError as exc:
+                    if self.requested_version != "latest":
+                        raise
+                    reason = str(exc)[-1200:]
+                    rejected.append({"tag": resolved_tag, "reason": reason})
+                    print(
+                        f"NVIDIA GROMACS tag rejected by GPU probe: resolved={resolved_tag} "
+                        f"reason={reason}",
+                        flush=True,
+                    )
+                    continue
+
+                if self.requested_version != "latest":
+                    return binary, metadata_path, metadata
+                selection = {
+                    **metadata,
+                    "requested_version": "latest",
+                    "selection_policy": "highest-stable-gpu-compatible",
+                    "rejected_newer_tags": rejected,
+                    "gpu_startup_probe": "passed",
+                }
+                selection_path = self.cache_root / "runtime-selection.json"
+                selection_path.write_text(
+                    json.dumps(selection, indent=2, sort_keys=True), encoding="utf-8"
+                )
+                return binary, selection_path, selection
+            raise RuntimeError("no stable NVIDIA GROMACS tag passed the GPU startup probe")
         finally:
             if config_path.exists():
                 config_path.write_text("{}", encoding="utf-8")
                 config_path.unlink()
             if auth_dir.exists():
                 auth_dir.rmdir()
-            if staging is not None and staging.exists():
-                shutil.rmtree(staging)
 
 
 def write_environment(path: Path, values: dict[str, str]) -> None:

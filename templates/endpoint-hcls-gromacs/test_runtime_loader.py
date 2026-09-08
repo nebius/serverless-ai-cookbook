@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -42,6 +43,12 @@ def test_latest_ignores_signature_and_metadata_tags() -> None:
 
 def test_latest_uses_numeric_not_lexical_ordering() -> None:
     assert runtime_loader.resolve_latest_tag(["v2026.9", "v2026.10", "v2025.99"]) == "v2026.10"
+
+
+def test_stable_tags_are_newest_first() -> None:
+    assert runtime_loader.stable_version_tags(
+        ["v2025.1", "sha256-deadbeef.sig", "v2026.2", "v2025.3"]
+    ) == ["v2026.2", "v2025.3", "v2025.1"]
 
 
 def test_find_gromacs_prefers_requested_build(tmp_path: Path) -> None:
@@ -89,3 +96,72 @@ def test_wrapper_can_use_host_elf_loader(tmp_path: Path) -> None:
 
 def test_parse_engine_version() -> None:
     assert runtime_loader.parse_engine_version("GROMACS version:    2026.2\n") == "2026.2"
+
+
+def test_gpu_startup_smoke_runs_grompp_and_mdrun(tmp_path: Path) -> None:
+    commands: list[str] = []
+
+    def runner(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        commands.append(command[1])
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    runtime_loader.gpu_startup_smoke(tmp_path / "gmx", runner)
+    assert commands == ["grompp", "mdrun"]
+
+
+def test_gpu_startup_smoke_rejects_failed_mdrun(tmp_path: Path) -> None:
+    def runner(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            command,
+            0 if command[1] == "grompp" else 1,
+            "",
+            "CUDA driver mismatch",
+        )
+
+    with pytest.raises(runtime_loader.IncompatibleRuntimeError, match="CUDA driver mismatch"):
+        runtime_loader.gpu_startup_smoke(tmp_path / "gmx", runner)
+
+
+def test_latest_falls_back_to_first_gpu_compatible_tag(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    auth_dir = tmp_path / "auth"
+
+    def fake_mkdtemp(**_: object) -> str:
+        auth_dir.mkdir()
+        return str(auth_dir)
+
+    monkeypatch.setattr(runtime_loader.tempfile, "mkdtemp", fake_mkdtemp)
+    loader = runtime_loader.RuntimeLoader(
+        cache_root=tmp_path / "cache",
+        requested_version="latest",
+        requested_build="avx2_256",
+        api_key="test-key",
+    )
+    monkeypatch.setattr(loader, "_auth_environment", lambda _: {})
+    monkeypatch.setattr(
+        loader,
+        "_run",
+        lambda *_, **__: "v2025.1\nv2026.2\nv2025.3\nsha256-deadbeef.sig",
+    )
+    attempted: list[str] = []
+
+    def fake_candidate(tag: str, _: dict[str, str]) -> tuple[Path, Path, dict[str, str]]:
+        attempted.append(tag)
+        if tag != "v2025.1":
+            raise runtime_loader.IncompatibleRuntimeError("CUDA driver mismatch")
+        return tmp_path / "gmx", tmp_path / "runtime.json", {
+            "resolved_tag": tag,
+            "resolved_digest": f"sha256:{'0' * 64}",
+        }
+
+    monkeypatch.setattr(loader, "_load_candidate", fake_candidate)
+    _, metadata_path, metadata = loader.load()
+    assert attempted == ["v2026.2", "v2025.3", "v2025.1"]
+    assert metadata["requested_version"] == "latest"
+    assert metadata["resolved_tag"] == "v2025.1"
+    assert [item["tag"] for item in metadata["rejected_newer_tags"]] == [
+        "v2026.2",
+        "v2025.3",
+    ]
+    assert metadata_path.name == "runtime-selection.json"
