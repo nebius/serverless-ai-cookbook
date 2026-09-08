@@ -6,7 +6,7 @@ asynchronous REST contract and an MCP Streamable HTTP endpoint on the same port.
 Nebius integrated Token authentication protects both protocols with the same bearer
 token.
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3Adynamic-latest&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3A20260908-6bd2a84-dynamic&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 Before creating the endpoint, enable Token authentication in the Console. Attach
 either an Object Storage bucket or a Shared Filesystem at `/mnt/hcls` with read-write
@@ -43,7 +43,9 @@ is not repackaged into the API image. Initial `latest` startup may download more
 one candidate when a newer CUDA build is incompatible. A continuously running
 endpoint keeps its resolved runtime. Restart the endpoint to resolve `latest` again.
 If its boot disk is retained and a digest is unchanged, its cached candidate is
-re-probed and reused.
+re-probed and reused. In the September 2026 acceptance test, Serverless replaced the
+boot disk on stop/start, so the URL stayed stable but all candidates were cold-pulled
+again. Do not rely on this cache for durability.
 
 **License:** [LGPL-2.1](https://gitlab.com/gromacs/gromacs/-/blob/main/COPYING) ·
 **Runtime repository:** `nvcr.io/nvidia/gromacs`
@@ -142,10 +144,35 @@ If `AUTH_TOKEN_SECRET_SELECTOR` is used, its MysteryBox payload key must be
 Serverless gateway; it is not an application or NGC credential and must not be
 embedded in a deployment link or image.
 
-The public wrapper image is
-`cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:dynamic-latest`.
-Use the immutable release tag documented with each qualification when reproducibility
-matters. This wrapper contains the API, MCP server, and pull launcher—not GROMACS.
+The accepted public wrapper image is:
+
+```text
+cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:20260908-6bd2a84-dynamic
+sha256:a0b690e75c3859e65f5299ae97f12f977136d5e6e05058f6355081f5bbfa0671
+```
+
+The movable alias `dynamic-latest` currently resolves to the same wrapper digest.
+Use the immutable release tag for reproducibility. This wrapper contains the API,
+MCP server, and pull launcher—not GROMACS.
+
+The retained acceptance deployment is:
+
+```text
+Endpoint: aiendpoint-e00jj4smbp2ntfyb7p
+URL: https://port8000-a9bxpqpgm35c5kc.tunnel.applications.eu-north1.nebius.cloud
+Platform: gpu-l40s-a / 1gpu-8vcpu-32gb / regular
+Storage: s3://parabricks-test mounted read-write at /mnt/hcls
+Requested runtime: latest
+Selected runtime: nvcr.io/nvidia/gromacs:v2025.1
+Runtime digest: sha256:d045e411eb3197ab2474b9b6376bc7abf58ca38a978e5f6582498acb32b17316
+```
+
+On the current platform driver, the startup GPU probe rejects the CUDA 13 builds in
+`v2026.2` and `v2025.3`, then selects `v2025.1`. Acceptance completed one 10,000-step
+REST run and one MCP run with GPU offload. The REST run
+`93e9fb1be1454687aa19f655e5466064` reported 389.529 ns/day; MCP run
+`90b662a6e6124d57964fe1c44b4384a6` reported 4008.633 ns/day. Both `result.json`
+objects were hash-verified through REST and independently found in Object Storage.
 
 The guided argon smoke creates a TPR with `grompp`, runs `mdrun -nb gpu`, and returns
 the TPR, coordinates, energies, checkpoint, log, command output, and result manifest.

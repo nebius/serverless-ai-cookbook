@@ -6,7 +6,7 @@ set -euo pipefail
 : "${HCLS_STORAGE_SOURCE:?Set HCLS_STORAGE_SOURCE to s3://BUCKET or a computefilesystem-* resource ID}"
 : "${NGC_API_KEY_SECRET_SELECTOR:?Set NGC_API_KEY_SECRET_SELECTOR to a MysteryBox secret whose payload key is NGC_API_KEY}"
 
-HCLS_IMAGE="${HCLS_IMAGE:-cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:dynamic-latest}"
+HCLS_IMAGE="${HCLS_IMAGE:-cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:20260908-6bd2a84-dynamic}"
 GROMACS_VERSION="${GROMACS_VERSION:-latest}"
 GROMACS_CPU_BUILD="${GROMACS_CPU_BUILD:-avx2_256}"
 

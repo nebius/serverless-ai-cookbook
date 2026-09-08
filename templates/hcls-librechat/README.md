@@ -119,11 +119,12 @@ docker build --platform linux/amd64 \
 
 ## Test
 
-The retained acceptance deployment is:
+The retained workbench connected to the dynamic NVIDIA runtime deployment is:
 
 ```text
-Endpoint: aiendpoint-e00xz2grwmjn6yr2n1
-URL: https://port3080-tsahyyy1dz4v3f8.tunnel.applications.eu-north1.nebius.cloud
+Endpoint: aiendpoint-e00jas4ng4g07ee7xh
+URL: https://port3080-jdmnagta4m8m60q.tunnel.applications.eu-north1.nebius.cloud
+Backend: https://port8000-a9bxpqpgm35c5kc.tunnel.applications.eu-north1.nebius.cloud/mcp
 ```
 
 Open the managed LibreChat URL, register an account, and choose `GROMACS
@@ -150,3 +151,8 @@ GROMACS tools, and `Server readiness checks passing`. The embedded database and
 generated LibreChat encryption keys live on the endpoint's container disk. For a
 production multi-replica or durable service, use an external authenticated MongoDB
 and managed application secrets rather than this single-node pilot topology.
+
+If the GPU endpoint is stopped long enough for LibreChat to exhaust its reconnect
+attempts, start the GPU endpoint, wait for authenticated `/healthz` to report ready,
+then restart the LibreChat endpoint. The managed public URLs remain stable across a
+normal stop/start; this sequence was verified during acceptance.
