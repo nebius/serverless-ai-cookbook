@@ -51,6 +51,11 @@ def test_stable_tags_are_newest_first() -> None:
     ) == ["v2026.2", "v2025.3", "v2025.1"]
 
 
+def test_stable_tags_reject_metadata_only_repository() -> None:
+    with pytest.raises(RuntimeError, match="no stable version tags"):
+        runtime_loader.stable_version_tags(["sha256-deadbeef.sig", "latest.sbom"])
+
+
 def test_find_gromacs_prefers_requested_build(tmp_path: Path) -> None:
     preferred = tmp_path / "usr/local/gromacs/avx2_256/bin/gmx"
     preferred.parent.mkdir(parents=True)
@@ -165,3 +170,40 @@ def test_latest_falls_back_to_first_gpu_compatible_tag(
         "v2025.3",
     ]
     assert metadata_path.name == "runtime-selection.json"
+
+
+def test_registry_error_redacts_api_key(tmp_path: Path) -> None:
+    key = "test-ngc-key-that-must-not-leak"
+
+    def runner(command: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1, "", f"registry rejected {key}")
+
+    loader = runtime_loader.RuntimeLoader(
+        cache_root=tmp_path,
+        requested_version="v2025.1",
+        requested_build="avx2_256",
+        api_key=key,
+        runner=runner,
+    )
+    with pytest.raises(RuntimeError) as raised:
+        loader._run(["crane", "digest"], {})
+    assert key not in str(raised.value)
+    assert "[REDACTED]" in str(raised.value)
+
+
+def test_digest_cache_requires_matching_metadata_and_wrapper(tmp_path: Path) -> None:
+    digest = f"sha256:{'a' * 64}"
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    (cache / "gmx-runtime").write_text("wrapper", encoding="utf-8")
+    (cache / "runtime.json").write_text(
+        '{"resolved_digest": "' + digest + '"}', encoding="utf-8"
+    )
+    loader = runtime_loader.RuntimeLoader(
+        cache_root=tmp_path,
+        requested_version="v2025.1",
+        requested_build="avx2_256",
+        api_key="test-key",
+    )
+    assert loader._cached(cache, digest) == {"resolved_digest": digest}
+    assert loader._cached(cache, f"sha256:{'b' * 64}") is None
