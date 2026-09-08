@@ -1,6 +1,6 @@
 # HCLS Serverless API and workbench architecture
 
-Status: accepted implementation baseline, 2026-09-04
+Status: dynamic NVIDIA runtime baseline, 2026-09-08
 
 ## Product topology
 
@@ -9,11 +9,11 @@ browser workbench:
 
 | Service | Compute | Primary customer job |
 | --- | --- | --- |
-| OpenMM | 1x NVIDIA L40S | bounded periodic synthetic molecular-dynamics examples and API integration |
+| OpenMM | 1x NVIDIA L40S | version-selectable official NVIDIA runtime; bounded periodic synthetic MD examples and API integration |
 | GROMACS | 1x NVIDIA L40S | GPU-offloaded MD from a prepared TPR or guided public example |
 | AutoDock Vina | CPU | familiar, low-cost interactive docking and small batches |
-| AutoDock-GPU | 1x NVIDIA H100 live-qualified; image also targets L40S | CUDA-accelerated batch screening against prepared maps |
-| Parabricks DeepVariant | 1x NVIDIA H100 bounded demo; 8x is the next available Serverless preset | bounded BAM/CRAM-to-VCF research workflow |
+| AutoDock-GPU | 1x NVIDIA H100 for the source-build fallback | CUDA-accelerated batch screening; official NGC 2020.06 is blocked on current Serverless GPUs |
+| Parabricks DeepVariant | 1x NVIDIA H100 bounded demo; 8x is the next available Serverless preset | version-selectable official NVIDIA runtime; bounded BAM/CRAM-to-VCF research workflow |
 | HCLS Workbench | CPU | configure a compute endpoint, run guided examples, inspect results/artifacts |
 
 AutoDock Vina and AutoDock-GPU are separate products. AutoDock-GPU accelerates
@@ -81,17 +81,24 @@ downloads. Opening a page never starts compute.
 - Qualification: preemptible when available; final acceptance endpoints use
   regular capacity and remain running for user verification
 
+OpenMM and Parabricks use lean public API wrappers. At endpoint startup each wrapper
+uses a MysteryBox-injected `NGC_API_KEY` to authenticate to NGC, resolves its version
+environment variable (`OPENMM_VERSION` or `PARABRICKS_VERSION`), records the official
+digest, extracts the selected runtime, and runs a real CUDA probe before serving.
+`latest` means the highest stable tag that passes the probe; exact tags fail closed.
+The same Serverless token protects REST and MCP. The NGC key is pull-only and is never
+used as an API credential.
+
 NVIDIA recommends two GPUs and at least 24 CPU threads/100 GB RAM for Parabricks,
 but the current H100 Serverless presets expose one or eight GPUs. The bounded public
 chr20 test therefore starts with one H100; production users should qualify the
-eight-GPU shape when its throughput justifies the cost. The build extends the
-immutable digest of the existing public Nebius Parabricks 4.7.0-1 API image used by
-the approved reference deployment because the direct NGC credential is currently
-unavailable. Promotion is
-still conditional on the NVIDIA AI Product Agreement and an explicit distribution
-review. The adapted image and live candidate stay in a registry proven to deny
-anonymous pulls; public pull/use rights are not treated as blanket redistribution
-rights.
+eight-GPU shape when its throughput justifies the cost.
+
+The AutoDock-GPU wrapper implements the same dynamic contract, but NGC currently
+offers only `nvcr.io/hpc/autodock:2020.06`. Its bundled binary fails a real docking
+probe on the current Serverless GPU generations and the image contains no source to
+rebuild. It therefore has no dynamic-NGC deploy button until NVIDIA publishes a
+compatible tag; the separately labelled H100 source-build fallback remains available.
 
 ## Release and evidence gates
 

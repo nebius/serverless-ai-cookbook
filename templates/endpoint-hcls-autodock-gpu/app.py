@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from hcls_api import create_app
+from hcls_api.oci_runtime import run_in_runtime
 
 
 MAX_LIGANDS = 32
@@ -24,21 +25,32 @@ class AutoDockGpuAdapter:
     service_id = "autodock-gpu"
 
     def __init__(self) -> None:
-        self.binary = Path(os.environ.get("AUTODOCK_GPU_BINARY", "/usr/local/bin/autodock_gpu_128wi"))
+        self.rootfs = Path("/")
+        self.binary = ""
+        self.image_environment: dict[str, str] = {}
+        self.runtime: dict[str, Any] = {}
         self.example_root = Path(os.environ.get("AUTODOCK_GPU_EXAMPLE_ROOT", "/opt/hcls/examples/autodock-gpu/1stp"))
         self.timeout_seconds = max(30, min(int(os.environ.get("HCLS_ENGINE_TIMEOUT_SECONDS", "900")), 3600))
 
     def load(self) -> None:
+        spec_path = os.environ.get("AUTODOCK_RUNTIME_SPEC")
+        metadata_path = os.environ.get("AUTODOCK_RUNTIME_METADATA")
+        if not spec_path or not metadata_path:
+            raise RuntimeError("AutoDock-GPU runtime selection is unavailable")
+        spec = json.loads(Path(spec_path).read_text(encoding="utf-8"))
+        self.runtime = json.loads(Path(metadata_path).read_text(encoding="utf-8"))
+        self.rootfs = Path(spec["rootfs"])
+        self.binary = str(spec["guest_command"])
+        self.image_environment = dict(spec["image_environment"])
         required = [
-            self.binary,
             self.example_root / "1stp_protein.maps.fld",
             self.example_root / "1stp_ligand.pdbqt",
         ]
         missing = [str(path) for path in required if not path.is_file()]
         if missing:
             raise RuntimeError(f"missing AutoDock-GPU runtime assets: {', '.join(missing)}")
-        if not os.access(self.binary, os.X_OK):
-            raise RuntimeError(f"AutoDock-GPU binary is not executable: {self.binary}")
+        if not self.binary.startswith("/"):
+            raise RuntimeError("AutoDock-GPU runtime command is invalid")
 
     def gpu_details(self) -> dict[str, Any]:
         nvidia_smi = shutil.which("nvidia-smi")
@@ -60,11 +72,12 @@ class AutoDockGpuAdapter:
     def health(self) -> dict[str, Any]:
         gpu = self.gpu_details()
         return {
-            "ready": self.binary.is_file() and bool(gpu.get("available")),
+            "ready": bool(self.binary) and bool(gpu.get("available")),
             "engine": "AutoDock-GPU",
-            "engine_version": "v1.6",
+            "engine_version": self.runtime.get("actual_engine_version", "unknown"),
             "accelerator": "CUDA",
             "gpu": gpu,
+            "runtime": self.runtime,
         }
 
     def capabilities(self) -> dict[str, Any]:
@@ -72,10 +85,10 @@ class AutoDockGpuAdapter:
             "workload": "molecular_docking",
             "engine": {
                 "name": "AutoDock-GPU",
-                "version": "v1.6",
-                "source_revision": "e63e6f6280ebfad18caa3e8f48afdc269e79e063",
+                "version": self.runtime.get("actual_engine_version", "unknown"),
                 "scoring_semantics": "autodock4",
             },
+            "runtime": self.runtime,
             "accelerator": {"required": True, "kind": "NVIDIA CUDA", "thread_block_size": 128},
             "examples": [
                 {
@@ -141,9 +154,10 @@ class AutoDockGpuAdapter:
         results: list[dict[str, Any]] = []
         for index, (ligand_id, ligand_path) in enumerate(self.ligands(payload, work_dir), 1):
             result_name = f"result-{index:03d}-{ligand_id}"
-            completed = subprocess.run(
-                [
-                    str(self.binary),
+            completed = run_in_runtime(
+                rootfs=self.rootfs,
+                guest_command=self.binary,
+                args=[
                     "--ffile",
                     str(fld_file),
                     "--lfile",
@@ -166,10 +180,8 @@ class AutoDockGpuAdapter:
                     "1",
                 ],
                 cwd=work_dir,
-                capture_output=True,
-                text=True,
+                image_environment=self.image_environment,
                 timeout=self.timeout_seconds,
-                check=False,
             )
             (work_dir / f"{result_name}.stdout.log").write_text(completed.stdout[-1_000_000:], encoding="utf-8")
             (work_dir / f"{result_name}.stderr.log").write_text(completed.stderr[-1_000_000:], encoding="utf-8")
@@ -201,7 +213,8 @@ class AutoDockGpuAdapter:
                 writer.writerow([result["ligand_id"], result["best_estimated_binding_energy_kcal_per_mol"]])
         summary = {
             "engine": "AutoDock-GPU",
-            "engine_version": "v1.6",
+            "engine_version": self.runtime.get("actual_engine_version", "unknown"),
+            "runtime": self.runtime,
             "scoring_semantics": "autodock4",
             "nrun": nrun,
             "max_evaluations": max_evaluations,

@@ -221,22 +221,22 @@ remain in workbench server memory; they are never encoded in these links.
 <tr>
   <td width="220" valign="middle"><a href="endpoint-hcls-autodock-gpu/README.md"><strong>AutoDock-GPU API</strong></a></td>
   <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fautodock-gpu-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">H100-qualified CUDA virtual screening using AutoDock4 scoring; scores are not comparable to Vina scores.</td>
+  <td width="580" valign="middle">H100-qualified source-build fallback using AutoDock4 scoring. The dynamic official NVIDIA 2020.06 runtime currently fails on available Serverless GPU generations.</td>
 </tr>
 <tr>
   <td width="220" valign="middle"><a href="endpoint-hcls-gromacs/README.md"><strong>GROMACS MD API</strong></a></td>
-  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3A20260908-2341ac7&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3A20260908-6bd2a84-dynamic&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
   <td width="580" valign="middle">L40S GPU-offloaded molecular dynamics over REST and MCP, with either Object Storage or Shared Filesystem persistence at <code>/mnt/hcls</code>.</td>
 </tr>
 <tr>
   <td width="220" valign="middle"><a href="endpoint-hcls-openmm/README.md"><strong>OpenMM MD API</strong></a></td>
-  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fopenmm-md-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">OpenMM 8.5.1 CUDA API with bounded periodic MD examples and explicit performance metadata.</td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fopenmm-md-api%3A20260908-dynamic-v3&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Version-selectable official NVIDIA OpenMM CUDA runtime over REST and MCP, with Object Storage or Shared Filesystem persistence at <code>/mnt/hcls</code>.</td>
 </tr>
 <tr>
   <td width="220" valign="middle"><a href="endpoint-hcls-parabricks/README.md"><strong>Parabricks DeepVariant API</strong></a></td>
-  <td width="160" valign="middle" align="center">Private candidate</td>
-  <td width="580" valign="middle">One-H100 bounded genomics API. Kept private pending explicit NVIDIA redistribution approval; internal deployment is documented in the template.</td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fparabricks-deepvariant-api%3A20260908-dynamic-v3&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Version-selectable official NVIDIA Parabricks runtime over REST and MCP on one H100, with both supported persistent-storage lanes.</td>
 </tr>
 <tr>
   <td width="220" valign="middle"><a href="hcls-workbench/README.md"><strong>HCLS Workbench</strong></a></td>

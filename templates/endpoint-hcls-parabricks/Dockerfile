@@ -1,27 +1,50 @@
 # syntax=docker/dockerfile:1.7
-ARG PARABRICKS_API_BASE=cr.eu-north1.nebius.cloud/e00ffw8yqnrrd507t9/clawbio-event/parabricks-deepvariant@sha256:f4db163ea21b896643ac41c82999f068dfaaa9f2282d443a438e0dc40dbc4af9
-FROM ${PARABRICKS_API_BASE}
+FROM gcr.io/go-containerregistry/crane@sha256:e78770b31258a3846f878036d9c1f63fbe4c871f9f56990bf77fd95c013e3c1b AS crane
+
+FROM python:3.12-slim-bookworm@sha256:a116514e19457bcb7af7efe9c3dd0b9b71e85b317694e7882a1c52aa15a78134
 ARG HCLS_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.title="Nebius HCLS Parabricks DeepVariant API" \
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HCLS_STORAGE_ROOT=/mnt/hcls \
+    HCLS_ENABLE_MCP=1 \
+    HCLS_SEQUENTIAL_JSON_WRITES=1 \
+    HCLS_IMMUTABLE_STATUS_SNAPSHOTS=1 \
+    HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION} \
+    HCLS_PARABRICKS_INPUT_ROOT=/mnt/hcls/parabricks-deepvariant/fixtures \
+    PARABRICKS_IMAGE_REPOSITORY=nvcr.io/nvidia/clara/clara-parabricks \
+    PARABRICKS_VERSION=latest \
+    PARABRICKS_GPU_COUNT=1 \
+    PARABRICKS_RUNTIME_CACHE=/var/cache/hcls-parabricks \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+LABEL org.opencontainers.image.title="Nebius HCLS dynamic Parabricks DeepVariant API" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
       org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
-      org.opencontainers.image.licenses="LicenseRef-NVIDIA-AI-Product-Agreement" \
-      ai.nvidia.parabricks.version="4.7.0-1"
-ENV PARABRICKS_VERSION=4.7.0-1 \
-    PARABRICKS_GPU_COUNT=2 \
-    HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION} \
-    HCLS_RUN_ROOT=/data/hcls/parabricks/runs \
-    HCLS_PARABRICKS_INPUT_ROOT=/data/hcls/parabricks/fixtures
-RUN if ! getent group 10001 >/dev/null; then groupadd --gid 10001 hcls; fi && \
-    if ! getent passwd 10001 >/dev/null; then useradd --uid 10001 --gid 10001 --create-home --home-dir /home/hcls hcls; fi && \
-    mkdir -p /app/hcls_api /data/hcls/parabricks/runs /data/hcls/parabricks/fixtures && \
-    chown -R 10001:10001 /app /data/hcls /home/hcls
-COPY --chown=10001:10001 templates/hcls-common/hcls_api /app/hcls_api
-COPY --chown=10001:10001 templates/endpoint-hcls-parabricks/app.py /app/app.py
+      org.opencontainers.image.licenses="LicenseRef-NVIDIA-AI-Product-Agreement"
+
+COPY --from=crane /ko-app/crane /usr/local/bin/crane
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates=20250419~deb12u1 tar=1.34+dfsg-1.2+deb12u1 \
+ && rm -rf /var/lib/apt/lists/* \
+ && python3 -m venv /opt/hcls \
+ && /opt/hcls/bin/pip install --no-cache-dir fastapi==0.136.1 mcp==2.2.0 pydantic==2.12.5 uvicorn==0.52.4 \
+ && /opt/hcls/bin/pip uninstall -y setuptools \
+ && mkdir -p /app /mnt/hcls /var/cache/hcls-parabricks /run/hcls-parabricks
+
+COPY templates/hcls-common/hcls_api /app/hcls_api
+COPY templates/endpoint-hcls-parabricks/app.py /app/app.py
+COPY templates/endpoint-hcls-parabricks/runtime_loader.py /app/runtime_loader.py
+COPY templates/endpoint-hcls-parabricks/entrypoint.sh /usr/local/bin/hcls-parabricks-entrypoint
+RUN chmod 0755 /usr/local/bin/crane /usr/local/bin/hcls-parabricks-entrypoint
+
 WORKDIR /app
-ENV PYTHONPATH=/app
-USER 10001:10001
+ENV PATH=/opt/hcls/bin:/usr/local/bin:${PATH} PYTHONPATH=/app
+ENTRYPOINT ["/usr/local/bin/hcls-parabricks-entrypoint"]
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=15s --start-period=30s --retries=5 CMD ["python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=10)"]
-ENTRYPOINT ["python3", "-m", "uvicorn"]
-CMD ["app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20m --retries=5 \
+  CMD ["/opt/hcls/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"]
+CMD ["/opt/hcls/bin/uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log", "--no-server-header"]

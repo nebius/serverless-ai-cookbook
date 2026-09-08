@@ -1,39 +1,49 @@
 # syntax=docker/dockerfile:1.7
-ARG CUDA_BASE=docker.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc
-ARG MICROMAMBA_IMAGE=docker.io/mambaorg/micromamba:2.3.3@sha256:800e7ade3ffe29c9a9ac2026163131495f8197c3852e572c5835beb4e8a33cd6
+FROM gcr.io/go-containerregistry/crane@sha256:e78770b31258a3846f878036d9c1f63fbe4c871f9f56990bf77fd95c013e3c1b AS crane
 
-FROM ${MICROMAMBA_IMAGE} AS micromamba
-FROM ${CUDA_BASE}
+FROM python:3.12-slim-bookworm@sha256:a116514e19457bcb7af7efe9c3dd0b9b71e85b317694e7882a1c52aa15a78134
 ARG HCLS_IMAGE_REVISION=unknown
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 NVIDIA_DRIVER_CAPABILITIES=compute,utility \
-    HCLS_RUN_ROOT=/data/runs HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION}
-LABEL org.opencontainers.image.title="Nebius HCLS OpenMM API" \
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HCLS_STORAGE_ROOT=/mnt/hcls \
+    HCLS_ENABLE_MCP=1 \
+    HCLS_SEQUENTIAL_JSON_WRITES=1 \
+    HCLS_IMMUTABLE_STATUS_SNAPSHOTS=1 \
+    HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION} \
+    OPENMM_IMAGE_REPOSITORY=nvcr.io/nvidia/openmm \
+    OPENMM_VERSION=latest \
+    OPENMM_RUNTIME_CACHE=/var/cache/hcls-openmm \
+    NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+LABEL org.opencontainers.image.title="Nebius HCLS dynamic OpenMM API" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
       org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
       org.opencontainers.image.licenses="MIT"
 
-COPY --from=micromamba /bin/micromamba /usr/local/bin/micromamba
-COPY templates/endpoint-hcls-openmm/openmm-linux-64.lock /tmp/openmm-linux-64.lock
-RUN sed -i -e 's|http://archive.ubuntu.com/ubuntu|https://mirror.zetup.net/ubuntu|g' -e 's|http://security.ubuntu.com/ubuntu|https://mirror.zetup.net/ubuntu|g' /etc/apt/sources.list /etc/apt/sources.list.d/ubuntu.sources && \
-    apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update && \
-    apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \
-      ca-certificates=20260601~24.04.1 \
-      libgomp1=14.2.0-4ubuntu2~24.04.1 && \
-    rm -rf /var/lib/apt/lists/* && \
-    micromamba create -y -p /opt/hcls -f /tmp/openmm-linux-64.lock && \
-    micromamba clean -a -y && \
-    /opt/hcls/bin/pip install --no-cache-dir fastapi==0.136.1 pydantic==2.12.5 uvicorn==0.34.0
+COPY --from=crane /ko-app/crane /usr/local/bin/crane
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates=20250419~deb12u1 tar=1.34+dfsg-1.2+deb12u1 \
+ && rm -rf /var/lib/apt/lists/* \
+ && python3 -m venv /opt/hcls \
+ && /opt/hcls/bin/pip install --no-cache-dir fastapi==0.136.1 mcp==2.2.0 pydantic==2.12.5 uvicorn==0.52.4 \
+ && /opt/hcls/bin/pip uninstall -y setuptools \
+ && mkdir -p /app /mnt/hcls /var/cache/hcls-openmm /run/hcls-openmm
 
-RUN groupadd --gid 10001 hcls && useradd --uid 10001 --gid hcls --create-home --home-dir /home/hcls hcls && \
-    mkdir -p /app /data/runs && chown -R 10001:10001 /app /data /home/hcls
-COPY --chown=10001:10001 templates/hcls-common/hcls_api /app/hcls_api
-COPY --chown=10001:10001 templates/endpoint-hcls-openmm/app.py /app/app.py
+COPY templates/hcls-common/hcls_api /app/hcls_api
+COPY templates/endpoint-hcls-openmm/app.py /app/app.py
+COPY templates/endpoint-hcls-openmm/openmm_worker.py /app/openmm_worker.py
+COPY templates/endpoint-hcls-openmm/runtime_loader.py /app/runtime_loader.py
+COPY templates/endpoint-hcls-openmm/entrypoint.sh /usr/local/bin/hcls-openmm-entrypoint
+RUN chmod 0755 /usr/local/bin/crane /usr/local/bin/hcls-openmm-entrypoint
+
 WORKDIR /app
-ENV PATH=/opt/hcls/bin:${PATH} PYTHONPATH=/app
-USER 10001:10001
+ENV PATH=/opt/hcls/bin:/usr/local/bin:${PATH} PYTHONPATH=/app
+ENTRYPOINT ["/usr/local/bin/hcls-openmm-entrypoint"]
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=5 CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"]
-ENTRYPOINT ["python", "-m", "uvicorn"]
-CMD ["app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log", "--no-server-header"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20m --retries=5 \
+  CMD ["/opt/hcls/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"]
+CMD ["/opt/hcls/bin/uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log", "--no-server-header"]
