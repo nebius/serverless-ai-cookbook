@@ -41,6 +41,8 @@ The native Console deep-link contract currently accepts image, platform, preset,
 preemptible, command, and storage defaults. It does **not** accept environment
 variables, secret values, authentication mode, or the application port as query
 parameters. Those values cannot safely or reliably be encoded into a create URL.
+The table below is therefore part of the deploy contract, not an optional set of
+out-of-band assumptions.
 
 Use this link to prefill the editable image tag and CPU shape:
 
@@ -87,6 +89,15 @@ MCP `Authorization` header. It is not a second application credential.
 should use a unique release tag. Moving `latest` makes demos convenient; a
 versioned tag makes them reproducible.
 
+Current accepted release:
+
+```text
+cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/librechat-gromacs:20260908-1e064ed
+sha256:0cc3f0cab62e6e5af06840cbe066d4d56c77b69271e69003a8e4cf2349d9f119
+```
+
+The public `latest` tag currently resolves to the same digest.
+
 There are two independent image choices:
 
 - `IMAGE` in `scripts/deploy.sh` selects this deployable LibreChat wrapper tag.
@@ -109,6 +120,13 @@ docker build --platform linux/amd64 \
 
 ## Test
 
+The retained acceptance deployment is:
+
+```text
+Endpoint: aiendpoint-e00xz2grwmjn6yr2n1
+URL: https://port3080-tsahyyy1dz4v3f8.tunnel.applications.eu-north1.nebius.cloud
+```
+
 Open the managed LibreChat URL, register an account, and choose `GROMACS
 Workbench · GLM 5.2`. Start with:
 
@@ -125,7 +143,7 @@ Operational checks:
 
 ```bash
 curl -fsS "https://<librechat-host>/health"
-nebius ai logs <librechat-endpoint-id> --tail 200 --timestamps
+nebius ai endpoint logs <librechat-endpoint-id> --tail 200
 ```
 
 The logs should include `GROMACS workbench agent is ready`, six initialized

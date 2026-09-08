@@ -58,14 +58,26 @@ arguments or arbitrary commands. Revisit the runtime user when Serverless suppor
 mount ownership configuration.
 
 For a reproducible CLI deployment, set the customer-owned project, subnet, storage
-resource, endpoint-token secret, and published image, then run:
+resource, and published image, then run:
 
 ```bash
 export NEBIUS_PROJECT_ID="project-..."
 export NEBIUS_SUBNET_ID="vpcsubnet-..."
 export HCLS_STORAGE_SOURCE="computefilesystem-..."
-export AUTH_TOKEN_SECRET_SELECTOR="mbsec-...@mbsecver-..."
 ./templates/endpoint-hcls-gromacs/scripts/deploy.sh
+```
+
+The script enables integrated Serverless Token authentication and, by default,
+generates a strong token and prints it once after creation. Store that value
+securely and use it for both REST and MCP. No pre-existing MysteryBox secret is
+required. To control the token explicitly, set exactly one optional variable:
+
+```bash
+# Reuse a managed secret whose payload key is AUTH_TOKEN:
+export AUTH_TOKEN_SECRET_SELECTOR="mbsec-...@mbsecver-..."
+
+# Or provide a token directly (do not commit or paste it into a URL):
+export AUTH_TOKEN="$(openssl rand -hex 32)"
 ```
 
 For Object Storage, configure a local AWS profile with its region and Nebius
@@ -87,9 +99,10 @@ Nebius CLI 0.12 resolves the S3 endpoint and region client-side before it create
 Serverless resource. Do not put either value in source, links, or environment
 variables on the endpoint.
 
-The MysteryBox secret referenced by `AUTH_TOKEN_SECRET_SELECTOR` must contain a
-payload key named `AUTH_TOKEN`. The token is endpoint access material; it is not an
-NGC key and must not be embedded in a deployment link or image.
+If `AUTH_TOKEN_SECRET_SELECTOR` is used, its MysteryBox payload key must be
+`AUTH_TOKEN`. In every mode, the value is endpoint access material enforced by the
+Serverless gateway; it is not an application or NGC credential and must not be
+embedded in a deployment link or image.
 
 The default public release is
 `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:20260908-2341ac7`,

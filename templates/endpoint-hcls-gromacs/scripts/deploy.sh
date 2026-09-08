@@ -4,7 +4,6 @@ set -euo pipefail
 : "${NEBIUS_PROJECT_ID:?Set NEBIUS_PROJECT_ID to the customer project ID}"
 : "${NEBIUS_SUBNET_ID:?Set NEBIUS_SUBNET_ID to a subnet in that project}"
 : "${HCLS_STORAGE_SOURCE:?Set HCLS_STORAGE_SOURCE to s3://BUCKET or a computefilesystem-* resource ID}"
-: "${AUTH_TOKEN_SECRET_SELECTOR:?Set AUTH_TOKEN_SECRET_SELECTOR to a MysteryBox secret selector whose payload contains AUTH_TOKEN}"
 
 HCLS_IMAGE="${HCLS_IMAGE:-cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:20260908-2341ac7}"
 # The release tag above is non-overwritten and resolves to
@@ -49,10 +48,24 @@ CREATE_CMD=(nebius ai endpoint create \
   --shm-size "$SHM_SIZE" \
   --subnet-id "$NEBIUS_SUBNET_ID" \
   --auth token \
-  --token-secret "$AUTH_TOKEN_SECRET_SELECTOR" \
   --volume "$HCLS_VOLUME" \
   --public \
   --format json)
+
+if [[ -n "${AUTH_TOKEN_SECRET_SELECTOR:-}" && -n "${AUTH_TOKEN:-}" ]]; then
+  echo "Set only one of AUTH_TOKEN_SECRET_SELECTOR or AUTH_TOKEN" >&2
+  exit 2
+fi
+
+GENERATED_AUTH_TOKEN=""
+if [[ -n "${AUTH_TOKEN_SECRET_SELECTOR:-}" ]]; then
+  CREATE_CMD+=(--token-secret "$AUTH_TOKEN_SECRET_SELECTOR")
+elif [[ -n "${AUTH_TOKEN:-}" ]]; then
+  CREATE_CMD+=(--token "$AUTH_TOKEN")
+else
+  GENERATED_AUTH_TOKEN="$(openssl rand -hex 32)"
+  CREATE_CMD+=(--token "$GENERATED_AUTH_TOKEN")
+fi
 
 case "$PREEMPTIBLE" in
   true|1|yes) CREATE_CMD+=(--preemptible) ;;
@@ -64,3 +77,7 @@ case "$PREEMPTIBLE" in
 esac
 
 "${CREATE_CMD[@]}"
+
+if [[ -n "$GENERATED_AUTH_TOKEN" ]]; then
+  printf '\nServerless generated-token handoff (shown once; store it securely):\nAUTH_TOKEN=%s\n' "$GENERATED_AUTH_TOKEN" >&2
+fi
