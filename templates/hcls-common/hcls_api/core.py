@@ -113,11 +113,23 @@ class RunManager:
         self.records: dict[str, dict[str, Any]] = {}
         self.futures: dict[str, Future[None]] = {}
         self.idempotency: dict[str, str] = {}
+        self.immutable_status_snapshots = os.environ.get(
+            "HCLS_IMMUTABLE_STATUS_SNAPSHOTS", "0"
+        ).strip().lower() in {"1", "true", "yes"}
+        self.persistence_sequences: dict[str, int] = {}
         self._restore()
 
     def _restore(self) -> None:
-        status_paths: list[Path] = []
-        seen: set[Path] = set()
+        status_paths: dict[str, tuple[int, Path]] = {}
+
+        def consider(path: Path, sequence: int) -> None:
+            run_id = path.parent.name
+            if not re.fullmatch(r"[0-9a-f]{32}", run_id):
+                return
+            current = status_paths.get(run_id)
+            if current is None or sequence > current[0]:
+                status_paths[run_id] = (sequence, path)
+
         index_path = self.root.parent / "runs-index.json"
         try:
             index = json.loads(index_path.read_text(encoding="utf-8"))
@@ -127,19 +139,15 @@ class RunManager:
         for run_id in indexed_run_ids:
             if not isinstance(run_id, str) or not re.fullmatch(r"[0-9a-f]{32}", run_id):
                 continue
-            status_path = self.root / run_id / "status.json"
-            status_paths.append(status_path)
-            seen.add(status_path)
-        # POSIX filesystems can be discovered by directory traversal. The fixed
-        # index above is primary because some S3-backed mounts can open an object
-        # by key while omitting implicit directories from glob results.
+            consider(self.root / run_id / "status.json", -1)
         for status_path in sorted(self.root.glob("*/status.json")):
-            if status_path not in seen:
-                status_paths.append(status_path)
-        for status_path in status_paths:
+            consider(status_path, -1)
+        for status_path in sorted(self.root.glob("*/status-*.json")):
+            match = re.fullmatch(r"status-(\d{8})\.json", status_path.name)
+            if match:
+                consider(status_path, int(match.group(1)))
+        for run_id, (sequence, status_path) in sorted(status_paths.items()):
             run_id = status_path.parent.name
-            if not re.fullmatch(r"[0-9a-f]{32}", run_id):
-                continue
             try:
                 record = json.loads(status_path.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
@@ -150,7 +158,8 @@ class RunManager:
                 or record.get("service") != self.adapter.service_id
             ):
                 continue
-            if record.get("status") not in TERMINAL_STATES:
+            interrupted = record.get("status") not in TERMINAL_STATES
+            if interrupted:
                 record.update(
                     status="failed",
                     finished_at=utc_now(),
@@ -160,12 +169,14 @@ class RunManager:
                     },
                     artifacts=self._artifacts(status_path.parent),
                 )
-                write_json(status_path, record)
             self.records[run_id] = record
+            self.persistence_sequences[run_id] = max(sequence + 1, 0)
+            if interrupted:
+                self._persist(run_id)
             client_request_id = record.get("client_request_id")
             if isinstance(client_request_id, str) and SAFE_CLIENT_ID.fullmatch(client_request_id):
                 self.idempotency[client_request_id] = run_id
-        if self.records:
+        if self.records and not self.immutable_status_snapshots:
             self._persist_index()
 
     def submit(self, request: RunRequest) -> dict[str, Any]:
@@ -271,7 +282,11 @@ class RunManager:
     def _artifacts(self, work_dir: Path) -> list[dict[str, Any]]:
         artifacts: list[dict[str, Any]] = []
         for path in sorted(work_dir.rglob("*")):
-            if not path.is_file() or path.name in {"status.json", ".internal-error.log"}:
+            if (
+                not path.is_file()
+                or path.name in {"status.json", ".internal-error.log"}
+                or re.fullmatch(r"status-\d{8}\.json", path.name)
+            ):
                 continue
             relative = path.relative_to(work_dir).as_posix()
             artifacts.append(
@@ -286,6 +301,14 @@ class RunManager:
         return artifacts
 
     def _persist(self, run_id: str) -> None:
+        if self.immutable_status_snapshots:
+            sequence = self.persistence_sequences.get(run_id, 0)
+            self.persistence_sequences[run_id] = sequence + 1
+            write_json(
+                self.root / run_id / f"status-{sequence:08d}.json",
+                self.records[run_id],
+            )
+            return
         write_json(self.root / run_id / "status.json", self.records[run_id])
         self._persist_index()
 

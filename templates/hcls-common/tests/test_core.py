@@ -101,6 +101,7 @@ def test_storage_root_stages_locally_and_restores(tmp_path, monkeypatch):
     monkeypatch.setenv("HCLS_STORAGE_ROOT", str(storage_root))
     monkeypatch.setenv("HCLS_SCRATCH_ROOT", str(scratch_root))
     monkeypatch.setenv("HCLS_SEQUENTIAL_JSON_WRITES", "1")
+    monkeypatch.setenv("HCLS_IMMUTABLE_STATUS_SNAPSHOTS", "1")
     monkeypatch.delenv("HCLS_RUN_ROOT", raising=False)
 
     payload = {
@@ -113,21 +114,12 @@ def test_storage_root_stages_locally_and_restores(tmp_path, monkeypatch):
         run = wait_for_terminal(first_client, run_id)
         assert run["status"] == "succeeded"
         assert (storage_root / "fake-engine" / "runs" / run_id / "answer.txt").read_text() == "durable"
-        assert run_id in (storage_root / "fake-engine" / "runs-index.json").read_text()
+        snapshots = sorted((storage_root / "fake-engine" / "runs" / run_id).glob("status-*.json"))
+        assert len(snapshots) == 3
+        assert not (storage_root / "fake-engine" / "runs-index.json").exists()
         assert not list(storage_root.rglob("*.tmp"))
         assert not (scratch_root / "fake-engine" / run_id).exists()
 
-    runs_root = (storage_root / "fake-engine" / "runs").resolve()
-    real_glob = Path.glob
-
-    def s3_like_glob(path: Path, pattern: str):
-        # Some object-backed mounts can resolve exact keys but do not expose
-        # implicit S3 prefix directories through filesystem globbing.
-        if path.resolve() == runs_root and pattern == "*/status.json":
-            return iter(())
-        return real_glob(path, pattern)
-
-    monkeypatch.setattr(Path, "glob", s3_like_glob)
     with TestClient(create_app(FakeAdapter())) as second_client:
         restored = second_client.get(f"/v1/runs/{run_id}")
         assert restored.status_code == 200
