@@ -5,7 +5,8 @@ ARG HCLS_IMAGE_REVISION=unknown
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 \
-    GROMACS_BINARY=/usr/local/gromacs/avx2_256/bin/gmx HCLS_RUN_ROOT=/data/runs \
+    GROMACS_BINARY=/usr/local/gromacs/avx2_256/bin/gmx \
+    HCLS_STORAGE_ROOT=/mnt/hcls HCLS_SCRATCH_ROOT=/tmp/hcls-scratch HCLS_ENABLE_MCP=1 \
     HCLS_IMAGE_REVISION=${HCLS_IMAGE_REVISION}
 LABEL org.opencontainers.image.title="Nebius HCLS GROMACS API" \
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
@@ -19,9 +20,9 @@ RUN sed -i -e 's|http://archive.ubuntu.com/ubuntu|https://mirror.zetup.net/ubunt
       python3-venv=3.10.6-1~22.04.1 && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m venv /opt/hcls && \
-    /opt/hcls/bin/pip install --no-cache-dir fastapi==0.136.1 pydantic==2.12.5 uvicorn==0.34.0 && \
+    /opt/hcls/bin/pip install --no-cache-dir fastapi==0.136.1 mcp==2.2.0 pydantic==2.12.5 uvicorn==0.52.4 && \
     groupadd --gid 10001 hcls && useradd --uid 10001 --gid hcls --create-home --home-dir /home/hcls hcls && \
-    mkdir -p /app /data/runs && chown -R 10001:10001 /app /data /home/hcls
+    mkdir -p /app /mnt/hcls /tmp/hcls-scratch && chown -R 10001:10001 /app /mnt/hcls /tmp/hcls-scratch /home/hcls
 COPY --chown=10001:10001 templates/hcls-common/hcls_api /app/hcls_api
 COPY --chown=10001:10001 templates/endpoint-hcls-gromacs/app.py /app/app.py
 WORKDIR /app

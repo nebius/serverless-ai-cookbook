@@ -5,6 +5,7 @@ import json
 import mimetypes
 import os
 import re
+import shutil
 import threading
 import time
 import traceback
@@ -18,6 +19,14 @@ from typing import Any, Literal, Protocol
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+try:
+    from mcp.server.mcpserver import MCPServer
+    from mcp.server.transport_security import TransportSecuritySettings
+except ImportError:  # REST-only images can adopt MCP one service at a time.
+    MCPServer = None  # type: ignore[assignment,misc]
+    TransportSecuritySettings = None  # type: ignore[assignment,misc]
 
 
 API_VERSION = "1.0"
@@ -39,9 +48,20 @@ def sha256_file(path: Path) -> str:
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = json.dumps(payload, indent=2, sort_keys=True)
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    temporary.replace(path)
+    temporary.write_text(encoded, encoding="utf-8")
+    try:
+        temporary.replace(path)
+    except OSError:
+        # S3-backed mounts do not necessarily implement POSIX rename. Fall back
+        # to a sequential overwrite; terminal artifacts remain immutable and
+        # status.json is the only mutable object in each run directory.
+        path.write_text(encoded, encoding="utf-8")
+        try:
+            temporary.unlink()
+        except OSError:
+            pass
 
 
 class EngineAdapter(Protocol):
@@ -70,10 +90,12 @@ class RunRequest(BaseModel):
 
 
 class RunManager:
-    def __init__(self, adapter: EngineAdapter, root: Path, queue_limit: int) -> None:
+    def __init__(self, adapter: EngineAdapter, root: Path, scratch_root: Path, queue_limit: int) -> None:
         self.adapter = adapter
         self.root = root.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
+        self.scratch_root = scratch_root.resolve()
+        self.scratch_root.mkdir(parents=True, exist_ok=True)
         self.queue_limit = queue_limit
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix=adapter.service_id)
         self.lock = threading.RLock()
@@ -143,7 +165,7 @@ class RunManager:
             return dict(record)
 
     def _execute(self, run_id: str, payload: dict[str, Any]) -> None:
-        work_dir = self.root / run_id
+        work_dir = self.scratch_root / run_id
         work_dir.mkdir(parents=True, exist_ok=True)
         with self.lock:
             if self.records[run_id]["status"] == "cancelled":
@@ -160,7 +182,8 @@ class RunManager:
                 "image_revision": os.environ.get("HCLS_IMAGE_REVISION", "unknown"),
             }
             write_json(work_dir / "result.json", result)
-            artifacts = self._artifacts(work_dir)
+            persistent_dir = self._publish(work_dir, run_id)
+            artifacts = self._artifacts(persistent_dir)
             with self.lock:
                 self.records[run_id].update(
                     status="succeeded",
@@ -173,17 +196,44 @@ class RunManager:
             (work_dir / ".internal-error.log").write_text(
                 traceback.format_exc(limit=30)[-16000:], encoding="utf-8"
             )
+            publish_error: Exception | None = None
+            try:
+                persistent_dir = self._publish(work_dir, run_id)
+                artifacts = self._artifacts(persistent_dir)
+            except Exception as storage_exc:  # noqa: BLE001 - captured in run state
+                publish_error = storage_exc
+                artifacts = []
+            message = str(exc)[:1000]
+            if publish_error is not None:
+                message = f"{message}; artifact persistence failed: {publish_error}"[:1000]
             with self.lock:
                 self.records[run_id].update(
                     status="failed",
                     finished_at=utc_now(),
                     error={
                         "type": type(exc).__name__,
-                        "message": str(exc)[:1000],
+                        "message": message,
                     },
-                    artifacts=self._artifacts(work_dir),
+                    artifacts=artifacts,
                 )
                 self._persist(run_id)
+        finally:
+            if work_dir != self.root / run_id:
+                shutil.rmtree(work_dir, ignore_errors=True)
+
+    def _publish(self, work_dir: Path, run_id: str) -> Path:
+        persistent_dir = self.root / run_id
+        if work_dir == persistent_dir:
+            return persistent_dir
+        persistent_dir.mkdir(parents=True, exist_ok=True)
+        for source in sorted(work_dir.rglob("*")):
+            if not source.is_file() or source.name in {"status.json", ".internal-error.log"}:
+                continue
+            target = persistent_dir / source.relative_to(work_dir)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with source.open("rb") as input_handle, target.open("wb") as output_handle:
+                shutil.copyfileobj(input_handle, output_handle, length=1024 * 1024)
+        return persistent_dir
 
     def _artifacts(self, work_dir: Path) -> list[dict[str, Any]]:
         artifacts: list[dict[str, Any]] = []
@@ -243,14 +293,95 @@ class RunManager:
 
 
 def create_app(adapter: EngineAdapter) -> FastAPI:
-    root = Path(os.environ.get("HCLS_RUN_ROOT", "/data/runs"))
+    storage_root = os.environ.get("HCLS_STORAGE_ROOT")
+    if storage_root:
+        root = Path(storage_root) / adapter.service_id / "runs"
+        scratch_root = Path(os.environ.get("HCLS_SCRATCH_ROOT", "/tmp/hcls-scratch")) / adapter.service_id
+    else:
+        # HCLS_RUN_ROOT preserves the v1 layout for existing images and tests.
+        root = Path(os.environ.get("HCLS_RUN_ROOT", "/data/runs"))
+        scratch_root = Path(os.environ.get("HCLS_SCRATCH_ROOT", str(root)))
     queue_limit = max(0, min(int(os.environ.get("HCLS_QUEUE_LIMIT", "8")), 100))
-    manager = RunManager(adapter, root, queue_limit)
+    manager = RunManager(adapter, root, scratch_root, queue_limit)
+    mcp_enabled = os.environ.get("HCLS_ENABLE_MCP", "0").strip().lower() in {"1", "true", "yes"}
+    mcp = None
+    mcp_app = None
+    if mcp_enabled:
+        if MCPServer is None or TransportSecuritySettings is None:
+            raise RuntimeError("HCLS_ENABLE_MCP is set but the MCP SDK is not installed")
+        mcp = MCPServer(
+            name=f"Nebius HCLS {adapter.service_id}",
+            version=API_VERSION,
+            instructions=(
+                "Submit and inspect bounded research-only scientific runs. "
+                "REST and MCP share the same queue, run IDs, state, and artifacts."
+            ),
+        )
+
+        @mcp.tool(description="Return engine, input, accelerator, and limit metadata.")
+        def get_capabilities() -> dict[str, Any]:
+            return {
+                "api_version": API_VERSION,
+                "service": adapter.service_id,
+                "queue_limit": queue_limit,
+                "max_concurrent_runs": 1,
+                "research_only": True,
+                **adapter.capabilities(),
+            }
+
+        @mcp.tool(description="Submit a bounded research-only run to the shared execution queue.")
+        def submit_run(
+            input: dict[str, Any],
+            research_use_acknowledgement: bool,
+            client_request_id: str | None = None,
+        ) -> dict[str, Any]:
+            if research_use_acknowledgement is not True:
+                raise ValueError("research_use_acknowledgement must be true")
+            request = RunRequest(
+                input=input,
+                client_request_id=client_request_id,
+                research_use_acknowledgement=True,
+            )
+            return manager.submit(request)
+
+        @mcp.tool(description="Get the current state and result metadata for one run ID.")
+        def get_run(run_id: str) -> dict[str, Any]:
+            return manager.snapshot(run_id)
+
+        @mcp.tool(description="List the newest runs visible to this endpoint instance.")
+        def list_runs() -> dict[str, Any]:
+            return {"runs": manager.list()}
+
+        @mcp.tool(description="Cancel a queued run. An active engine process cannot be interrupted safely.")
+        def cancel_run(run_id: str) -> dict[str, Any]:
+            return manager.cancel(run_id)
+
+        @mcp.tool(description="List artifact metadata and authenticated REST download paths for a run.")
+        def list_run_artifacts(run_id: str) -> dict[str, Any]:
+            record = manager.snapshot(run_id)
+            return {"run_id": run_id, "status": record["status"], "artifacts": record["artifacts"]}
+
+        # Nebius terminates managed HTTPS and enforces the bearer token before
+        # this process. TrustedHostMiddleware below provides suffix-aware Host
+        # validation; the SDK validator only supports exact hosts, which are
+        # unknown until an endpoint is created.
+        mcp_app = mcp.streamable_http_app(
+            streamable_http_path="/mcp",
+            json_response=True,
+            stateless_http=True,
+            max_request_body_size=4 * 1024 * 1024,
+            transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+            host="0.0.0.0",
+        )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         adapter.load()
-        yield
+        if mcp is None:
+            yield
+        else:
+            async with mcp.session_manager.run():
+                yield
         manager.executor.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(
@@ -258,6 +389,15 @@ def create_app(adapter: EngineAdapter) -> FastAPI:
         version=API_VERSION,
         lifespan=lifespan,
     )
+    allowed_hosts = [
+        item.strip()
+        for item in os.environ.get(
+            "HCLS_ALLOWED_HOSTS",
+            "*.nebius.cloud,localhost,127.0.0.1,testserver",
+        ).split(",")
+        if item.strip()
+    ]
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
     @app.get("/")
     def root_route() -> dict[str, Any]:
@@ -266,6 +406,8 @@ def create_app(adapter: EngineAdapter) -> FastAPI:
             "api_version": API_VERSION,
             "capabilities_path": "/v1/capabilities",
             "submit_path": "/v1/runs",
+            "mcp_path": "/mcp" if mcp_enabled else None,
+            "storage_root": str(root),
             "research_only": True,
         }
 
@@ -309,4 +451,6 @@ def create_app(adapter: EngineAdapter) -> FastAPI:
         path = manager.artifact(run_id, name)
         return FileResponse(path, filename=path.name)
 
+    if mcp_app is not None:
+        app.mount("/", mcp_app)
     return app
