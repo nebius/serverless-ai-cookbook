@@ -14,7 +14,7 @@ const mcpAuthentication = process.env.AUTH_TOKEN
 const config = `version: 1.3.15
 cache: true
 interface:
-  customWelcome: 'GROMACS Workbench: chat with Nebius Token Factory models and run bounded GPU molecular-dynamics workflows through the preconfigured MCP server.'
+  customWelcome: 'Nebius Scientific AI Agent: explore scientific AI workflows, live GROMACS GPU molecular dynamics, and guided placeholder tutorials.'
   modelSelect: true
   parameters: true
   defaultPinnedTools: ['mcp']
@@ -59,8 +59,8 @@ modelSpecs:
   prioritize: true
   list:
     - name: 'gromacs-workbench'
-      label: 'GROMACS Workbench · GLM 5.2'
-      description: 'Token Factory agent with bounded GROMACS REST/MCP tools on an NVIDIA GPU endpoint.'
+      label: 'Nebius Scientific AI Agent · GLM 5.2'
+      description: 'Scientific AI guide with bounded GROMACS REST/MCP tools on an NVIDIA GPU endpoint.'
       default: true
       showOnLanding: true
       conversation_starters:
@@ -70,6 +70,26 @@ modelSpecs:
       preset:
         endpoint: agents
         agent_id: 'agent_gromacs_workbench'
+    - name: 'audio-transcription-tutorial'
+      label: 'Audio Transcription · Placeholder'
+      description: 'A guided starter for a future audio-to-text workflow; it does not transcribe audio yet.'
+      showOnLanding: true
+      conversation_starters:
+        - 'Show the planned audio-to-text workflow and the inputs a future transcription model will require.'
+        - 'What audio skills and Token Factory models were discovered when this workbench started?'
+      preset:
+        endpoint: agents
+        agent_id: 'agent_audio_transcription_tutorial'
+    - name: 'medical-image-analysis-tutorial'
+      label: 'Medical Image Analysis · Placeholder'
+      description: 'A guided starter for a future CT/X-ray workflow; it does not analyze images or provide a diagnosis.'
+      showOnLanding: true
+      conversation_starters:
+        - 'Show the planned CT/X-ray analysis workflow and its validation requirements.'
+        - 'What imaging skills and Token Factory models were discovered when this workbench started?'
+      preset:
+        endpoint: agents
+        agent_id: 'agent_medical_image_analysis_tutorial'
 mcpServers:
   gromacs:
     title: 'GROMACS GPU Workflows'

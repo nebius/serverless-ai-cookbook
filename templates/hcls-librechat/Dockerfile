@@ -12,7 +12,10 @@ USER root
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
 COPY templates/hcls-librechat/seed-workbench.js /app/seed-hcls-workbench.js
 COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entrypoint
+COPY templates/hcls-librechat/brand-client.mjs /opt/hcls-librechat/brand-client.mjs
+COPY templates/hcls-librechat/assets/nebius-logo.svg /app/client/dist/assets/logo.svg
 RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
+ && node /opt/hcls-librechat/brand-client.mjs /app/client/dist \
  && mkdir -p /data/db /data/hcls-librechat /app/uploads /app/logs \
  && chown -R node:node /data /app/uploads /app/logs \
  && chmod 0700 /data/hcls-librechat \
@@ -22,6 +25,7 @@ RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
 ENV HOST=0.0.0.0 \
     PORT=3080 \
     NODE_ENV=production \
+    APP_TITLE="Nebius Scientific AI Agent" \
     MONGO_URI=mongodb://127.0.0.1:27017/LibreChat \
     CONFIG_PATH=/data/hcls-librechat/librechat.yaml \
     ALLOW_REGISTRATION=true \
