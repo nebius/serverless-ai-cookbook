@@ -16,11 +16,17 @@ RUN sed -i -e 's|http://archive.ubuntu.com/ubuntu|https://mirror.zetup.net/ubunt
     apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update && \
     apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \
       ca-certificates=20260601~22.04.1 \
+      gpgv=2.2.27-3ubuntu2.5 \
+      libc-bin=2.35-0ubuntu3.14 \
+      libc6=2.35-0ubuntu3.14 \
+      libssl3=3.0.2-0ubuntu1.29 \
+      openssl=3.0.2-0ubuntu1.29 \
       python3=3.10.6-1~22.04.1 \
       python3-venv=3.10.6-1~22.04.1 && \
     rm -rf /var/lib/apt/lists/* && \
     python3 -m venv /opt/hcls && \
     /opt/hcls/bin/pip install --no-cache-dir fastapi==0.136.1 mcp==2.2.0 pydantic==2.12.5 uvicorn==0.52.4 && \
+    /opt/hcls/bin/pip uninstall -y setuptools && \
     groupadd --gid 10001 hcls && useradd --uid 10001 --gid hcls --create-home --home-dir /home/hcls hcls && \
     mkdir -p /app /mnt/hcls /tmp/hcls-scratch && chown -R 10001:10001 /app /mnt/hcls /tmp/hcls-scratch /home/hcls
 COPY --chown=10001:10001 templates/hcls-common/hcls_api /app/hcls_api
