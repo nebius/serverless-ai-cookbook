@@ -40,11 +40,14 @@ and eight queued runs by default; these limits are configurable but never
 unbounded.
 
 Artifacts live on endpoint disk while the endpoint is retained. When a persistent
-volume is configured, terminal records and their idempotency keys are restored after
-a worker restart; interrupted records become explicit failures. The first
-release deliberately avoids passing object-storage credentials through the
-public API. Large-data workflows such as Parabricks use separately validated
-HTTPS or mounted-storage inputs and never persist signed URLs in metadata.
+volume is configured, ordered immutable status snapshots, terminal records, and
+their idempotency keys are restored after a worker restart; interrupted records
+become explicit failures. Object Storage uses the credential-backed `s3://` mount
+and Shared Filesystem uses its resource ID, but both appear at `/mnt/hcls` to the
+same image. Storage credentials remain in MysteryBox and the Serverless mount layer;
+they are never passed through the public API or MCP tools. Large-data workflows such
+as Parabricks use separately validated HTTPS or mounted-storage inputs and never
+persist signed URLs in metadata.
 
 ## Workbench trust boundary
 
