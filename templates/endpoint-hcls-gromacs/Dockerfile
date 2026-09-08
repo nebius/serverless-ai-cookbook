@@ -27,15 +27,13 @@ RUN sed -i -e 's|http://archive.ubuntu.com/ubuntu|https://mirror.zetup.net/ubunt
     python3 -m venv /opt/hcls && \
     /opt/hcls/bin/pip install --no-cache-dir fastapi==0.136.1 mcp==2.2.0 pydantic==2.12.5 uvicorn==0.52.4 && \
     /opt/hcls/bin/pip uninstall -y setuptools && \
-    groupadd --gid 10001 hcls && useradd --uid 10001 --gid hcls --create-home --home-dir /home/hcls hcls && \
-    mkdir -p /app /mnt/hcls /tmp/hcls-scratch && chown -R 10001:10001 /app /mnt/hcls /tmp/hcls-scratch /home/hcls
-COPY --chown=10001:10001 templates/hcls-common/hcls_api /app/hcls_api
-COPY --chown=10001:10001 templates/endpoint-hcls-gromacs/app.py /app/app.py
+    mkdir -p /app /mnt/hcls /tmp/hcls-scratch
+COPY templates/hcls-common/hcls_api /app/hcls_api
+COPY templates/endpoint-hcls-gromacs/app.py /app/app.py
 WORKDIR /app
 ENV PATH=/opt/hcls/bin:/usr/local/gromacs/avx2_256/bin:${PATH} \
     LD_LIBRARY_PATH=/usr/local/gromacs/avx2_256/lib:${LD_LIBRARY_PATH} PYTHONPATH=/app
 ENTRYPOINT []
-USER 10001:10001
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=5 CMD ["/opt/hcls/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"]
 CMD ["/opt/hcls/bin/uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--no-access-log", "--no-server-header"]

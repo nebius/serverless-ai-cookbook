@@ -5,7 +5,7 @@ using NVIDIA GPU nonbonded offload. One process exposes both the REST API and an
 MCP Streamable HTTP endpoint on port 8000. Nebius endpoint authentication protects
 both protocols with the same bearer token.
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3A20260904-08f6532&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%40sha256%3Aef1c0bd2670ecc2c57ff2c870efac2848c031bcc48a850538bec833fce2a9b7b&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;volumeMountPath=%2Fmnt%2Fhcls"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 Before creating the endpoint, enable token authentication in the Console. The link
 uses the live-qualified, unique release tag and regular L40S capacity. Attach either
@@ -40,6 +40,12 @@ with the non-POSIX semantics of Object Storage and the POSIX semantics of Shared
 Filesystem. The mount is configured by Serverless; no S3 credentials are passed to
 the public API, MCP tools, or image.
 
+Serverless currently presents both managed volume types as root-owned mounts and
+does not expose a mount UID/GID option. The bounded API process therefore runs as
+root in this pilot so it can write to either storage type. It does not accept shell
+arguments or arbitrary commands. Revisit the runtime user when Serverless supports
+mount ownership configuration.
+
 For a reproducible CLI deployment, set the customer-owned project, subnet, storage
 resource, endpoint-token secret, and published image, then run:
 
@@ -48,7 +54,8 @@ export NEBIUS_PROJECT_ID="project-..."
 export NEBIUS_SUBNET_ID="vpcsubnet-..."
 export HCLS_STORAGE_RESOURCE_ID="storagebucket-..." # or computefilesystem-...
 export AUTH_TOKEN_SECRET_SELECTOR="mbsec-...@mbsecver-..."
-export HCLS_IMAGE="cr.eu-north1.nebius.cloud/.../hcls/gromacs-md-api@sha256:..."
+# Optional: override the digest-pinned public image selected by deploy.sh.
+# export HCLS_IMAGE="cr.eu-north1.nebius.cloud/...@sha256:..."
 ./templates/endpoint-hcls-gromacs/scripts/deploy.sh
 ```
 
