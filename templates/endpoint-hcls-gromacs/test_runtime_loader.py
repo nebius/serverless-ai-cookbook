@@ -69,6 +69,7 @@ def test_wrapper_uses_pulled_loader_and_driver_paths(tmp_path: Path) -> None:
     assert 'DRIVER_LIBS="/usr/local/nvidia/lib:/usr/local/nvidia/lib64"' in wrapper
     assert "usr/local/cuda/targets/x86_64-linux/lib" in wrapper
     assert "usr/local/cuda-13.0/targets/x86_64-linux/lib" in wrapper
+    assert 'LD_LIBRARY_PATH="$TARGET_LIBS:$DRIVER_LIBS' in wrapper
     assert 'exec "$ROOTFS/lib64/ld-linux-x86-64.so.2"' in wrapper
 
 

@@ -82,9 +82,9 @@ def runtime_library_paths(
     for cuda_root in sorted(cuda_roots):
         paths.extend(
             [
+                f"{cuda_root}/compat",
                 f"{cuda_root}/lib64",
                 f"{cuda_root}/targets/x86_64-linux/lib",
-                f"{cuda_root}/compat",
             ]
         )
     paths.append("usr/local/fftw/lib")
@@ -129,10 +129,10 @@ def runtime_wrapper(
 set -eu
 RUNTIME_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 ROOTFS="$RUNTIME_DIR/rootfs"
-TARGET_LIBS="{relative_libraries}"
 DRIVER_LIBS="/usr/local/nvidia/lib:/usr/local/nvidia/lib64"
+TARGET_LIBS="{relative_libraries}"
 export GMXLIB="$ROOTFS/{share}"
-export LD_LIBRARY_PATH="$DRIVER_LIBS:$TARGET_LIBS${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"
+export LD_LIBRARY_PATH="$TARGET_LIBS:$DRIVER_LIBS${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"
 {command}
 """
 
