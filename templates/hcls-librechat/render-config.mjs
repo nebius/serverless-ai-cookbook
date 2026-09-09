@@ -136,6 +136,12 @@ modelSpecs:
         endpoint: agents
         agent_id: 'agent_audio_transcription_tutorial'
 mcpServers:
+  tavily:
+    type: stdio
+    command: node
+    args: ['/opt/bionemo/tavily-mcp.mjs']
+    env:
+      TAVILY_API_KEY: '\${TAVILY_API_KEY}'
   bionemo-models:
     title: 'Nebius Scientific Model Gateway'
     description: 'Authorized scientific-model catalog and operations for this Nebius Scientific AI Agent deployment.'

@@ -56,7 +56,7 @@ Present the catalog in these six guided areas: Protein Folding & Structure; Mole
 
 For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. State limitations and ask before submitting compute. Use the scientific gateway for model operations, and preserve operation IDs for reproducibility. Never present scientific model output as clinical advice or experimental validation.`,
       tools: allScientificTools,
-      mcpServerNames: [scientificModelsServerName],
+      mcpServerNames: [scientificModelsServerName, 'tavily'],
       conversation_starters: [
         'Show the scientific model catalog grouped by protein structure, docking and design, imaging, genomics, and generative models.',
         'Help me choose a model and a reproducible benchmark for my scientific task.',
@@ -73,7 +73,7 @@ For a comparison, hold input sequence, MSA/template treatment, preprocessing, se
 
 Predictions and confidence metrics are research outputs. Do not represent them as experimentally validated structures or clinical advice.`,
       tools: structureTools,
-      mcpServerNames: [scientificModelsServerName],
+      mcpServerNames: [scientificModelsServerName, 'tavily'],
       conversation_starters: [
         'List the live protein folding and structure models, their inputs, and model-specific limits.',
         'Prepare one small protein sequence benchmark across Boltz2, OpenFold2, and OpenFold3. Explain the comparison before running anything.',
@@ -88,7 +88,7 @@ Predictions and confidence metrics are research outputs. Do not represent them a
 
 Then give one concrete, bounded example and a benchmark plan: use the same prepared receptor/ligand or sequence, a fixed reference set, matched preprocessing, ranked-pose or design metrics, wall time, completion rate, and held-out experimental validation when available. Before running anything, state inputs, protonation and preparation assumptions, intended metric, resource cost, and evaluation plan. Request confirmation before compute, preserve operation IDs, and distinguish a model score from experimental binding or functional validation.`,
       tools: molecularDesignTools,
-      mcpServerNames: [scientificModelsServerName],
+      mcpServerNames: [scientificModelsServerName, 'tavily'],
       conversation_starters: [
         'List the available docking and molecular-design models with their live operations.',
         'Outline a reproducible DiffDock versus Boltz2 binding benchmark without submitting it yet.',
@@ -102,7 +102,7 @@ Then give one concrete, bounded example and a benchmark plan: use the same prepa
 
 Treat every result as research-only. Do not give a diagnosis, triage decision, or clinical recommendation. Before a run, request de-identified input and explain validation against a held-out reference standard, calibration and subgroup analysis, uncertainty review, and qualified clinician oversight. A benchmark must record sensitivity/specificity or Dice/IoU as appropriate, p50/p95 latency, failures, and image-quality exclusions.`,
       tools: biomedicalImagingTools,
-      mcpServerNames: [scientificModelsServerName],
+      mcpServerNames: [scientificModelsServerName, 'tavily'],
       conversation_starters: [
         'List the live biomedical imaging models and the inputs they accept.',
         'Explain a research-only CT segmentation evaluation workflow with validation and human review.',
@@ -116,7 +116,7 @@ Treat every result as research-only. Do not give a diagnosis, triage decision, o
 
 For evaluations, specify cohort definition, train/test separation, protected data handling, confounders, metrics, confidence intervals, subgroup analysis, and a baseline. Benchmark candidates on the same held-out cohort or sequence set; report missing data rules and failure rate. Obtain confirmation before invoking compute and retain operation identifiers for reproducibility.`,
       tools: genomicsTools,
-      mcpServerNames: [scientificModelsServerName],
+      mcpServerNames: [scientificModelsServerName, 'tavily'],
       conversation_starters: [
         'List the live genomics and biological-age models and their required inputs.',
         'Design a reproducible evaluation for a biological-age model with a held-out cohort.',
@@ -130,7 +130,7 @@ For evaluations, specify cohort definition, train/test separation, protected dat
 
 When explaining a future production integration, use these targets: sustained real-time factor at most 0.3, partial updates in 300–800 ms, final text in under one second after a pause, 200–500 ms streamed PCM/Opus chunks, revisable interim hypotheses, VAD finalization, stable session context, and 30+ minute sessions. Explain replay testing with domain vocabulary, accents, noise, interruptions, parallel users, WER, p50/p95 latency, RTF, GPU memory, and revision quality.`,
       tools: ['list_models', 'list_scientific_models'].map(mcpTool),
-      mcpServerNames: [scientificModelsServerName],
+      mcpServerNames: [scientificModelsServerName, 'tavily'],
       conversation_starters: [
         'Show the real-time transcription requirements and how a connected model would be evaluated.',
         'Which live scientific models currently support audio transcription?',
@@ -145,6 +145,7 @@ async function seedAgent({ agents: collection, aclEntries, owner, now, definitio
     {
       $set: {
         ...definition,
+        tools: [...new Set([...(definition.tools || []), 'tavily_search_mcp_tavily'])],
         provider: 'Nebius Token Factory',
         model,
         model_parameters: { model, max_tokens: 8192 },
