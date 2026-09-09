@@ -39,4 +39,10 @@ mongod \
   --noauth
 
 node /app/seed-hcls-workbench.js
+
+# Deployment-only convenience (set SEED_DEFAULT_USER_EMAIL/PASSWORD to use).
+if [ -n "${SEED_DEFAULT_USER_EMAIL:-}" ] && [ -n "${SEED_DEFAULT_USER_PASSWORD:-}" ]; then
+  node /opt/hcls-librechat/seed-user.js
+fi
+
 exec node /app/api/server/index.js
