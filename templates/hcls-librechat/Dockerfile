@@ -4,8 +4,6 @@ FROM ${LIBRECHAT_BASE} AS scientific-client
 USER root
 COPY templates/hcls-librechat/ScientificLanding.tsx /app/client/src/components/Chat/Landing.tsx
 COPY templates/hcls-librechat/PoweredByFooter.tsx /app/client/src/components/Chat/Footer.tsx
-# Overlay the typed-contract skills maintained in the workbench directory.
-COPY life-science/bionemo-librechat/skills/ /app/skill/
 COPY templates/hcls-librechat/patch-client.mjs /tmp/patch-client.mjs
 RUN node /tmp/patch-client.mjs
 WORKDIR /app/client
@@ -26,6 +24,8 @@ COPY templates/hcls-librechat/seed-workbench.js /app/seed-hcls-workbench.js
 COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entrypoint
 COPY templates/hcls-librechat/brand-client.mjs /opt/hcls-librechat/brand-client.mjs
 COPY templates/hcls-librechat/seed-user.js /app/seed-user.js
+# Overlay the typed-contract skills maintained in the workbench directory.
+COPY life-science/bionemo-librechat/skills/ /app/skill/
 COPY templates/hcls-librechat/assets/nebius-logo.svg /app/client/dist/assets/logo.svg
 RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
  && node /opt/hcls-librechat/brand-client.mjs /app/client/dist \
