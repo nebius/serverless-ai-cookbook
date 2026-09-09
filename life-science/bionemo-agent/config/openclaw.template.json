@@ -1,0 +1,158 @@
+{
+  "update": {
+    "channel": "stable",
+    "checkOnStart": false,
+    "auto": {
+      "enabled": false
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}",
+      "rateLimit": {
+        "maxAttempts": 8,
+        "windowMs": 60000,
+        "lockoutMs": 300000,
+        "exemptLoopback": false
+      }
+    },
+    "controlUi": {
+      "enabled": true,
+      "root": "/opt/bionemo/control-ui",
+      "embedSandbox": "strict",
+      "allowExternalEmbedUrls": false,
+      "allowedOrigins": []
+    },
+    "terminal": {
+      "enabled": true,
+      "shell": "/bin/bash",
+      "detachedSessionTimeoutSeconds": 3600
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/workspace/agent",
+      "model": {
+        "primary": "setup/setup-required",
+        "fallbacks": []
+      },
+      "compaction": {
+        "reserveTokensFloor": 20000
+      },
+      "skipBootstrap": true,
+      "thinkingDefault": "medium",
+      "reasoningDefault": "off",
+      "toolProgressDetail": "explain",
+      "timeoutSeconds": 7200,
+      "maxConcurrent": 4,
+      "subagents": {
+        "delegationMode": "prefer",
+        "allowAgents": ["*"],
+        "maxConcurrent": 4,
+        "maxSpawnDepth": 3,
+        "maxChildrenPerAgent": 8,
+        "runTimeoutSeconds": 7200
+      },
+      "sandbox": {
+        "mode": "off"
+      }
+    },
+    "list": [
+      {
+        "id": "bionemo",
+        "default": true,
+        "name": "BioNeMo Research Agent",
+        "workspace": "/workspace/agent",
+        "identity": {
+          "name": "BioNeMo Research Agent",
+          "theme": "careful, reproducible nonclinical scientific research",
+          "emoji": "🧬"
+        },
+        "sandbox": {
+          "mode": "off"
+        },
+        "subagents": {
+          "allowAgents": ["*"]
+        }
+      }
+    ]
+  },
+  "models": { "mode": "merge", "providers": {} },
+  "mcp": { "sessionIdleTtlMs": 600000, "servers": {} },
+  "tools": {
+    "profile": "full",
+    "alsoAllow": [
+      "bionemo_boltz2",
+      "bionemo_diffdock",
+      "bionemo_evo2",
+      "bionemo_genmol",
+      "bionemo_molmim",
+      "bionemo_msa_search",
+      "bionemo_openfold2",
+      "bionemo_openfold3",
+      "bionemo_proteinmpnn",
+      "bionemo_rfdiffusion",
+      "bionemo_research_drug_demo",
+      "bionemo_compare_protein_structures",
+      "bionemo_optimize_ligand_complex",
+      "bionemo_batch_fold_demo",
+      "bionemo_drug_discovery",
+      "bionemo_msa_to_structure",
+      "bionemo_protein_binder_design",
+      "bionemo_models_list"
+    ],
+    "deny": ["bundle-mcp"],
+    "fs": {
+      "workspaceOnly": false
+    },
+    "exec": {
+      "host": "gateway",
+      "mode": "full",
+      "timeoutSec": 7200,
+      "cleanupMs": 7200000,
+      "notifyOnExit": true,
+      "applyPatch": {
+        "enabled": true,
+        "workspaceOnly": false
+      }
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "allow": ["bionemo-agent-toolkit"],
+    "deny": [],
+    "load": {
+      "paths": ["/opt/bionemo/openclaw-plugin"]
+    },
+    "entries": {
+      "bionemo-agent-toolkit": {
+        "enabled": true,
+        "hooks": {
+          "allowPromptInjection": true,
+          "allowConversationAccess": true
+        },
+        "config": {}
+      }
+    }
+  },
+  "skills": {
+    "load": {
+      "extraDirs": ["/etc/codex/skills"]
+    },
+    "limits": {
+      "maxCandidatesPerRoot": 256,
+      "maxSkillsLoadedPerSource": 256,
+      "maxSkillsInPrompt": 256,
+      "maxSkillsPromptChars": 120000,
+      "maxSkillFileBytes": 65536
+    }
+  },
+  "logging": {
+    "level": "info",
+    "consoleLevel": "info",
+    "redactSensitive": "tools"
+  }
+}

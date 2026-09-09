@@ -1,0 +1,1180 @@
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import vm from "node:vm";
+import plugin, { __test as pluginInternals } from "../openclaw-plugin/index.mjs";
+import manifest from "../openclaw-plugin/openclaw.plugin.json" with { type: "json" };
+import { CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES, CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, NVIDIA_ONLY_TOOL_NAMES, TOOLKIT_COMMIT } from "../openclaw-plugin/src/catalog.mjs";
+import { createUiHandlers, __test as uiInternals } from "../openclaw-plugin/src/ui.mjs";
+import { __test as launcher } from "../runtime/launcher.mjs";
+import { BIONEMO_MCP_BROWSER_TOOL_NAMES, capabilities, configureOpenClaw, DEFAULT_MCP_URL, TOKEN_FACTORY_MODELS } from "../runtime/runtime-config.mjs";
+import { prepareClients } from "../runtime/prepare-clients.mjs";
+import { MCP_SUBMISSION_TOOL_NAMES, MCP_SUPPORT_TOOL_NAMES, MCP_TURN_ID_FIELD } from "../runtime/mcp-submission-policy.mjs";
+import { BIONEMO_SUPER_INITIAL_TURNS, bionemoSuperLocalCompletionText } from "../runtime/patch-openclaw-super-followup.mjs";
+
+function fakeApi() {
+  const captured = { tools: [], routes: [], controls: [], hooks: [] };
+  return {
+    captured,
+    logger: { info() {}, error() {} },
+    registerTool(value) { captured.tools.push(value); },
+    registerHttpRoute(value) { captured.routes.push(value); },
+    on(event, handler) { captured.hooks.push({ event, handler }); },
+    session: { controls: { registerControlUiDescriptor(value) { captured.controls.push(value); } } },
+  };
+}
+
+const PRESENTATION_AGENT_RUN_ID = "agent-run-presentation-11111111";
+const PRESENTATION_WORKFLOW_RUN_ID = "11111111-1111-4111-8111-111111111111";
+const PRESENTATION_FIRST_VIEWER = `[View structure in 3D](</bionemo/view/${PRESENTATION_WORKFLOW_RUN_ID}/01-top.pdb?access=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa>)`;
+const PRESENTATION_SECOND_VIEWER = `[View structure in 3D](</bionemo/view/${PRESENTATION_WORKFLOW_RUN_ID}/02-complex.cif?access=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb>)`;
+const TAVILY_TOOL_NAME = "tavily_web__tavily_search";
+
+function tavilyToolResult(results, overrides = {}) {
+  return {
+    role: "toolResult",
+    toolCallId: "tavily-call-current",
+    toolName: TAVILY_TOOL_NAME,
+    content: [{ type: "text", text: "untrusted raw search content that must not be presented" }],
+    isError: false,
+    details: {
+      mcpServer: "tavily_web",
+      mcpTool: "tavily_search",
+      structuredContent: {
+        answer: "untrusted synthesized answer that must not be presented",
+        results,
+      },
+    },
+    ...overrides,
+  };
+}
+
+function presentationWorkflowResult() {
+  return {
+    runId: PRESENTATION_WORKFLOW_RUN_ID,
+    summary: { status: "completed" },
+    steps: [],
+    artifacts: [
+      { name: "01-top.pdb", bytes: 10, downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/01-top.pdb`, viewerMarkdown: PRESENTATION_FIRST_VIEWER },
+      { name: "02-complex.cif", bytes: 20, downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/02-complex.cif`, viewerMarkdown: PRESENTATION_SECOND_VIEWER },
+    ],
+  };
+}
+
+test("plugin registers exactly the manifest-declared 18 clean tools", async () => {
+  const api = fakeApi();
+  plugin.register(api);
+  assert.deepEqual(api.captured.tools.map((tool) => tool.name), EXACT_TOOL_NAMES);
+  assert.deepEqual(manifest.contracts.tools, EXACT_TOOL_NAMES);
+  assert.equal(api.captured.tools.every((tool) => tool.parameters.additionalProperties === false), true);
+  assert.deepEqual(api.captured.hooks.map(({ event }) => event), ["before_tool_call", "before_agent_finalize", "agent_end", "before_prompt_build"]);
+  const promptHook = api.captured.hooks.find(({ event }) => event === "before_prompt_build");
+  const systemContext = (await promptHook.handler()).prependSystemContext;
+  assert.match(systemContext, /owner-controlled private environment/u);
+  assert.match(systemContext, /full OpenClaw admin tool profile/u);
+  assert.match(systemContext, /runs the agent as root inside the container/u);
+  assert.match(systemContext, /exec\/process\/read\/write\/edit\/apply_patch/u);
+  assert.match(systemContext, /install packages and change the container when asked/u);
+  assert.match(systemContext, /MEDIA:<downloadPath>/u);
+  assert.match(systemContext, /local demo-only clawbio__\* catalog tools/u);
+  assert.match(systemContext, /When bionemo_models__\* tools are displayed, the configured BioNeMo MCP server is available under that namespace/u);
+  assert.match(systemContext, /In that MCP-enabled surface, every entry returned by bionemo_models_list has a browser compute operation/u);
+  assert.match(systemContext, /esm2_650m to bionemo_models__esm2_embed/u);
+  assert.match(systemContext, /scvi_scanvi to bionemo_models__scvi_fit_transform or bionemo_models__scanvi_fit_transform/u);
+  assert.match(systemContext, /jobs_list, job_status, and model_fetch helpers/u);
+  assert.match(systemContext, /poll bionemo_models__job_status only for that exact job ID, at most four times/u);
+  assert.match(systemContext, /For every artifact that has viewerMarkdown/u);
+  assert.match(systemContext, /same-origin path beginning with \/; preserve it verbatim/u);
+  assert.doesNotMatch(systemContext, /viewerUrl, use that exact absolute URL/u);
+  assert.doesNotMatch(systemContext, /clawbio_models__/u);
+  assert.doesNotMatch(systemContext, /clawbio_models_list/u);
+  assert.doesNotMatch(systemContext, /poll only clawbio_job_status/u);
+  assert.match(systemContext, /submit the selected compute tool exactly once/u);
+  assert.match(systemContext, /After a successful completed result, call no other tool in the turn/u);
+});
+
+test("the browser model inventory tool returns only the sanitized read-only contract", async () => {
+  const api = fakeApi();
+  const inventory = {
+    readOnly: true,
+    computeSubmitted: false,
+    modelCount: 1,
+    readyCount: 1,
+    models: [{ id: "openfold3", displayName: "OpenFold3", family: "bionemo_nim", readiness: "ready" }],
+    notice: "Sanitized model inventory only; no scientific compute or job was submitted.",
+  };
+  pluginInternals.registerPlugin(api, { runtime: {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { throw new Error("not used"); },
+    async listModels(params) {
+      assert.deepEqual(params, {});
+      return inventory;
+    },
+  } });
+  const tool = api.captured.tools.find(({ name }) => name === "bionemo_models_list");
+  assert.ok(tool);
+  assert.deepEqual(tool.parameters, { type: "object", additionalProperties: false, properties: {} });
+  const result = await tool.execute("inventory-call", {});
+  assert.deepEqual(result.structuredContent, inventory);
+  assert.deepEqual(JSON.parse(result.content[0].text), inventory);
+  assert.equal(JSON.stringify(result).includes("url"), false);
+  assert.equal(JSON.stringify(result).includes("credential"), false);
+});
+
+test("completed composed workflows register a run-scoped final presentation synchronously", async () => {
+  const api = fakeApi();
+  let workflowCalls = 0;
+  pluginInternals.registerPlugin(api, { runtime: {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() {
+      workflowCalls += 1;
+      return presentationWorkflowResult();
+    },
+  } });
+  const tool = api.captured.tools.find(({ name }) => name === "bionemo_research_drug_demo");
+  const beforeFinalize = api.captured.hooks.find(({ event }) => event === "before_agent_finalize").handler;
+  const agentEnd = api.captured.hooks.find(({ event }) => event === "agent_end").handler;
+  const result = await tool.execute("tool-call-1", {
+    [MCP_TURN_ID_FIELD]: PRESENTATION_AGENT_RUN_ID,
+    ack_research_only: true,
+  });
+  assert.equal(workflowCalls, 1, "presentation must not repeat model or science execution");
+  assert.equal(result.structuredContent.runId, PRESENTATION_WORKFLOW_RUN_ID);
+
+  const unrelated = beforeFinalize({ runId: "other-agent-run-11111111", lastAssistantMessage: "Other" }, { runId: "other-agent-run-11111111" });
+  assert.equal(unrelated, undefined, "state is isolated by exact agent runId, not session");
+  const final = beforeFinalize({ runId: PRESENTATION_AGENT_RUN_ID, lastAssistantMessage: `Summary\n${PRESENTATION_FIRST_VIEWER}` }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(final.action, "continue");
+  assert.equal(final.appendFinalAssistantText.split(PRESENTATION_FIRST_VIEWER).length - 1, 0, "existing viewer is not duplicated");
+  assert.equal(final.appendFinalAssistantText.split(PRESENTATION_SECOND_VIEWER).length - 1, 1);
+  assert.match(final.appendFinalAssistantText, new RegExp(`MEDIA:/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/01-top\\.pdb`, "u"));
+  const repeatedFinalize = beforeFinalize({ runId: PRESENTATION_AGENT_RUN_ID, lastAssistantMessage: "later" }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.match(repeatedFinalize.appendFinalAssistantText, /Workflow artifacts/u, "state remains available until terminal agent_end cleanup");
+  agentEnd({ runId: PRESENTATION_AGENT_RUN_ID }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(workflowCalls, 1);
+
+  assert.equal(pluginInternals.artifactPresentation({ structuredContent: { runId: "11111111-1111-4111-8111-111111111111", artifacts: [{ viewerMarkdown: "unsafe", downloadPath: "/tmp/x" }] } }), undefined);
+  for (const artifact of [
+    { name: "result.json", downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/result.json`, viewerMarkdown: `[View structure in 3D](</bionemo/view/${PRESENTATION_WORKFLOW_RUN_ID}/result.json?access=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa>)` },
+    { name: "01-top.pdb", downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/other.pdb`, viewerMarkdown: PRESENTATION_FIRST_VIEWER },
+    { name: "01-top.pdb", downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/01-top.pdb`, viewerMarkdown: `[View structure in 3D](<https://evil.example/bionemo/view/${PRESENTATION_WORKFLOW_RUN_ID}/01-top.pdb?access=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa>)` },
+  ]) assert.equal(pluginInternals.artifactPresentation({ structuredContent: { runId: PRESENTATION_WORKFLOW_RUN_ID, artifacts: [artifact] } }), undefined);
+});
+
+test("final presentation is derived statelessly across separate plugin registrations", async () => {
+  const toolApi = fakeApi();
+  const finalizeApi = fakeApi();
+  const toolRuntime = {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { return presentationWorkflowResult(); },
+  };
+  const finalizeRuntime = {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { throw new Error("not used"); },
+  };
+  pluginInternals.registerPlugin(toolApi, { runtime: toolRuntime });
+  const finalizeRegistration = pluginInternals.registerPlugin(finalizeApi, { runtime: finalizeRuntime });
+  assert.equal(finalizeRegistration.presentationRegistry.size(), 0, "separate registration starts without tool-instance state");
+
+  const wrapperName = "bionemo_research_drug_demo";
+  const tool = toolApi.captured.tools.find(({ name }) => name === wrapperName);
+  const result = await tool.execute("tool-call-current", {
+    [MCP_TURN_ID_FIELD]: PRESENTATION_AGENT_RUN_ID,
+    ack_research_only: true,
+  });
+  const beforeFinalize = finalizeApi.captured.hooks.find(({ event }) => event === "before_agent_finalize").handler;
+  const messages = [
+    { role: "user", content: "run the workflow" },
+    { role: "assistant", content: [{ type: "toolCall", id: "tool-call-current", name: wrapperName, arguments: {} }] },
+    { role: "toolResult", toolCallId: "tool-call-current", toolName: wrapperName, content: result.content, isError: false },
+  ];
+  const inlineMedia = `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/01-top.pdb`;
+  const final = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: `Summary\n${PRESENTATION_FIRST_VIEWER}\nDo not emit MEDIA:${inlineMedia} inline.`,
+    messages,
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(final.action, "continue");
+  assert.equal(final.appendFinalAssistantText.includes(PRESENTATION_FIRST_VIEWER), false, "existing viewer remains deduplicated");
+  assert.equal(final.appendFinalAssistantText.includes(PRESENTATION_SECOND_VIEWER), true);
+  assert.equal(final.appendFinalAssistantText.split("\n").includes(`MEDIA:${inlineMedia}`), true, "inline mention cannot suppress exact own-line MEDIA");
+  assert.equal(finalizeRegistration.presentationRegistry.size(), 0, "stateless derivation does not create cross-registration pending state");
+});
+
+test("current-turn presentation rejects stale, failed, malformed, duplicated, and mismatched wrapper results", () => {
+  const wrapperName = "bionemo_research_drug_demo";
+  const otherWrapperName = "bionemo_compare_protein_structures";
+  const content = [{ type: "text", text: JSON.stringify({ status: "completed", ...presentationWorkflowResult() }) }];
+  const result = { role: "toolResult", toolCallId: "tool-call-current", toolName: wrapperName, content, isError: false };
+  const user = { role: "user", content: "current turn" };
+  const call = { role: "assistant", content: [{ type: "toolCall", id: "tool-call-current", name: wrapperName, arguments: {} }] };
+  const derived = pluginInternals.currentTurnArtifactPresentation([user, call, result]);
+  assert.equal(derived.observed, true);
+  assert.equal(derived.presentation.viewerMarkdown.length, 2);
+
+  const stale = pluginInternals.currentTurnArtifactPresentation([
+    { role: "user", content: "previous turn" },
+    result,
+    { role: "assistant", content: "previous final" },
+    user,
+    { role: "assistant", content: "new final without a workflow" },
+  ]);
+  assert.deepEqual(stale, { observed: false }, "previous-turn results stay outside the last-user boundary");
+
+  for (const messages of [
+    [user, call, { ...result, isError: true }],
+    [user, call, { ...result, isError: undefined }],
+    [user, call, { ...result, error: { code: "failed" } }],
+    [user, call, { ...result, content: [{ type: "text", text: "not json" }] }],
+    [user, call, result, { ...result, toolCallId: "tool-call-second" }],
+    [user, call, { ...result, toolCallId: "tool-call-mismatch" }],
+    [user, { role: "assistant", content: [{ type: "toolCall", id: "tool-call-current", name: otherWrapperName, arguments: {} }] }, result],
+  ]) {
+    const rejected = pluginInternals.currentTurnArtifactPresentation(messages);
+    assert.equal(rejected.observed, true);
+    assert.equal(rejected.presentation, undefined);
+  }
+});
+
+test("current-turn presentation accepts the pinned live history projection shape", () => {
+  const wrapperName = "bionemo_research_drug_demo";
+  const projectedHistory = [
+    {
+      role: "user",
+      content: "run the workflow",
+      timestamp: 1,
+      idempotencyKey: "agent-turn-11111111",
+      __openclaw: { id: "history-user", recordTimestampMs: 1, seq: 1 },
+    },
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "I will run the bounded workflow." }],
+      provider: "nvidia",
+      model: "nemotron-3-super-120b-a12b",
+      stopReason: "toolUse",
+      __openclaw: { id: "history-assistant-tool", recordTimestampMs: 2, seq: 2 },
+    },
+    {
+      role: "toolResult",
+      toolCallId: "call-live-history-11111111",
+      toolName: wrapperName,
+      content: [{ type: "text", text: JSON.stringify({ status: "completed", ...presentationWorkflowResult() }) }],
+      isError: false,
+      timestamp: 3,
+      __openclaw: { id: "history-tool-result", recordTimestampMs: 3, seq: 3 },
+    },
+    {
+      role: "assistant",
+      content: [{ type: "text", text: "Final summary" }],
+      provider: "nvidia",
+      model: "nemotron-3-super-120b-a12b",
+      stopReason: "stop",
+      __openclaw: { id: "history-assistant-final", recordTimestampMs: 4, seq: 4 },
+    },
+  ];
+  assert.equal("structuredContent" in projectedHistory[2], false, "gateway history omits structuredContent");
+  const derived = pluginInternals.currentTurnArtifactPresentation(projectedHistory);
+  assert.equal(derived.observed, true);
+  assert.deepEqual(derived.presentation.viewerMarkdown, [PRESENTATION_FIRST_VIEWER, PRESENTATION_SECOND_VIEWER]);
+  assert.match(derived.presentation.mediaLine, /^MEDIA:\/workspace\/agent\/artifacts\//u);
+});
+
+test("one successful current-turn Tavily search deterministically appends its bounded structured sources", () => {
+  const results = [
+    {
+      title: "RCSB PDB [Search] API",
+      url: "HTTPS://Search.RCSB.org:443/docs/../",
+      content: "raw result content must not be presented",
+      raw_content: "raw page must not be presented",
+    },
+    {
+      title: "  UniProt\nDocumentation  ",
+      url: "https://www.uniprot.org/help/entry_name",
+      content: "another raw result",
+    },
+  ];
+  const user = { role: "user", content: "research public sources" };
+  const call = {
+    role: "assistant",
+    content: [{ type: "toolCall", id: "tavily-call-current", name: TAVILY_TOOL_NAME, arguments: { search_depth: "basic", max_results: 5 } }],
+  };
+  const result = tavilyToolResult(results);
+  const derived = pluginInternals.currentTurnTavilySources([user, call, result]);
+  assert.equal(derived.observed, true);
+  assert.deepEqual(derived.sources, [
+    { title: "RCSB PDB [Search] API", url: "https://search.rcsb.org/" },
+    { title: "UniProt Documentation", url: "https://www.uniprot.org/help/entry_name" },
+  ]);
+
+  const api = fakeApi();
+  pluginInternals.registerPlugin(api, { runtime: {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { throw new Error("not used"); },
+  } });
+  const beforeFinalize = api.captured.hooks.find(({ event }) => event === "before_agent_finalize").handler;
+  const final = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: "RCSB and UniProt serve complementary research roles.",
+    messages: [user, call, result],
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(final.action, "continue");
+  assert.equal(final.appendFinalAssistantText, [
+    "Sources",
+    "",
+    "- RCSB PDB \\[Search\\] API — https://search.rcsb.org/",
+    "- UniProt Documentation — https://www.uniprot.org/help/entry_name",
+  ].join("\n"));
+  assert.doesNotMatch(final.appendFinalAssistantText, /raw result|raw page|synthesized answer|untrusted raw/u);
+
+  const alreadyCited = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: `Sources\n\n${derived.sources.map(pluginInternals.tavilySourceLine).join("\n")}`,
+    messages: [user, call, result],
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(alreadyCited, undefined, "all exact deterministic citations suppress a duplicate Sources block");
+  const urlsWithoutTitles = pluginInternals.tavilySourcesAppendText(
+    `Sources already cited: ${derived.sources.map(({ url }) => url).join(" ")}`,
+    derived.sources,
+  );
+  assert.equal(urlsWithoutTitles, final.appendFinalAssistantText, "canonical URLs without their exact titles cannot suppress the source block");
+  const wrongTitles = pluginInternals.tavilySourcesAppendText(
+    derived.sources.map((source) => `- Modified title ${pluginInternals.tavilySourceLine(source)}`).join("\n"),
+    derived.sources,
+  );
+  assert.equal(wrongTitles, final.appendFinalAssistantText, "modified titles with the correct URLs cannot suppress the source block");
+  const oneTitleOmitted = pluginInternals.tavilySourcesAppendText([
+    pluginInternals.tavilySourceLine(derived.sources[0]),
+    derived.sources[1].url,
+  ].join("\n"), derived.sources);
+  assert.equal(oneTitleOmitted, final.appendFinalAssistantText, "one omitted title appends the complete deterministic block");
+  const oneMissing = pluginInternals.tavilySourcesAppendText(`Only ${derived.sources[0].url}`, derived.sources);
+  assert.equal(oneMissing.includes("RCSB PDB \\[Search\\] API"), true, "a partial citation appends the complete deterministic block");
+  assert.match(oneMissing, /UniProt Documentation/u);
+
+  const rcsbOnlyResult = tavilyToolResult([results[0]]);
+  const disclosureUser = { role: "user", content: "Compare RCSB PDB and UniProt documentation." };
+  const disclosure = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: "RCSB provides structural data; no claim is made about an unreturned source.",
+    messages: [disclosureUser, call, rcsbOnlyResult],
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.match(disclosure.appendFinalAssistantText, /^No direct UniProt source was returned by this bounded search\./u);
+  assert.match(disclosure.appendFinalAssistantText, /Sources\n\n- RCSB/u);
+
+  const exactTurn = BIONEMO_SUPER_INITIAL_TURNS.find(({ name }) => name === TAVILY_TOOL_NAME);
+  const exactResult = tavilyToolResult([
+    { title: "RCSB  PDB documentation  ", url: "HTTPS://WWW.RCSB.ORG:443/docs/../docs/" },
+  ], { details: {
+    mcpServer: "tavily_web",
+    mcpTool: "tavily_search",
+    structuredContent: {
+      query: exactTurn.params.query,
+      results: [{ title: "RCSB  PDB documentation  ", url: "HTTPS://WWW.RCSB.ORG:443/docs/../docs/" }],
+    },
+  } });
+  const exactMessages = [
+    { role: "user", content: [{ type: "text", text: exactTurn.prompt }] },
+    { role: "assistant", content: [{ type: "toolCall", id: "tavily-call-current", name: TAVILY_TOOL_NAME, arguments: structuredClone(exactTurn.params) }] },
+    exactResult,
+  ];
+  const localFinal = bionemoSuperLocalCompletionText({ provider: "tokenfactory", id: "nvidia/nemotron-3-super-120b-a12b" }, { messages: exactMessages });
+  assert.match(localFinal, /Source-owned comparison/u);
+  assert.match(localFinal, /No direct UniProt source was returned by this bounded search\./u);
+  assert.match(localFinal, /Sources\n\n- RCSB PDB documentation — https:\/\/www\.rcsb\.org\/docs\//u);
+  const crossHook = beforeFinalize({
+    runId: PRESENTATION_AGENT_RUN_ID,
+    lastAssistantMessage: localFinal,
+    messages: exactMessages,
+  }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(crossHook, undefined, "source-owned final suppresses duplicate Tavily coverage and citation blocks");
+});
+
+test("current-turn Tavily presentation fails closed on stale, failed, malformed, duplicated, or mismatched results", () => {
+  const user = { role: "user", content: "current turn" };
+  const call = { role: "assistant", content: [{ type: "toolCall", id: "tavily-call-current", name: TAVILY_TOOL_NAME, arguments: {} }] };
+  const sources = [{ title: "RCSB", url: "https://www.rcsb.org" }];
+  const result = tavilyToolResult(sources);
+  assert.deepEqual(pluginInternals.currentTurnTavilySources([
+    { role: "user", content: "previous turn" },
+    call,
+    result,
+    { role: "assistant", content: "previous final" },
+    user,
+    { role: "assistant", content: "new final" },
+  ]), { observed: false });
+
+  const rejectedHistories = [
+    [user, call, { ...result, isError: true }],
+    [user, call, { ...result, isError: undefined }],
+    [user, call, { ...result, error: { code: "rate_limited" } }],
+    [user, call, result, { ...result, toolCallId: "tavily-call-second" }],
+    [user, { role: "assistant", content: [{ type: "toolCall", id: "different-call", name: TAVILY_TOOL_NAME, arguments: {} }] }, result],
+    [user, call, tavilyToolResult([{ title: "unsafe", url: "javascript:alert(1)" }])],
+    [user, call, tavilyToolResult([{ title: "credential URL", url: "https://user:secret@example.org/" }])],
+    [user, call, tavilyToolResult(Array.from({ length: 6 }, (_, index) => ({ title: `Source ${index}`, url: `https://example.org/${index}` })))],
+    [user, call, tavilyToolResult([{ title: "missing URL" }])],
+    [user, call, { ...result, details: { ...result.details, mcpServer: "other" } }],
+    [user, call, { ...result, details: undefined, structuredContent: result.details.structuredContent }],
+    [user, call, { ...result, structuredContent: result.details.structuredContent }],
+    [user, call, { ...result, details: undefined, content: [{ type: "text", text: JSON.stringify({ results: sources }) }] }],
+  ];
+  for (const messages of rejectedHistories) {
+    const rejected = pluginInternals.currentTurnTavilySources(messages);
+    assert.equal(rejected.observed, true);
+    assert.equal(rejected.sources, undefined);
+  }
+});
+
+test("presentation state clears on workflow failure, agent abort, and TTL expiry", async () => {
+  let clock = 10;
+  const scheduled = [];
+  const registry = pluginInternals.createPresentationRegistry({
+    now: () => clock,
+    ttlMs: 5,
+    setTimeoutImpl(handler) { scheduled.push(handler); return { unref() {} }; },
+    clearTimeoutImpl() {},
+  });
+  registry.set(PRESENTATION_AGENT_RUN_ID, { viewerMarkdown: [PRESENTATION_FIRST_VIEWER] });
+  assert.ok(registry.get(PRESENTATION_AGENT_RUN_ID));
+  clock = 16;
+  assert.equal(registry.get(PRESENTATION_AGENT_RUN_ID), undefined);
+  assert.equal(registry.size(), 0);
+  scheduled[0]();
+
+  const api = fakeApi();
+  pluginInternals.registerPlugin(api, { runtime: {
+    store: {},
+    async runSkill() { throw new Error("not used"); },
+    async runWorkflow() { throw new Error("workflow failed"); },
+  }, presentationRegistry: registry });
+  const tool = api.captured.tools.find(({ name }) => name === "bionemo_research_drug_demo");
+  registry.set(PRESENTATION_AGENT_RUN_ID, { viewerMarkdown: [PRESENTATION_FIRST_VIEWER] });
+  await assert.rejects(() => tool.execute("tool-call-2", { [MCP_TURN_ID_FIELD]: PRESENTATION_AGENT_RUN_ID }), /workflow failed/u);
+  assert.equal(registry.get(PRESENTATION_AGENT_RUN_ID), undefined);
+  registry.set(PRESENTATION_AGENT_RUN_ID, { viewerMarkdown: [PRESENTATION_FIRST_VIEWER] });
+  api.captured.hooks.find(({ event }) => event === "agent_end").handler({ runId: PRESENTATION_AGENT_RUN_ID, success: false }, { runId: PRESENTATION_AGENT_RUN_ID });
+  assert.equal(registry.get(PRESENTATION_AGENT_RUN_ID), undefined);
+});
+
+test("phase-aware message helper never appends an invisible unphased sibling", () => {
+  const presentation = pluginInternals.artifactPresentation({ structuredContent: presentationWorkflowResult() });
+  const commentarySignature = JSON.stringify({ v: 1, id: "commentary-item", phase: "commentary" });
+  const finalSignature = JSON.stringify({ v: 1, id: "final-item", phase: "final_answer" });
+  const message = {
+    role: "assistant",
+    stopReason: "stop",
+    content: [
+      { type: "text", text: "working", textSignature: commentarySignature },
+      { type: "text", text: "Summary", textSignature: finalSignature },
+    ],
+  };
+  const patched = pluginInternals.appendArtifactPresentation(message, presentation);
+  assert.equal(patched.content[0].textSignature, commentarySignature);
+  assert.equal(patched.content[1].textSignature, finalSignature);
+  assert.equal(pluginInternals.textBlockPhase(patched.content.at(-1)), "final_answer");
+  assert.equal(pluginInternals.visibleAssistantText(patched).includes(PRESENTATION_FIRST_VIEWER), true);
+  assert.equal(pluginInternals.appendArtifactPresentation({ ...message, stopReason: "aborted" }, presentation), undefined);
+  assert.equal(pluginInternals.appendArtifactPresentation({ ...message, stopReason: "error" }, presentation), undefined);
+  assert.equal(pluginInternals.appendArtifactPresentation({ ...message, stopReason: "length" }, presentation), undefined);
+  assert.equal(pluginInternals.appendArtifactPresentation({ ...message, phase: "commentary" }, presentation), undefined);
+  const mentionedMedia = pluginInternals.artifactPresentationAppendText(`Do not emit ${presentation.mediaLine} inline.`, presentation);
+  assert.ok(mentionedMedia.split("\n").includes(presentation.mediaLine), "an inline MEDIA mention cannot suppress the required own-line directive");
+});
+
+test("agent instructions require exact clickable viewer links", async () => {
+  const api = fakeApi();
+  plugin.register(api);
+  const promptHook = api.captured.hooks.find(({ event }) => event === "before_prompt_build");
+  const systemContext = (await promptHook.handler()).prependSystemContext;
+  const expectedLink = "[View structure in 3D](<VALUE>)";
+  assert.equal(systemContext.includes(expectedLink), true);
+  assert.match(systemContext, /copy that complete viewerMarkdown field verbatim/u);
+  assert.match(systemContext, /Do not reconstruct it from viewerUrl/u);
+  assert.match(systemContext, /do not leave either field as plain text/u);
+
+  const workspaceInstructions = await readFile(new URL("../workspace/AGENTS.md", import.meta.url), "utf8");
+  assert.equal(workspaceInstructions.includes(`\`${expectedLink}\``), true);
+  assert.match(workspaceInstructions, /copy that complete field verbatim/u);
+  assert.match(workspaceInstructions, /Never reconstruct it from `viewerUrl`/u);
+});
+
+test("plugin injects trusted per-turn identity into wrappers and every adapted MCP compute name", async () => {
+  const api = fakeApi();
+  plugin.register(api);
+  const hook = api.captured.hooks.find(({ event }) => event === "before_tool_call").handler;
+  const runId = "d9fd641b-f6ae-42c6-aeed-f18b2f770299";
+  const event = {
+    toolName: "bionemo_models__clawbio_esm2_embed",
+    params: { sequences: ["MKTII"], ack_research_only: true, ack_non_clinical: true },
+  };
+  const injected = await hook(event, { runId });
+  assert.equal(injected.params[MCP_TURN_ID_FIELD], runId);
+  assert.deepEqual(event.params, { sequences: ["MKTII"], ack_research_only: true, ack_non_clinical: true });
+  const productNeutral = await hook({
+    toolName: "bionemo_models__esm2_embed",
+    params: { sequences: ["MKTII"], ack_research_only: true, ack_non_clinical: true },
+  }, { runId });
+  assert.equal(productNeutral.params[MCP_TURN_ID_FIELD], runId);
+  for (const upstreamName of MCP_SUBMISSION_TOOL_NAMES) {
+    const publicName = upstreamName.replace(/^clawbio_/u, "");
+    const adapted = await hook({ toolName: `bionemo_models__${publicName}`, params: { marker: publicName } }, { runId });
+    assert.equal(adapted.params[MCP_TURN_ID_FIELD], runId, publicName);
+    assert.equal(adapted.params.marker, publicName);
+  }
+  for (const supportName of MCP_SUPPORT_TOOL_NAMES.map((name) => name.replace(/^clawbio_/u, ""))) {
+    assert.equal(await hook({ toolName: `bionemo_models__${supportName}`, params: { marker: supportName } }, { runId }), undefined, supportName);
+  }
+  const wrapperEvent = { toolName: "bionemo_research_drug_demo", params: { ack_research_only: true } };
+  const wrapperInjected = await hook(wrapperEvent, { runId });
+  assert.equal(wrapperInjected.params[MCP_TURN_ID_FIELD], runId);
+  assert.equal(wrapperInjected.params.ack_research_only, true);
+  assert.deepEqual(wrapperEvent.params, { ack_research_only: true });
+  for (const toolName of CROSS_BACKEND_TOOL_NAMES.slice(1)) {
+    const composed = await hook({ toolName, params: { ack_research_only: true } }, { runId });
+    assert.equal(composed.params[MCP_TURN_ID_FIELD], runId);
+  }
+
+  assert.equal(await hook({ toolName: "bionemo_models__clawbio_job_status", params: { job_id: "job" } }, { runId }), undefined);
+  assert.equal(await hook({ toolName: "bionemo_models_list", params: {} }, { runId }), undefined);
+  const atomic = await hook({ toolName: "bionemo_openfold2", params: { sequence: "MKTII", ack_research_only: true, ack_non_clinical: true } }, { runId });
+  assert.equal(atomic.params[MCP_TURN_ID_FIELD], runId);
+  const missing = await hook(event, {});
+  assert.equal(missing.block, true);
+  assert.match(missing.blockReason, /trusted per-turn identity is unavailable/u);
+});
+
+test("model-facing OpenFold2 schema exposes only sequence and explicit configured-backend acknowledgements", () => {
+  const api = fakeApi();
+  plugin.register(api);
+  const tool = api.captured.tools.find((item) => item.name === "bionemo_openfold2");
+  assert.deepEqual(tool.parameters.required, ["sequence", "ack_research_only", "ack_non_clinical"]);
+  assert.deepEqual(Object.keys(tool.parameters.properties), ["sequence", "ack_research_only", "ack_non_clinical"]);
+  assert.equal(tool.parameters.properties.ack_research_only.const, true);
+  assert.equal(tool.parameters.properties.ack_non_clinical.const, true);
+});
+
+test("MolMIM bounded summaries retain the user's optimization contract without mislabeling arbitrary inputs", () => {
+  const exactInput = {
+    smi: "COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4",
+    algorithm: "CMA-ES",
+    num_molecules: 2,
+    property_name: "QED",
+    min_similarity: 0.7,
+  };
+  const data = { molecules: [
+    { smiles: "CCO", score: 0.81 },
+    { smiles: "CCN", score: 0.79 },
+  ] };
+  assert.deepEqual(pluginInternals.configuredAtomicOutputSummary("molmim", data, exactInput), {
+    startingMolecule: "gefitinib",
+    optimizationObjective: "QED",
+    minimumSimilarity: 0.7,
+    requestedCandidateCount: 2,
+    algorithm: "CMA-ES",
+    candidateCount: 2,
+    candidates: [
+      { candidateIndex: 0, smiles: "CCO", optimizationScore: 0.81 },
+      { candidateIndex: 1, smiles: "CCN", optimizationScore: 0.79 },
+    ],
+  });
+  const generic = pluginInternals.configuredAtomicOutputSummary("molmim", data, {
+    ...exactInput,
+    smi: "CCO",
+  });
+  assert.equal(generic.startingMolecule, "caller-supplied SMILES");
+  assert.equal(JSON.stringify(generic).includes("gefitinib"), false);
+});
+
+test("configured-backend atomic text result round-trips compact bounded step evidence", async () => {
+  const api = fakeApi();
+  const remoteJobId = "a".repeat(32);
+  const secret = "unit-test-private-token-never-persist";
+  const summary = {
+    skill: "OpenFold2",
+    backend: "mcp",
+    elapsedMs: 7,
+    remoteJobId,
+    confidence: { meanPlddt: 91.2 },
+  };
+  pluginInternals.registerPlugin(api, { runtime: {
+    store: {},
+    async runSkill(skillId) {
+      assert.equal(skillId, "openfold2");
+      return {
+        runId: PRESENTATION_WORKFLOW_RUN_ID,
+        summary,
+        steps: [{
+          label: "OpenFold2",
+          skillId: "openfold2",
+          model: "openfold2",
+          backend: "mcp",
+          status: "completed",
+          elapsedMs: 7,
+          remoteJobId,
+          startedAt: "2026-08-14T00:00:00.000Z",
+          completedAt: "2026-08-14T00:00:00.007Z",
+          authorization: secret,
+          rawModelResponse: `${secret}${"x".repeat(100_000)}`,
+        }],
+        artifacts: [{
+          name: "result.json",
+          bytes: 2,
+          downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/result.json`,
+          privateMetadata: `${secret}${"y".repeat(100_000)}`,
+        }],
+      };
+    },
+    async runWorkflow() { throw new Error("not used"); },
+    async listModels() { throw new Error("not used"); },
+  } });
+
+  const tool = api.captured.tools.find(({ name }) => name === "bionemo_openfold2");
+  const result = await tool.execute("atomic-call", { [MCP_TURN_ID_FIELD]: PRESENTATION_AGENT_RUN_ID });
+  const persisted = JSON.parse(result.content[0].text);
+  const expectedSteps = [{
+    label: "OpenFold2",
+    skillId: "openfold2",
+    model: "openfold2",
+    backend: "mcp",
+    status: "completed",
+    elapsedMs: 7,
+    remoteJobId,
+  }];
+  assert.deepEqual(persisted, {
+    status: "completed",
+    runId: PRESENTATION_WORKFLOW_RUN_ID,
+    summary,
+    steps: expectedSteps,
+    artifacts: [{
+      name: "result.json",
+      bytes: 2,
+      downloadPath: `/workspace/agent/artifacts/${PRESENTATION_WORKFLOW_RUN_ID}/result.json`,
+    }],
+    caveat: "Research use only. Review confidence and validate experimentally; this is not clinical advice.",
+  });
+  assert.deepEqual(result.structuredContent.steps, expectedSteps);
+  assert.equal(Buffer.byteLength(result.content[0].text, "utf8") < 2_048, true);
+  assert.equal(JSON.stringify(result).includes(secret), false);
+});
+
+test("dashboard data and artifacts are gateway-authenticated while readiness is public", () => {
+  const api = fakeApi();
+  plugin.register(api);
+  const route = (pathname) => api.captured.routes.find((item) => item.path === pathname);
+  assert.equal(route("/plugins/bionemo/api").auth, "gateway");
+  assert.equal(route("/plugins/bionemo").auth, "plugin");
+  assert.equal(route("/plugins/bionemo/readiness").auth, "plugin");
+  assert.equal(route("/bionemo/view").auth, "plugin");
+  assert.equal(route("/bionemo/view").match, "prefix");
+  assert.equal(route("/plugins/bionemo/view"), undefined);
+  assert.equal(api.captured.controls[0].path, "/plugins/bionemo");
+  assert.deepEqual(api.captured.controls[0].requiredScopes, ["operator.read"]);
+});
+
+test("dashboard CSP is nonce-based and token never enters URL or persistent storage", () => {
+  const html = uiInternals.dashboardHtml("test-nonce");
+  assert.match(html, /nonce="test-nonce"/u);
+  assert.equal(html.includes("localStorage"), false);
+  assert.equal(html.includes("sessionStorage"), false);
+  assert.equal(html.includes("?token="), false);
+  assert.equal(html.includes('style="'), false);
+  assert.match(html, /Authorization:'Bearer '\+bearer/u);
+  assert.match(html, /setInterval\(refresh,5000\)/u);
+  assert.match(html, /run\.steps/u);
+  assert.match(html, /View 3D/u);
+  assert.match(html, /3dmol\.min\.js/u);
+  assert.match(html, /addModel\(structure/u);
+  const script = html.match(/<script nonce="[^"]+">([\s\S]+)<\/script>/u)?.[1];
+  assert.ok(script);
+  assert.doesNotThrow(() => new vm.Script(script));
+});
+
+test("readiness reveals only capability presence", async () => {
+  const store = { async initialize() {} };
+  const handlers = createUiHandlers({ store, env: { NVIDIA_API_KEY: "nvidia-secret", NEBIUS_API_KEY: "nebius-secret", OPENCLAW_GATEWAY_TOKEN: "gateway-secret" }, runtimeVersion: "test" });
+  const chunks = [];
+  const res = { writeHead(status, headers) { this.status = status; this.headers = headers; }, end(value) { if (value) chunks.push(value); } };
+  await handlers.readiness({}, res);
+  const body = Buffer.concat(chunks).toString("utf8");
+  assert.equal(res.status, 200);
+  assert.equal(body.includes("nvidia-secret"), false);
+  assert.equal(body.includes("nebius-secret"), false);
+  assert.equal(body.includes("gateway-secret"), false);
+  assert.deepEqual(JSON.parse(body).configured, { reasoning: true, reasoningProvider: "nvidia", modelBackend: "nvidia", nvidia: true, nebius: true, openai: false, anthropic: false, mcp: false, tavily: false, gateway: true });
+});
+
+test("readiness stays healthy in keyless setup-required mode", async () => {
+  const handlers = createUiHandlers({ store: { async initialize() {} }, env: { OPENCLAW_GATEWAY_TOKEN: "gateway-secret" }, runtimeVersion: "test" });
+  const chunks = [];
+  const res = { writeHead(status) { this.status = status; }, end(value) { if (value) chunks.push(value); } };
+  await handlers.readiness({}, res);
+  assert.equal(res.status, 200);
+  assert.equal(JSON.parse(Buffer.concat(chunks)).status, "setup_required");
+});
+
+test("launcher validates secrets without printing values and parses only safe origins", () => {
+  assert.equal(launcher.requireEnvironment({ NEBIUS_API_KEY: "n", NVIDIA_API_KEY: "v", AUTH_TOKEN: "a".repeat(24) }), "a".repeat(24));
+  assert.equal(launcher.requireEnvironment({ NEBIUS_API_KEY: "n", NGC_API_KEY: "v", AUTH_TOKEN: "a".repeat(24) }), "a".repeat(24));
+  assert.throws(() => launcher.requireEnvironment({}), /AUTH_TOKEN/u);
+  assert.throws(() => launcher.requireEnvironment({ NEBIUS_API_KEY: "secret-one", NVIDIA_API_KEY: "secret-two", AUTH_TOKEN: "short" }), /at least 24/u);
+  assert.equal(launcher.safeOrigin("https://example.test"), "https://example.test");
+  assert.throws(() => launcher.safeOrigin("https://user:pass@example.test"), /without credentials/u);
+  assert.throws(() => launcher.safeOrigin("https://example.test/path"), /without credentials/u);
+  assert.match("https://bounded-name.trycloudflare.com", new RegExp(launcher.CLOUDFLARED_URL_PATTERN));
+});
+
+test("launcher validates an explicitly supplied native Nebius managed HTTPS origin", () => {
+  const managed = "https://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud";
+  assert.equal(launcher.exposureMode({}), "cloudflare");
+  assert.equal(launcher.exposureMode({ BIONEMO_ENABLE_HTTPS_TUNNEL: "false" }), "local");
+  assert.equal(launcher.exposureMode({ BIONEMO_ENABLE_HTTPS_TUNNEL: "false", BIONEMO_PUBLIC_ORIGIN: "https://proxy.example" }), "external");
+  assert.equal(launcher.exposureMode({ BIONEMO_HTTPS_MODE: "nebius" }), "nebius");
+  assert.throws(() => launcher.exposureMode({ BIONEMO_HTTPS_MODE: "external" }), /requires BIONEMO_PUBLIC_ORIGIN/u);
+  assert.throws(() => launcher.exposureMode({ BIONEMO_HTTPS_MODE: "wildcard" }), /cloudflare, nebius, external, or local/u);
+  assert.equal(launcher.nebiusManagedOrigin(managed, 18789), managed);
+  assert.throws(() => launcher.nebiusManagedOrigin("http://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud", 18789), /must match/u);
+  assert.throws(() => launcher.nebiusManagedOrigin("https://port8000-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud", 18789), /must match/u);
+  assert.throws(() => launcher.nebiusManagedOrigin("https://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud.evil.test", 18789), /must match/u);
+});
+
+test("dynamic native Nebius mode accepts its post-create browser origin without Host fallback", async (t) => {
+  const managed = "https://port18789-vmeqjejf06sn58z.tunnel.applications.eu-north1.nebius.cloud";
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-nebius-origin-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const templatePath = path.join(root, "template.json");
+  const configPath = path.join(root, "state", "openclaw.json");
+  const stateDir = path.join(root, "state");
+  await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["http://127.0.0.1:18789"], env: { BIONEMO_HTTPS_MODE: "nebius" } });
+  const dynamic = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(dynamic.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, false);
+  assert.deepEqual(dynamic.gateway.controlUi.allowedOrigins, ["*"]);
+
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: [managed], env: { BIONEMO_HTTPS_MODE: "nebius", BIONEMO_PUBLIC_ORIGIN: managed } });
+  const explicit = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(explicit.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, false);
+  assert.deepEqual(explicit.gateway.controlUi.allowedOrigins, [managed]);
+});
+
+test("Serverless launch binds one backend-specific MysteryBox payload", async () => {
+  const script = await readFile(new URL("../scripts/run_serverless_endpoint.sh", import.meta.url), "utf8");
+  assert.match(script, /MODEL_CREDENTIALS_SECRET/u);
+  assert.match(script, /--env-secret "NVIDIA_API_KEY=\$MODEL_CREDENTIALS_SECRET"/u);
+  assert.match(script, /--env-secret "NEBIUS_API_KEY=\$MODEL_CREDENTIALS_SECRET"/u);
+  assert.match(script, /--env-secret "BIONEMO_MCP_API_KEY=\$MODEL_CREDENTIALS_SECRET"/u);
+  assert.equal(script.includes("--env \"NVIDIA_API_KEY="), false);
+  assert.equal(script.includes("--env \"NGC_API_KEY="), false);
+  assert.match(script, /TAVILY_SECRET/u);
+  assert.match(script, /BIONEMO_HTTPS_MODE/u);
+  assert.match(script, /no public VM IP or second authentication layer/u);
+  assert.equal((script.match(/MODEL_CREDENTIALS_SECRET/g) || []).length >= 4, true);
+});
+
+test("runtime config omits private MCP credentials and persists only required placeholders", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-runtime-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const templatePath = path.join(root, "template.json");
+  const configPath = path.join(root, "state", "openclaw.json");
+  const stateDir = path.join(root, "state");
+  await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://example.test"], env: { NVIDIA_API_KEY: "secret-value", BIONEMO_MCP_API_KEY: "mcp-secret" } });
+  const config = await readFile(configPath, "utf8");
+  const parsedConfig = JSON.parse(config);
+  const approvals = JSON.parse(await readFile(path.join(stateDir, "exec-approvals.json"), "utf8"));
+  assert.match(config, /\$\{NVIDIA_API_KEY\}/u);
+  assert.doesNotMatch(config, /BIONEMO_MCP_API_KEY/u);
+  assert.equal(config.includes("secret-value"), false);
+  assert.equal(config.includes("mcp-secret"), false);
+  assert.equal(parsedConfig.gateway.controlUi.dangerouslyDisableDeviceAuth, true);
+  assert.equal(parsedConfig.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback, false);
+  assert.equal(parsedConfig.agents.defaults.compaction.reserveTokensFloor, 20_000);
+  assert.deepEqual(approvals.defaults, { security: "full", ask: "off", askFallback: "full", autoAllowSkills: true });
+  assert.deepEqual(approvals.agents.bionemo, {
+    security: "full",
+    ask: "off",
+    askFallback: "full",
+    autoAllowSkills: true,
+    allowlist: [],
+  });
+  assert.deepEqual(approvals.agents.bionemo.allowlist, []);
+});
+
+test("private deployments can require one-time Control UI device pairing", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-device-pairing-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const templatePath = path.join(root, "template.json");
+  const configPath = path.join(root, "state", "openclaw.json");
+  const stateDir = path.join(root, "state");
+  await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://private.example"], env: { BIONEMO_REQUIRE_DEVICE_PAIRING: "true" } });
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(config.gateway.controlUi.dangerouslyDisableDeviceAuth, false);
+});
+
+test("static OpenClaw policy grants the private owner full container-admin capability", async () => {
+  const config = JSON.parse(await readFile(new URL("../config/openclaw.template.json", import.meta.url), "utf8"));
+  assert.equal(config.tools.profile, "full");
+  assert.deepEqual(config.tools.alsoAllow, EXACT_TOOL_NAMES);
+  assert.deepEqual(config.tools.deny, ["bundle-mcp"]);
+  assert.equal(config.tools.fs.workspaceOnly, false);
+  assert.equal(config.tools.exec.host, "gateway");
+  assert.equal(config.tools.exec.mode, "full");
+  assert.equal(config.tools.exec.timeoutSec, 7_200);
+  assert.equal(config.tools.exec.applyPatch.enabled, true);
+  assert.equal(config.tools.exec.applyPatch.workspaceOnly, false);
+  assert.equal(config.gateway.terminal.enabled, true);
+  assert.equal(config.gateway.terminal.shell, "/bin/bash");
+  assert.equal(config.gateway.terminal.detachedSessionTimeoutSeconds, 3_600);
+  assert.equal(config.gateway.controlUi.root, "/opt/bionemo/control-ui");
+  assert.equal(config.gateway.auth.mode, "token");
+  assert.equal(config.gateway.auth.token, "${OPENCLAW_GATEWAY_TOKEN}");
+  assert.equal(config.gateway.tools, undefined, "direct HTTP /tools/invoke keeps OpenClaw's default denial");
+  assert.equal(config.agents.defaults.sandbox.mode, "off");
+  assert.equal(config.agents.list[0].sandbox.mode, "off");
+  assert.equal(config.agents.defaults.maxConcurrent, 4);
+  assert.equal(config.agents.defaults.timeoutSeconds, 7_200);
+  assert.deepEqual(config.agents.defaults.subagents.allowAgents, ["*"]);
+  assert.equal(config.agents.defaults.subagents.maxConcurrent, 4);
+  assert.equal(config.agents.defaults.subagents.maxSpawnDepth, 3);
+  assert.equal(config.agents.defaults.subagents.maxChildrenPerAgent, 8);
+  assert.deepEqual(config.agents.list[0].subagents.allowAgents, ["*"]);
+  assert.deepEqual(config.plugins.allow, ["bionemo-agent-toolkit"]);
+  assert.deepEqual(config.models.providers, {});
+  assert.equal(config.agents.defaults.model.primary, "setup/setup-required");
+  assert.equal(config.agents.defaults.compaction.reserveTokensFloor, 20_000);
+  assert.equal(config.update.checkOnStart, false);
+  assert.equal(config.update.auto.enabled, false);
+});
+
+test("all pins and model identity are immutable in the shipped configuration", async () => {
+  const dockerfile = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
+  const config = await readFile(new URL("../config/openclaw.template.json", import.meta.url), "utf8");
+  const packageManifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const pluginPackageManifest = JSON.parse(await readFile(new URL("../openclaw-plugin/package.json", import.meta.url), "utf8"));
+  const pluginManifest = JSON.parse(await readFile(new URL("../openclaw-plugin/openclaw.plugin.json", import.meta.url), "utf8"));
+  const templateConfig = JSON.parse(config);
+  const readme = await readFile(new URL("../README.md", import.meta.url), "utf8");
+  assert.match(dockerfile, /openclaw:2026\.7\.1-2@sha256:8789721d/u);
+  assert.match(dockerfile, /org\.opencontainers\.image\.version="3\.4\.0"/u);
+  assert.match(dockerfile, /CLOUDFLARED_VERSION="2026\.7\.3"/u);
+  assert.match(dockerfile, new RegExp(TOOLKIT_COMMIT));
+  assert.match(dockerfile, /libgnutls30=3\.7\.9-2\+deb12u7/u);
+  assert.match(dockerfile, /python3-pip/u);
+  assert.match(dockerfile, /COPY --from=clawbio-uv \/uv \/usr\/local\/bin\/uv/u);
+  assert.match(dockerfile, /PIP_BREAK_SYSTEM_PACKAGES=1/u);
+  assert.match(dockerfile, /CODEX_VERSION="0\.147\.0"/u);
+  assert.match(dockerfile, /CLAUDE_CODE_VERSION="2\.1\.228"/u);
+  assert.match(dockerfile, /NPM_VERSION="12\.0\.2"/u);
+  assert.match(dockerfile, /PNPM_VERSION="11\.22\.0"/u);
+  assert.match(dockerfile, /io\.nebius\.npm\.version="\$\{NPM_VERSION\}"/u);
+  assert.match(dockerfile, /io\.nebius\.pnpm\.version="\$\{PNPM_VERSION\}"/u);
+  assert.match(dockerfile, /"npm@\$\{NPM_VERSION\}"/u);
+  assert.match(dockerfile, /corepack install --global "pnpm@\$\{PNPM_VERSION\}"/u);
+  assert.match(dockerfile, /USER root\s+EXPOSE 18789/u);
+  assert.doesNotMatch(dockerfile, /chmod -R a-w \/workspace\/agent\/notebooks/u);
+  assert.match(dockerfile, /BIONEMO_NOTEBOOK_ROOT=\/workspace\/agent\/notebooks/u);
+  assert.match(config, /setup\/setup-required/u);
+  assert.equal(templateConfig.plugins.entries["bionemo-agent-toolkit"].hooks.allowConversationAccess, true, "before_agent_finalize and agent_end require explicit conversation access in pinned OpenClaw");
+  assert.deepEqual([packageManifest.version, pluginPackageManifest.version, pluginManifest.version], ["3.4.0", "3.4.0", "3.4.0"]);
+  assert.match(readme, /^# BioNeMo Agent Workbench 3\.4\.0 on Nebius Serverless$/mu);
+  assert.match(uiInternals.dashboardHtml("test-nonce"), /BioNeMo Agent Workbench 3\.4\.0/u);
+  assert.equal((await readFile(new URL("../vendor/bionemo-agent-toolkit/UPSTREAM_COMMIT", import.meta.url), "utf8")).trim(), TOOLKIT_COMMIT);
+});
+
+test("credential resolution supports all reasoning providers, MCP override, and keyless modes", () => {
+  const nvidia = capabilities({ NVIDIA_API_KEY: "n" });
+  assert.deepEqual([nvidia.reasoningProvider, nvidia.modelBackend, nvidia.nvidia, nvidia.nebius], ["nvidia", "nvidia", true, false]);
+  const nebius = capabilities({ NEBIUS_API_KEY: "n" });
+  assert.deepEqual([nebius.reasoningProvider, nebius.modelBackend, nebius.nvidia, nebius.nebius], ["nebius", "unavailable", false, true]);
+  const mcp = capabilities({ NEBIUS_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", BIONEMO_MCP_URL: "https://private.example/mcp" });
+  assert.equal(mcp.reasoningProvider, "nebius");
+  assert.equal(mcp.modelBackend, "mcp");
+  assert.equal(mcp.mcpUrl, "https://private.example/mcp");
+  assert.equal(capabilities({ OPENAI_API_KEY: "o" }).reasoningProvider, "openai");
+  assert.equal(capabilities({ ANTHROPIC_API_KEY: "a" }).reasoningProvider, "anthropic");
+  const keyless = capabilities({});
+  assert.equal(keyless.reasoningProvider, "setup");
+  assert.equal(keyless.modelBackend, "unavailable");
+  assert.equal(keyless.mcpUrl, DEFAULT_MCP_URL);
+});
+
+test("the keyless image default is the authenticated public event MCP endpoint without embedded credentials", async () => {
+  assert.equal(DEFAULT_MCP_URL, "https://clawbio-mcp.89-169-122-161.sslip.io/mcp");
+  const parsed = new URL(DEFAULT_MCP_URL);
+  assert.equal(parsed.username, "");
+  assert.equal(parsed.password, "");
+  assert.equal(parsed.search, "");
+  assert.equal(parsed.hash, "");
+
+  const dockerfile = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
+  assert.match(dockerfile, /BIONEMO_MCP_URL=https:\/\/clawbio-mcp\.89-169-122-161\.sslip\.io\/mcp/u);
+  assert.doesNotMatch(dockerfile, /^\s*(?:ENV\s+)?(?:BIONEMO_MCP_API_KEY|CLAWBIO_API_KEY)=/mu);
+  assert.doesNotMatch(dockerfile, /Authorization:\s*Bearer\s+\S+/iu);
+});
+
+test("NVIDIA defaults to the tool-reliable Super profile", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(config, { AGENT_PROVIDER: "nvidia", NVIDIA_API_KEY: "do-not-persist" });
+  const [superModel] = config.models.providers.nvidia.models;
+  assert.equal(config.agents.defaults.model.primary, "nvidia/nvidia/nemotron-3-super-120b-a12b");
+  assert.equal(superModel.id, "nvidia/nemotron-3-super-120b-a12b");
+  assert.equal(superModel.contextWindow, 1_000_000);
+  assert.equal(superModel.maxTokens, 8_192);
+  assert.deepEqual(superModel.compat, { maxTokensField: "max_tokens", requiresStringContent: true });
+  assert.equal(superModel.params, undefined);
+  assert.equal(config.models.providers.nvidia.timeoutSeconds, 240);
+  assert.equal(config.models.providers.tokenfactory.timeoutSeconds, 300);
+  assert.deepEqual(config.agents.defaults.models["nvidia/nvidia/nemotron-3-super-120b-a12b"].params, {
+    chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true },
+  });
+  assert.equal(JSON.stringify(config).includes("do-not-persist"), false);
+
+  const custom = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(custom, { AGENT_PROVIDER: "nvidia", NVIDIA_API_KEY: "do-not-persist", AGENT_MODEL: "example/custom" });
+  assert.equal(custom.models.providers.nvidia.models[0].contextWindow, 262_144);
+  assert.equal(custom.models.providers.nvidia.models[0].maxTokens, 8_192);
+  assert.equal(custom.models.providers.nvidia.models[0].compat, undefined);
+  assert.deepEqual(custom.agents.defaults.models["nvidia/example/custom"], {});
+});
+
+test("OpenClaw materializes the full adapted BioNeMo MCP surface for the private owner", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  const state = configureOpenClaw(config, { NVIDIA_API_KEY: "n", BIONEMO_MCP_API_KEY: "m", TAVILY_API_KEY: "t" });
+  assert.equal(state.reasoningProvider, "nvidia");
+  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio", "bionemo_models", "tavily_web"]);
+  assert.equal(config.mcp.servers.clawbio.transport, "stdio");
+  assert.deepEqual(config.mcp.servers.clawbio.toolFilter, { include: ["list_skills", "describe_skill", "run_skill"] });
+  assert.equal(config.mcp.servers.clawbio_models, undefined);
+  assert.deepEqual(config.mcp.servers.bionemo_models, {
+    url: DEFAULT_MCP_URL,
+    transport: "streamable-http",
+    timeout: 900,
+    toolFilter: { include: [...BIONEMO_MCP_BROWSER_TOOL_NAMES] },
+  });
+  assert.deepEqual(BIONEMO_MCP_BROWSER_TOOL_NAMES, [
+    "models_list", "model_describe", "upload_create", "upload_status", "upload_delete", "jobs_list", "job_status", "model_fetch",
+    "alphagenome_predict", "boltz2_predict", "cellpose_segment", "deepvariant_call", "diffdock_dock", "esm2_embed",
+    "esmc_analyze", "evo2_generate", "genmol_generate", "molmim_optimize", "msa_search", "openfold2_predict",
+    "openfold3_predict", "proteinmpnn_design", "rfdiffusion_generate", "scanvi_fit_transform", "scvi_fit_transform",
+  ]);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("jobs_list"), true);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("input_stage_local"), false);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("esm2_embed"), true);
+  assert.equal(BIONEMO_MCP_BROWSER_TOOL_NAMES.includes("scanvi_fit_transform"), true);
+  assert.equal(config.mcp.servers.tavily_web.headers.Authorization, "Bearer ${BIONEMO_TAVILY_API_KEY}");
+  assert.equal(config.mcp.servers.tavily, undefined);
+  assert.equal(capabilities({ BIONEMO_TAVILY_API_KEY: "private-alias" }).tavily, true);
+  assert.ok(config.tools.alsoAllow.includes("bundle-mcp"));
+  assert.equal(config.tools.deny.includes("bundle-mcp"), false);
+  assert.equal(config.tools.alsoAllow.includes("bionemo_research_drug_demo"), true);
+  assert.equal(config.tools.deny.includes("bionemo_research_drug_demo"), false);
+  assert.equal(CROSS_BACKEND_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(DIRECT_ONLY_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(EXACT_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(config.tools.alsoAllow.includes("bionemo_models_list"), true);
+  assert.deepEqual(Object.keys(config.models.providers), ["nvidia", "tokenfactory", "openai", "claude", "setup"]);
+  assert.match(config.models.providers.openai.models[0].name, /requires API key/u);
+  assert.match(config.models.providers.claude.models[0].name, /Anthropic Claude.*requires API key/u);
+  assert.equal(config.models.providers.openai.baseUrl, "http://127.0.0.1:18790/v1");
+  assert.equal(config.models.providers.claude.baseUrl, "http://127.0.0.1:18790/v1");
+  assert.deepEqual(config.models.providers.openai.models[0].agentRuntime, { id: "openclaw" });
+  assert.equal(config.models.providers.tokenfactory.baseUrl, "http://127.0.0.1:18790/v1");
+  assert.equal(config.models.providers.tokenfactory.apiKey, "setup-required");
+  assert.equal(config.models.providers.tokenfactory.api, "openai-completions");
+  assert.equal(config.models.providers.tokenfactory.models.every((model) => model.name.endsWith(" (requires API key)") && model.reasoning === false && model.maxTokens === 1024), true);
+  assert.deepEqual(config.models.providers.tokenfactory.models.map(({ id, contextWindow }) => ({ id, contextWindow })), TOKEN_FACTORY_MODELS.map(({ id, contextWindow }) => ({ id, contextWindow })));
+  const allowedModels = config.agents.defaults.models;
+  assert.deepEqual([...new Set(Object.keys(allowedModels).map((key) => key.slice(0, key.indexOf("/"))))], ["nvidia", "tokenfactory", "openai", "claude"]);
+  assert.deepEqual(Object.keys(allowedModels).filter((key) => key.startsWith("tokenfactory/")), TOKEN_FACTORY_MODELS.map(({ id }) => `tokenfactory/${id}`));
+  assert.deepEqual(Object.values(allowedModels).filter(({ alias }) => alias).map(({ alias }) => alias), TOKEN_FACTORY_MODELS.map(({ alias }) => alias));
+});
+
+test("MCP-only OpenClaw exposes all adapted model operations while retaining bounded plugin wrappers", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [...EXACT_TOOL_NAMES], deny: ["bundle-mcp"] } };
+  const state = configureOpenClaw(config, {
+    AGENT_PROVIDER: "nebius",
+    NEBIUS_API_KEY: "reasoning-key",
+    BIONEMO_BACKEND: "mcp",
+    BIONEMO_MCP_API_KEY: "mcp-key",
+  });
+  assert.equal(state.modelBackend, "mcp");
+  assert.equal(CROSS_BACKEND_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(CONFIGURED_BACKEND_ATOMIC_TOOL_NAMES.every((name) => config.tools.alsoAllow.includes(name) && !config.tools.deny.includes(name)), true);
+  assert.equal(config.tools.alsoAllow.includes("bionemo_models_list"), true);
+  assert.equal(config.tools.deny.includes("bionemo_models_list"), false);
+  assert.equal(NVIDIA_ONLY_TOOL_NAMES.every((name) => !config.tools.alsoAllow.includes(name) && config.tools.deny.includes(name)), true);
+  assert.deepEqual(config.mcp.servers.bionemo_models.toolFilter.include, [...BIONEMO_MCP_BROWSER_TOOL_NAMES]);
+  assert.equal(config.mcp.servers.bionemo_models.toolFilter.include.filter((name) => [
+    "alphagenome_predict", "boltz2_predict", "cellpose_segment", "deepvariant_call",
+    "diffdock_dock", "esm2_embed", "esmc_analyze", "evo2_generate", "genmol_generate",
+    "molmim_optimize", "msa_search", "openfold2_predict", "openfold3_predict",
+    "proteinmpnn_design", "rfdiffusion_generate", "scanvi_fit_transform", "scvi_fit_transform",
+  ].includes(name)).length, 17);
+});
+
+test("gateway child hides OpenClaw's reserved Tavily auto-install trigger", () => {
+  const child = launcher.gatewayChildEnvironment({
+    AUTH_TOKEN: "do-not-forward",
+    TAVILY_API_KEY: "tavily-secret",
+    NVIDIA_API_KEY: "nvidia-secret",
+  }, "gateway-secret", {
+    port: 18789,
+    stateDir: "/workspace/state",
+    configPath: "/workspace/state/openclaw.json",
+  });
+  assert.equal(child.AUTH_TOKEN, undefined);
+  assert.equal(child.TAVILY_API_KEY, undefined);
+  assert.equal(child.BIONEMO_TAVILY_API_KEY, "tavily-secret");
+  assert.equal(child.OPENCLAW_GATEWAY_TOKEN, "gateway-secret");
+  assert.equal(child.NVIDIA_API_KEY, "nvidia-secret");
+});
+
+test("launcher gives OpenClaw, Codex, and Claude the flattened adapter but never persists its private upstream", async (t) => {
+  const runtimeEnv = {
+    BIONEMO_MCP_API_KEY: "not-persisted",
+    BIONEMO_MCP_URL: "https://native.example/mcp",
+  };
+  const processEnv = {};
+  launcher.configureMcpAdapterEnvironment(runtimeEnv, {
+    upstreamUrl: "https://native.example/mcp",
+    adapterUrl: "http://127.0.0.1:18791/mcp",
+    processEnv,
+  });
+  assert.equal(runtimeEnv.BIONEMO_MCP_URL, "http://127.0.0.1:18791/mcp");
+  assert.equal(runtimeEnv.BIONEMO_MCP_UPSTREAM_URL, "https://native.example/mcp");
+  assert.deepEqual(processEnv, {
+    BIONEMO_MCP_URL: "http://127.0.0.1:18791/mcp",
+    BIONEMO_MCP_UPSTREAM_URL: "https://native.example/mcp",
+    BIONEMO_ALLOW_INSECURE_MCP: "true",
+  });
+
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-distinct-mcp-urls-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const templatePath = path.join(root, "template.json");
+  const configPath = path.join(root, "state", "openclaw.json");
+  const stateDir = path.join(root, "state");
+  runtimeEnv.HOME = path.join(root, "home");
+  runtimeEnv.BIONEMO_CLIENT_WORKSPACE = path.join(root, "workspace");
+  await (await import("node:fs/promises")).copyFile(new URL("../config/openclaw.template.json", import.meta.url), templatePath);
+  await launcher.writeRuntimeFiles({ templatePath, configPath, stateDir, origins: ["https://example.test"], env: runtimeEnv });
+  const persisted = await readFile(configPath, "utf8");
+  assert.match(persisted, /http:\/\/127\.0\.0\.1:18791\/mcp/u);
+  const persistedConfig = JSON.parse(persisted);
+  assert.deepEqual(persistedConfig.mcp.servers.bionemo_models.toolFilter.include, [...BIONEMO_MCP_BROWSER_TOOL_NAMES]);
+  assert.equal(persisted.includes("https://native.example/mcp"), false);
+  assert.equal(persisted.includes("not-persisted"), false);
+  await prepareClients(runtimeEnv);
+  const codex = await readFile(path.join(runtimeEnv.HOME, ".codex", "config.toml"), "utf8");
+  const claude = await readFile(path.join(runtimeEnv.BIONEMO_CLIENT_WORKSPACE, ".mcp.json"), "utf8");
+  assert.match(codex, /http:\/\/127\.0\.0\.1:18791\/mcp/u);
+  assert.match(claude, /http:\/\/127\.0\.0\.1:18791\/mcp/u);
+  assert.equal(codex.includes("https://native.example/mcp"), false);
+  assert.equal(claude.includes("https://native.example/mcp"), false);
+  assert.throws(
+    () => launcher.configureMcpAdapterEnvironment({}, { upstreamUrl: "https://user:secret@native.example/mcp", adapterUrl: "http://127.0.0.1:18791/mcp", processEnv: {} }),
+    /credentials/u,
+  );
+});
+
+test("an explicit NVIDIA wrapper backend still exposes the configured adapted MCP model server", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [...EXACT_TOOL_NAMES], deny: ["bundle-mcp"] } };
+  const state = configureOpenClaw(config, {
+    BIONEMO_BACKEND: "nvidia",
+    NVIDIA_API_KEY: "n",
+    BIONEMO_MCP_API_KEY: "m",
+  });
+  assert.equal(state.modelBackend, "nvidia");
+  assert.deepEqual(Object.keys(config.mcp.servers), ["clawbio", "bionemo_models"]);
+  assert.deepEqual(config.mcp.servers.bionemo_models.toolFilter.include, [...BIONEMO_MCP_BROWSER_TOOL_NAMES]);
+  assert.deepEqual(config.tools.alsoAllow, [...EXACT_TOOL_NAMES, "bundle-mcp"]);
+  assert.equal(config.tools.deny.includes("bundle-mcp"), false);
+});
+
+test("Token Factory models retain aliases, credential placeholders, and AGENT_MODEL overrides", () => {
+  const configured = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(configured, { AGENT_PROVIDER: "nebius", NEBIUS_API_KEY: "do-not-persist" });
+  assert.equal(configured.agents.defaults.model.primary, "tokenfactory/nvidia/nemotron-3-super-120b-a12b");
+  assert.equal(configured.models.providers.tokenfactory.baseUrl, "https://api.tokenfactory.nebius.com/v1");
+  assert.equal(configured.models.providers.tokenfactory.apiKey, "${NEBIUS_API_KEY}");
+  assert.equal(configured.models.providers.tokenfactory.models.every((model) => !model.name.includes("requires API key") && model.reasoning === true), true);
+  assert.deepEqual(configured.models.providers.tokenfactory.models.map(({ id, contextWindow, maxTokens }) => ({ id, contextWindow, maxTokens })), TOKEN_FACTORY_MODELS.map(({ id, contextWindow, maxTokens }) => ({ id, contextWindow, maxTokens })));
+  const superModel = configured.models.providers.tokenfactory.models.find(({ id }) => id === "nvidia/nemotron-3-super-120b-a12b");
+  assert.deepEqual(superModel.compat, { maxTokensField: "max_tokens", requiresStringContent: true });
+  assert.equal(superModel.contextWindow, 262_144);
+  assert.equal(superModel.maxTokens, 8_192);
+  assert.deepEqual(configured.agents.defaults.models["tokenfactory/nvidia/nemotron-3-super-120b-a12b"], {
+    alias: "Nemotron 3 Super",
+    params: { chat_template_kwargs: { enable_thinking: false, force_nonempty_content: true } },
+  });
+  const glmModel = configured.models.providers.tokenfactory.models.find(({ id }) => id === "zai-org/GLM-5.2");
+  assert.deepEqual(glmModel, {
+    id: "zai-org/GLM-5.2",
+    name: "GLM 5.2 via Nebius Token Factory",
+    reasoning: true,
+    input: ["text"],
+    contextWindow: 90_000,
+    maxTokens: 8_192,
+  });
+  assert.deepEqual(configured.agents.defaults.models["tokenfactory/zai-org/GLM-5.2"], { alias: "GLM 5.2" });
+  assert.equal(JSON.stringify(configured).includes("do-not-persist"), false);
+
+  const custom = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(custom, { AGENT_PROVIDER: "nebius", NEBIUS_API_KEY: "another-secret", AGENT_MODEL: "example/Custom-Agent-1" });
+  assert.equal(custom.agents.defaults.model.primary, "tokenfactory/example/Custom-Agent-1");
+  assert.equal(custom.models.providers.tokenfactory.models.filter(({ id }) => id === "example/Custom-Agent-1").length, 1);
+  assert.deepEqual(custom.agents.defaults.models["tokenfactory/example/Custom-Agent-1"], {});
+  assert.equal(JSON.stringify(custom).includes("another-secret"), false);
+});
+
+test("OpenAI and Claude use environment placeholders only when authorized", () => {
+  const config = { agents: { defaults: { model: {} } }, models: {}, tools: { alsoAllow: [], deny: ["bundle-mcp"] } };
+  configureOpenClaw(config, { AGENT_PROVIDER: "openai", OPENAI_API_KEY: "do-not-persist", ANTHROPIC_API_KEY: "also-do-not-persist" });
+  const serialized = JSON.stringify(config);
+  assert.equal(config.agents.defaults.model.primary, "openai/gpt-5.6");
+  assert.equal(config.models.providers.openai.apiKey, "${OPENAI_API_KEY}");
+  assert.equal(config.models.providers.claude.apiKey, "${ANTHROPIC_API_KEY}");
+  assert.equal(serialized.includes("do-not-persist"), false);
+  assert.equal(serialized.includes("also-do-not-persist"), false);
+});
+
+test("Codex and Claude configs contain placeholders and all packaged skills without auth caches", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-clients-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const workspace = path.join(root, "workspace");
+  await prepareClients({ HOME: root, BIONEMO_CLIENT_WORKSPACE: workspace, BIONEMO_MCP_API_KEY: "never-write-this", TAVILY_API_KEY: "also-secret" });
+  const codex = await readFile(path.join(root, ".codex", "config.toml"), "utf8");
+  const claude = await readFile(path.join(workspace, ".mcp.json"), "utf8");
+  assert.match(codex, /bearer_token_env_var = "BIONEMO_MCP_API_KEY"/u);
+  assert.match(codex, /\[mcp_servers\.clawbio\][\s\S]+command = "\/opt\/clawbio\/bin\/python"/u);
+  assert.match(codex, /\[mcp_servers\.bionemo_models\]/u);
+  assert.doesNotMatch(codex, /\[mcp_servers\.clawbio_models\]/u);
+  assert.match(codex, /\[mcp_servers\.tavily_web\]/u);
+  assert.match(claude, /"clawbio"[\s\S]+"\/opt\/bionemo\/runtime\/clawbio-mcp\.py"/u);
+  assert.match(claude, /"bionemo_models"/u);
+  assert.doesNotMatch(claude, /"clawbio_models"/u);
+  assert.match(claude, /\$\{BIONEMO_MCP_API_KEY\}/u);
+  assert.match(claude, /"tavily_web"/u);
+  assert.doesNotMatch(claude, /"tavily"\s*:/u);
+  assert.equal(codex.includes("never-write-this"), false);
+  assert.equal(claude.includes("also-secret"), false);
+});
+
+test("Codex and Claude retain the BioNeMo MCP URL when credentials are absent", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-keyless-clients-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const workspace = path.join(root, "workspace");
+  await prepareClients({ HOME: root, BIONEMO_CLIENT_WORKSPACE: workspace });
+  const codex = await readFile(path.join(root, ".codex", "config.toml"), "utf8");
+  const claude = await readFile(path.join(workspace, ".mcp.json"), "utf8");
+  assert.match(codex, new RegExp(DEFAULT_MCP_URL));
+  assert.match(claude, new RegExp(DEFAULT_MCP_URL));
+  assert.equal(codex.includes("bearer_token_env_var"), false);
+  assert.equal(claude.includes("Authorization"), false);
+});

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tavily Research"
+  short_description: "Cited, bounded web research for BioNeMo"
+  default_prompt: "Compare what RCSB PDB and UniProt contribute to protein-structure research using current public sources and citations."

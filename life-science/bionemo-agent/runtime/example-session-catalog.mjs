@@ -1,0 +1,150 @@
+import {
+  NOTEBOOK_CATALOG,
+  NOTEBOOK_SESSION_PREFIX,
+  notebookViewPath,
+} from "../openclaw-plugin/src/notebooks.mjs";
+
+function example(entry) {
+  return Object.freeze({ ...entry, steps: Object.freeze([...entry.steps]) });
+}
+
+export const NOTEBOOK_EXAMPLE_SESSIONS = Object.freeze(NOTEBOOK_CATALOG.map((entry) => example({
+  key: entry.sessionKey,
+  agentId: "bionemo",
+  label: entry.sessionLabel,
+  title: entry.title,
+  description: entry.description,
+  steps: entry.steps,
+  notebookPath: notebookViewPath(entry.slug),
+  prompt: entry.prompt,
+  slug: entry.slug,
+  surface: "bionemo-composed",
+  draftSeedGeneration: 1,
+})));
+
+export const WORKBENCH_EXAMPLE_SESSIONS = Object.freeze([
+  example({
+    key: `${NOTEBOOK_SESSION_PREFIX}openclaw-workbench-tour`,
+    agentId: "bionemo",
+    label: "Example 5 · Discover the workbench",
+    title: "Discover the BioNeMo research workspace",
+    description: "A plain-language introduction to what the assistant can help with and where its research boundaries are.",
+    steps: [
+      "Understand what the reasoning assistant does",
+      "See how scientific models and guided workflows fit in",
+      "Learn how notebooks, uploads, jobs, and artifacts are handled",
+      "Understand availability and research-use boundaries",
+    ],
+    prompt: "I’m new to this BioNeMo research workspace. Give me a concise tour of what I can do here: what the reasoning assistant does, which kinds of scientific models and multi-step workflows are available, how the packaged biology guidance and notebooks help, and how uploads, job progress, previous jobs, and generated artifacts are handled. Explain the research-only boundaries and the difference between a service being available and a result being scientifically valid. I only want an orientation, so please don’t start a scientific job or test an external service.",
+    slug: "openclaw-workbench-tour",
+    surface: "openclaw",
+    draftSeedGeneration: 2,
+  }),
+  example({
+    key: `${NOTEBOOK_SESSION_PREFIX}openclaw-skill-guidance`,
+    agentId: "bionemo",
+    label: "Example 6 · Understand agent skills",
+    title: "Understand how agent skills help",
+    description: "A plain-language explanation of how packaged guidance helps the assistant plan reliable research work.",
+    steps: [
+      "See how task-specific guidance shapes the assistant’s approach",
+      "Compare guidance for catalogs, public research, and scientific workflows",
+      "Distinguish learning about a capability from running it",
+      "Understand why some capabilities depend on optional software or services",
+    ],
+    prompt: "How do the packaged skills in this workspace help you decide what to do? Explain in plain language how task-specific guidance supports biology catalog searches, public-source research, and multi-step scientific studies. Explain why learning about a capability is different from running it, how workspace-specific rules take precedence, and why a capability may be documented even when optional software or a service is unavailable. Please keep this as a nonclinical explanation and don’t run anything yet.",
+    slug: "openclaw-skill-guidance",
+    surface: "skills",
+    draftSeedGeneration: 2,
+  }),
+  example({
+    key: `${NOTEBOOK_SESSION_PREFIX}clawbio-readonly-catalog`,
+    agentId: "bionemo",
+    label: "Example 7 · Find a GWAS workflow",
+    title: "Find a workflow for a public genetic variant",
+    description: "Explore the packaged GWAS capability and its expected outputs before deciding whether to run it.",
+    steps: [
+      "Find the capability that accepts a public dbSNP identifier",
+      "Review the public association and expression sources it covers",
+      "Understand its reports, tables, figures, and reproducibility outputs",
+      "Check whether the bundled example is ready without running it",
+    ],
+    prompt: "I’m planning a research-only lookup for a public dbSNP variant such as rs3798220. What packaged GWAS workflow is available, which public association and expression sources does it cover, what input does it expect, and what reports, tables, figures, and reproducibility files would it produce? Also tell me whether its bundled example is ready in this workspace. This is a read-only review: please don’t run the lookup or make a clinical recommendation.",
+    slug: "clawbio-readonly-catalog",
+    surface: "clawbio-readonly",
+    draftSeedGeneration: 2,
+  }),
+  example({
+    key: `${NOTEBOOK_SESSION_PREFIX}clawbio-gwas-demo`,
+    agentId: "bionemo",
+    label: "Example 8 · Try a GWAS lookup",
+    title: "Generate an offline report for rs3798220",
+    description: "Create a reproducible research report for a public variant using bundled reference data.",
+    steps: [
+      "Use the bundled public data for rs3798220",
+      "Summarize the variant annotation",
+      "Review the included association and expression findings",
+      "List the generated research files and interpretation limits",
+    ],
+    prompt: "Please generate the bundled offline variant report for public dbSNP variant rs3798220 using the reference data included with this workspace. Summarize the variant annotation and the GWAS, PheWAS, eQTL, and fine-mapping findings present in the report. List the generated report, tables, figures, raw results, and reproducibility files with their output locations. Clearly identify the input as public and the output as research-only, and do not interpret it as diagnosis, personal risk prediction, or treatment guidance.",
+    slug: "clawbio-gwas-demo",
+    surface: "clawbio-demo",
+    draftSeedGeneration: 2,
+  }),
+  example({
+    key: `${NOTEBOOK_SESSION_PREFIX}tavily-public-research`,
+    agentId: "bionemo",
+    label: "Example 9 · Compare PDB and UniProt",
+    title: "Compare RCSB PDB and UniProt",
+    description: "Use current public sources to understand how two widely used protein resources complement each other.",
+    steps: [
+      "Find up to five authoritative pages from the two requested domains",
+      "Identify what each resource contributes",
+      "Compare their roles in protein-structure research",
+      "Cite every page and identify either domain if it is missing",
+    ],
+    prompt: "Find up to five current, authoritative public pages from only `rcsb.org` and `uniprot.org` that explain what RCSB PDB and UniProt each contribute to protein-structure research. Give me a concise side-by-side comparison and cite the title and URL of every page you use. Separate statements supported by the pages from your own synthesis. If the results contain no page from either requested domain, say which domain was missing. Please don’t start a scientific model run.",
+    slug: "tavily-public-research",
+    surface: "tavily",
+    draftSeedGeneration: 2,
+  }),
+  example({
+    key: `${NOTEBOOK_SESSION_PREFIX}bionemo-model-inventory`,
+    agentId: "bionemo",
+    label: "Example 10 · Check available models",
+    title: "See which BioNeMo models are ready",
+    description: "Get a readable snapshot of the configured scientific models without launching computation.",
+    steps: [
+      "Inspect the configured model inventory",
+      "Report total and ready counts",
+      "List each model’s name, family, and readiness",
+      "Explain what readiness does and does not mean",
+    ],
+    prompt: "Which BioNeMo models are available right now? Give me a read-only snapshot with the total number of services, the number marked ready, and a readable table containing each service’s public ID, display name, family, and readiness. Explain what readiness does and does not mean, and confirm whether checking the inventory launches any scientific computation or creates a model job.",
+    slug: "bionemo-model-inventory",
+    surface: "bionemo-model-inventory",
+    draftSeedGeneration: 2,
+  }),
+  example({
+    key: `${NOTEBOOK_SESSION_PREFIX}molmim-direct-mcp`,
+    agentId: "bionemo",
+    label: "Example 11 · Explore gefitinib analogs",
+    title: "Generate two QED-optimized gefitinib analogs",
+    description: "Start from gefitinib and compare two similar candidate molecules optimized for a simple drug-likeness score.",
+    steps: [
+      "Use the exact gefitinib starting structure",
+      "Generate two candidates optimized for QED",
+      "Retain at least 0.7 similarity to the starting molecule",
+      "Compare both candidates, scores, artifacts, and limitations",
+    ],
+    prompt: "Starting from gefitinib SMILES `COC1=C(C=C2C(=C1)N=CN=C2NC3=CC(=C(C=C3)F)Cl)OCCCN4CCOCC4`, generate two similar candidate molecules optimized for QED while keeping at least 0.7 similarity to the starting molecule. Compare both candidates and their optimization scores, link any generated artifacts, and explain the limitations. This is research-only work. I understand that these computational candidates do not establish binding, safety, efficacy, therapeutic value, or clinical utility and require independent chemical and experimental validation.",
+    slug: "molmim-direct-mcp",
+    surface: "bionemo-molmim",
+    draftSeedGeneration: 2,
+  }),
+]);
+
+export const EXAMPLE_SESSION_CATALOG = Object.freeze([
+  ...NOTEBOOK_EXAMPLE_SESSIONS,
+  ...WORKBENCH_EXAMPLE_SESSIONS,
+]);
