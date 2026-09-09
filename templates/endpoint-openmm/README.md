@@ -150,11 +150,11 @@ platform, precision, ensemble, energies, simulated time, wall time, and
 `integration_ns_per_day`. Artifacts include the request, result, logs, positions
 preview, and hashes.
 
-Qualification on 2026-09-08 used regular L40S. `latest` resolved to official
+Qualification was repeated on 2026-09-09 using regular L40S. `latest` resolved to official
 OpenMM `8.1.1` at digest
 `sha256:f4943aef3df103f05d0e502ea0711fce4a32a92366585b0f5bd7a5b01c9b5b59`;
-REST and MCP runs both succeeded and their result artifacts were hash-verified
-through REST and in the mounted bucket.
+independent 1,000-step REST and MCP runs both used CUDA and their result
+artifacts were hash-verified through REST and in the mounted bucket.
 
 This endpoint implements a synthetic periodic argon system, not arbitrary
 biomolecular inputs. `LangevinMiddle` is NVT; `Verlet` is NVE. Treat its

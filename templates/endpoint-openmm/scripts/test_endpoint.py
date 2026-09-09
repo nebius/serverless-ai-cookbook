@@ -81,7 +81,12 @@ async def mcp_run(
     payload: dict[str, Any],
     timeout_seconds: int,
 ) -> dict[str, Any]:
-    async with httpx2.AsyncClient(headers={"Authorization": f"Bearer {token}"}) as http_client:
+    # MCP streams can remain idle while a scientific run is executing. The
+    # explicit polling deadline below bounds the operation; a transport-level
+    # read timeout would incorrectly abort otherwise healthy long-running jobs.
+    async with httpx2.AsyncClient(
+        headers={"Authorization": f"Bearer {token}"}, timeout=None
+    ) as http_client:
         async with streamable_http_client(f"{base_url}/mcp", http_client=http_client) as streams:
             read, write = streams
             async with ClientSession(read, write) as session:
