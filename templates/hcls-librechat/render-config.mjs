@@ -11,14 +11,17 @@ const tokenFactoryApiKey = process.env.NEBIUS_API_KEY
   ? "'${NEBIUS_API_KEY}'"
   : "'user_provided'";
 
-const scientificModelsMcpAuthentication = process.env.SCIENTIFIC_MODELS_API_KEY
-  ? "    headers:\n      Authorization: 'Bearer ${SCIENTIFIC_MODELS_API_KEY}'"
-  : `    headers:
+// Per-user gateway key (recommended baseline): each chat user supplies their own
+// ordinary inference key in MCP Settings; startup stays false because discovery
+// is caller-specific. Double braces resolve the current user's custom variable.
+const scientificModelsMcpAuthentication = `    startup: false
+    requiresOAuth: false
+    headers:
       Authorization: 'Bearer {{SCIENTIFIC_MODELS_API_KEY}}'
     customUserVars:
       SCIENTIFIC_MODELS_API_KEY:
-        title: 'Scientific model gateway key'
-        description: 'Paste the non-admin key issued for the scientific model gateway.'
+        title: 'Scientific platform API key'
+        description: 'Your ordinary model-access key, without the Bearer prefix.'
         sensitive: true`;
 
 const gromacsAuthentication = process.env.AUTH_TOKEN
@@ -35,6 +38,11 @@ const config = `version: 1.3.15
 cache: true
 interface:
   customWelcome: 'Nebius Scientific AI Agent brings protein structure, molecular discovery, biomedical imaging, and GPU simulation into one guided workbench.'
+  skills:
+    use: true
+    create: false
+    share: false
+    public: false
   modelSelect: true
   parameters: true
   defaultPinnedTools: ['mcp']
@@ -57,7 +65,7 @@ interface:
 endpoints:
   agents:
     allowedProviders: ['Nebius Token Factory', 'Nebius Scientific Models']
-    capabilities: [tools, context, chain]
+    capabilities: [skills, tools, artifacts, context, chain]
     recursionLimit: 20
     maxRecursionLimit: 40
     toolApproval:
@@ -139,14 +147,14 @@ modelSpecs:
         endpoint: agents
         agent_id: 'agent_audio_transcription_tutorial'
 mcpServers:
-  scientific_models:
+  bionemo-models:
     title: 'Nebius Scientific Model Gateway'
     description: 'Authorized scientific-model catalog and operations for this Nebius Scientific AI Agent deployment.'
     type: streamable-http
     url: '\${SCIENTIFIC_MODELS_MCP_URL}'
 ${scientificModelsMcpAuthentication}
     initTimeout: 30000
-    timeout: 900000
+    timeout: 120000
     serverInstructions: true
   gromacs:
     title: 'GROMACS GPU Workflows'

@@ -32,7 +32,12 @@ def test_scientific_gateway_and_gromacs_are_preconfigured() -> None:
     assert "url: '\\${SCIENTIFIC_MODELS_MCP_URL}'" in renderer
     assert "url: '\\${GROMACS_MCP_URL}'" in renderer
     assert "Authorization: 'Bearer ${AUTH_TOKEN}'" in renderer
-    assert "Authorization: 'Bearer ${SCIENTIFIC_MODELS_API_KEY}'" in renderer
+    # Per-user gateway key (recommended baseline): the MCP server resolves the
+    # current user's custom variable and initializes only after key entry.
+    assert "Authorization: 'Bearer {{SCIENTIFIC_MODELS_API_KEY}}'" in renderer
+    assert "startup: false" in renderer
+    assert "requiresOAuth: false" in renderer
+    assert "customUserVars" in renderer
     assert "Authorization: 'Bearer {{GROMACS_MCP_TOKEN}}'" in renderer
 
 
