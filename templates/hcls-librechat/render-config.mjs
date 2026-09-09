@@ -30,16 +30,6 @@ const scientificModelsMcpAuthentication = process.env.SCIENTIFIC_MODELS_API_KEY
         description: 'Your ordinary model-access key, without the Bearer prefix.'
         sensitive: true`;
 
-const gromacsAuthentication = process.env.AUTH_TOKEN
-  ? "    headers:\n      Authorization: 'Bearer ${AUTH_TOKEN}'"
-  : `    headers:
-      Authorization: 'Bearer {{GROMACS_MCP_TOKEN}}'
-    customUserVars:
-      GROMACS_MCP_TOKEN:
-        title: 'GROMACS Serverless endpoint token'
-        description: 'Paste the token generated when the GROMACS GPU endpoint was created.'
-        sensitive: true`;
-
 const config = `version: 1.3.15
 cache: true
 interface:
@@ -124,13 +114,6 @@ modelSpecs:
       preset:
         endpoint: agents
         agent_id: 'agent_molecular_design'
-    - name: 'molecular-dynamics'
-      label: 'Molecular Dynamics · GROMACS'
-      description: 'Prepare, submit, monitor, and retrieve bounded GPU molecular-dynamics runs.'
-      showOnLanding: true
-      preset:
-        endpoint: agents
-        agent_id: 'agent_molecular_dynamics'
     - name: 'biomedical-imaging'
       label: 'Biomedical Imaging'
       description: 'Explore the live chest X-ray reasoning and CT segmentation models as research workflows.'
@@ -161,15 +144,6 @@ mcpServers:
 ${scientificModelsMcpAuthentication}
     initTimeout: 30000
     timeout: 120000
-    serverInstructions: true
-  gromacs:
-    title: 'GROMACS GPU Workflows'
-    description: 'Bounded molecular-dynamics runs on the configured Nebius Serverless GPU endpoint.'
-    type: streamable-http
-    url: '\${GROMACS_MCP_URL}'
-${gromacsAuthentication}
-    initTimeout: 30000
-    timeout: 900000
     serverInstructions: true
 `;
 

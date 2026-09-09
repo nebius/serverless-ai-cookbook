@@ -37,21 +37,11 @@ const genomicsTools = [
   ...['generate_dna_native', 'infer_altumage_native', 'infer_phenoage_native'].map(mcpTool),
 ];
 
-const gromacsTools = [
-  'get_capabilities_mcp_gromacs',
-  'submit_run_mcp_gromacs',
-  'get_run_mcp_gromacs',
-  'list_runs_mcp_gromacs',
-  'cancel_run_mcp_gromacs',
-  'list_run_artifacts_mcp_gromacs',
-];
-
 const allScientificTools = [...new Set([
   ...structureTools,
   ...molecularDesignTools,
   ...biomedicalImagingTools,
   ...genomicsTools,
-  ...gromacsTools,
 ])];
 
 function agents() {
@@ -64,9 +54,9 @@ function agents() {
 
 Present the catalog in these six guided areas: Protein Folding & Structure; Molecular Docking & Design; Molecular Dynamics; Biomedical Imaging; Genomics & Biological Age; and Audio Transcription. The scientific gateway currently exposes models including AltumAge, Boltz2, Cosmos3 Nano, DiffDock, Evo2-40B, GenMol, MolMIM, MSA Search PDB70, chest X-ray reasoning, CT segmentation, OpenFold2, OpenFold3, PhenoAge, ProteinMPNN, Qwen3-8B, and SDXL. Verify this list live because availability can change.
 
-For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. State limitations and ask before submitting compute. Use the GROMACS tools for molecular dynamics, the scientific gateway for model operations, and preserve operation IDs for reproducibility. Never present scientific model output as clinical advice or experimental validation.`,
+For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. State limitations and ask before submitting compute. Use the scientific gateway for model operations, and preserve operation IDs for reproducibility. Never present scientific model output as clinical advice or experimental validation.`,
       tools: allScientificTools,
-      mcpServerNames: [scientificModelsServerName, 'gromacs'],
+      mcpServerNames: [scientificModelsServerName],
       conversation_starters: [
         'Show the scientific model catalog grouped by protein structure, docking and design, imaging, genomics, and generative models.',
         'Help me choose a model and a reproducible benchmark for my scientific task.',
@@ -102,20 +92,6 @@ Then give one concrete, bounded example and a benchmark plan: use the same prepa
       conversation_starters: [
         'List the available docking and molecular-design models with their live operations.',
         'Outline a reproducible DiffDock versus Boltz2 binding benchmark without submitting it yet.',
-      ],
-    },
-    {
-      id: 'agent_molecular_dynamics',
-      name: 'Molecular Dynamics · GROMACS',
-      description: 'Guided bounded GROMACS GPU workflows on Nebius Serverless.',
-      instructions: `You are the Nebius Scientific AI Agent Molecular Dynamics tutorial. Start by listing the live GROMACS capabilities, accepted inputs, resource limits, and produced artifacts. Walk through a bounded example from system preparation to minimization, equilibration, production, and artifact review.
-
-For a benchmark, hold topology, force field, integrator, timestep, ensemble, hardware shape, and run length fixed. Compare ns/day, energy conservation, temperature/pressure stability, trajectory integrity, and cost; do not compare runs with different scientific protocols as if they were model results. Before submitting compute, summarize inputs and obtain explicit confirmation. Preserve run IDs, list artifacts after completion, and distinguish service output from scientific validity.`,
-      tools: gromacsTools,
-      mcpServerNames: ['gromacs'],
-      conversation_starters: [
-        'List the available GROMACS capabilities and explain the safety limits.',
-        'Prepare a small argon GPU smoke simulation, ask before submitting it, then monitor it and summarize the artifacts.',
       ],
     },
     {
