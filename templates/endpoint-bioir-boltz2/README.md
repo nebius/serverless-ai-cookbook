@@ -12,7 +12,7 @@ difficulty: advanced
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fbionemo-inference-runtime-boltz2%3A0.2.0&amp;targetPort=8888&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;command=%2Fusr%2Flocal%2Fbin%2Fbioir-notebook"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fbionemo-inference-runtime-boltz2%3A0.2.0&amp;targetPort=8888&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;command=%2Fusr%2Flocal%2Fbin%2Fbioir-notebook&amp;env=JUPYTER_PASSWORD%3Dbionemo-demo"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -36,15 +36,15 @@ Face credential.
 The published launcher is
 `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/bionemo-inference-runtime-boltz2@sha256:c5499058a5e0c94712ed427ded910b422e233f0efddea1b37e5d4278f057c8fe`.
 
-The deployment form is prefilled for port `8888`, one L40S, and 500 GiB of
-disk. At first start the server writes a generated Jupyter password to the
-private endpoint logs. Copy it, open the port-`8888` public endpoint URL from
-the Console, sign in, and open `notebooks/bir_boltz2_tutorial.ipynb`. Set
-`JUPYTER_PASSWORD` in the endpoint environment before creation if you prefer a
-password you choose. Cold start includes package installation and model assets;
-the model download begins at the processor-build cell, not when Jupyter opens.
-The L40S is in BIR's released support matrix; choose a different compatible
-platform and preset if that better suits your project.
+The deployment form is prefilled for port `8888`, one L40S, 500 GiB of disk,
+and `JUPYTER_PASSWORD=bionemo-demo`. Open the port-`8888` public endpoint URL
+from the Console, enter `bionemo-demo`, then open
+`notebooks/bir_boltz2_tutorial.ipynb`. Replace that value in the form before
+creation if the endpoint will be exposed beyond a disposable tutorial. Cold
+start includes package installation and model assets; the model download begins
+at the processor-build cell, not when Jupyter opens. The L40S is in BIR's
+released support matrix; choose a different compatible platform and preset if
+that better suits your project.
 
 ## What this demonstrates
 
@@ -62,9 +62,8 @@ copy the gated early-access notebook or any of its model-specific examples.
 ## Open the tutorial notebook
 
 1. Create the one-click endpoint and wait for it to become `RUNNING`.
-2. In the endpoint logs, find `Generated Jupyter password (shown once)` and
-   copy the value. The value is generated per endpoint unless you set
-   `JUPYTER_PASSWORD` yourself.
+2. The one-click form sets `JUPYTER_PASSWORD=bionemo-demo`. Change it before
+   creation if needed.
 3. In the Console, open the public port-`8888` endpoint URL, enter that
    password, then open `notebooks/bir_boltz2_tutorial.ipynb`.
 4. Run the cells in order. The processor-build cell is the first one that
@@ -190,8 +189,10 @@ scripts/deploy-endpoint.sh
 
 ## Troubleshooting
 
-- **Jupyter shows a password prompt** — use the generated password from the
-  endpoint logs, or set `JUPYTER_PASSWORD` before starting the endpoint.
+- **Jupyter shows a password prompt** — use the `JUPYTER_PASSWORD` shown in
+  the endpoint environment. The one-click form defaults it to `bionemo-demo`.
+  A manual deployment that omits the variable emits a generated value once in
+  the endpoint logs.
 - **BIR installation fails at boot** — NVIDIA's public package has not yet
   been published, or the selected `BIOIR_VERSION` is unavailable. Set
   `BIOIR_WHEEL_URL` only to an official public wheel if a specific wheel is
