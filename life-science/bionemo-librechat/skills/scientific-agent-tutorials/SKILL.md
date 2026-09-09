@@ -1,6 +1,6 @@
 ---
 name: scientific-agent-tutorials
-description: Start a scientific research workflow by choosing a model family, following a working example, or benchmarking related models through the scientific model gateway and GROMACS MCP tools.
+description: Start a scientific research workflow by choosing a model family, preparing a schema-accurate example, or benchmarking related models through the scientific model gateway.
 license: Apache-2.0 AND CC-BY-4.0
 ---
 
@@ -13,6 +13,18 @@ rules. Report the model ID, runtime variant, operation/request ID, elapsed
 time, output artifact references, and limits for every run. Research-only and
 non-clinical. Tutorial cards teach first and run only after the user chooses a
 workflow; never submit, poll or retry jobs as a side effect of opening a card.
+
+## Available file workflows
+
+This deployment has no compatible bridge from LibreChat attachments to gateway
+artifacts and no connected structure viewer. Inline model inputs and existing
+caller-owned finalized gateway artifacts can be used through the published
+tools. An attachment or local path cannot be submitted as an artifact reference.
+For file-based tutorials, explain the preparation steps and stop before upload
+or submission unless a verified file helper is available. Do not claim to upload
+attachments, verify downloaded files, create downloadable UI links or display
+structures. Never put large file bytes or signed handles into chat to bypass the
+missing bridge. The legacy artifact/viewer helpers are incompatible with fs2.
 
 ## Protein folding and structure
 
@@ -46,9 +58,8 @@ the live catalog is reported as unavailable, not substituted.
 
 ## GPU molecular dynamics
 
-GROMACS runs go through the configured GROMACS MCP server (separate endpoint
-and token): prepare, submit once, monitor, and retrieve bounded GPU MD runs
-via its own tools and acceptance guidance.
+No GROMACS MCP server is connected in this deployment. Explain that GPU
+molecular-dynamics execution is unavailable here if requested.
 
 ## Inventory and workspace
 

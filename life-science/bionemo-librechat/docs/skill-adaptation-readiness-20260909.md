@@ -55,6 +55,41 @@ It is not the current schema-discovery status; use `get_model_schema` for that.
 
 ## Notes / remaining integration gaps
 
+### Continuation acceptance, 2026-09-09 11:55–12:04 UTC
+
+Fresh SDK discovery validated all 46 tools / 27 model contracts. The old
+`evidence-typed/model-schemas.json` has empty batch schema objects despite its
+zero-error summary; use the new private `live-20260909-continuation/model-schemas.json`.
+
+| Model | Current live result |
+| --- | --- |
+| diffdock | Succeeded, `91c4bef9-9dcf-4dfb-a1f8-44eabd0d646e`; one SDF ligand pose and finite confidence, result retrieved; ~6.57 s admission-to-completion |
+| msa-search-pdb70 | Failed, `c622c651-b23a-4093-86eb-a196aec6a2cc`; upstream HTTP 500, three platform attempts, no error detail |
+| proteinmpnn, genmol, molmim, openfold3, qwen3-8b | Live published examples passed JSON Schema but named calls returned MCP `isError: true`, generic “Error executing tool” and no operation ID; admission outcome is unknown, not proof no job was created |
+| esmfold2 | Succeeded, `956415b1-7b3f-4540-9ffb-eb710356dde0`; actual input and canonical manifest uploaded/finalized, client disconnected and resumed the saved ID, semantic validation passed, output manifest and both output files downloaded and SHA-256/size verified |
+
+The intentional OpenFold2 extra-field check returned JSON-RPC `-32602`,
+`data.type: model_input_validation`, with the allowed field list. This confirms
+the advertised pre-admission validation path, independently of HTTP status.
+These are customer SDK checks, not LibreChat UI acceptance or multi-user proof.
+
+Client helpers: `tests/live_serving.py` and `tests/live_batch.py`. Evidence must
+remain outside source control, with the same directory/key used on reconnect.
+They do not acknowledge or cancel operations. Four offline tests cover MCP
+error envelopes, canonical JSON and digest/length mismatches. Skill tests: 8 pass.
+
+The gateway/tutorial/batch skills now explicitly disable attachment-bridge and
+viewer claims for this deployment. The old helper code remains legacy, not a
+compatible fs2 integration. Saved scientific agent instructions are supplied in
+`scientific-agent-instructions.md` for the scientific image seeder.
+
+Remaining backend errors require operator investigation using the private
+receipts, submission times and idempotency keys; no platform code was changed.
+Multi-user isolation needs two distinct operator-provided customer keys, which
+are not available in this session. Other batch Apps and large-file signed-handle
+acceptance remain untested. The user has additionally requested a full model
+picker/tutorial usability review and integrated redesign on the branding branch.
+
 - The previous public-schema gap is closed by `get_model_schema` and flat typed
   named tools. Twenty-five current Apps publish validated examples. AltumAge
   and NV-Segment CT deliberately require complete domain assets rather than
