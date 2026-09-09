@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1.7
+FROM node:24.16.0-bookworm-slim@sha256:2c87ef9bd3c6a3bd4b472b4bec2ce9d16354b0c574f736c476489d09f560a203
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl git tini python3 python3-pip python3-venv \
+    build-essential pkg-config libssl3 libcurl4 libgomp1 libgl1 libnuma1 \
+    unzip zip jq procps less file ffmpeg pandoc \
+    && rm -rf /var/lib/apt/lists/*
+ADD --checksum=sha256:c13e85583fc393e0b9f47911797f4e0f724cd6a563cd719ee3360aa592a96f16 \
+    https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian12-8.0.14.tgz /tmp/mongodb.tgz
+RUN tar -xzf /tmp/mongodb.tgz --strip-components=2 -C /usr/local/bin --wildcards '*/bin/mongod' \
+    && rm /tmp/mongodb.tgz
+ADD --checksum=sha256:b3ab0298cd3626c3e07d8a51180ddb95df1858c22cc2f6d9d6370798622cdf1d \
+    https://codeload.github.com/danny-avila/LibreChat/tar.gz/3f27726e10bdd35d98f5fbbae7aab35af94c8436 /tmp/librechat.tgz
+WORKDIR /app
+RUN tar -xzf /tmp/librechat.tgz --strip-components=1 -C /app && rm /tmp/librechat.tgz
+ENV HUSKY=0
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+RUN NODE_OPTIONS=--max-old-space-size=12288 npm run build:packages
