@@ -1,5 +1,10 @@
 # Skill adaptation readiness report — 2026-09-09
 
+The later full participant sweep, including all named batch models, the
+notebook/GLM path, and forwardable BioNeMo MCP defects, is in
+`participant-mcp-readiness-20260909.md`. Its results supersede the partial live
+verification status in this historical report.
+
 Adaptation of the packed agent skills to the scientific model gateway
 (`https://89.169.99.188`), per `/home/tux/model-skill-adaptation-instructions.md`.
 Branch `agent/bionemo-librechat-20260907` (commits `504f5e5` baseline,

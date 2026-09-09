@@ -3,6 +3,10 @@
 Requires mcp 2.x, httpx2 and jsonschema. Read FS2_MCP_URL and FS2_API_KEY from
 the environment. Keep --evidence outside source control. Reuse that directory
 to resume saved operations (including after a process/client disconnect).
+
+Execution is sequential by default because a participant key can have a
+bounded outstanding-operation allowance. Use --parallel-submissions only when
+the tested account is explicitly provisioned for concurrent admission.
 """
 
 import argparse
@@ -66,6 +70,32 @@ def announce(model, record):
     print(json.dumps({"model": model, "state": record.get("state"),
                       "operation_id": record.get("operation_id"),
                       "result_saved": "result" in record}), flush=True)
+
+
+async def settle(client, records, evidence, wait_seconds):
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        pending = False
+        for model, record in records.items():
+            if not record.get("operation_id") or "result" in record:
+                continue
+            path = evidence / (model + ".json")
+            operation = await call(client, "get_operation", {"operation_id": record["operation_id"]})
+            previous = record["state"]
+            record.update(state=operation["status"], operation=operation, checked_at=now())
+            if operation["status"] == "succeeded" and operation.get("result_available"):
+                result = await call(client, "get_operation_result", {"operation_id": record["operation_id"]})
+                if result["operation"]["id"] != record["operation_id"] or result.get("result") is None:
+                    raise ValueError("Result identity mismatch or missing result")
+                record["result"] = result["result"]
+            elif operation["status"] not in TERMINAL or operation["status"] == "succeeded":
+                pending = True
+            save(path, record)
+            if previous != record["state"] or "result" in record:
+                announce(model, record)
+        if not pending or time.monotonic() >= deadline:
+            break
+        await asyncio.sleep(min(10, max(0, deadline - time.monotonic())))
 
 
 async def run(args):
@@ -151,32 +181,20 @@ async def run(args):
                         record.update(state="tool_error", error=str(exc))
                     save(path, record)
                 announce(model, record)
+                if args.execute and not args.parallel_submissions:
+                    await settle(client, {model: record}, args.evidence, args.wait_seconds)
+                    if record.get("state") not in TERMINAL or (
+                        record.get("state") == "succeeded" and "result" not in record
+                    ):
+                        # Preserve the saved operation for a later resume. Do
+                        # not submit another model while this key still has an
+                        # unfinished operation occupying its admission slot.
+                        return
 
             if not args.execute:
                 return
-            deadline = time.monotonic() + args.wait_seconds
-            while True:
-                pending = False
-                for model, record in records.items():
-                    if not record.get("operation_id") or "result" in record:
-                        continue
-                    path = args.evidence / (model + ".json")
-                    operation = await call(client, "get_operation", {"operation_id": record["operation_id"]})
-                    previous = record["state"]
-                    record.update(state=operation["status"], operation=operation, checked_at=now())
-                    if operation["status"] == "succeeded" and operation.get("result_available"):
-                        result = await call(client, "get_operation_result", {"operation_id": record["operation_id"]})
-                        if result["operation"]["id"] != record["operation_id"] or result.get("result") is None:
-                            raise ValueError("Result identity mismatch or missing result")
-                        record["result"] = result["result"]
-                    elif operation["status"] not in TERMINAL or operation["status"] == "succeeded":
-                        pending = True
-                    save(path, record)
-                    if previous != record["state"] or "result" in record:
-                        announce(model, record)
-                if not pending or time.monotonic() >= deadline:
-                    break
-                await asyncio.sleep(min(10, max(0, deadline - time.monotonic())))
+            if args.parallel_submissions:
+                await settle(client, records, args.evidence, args.wait_seconds)
 
 
 if __name__ == "__main__":
@@ -187,5 +205,6 @@ if __name__ == "__main__":
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--refresh-catalog", action="store_true")
     parser.add_argument("--check-invalid", action="store_true")
+    parser.add_argument("--parallel-submissions", action="store_true")
     parser.add_argument("--wait-seconds", type=float, default=60)
     asyncio.run(run(parser.parse_args()))
