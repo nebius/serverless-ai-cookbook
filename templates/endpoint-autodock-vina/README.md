@@ -128,9 +128,13 @@ commands, or fetch URLs.
 
 A successful run produces ranked `poses.pdbqt`, `scores.csv`, a docking summary,
 input copies, and SHA-256 metadata. Results report Vina version, box, search
-parameters, and energy components in kcal/mol. The public 1IEP/STI acceptance run
-on the earlier REST image produced a best Vina affinity of approximately
-`-13.263 kcal/mol`; use it as a plumbing sanity check, not a universal score.
+parameters, and energy components in kcal/mol. Qualification on 2026-09-09 used
+the public wrapper image at digest
+`sha256:8feef150844ff626dfd3e9f21878c6d1da5a4cc5ebae2b343dc2319002b92332`.
+Independent REST and MCP 1IEP/STI runs each produced a best Vina affinity of
+`-13.263 kcal/mol`; both result artifacts were hash-verified through REST and all
+artifacts were confirmed in the mounted bucket. Use this as a plumbing sanity
+check, not a universal score.
 
 Docking scores and poses are research heuristics. They require independent
 chemical preparation, protonation, search-space, and experimental validation.
