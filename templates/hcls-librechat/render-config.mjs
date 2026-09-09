@@ -63,20 +63,32 @@ if (process.env.NEBIUS_API_KEY && process.env.NEBIUS_API_KEY !== 'user_provided'
 const providerModels = [
   { endpoint: 'Nebius Token Factory Dedicated', group: 'Dedicated Token Factory', models: dedicatedTokenFactoryModels },
   { endpoint: 'Nebius Token Factory', group: 'Public Token Factory', models: availablePublicTokenModels },
+  { endpoint: 'openAI', group: 'OpenAI', models: [
+    ['gpt-6-astra', 'GPT-6 Astra'], ['gpt-5.6', 'GPT-5.6 Sol'],
+    ['gpt-5.6-terra', 'GPT-5.6 Terra'], ['gpt-5.6-luna', 'GPT-5.6 Luna'],
+  ] },
+  { endpoint: 'anthropic', group: 'Claude', models: [
+    ['claude-opus-5', 'Claude Opus 5'], ['claude-sonnet-5', 'Claude Sonnet 5'],
+    ['claude-haiku-4-5', 'Claude Haiku 4.5'],
+  ] },
 ];
 
 const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => models.map(([model, label], index) => {
   const isDefault = endpoint === 'Nebius Token Factory Dedicated' && index === 0;
   return {
     name: isDefault ? 'nebius-scientific-ai-agent' : `science-${endpoint}-${model}`.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase(),
-    label, group, groupIcon: '/assets/token-factory.svg',
-    iconURL: '/assets/token-factory.svg',
+    label, group, groupIcon: endpoint === 'anthropic' ? 'anthropic' : endpoint === 'openAI' ? 'openAI' : '/assets/token-factory.svg',
+    iconURL: endpoint === 'anthropic' || endpoint === 'openAI' ? endpoint : '/assets/token-factory.svg',
     default: isDefault, showOnLanding: false, showIconInHeader: true,
     description: endpoint === 'Nebius Token Factory Dedicated'
       ? 'Dedicated event capacity · scientific tools and web research'
-      : 'Public Token Factory · scientific tools and web research',
+      : endpoint === 'Nebius Token Factory'
+        ? 'Public Token Factory · scientific tools and web research'
+        : 'Scientific tools · connect your provider key',
     mcpServers: ['bionemo-models', 'tavily', 'structure-viewer', 'environment-execution'], skills: true, artifacts: true,
-    preset: { endpoint, model, modelLabel: label, promptPrefix: instructions },
+    preset: { endpoint, model, modelLabel: label, promptPrefix: instructions,
+      ...(endpoint === 'openAI' ? { useResponsesApi: true } : {}),
+    },
   };
 }));
 
@@ -95,10 +107,12 @@ const config = {
   },
   endpoints: {
     agents: {
-      allowedProviders: ['Nebius Token Factory Dedicated', 'Nebius Token Factory'],
+      allowedProviders: ['Nebius Token Factory Dedicated', 'Nebius Token Factory', 'openAI', 'anthropic'],
       capabilities: ['skills', 'tools', 'artifacts', 'context', 'chain', 'deferred_tools'],
       recursionLimit: 30, maxRecursionLimit: 50, toolApproval: { enabled: false },
     },
+    openAI: { titleConvo: true, titleModel: 'gpt-5.6-luna' },
+    anthropic: { titleConvo: true, titleModel: 'claude-haiku-4-5' },
     custom: [{
       name: 'Nebius Token Factory Dedicated',
       iconURL: '/assets/token-factory.svg',

@@ -67,7 +67,9 @@ ENV HOST=0.0.0.0 \
     LOG_TO_FILE=false \
     SEARCH=false \
     SCHEDULES_SINGLE_PROCESS=true \
-    ENDPOINTS=agents,custom \
+    ENDPOINTS=agents,custom,openAI,anthropic \
+    OPENAI_API_KEY=user_provided \
+    ANTHROPIC_API_KEY=user_provided \
     SCIENTIFIC_MODELS_API_BASE_URL=https://89.169.99.188/v1 \
     SCIENTIFIC_MODELS_MCP_URL=https://89.169.99.188/mcp
 

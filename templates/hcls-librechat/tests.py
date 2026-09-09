@@ -143,7 +143,8 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
 def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp_path) -> None:
     config, _ = render_config(tmp_path)
     specs = config["modelSpecs"]["list"]
-    assert {item["group"] for item in specs} == {"Dedicated Token Factory", "Public Token Factory"}
+    assert {item["group"] for item in specs} == {
+        "Dedicated Token Factory", "Public Token Factory", "OpenAI", "Claude"}
     assert len([item for item in specs if item["group"] == "Dedicated Token Factory"]) == 2
     assert len([item for item in specs if item["group"] == "Public Token Factory"]) > 2
     assert len([item for item in specs if item["default"]]) == 1
@@ -153,7 +154,8 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
         assert item["mcpServers"] == ["bionemo-models", "tavily", "structure-viewer", "environment-execution"]
         assert INSTRUCTIONS.read_text().strip() in item["preset"]["promptPrefix"]
         assert item["preset"]["model"] not in {"evo2-40b", "boltz2", "openfold2", "sdxl", "nv-segment-ct"}
-        assert not item["preset"]["model"].lower().startswith("qwen/")
+        if item["group"] in {"Dedicated Token Factory", "Public Token Factory"}:
+            assert not item["preset"]["model"].lower().startswith("qwen/")
         assert "agent_id" not in item["preset"]
     assert config["interface"]["modelSelect"] is False  # curated specs remain selectable
     assert [item["name"] for item in config["endpoints"]["custom"]] == [

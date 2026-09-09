@@ -2,9 +2,10 @@
 
 A scientific workspace built on pinned LibreChat. Dedicated GLM 5.3 is the
 event default; dedicated Nemotron and tested public Nebius Token Factory models
-remain selectable. The same scientific gateway, research skills and Tavily
-search stay attached when you change models. Evo2, Boltz2, DiffDock and other
-scientific models are tools, not chat-provider choices.
+remain selectable. Participants can also bring their own OpenAI or Anthropic
+API key. The same scientific gateway, research skills and Tavily search stay
+attached when you change models. Evo2, Boltz2, DiffDock and other scientific
+models are tools, not chat-provider choices.
 
 Six event-focused cards prepare editable prompts for the
 [Stockholm Longevity × AI Hackathon](https://luma.com/5b82vwsa): Nebius
@@ -48,7 +49,8 @@ establish tenant isolation; multi-user acceptance needs separate customer keys.
 - **Chat models:** Dedicated GLM 5.3 Flash is the default, with dedicated
   Nemotron and the tested public Token Factory allowlist available. The public
   allowlist is intersected with authenticated discovery at startup
-  (configured-list fallback). Qwen models are excluded for this event.
+  (configured-list fallback). Qwen models are excluded for this event. OpenAI
+  and Claude remain optional and require a participant-supplied provider key.
 - **Scientific models:** available only through the gateway tools. Model-specific
   schemas load on demand with `tool_search`; discovery and durable operation tools
   stay ready. Gateway authorization, validation and execution are unchanged.
