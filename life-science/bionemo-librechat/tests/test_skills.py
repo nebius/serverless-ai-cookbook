@@ -61,6 +61,9 @@ def test_no_dead_tool_references():
 
 def test_tool_names_against_live_snapshot():
     tools = {tool["name"] for tool in json.loads((EVIDENCE / "mcp-tools.json").read_text())}
+    # The retained evidence predates typed-MCP source 5de025fe. This core schema
+    # tool was accepted in that release and is required by the replacement skill.
+    tools.add("get_model_schema")
     for directory in skill_dirs():
         text = (directory / "SKILL.md").read_text(encoding="utf-8")
         for name in re.findall(r"`([a-z][a-z0-9_]{3,60})`", text):
@@ -123,14 +126,15 @@ def test_genmol_molmim_msa_examples():
 def test_gateway_skill_covers_contract():
     text = (SKILLS / "scientific-gateway" / "SKILL.md").read_text(encoding="utf-8")
     for required in (
-        "/v1/models",
-        "/v1/scientific-models",
+        "get_model_schema",
         "invoke_model",
         "submit_scientific_run",
-        "x-fs2-operation-id",
-        "customer-batch",
+        "model_input_validation",
+        "get_operation_result",
+        "get_scientific_result",
+        "begin_scientific_artifact_upload",
         "acknowledge",
-        "fs2-serve.nebius.ai/scientific-run-request/v1",
         "idempotency",
     ):
         assert required in text, required
+    assert "intentionally generic" not in text

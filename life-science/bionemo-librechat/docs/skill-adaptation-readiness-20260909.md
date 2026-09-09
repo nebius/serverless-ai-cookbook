@@ -22,12 +22,16 @@ binding and pick up the new primary on next start/redeploy.
 - Scientific batch (11): alphafold3, bindcraft, boltzgen, esmfold2,
   esmfold2-fast, mosaic, openfold3-openbind, proteina-complexa, protenix-v2,
   rfdiffusion, app-95943840d2b14a65b5cdaa4717b2cdc3.
-- MCP exposes 45 tools: generic (invoke_model, submit_scientific_run,
-  operation/result/artifact tools) plus per-model convenience tools whose
-  `payload`/`request` arguments are generic `object` — real contracts come
-  from adapter source and live probes (handoff §1 confirmed).
+- The typed-MCP release exposes 19 core workflow tools plus one named typed
+  tool per authorized App. The all-model acceptance key saw 27 named tools
+  (46 total). `get_model_schema` returns exact flat inputs, examples, sources
+  and active runtime identity; normal clients no longer need adapter-source
+  inspection or speculative live probes.
 
-## Per-model status
+## Per-model status from the original adaptation
+
+This table preserves the local/live checks completed before source `5de025fe`.
+It is not the current schema-discovery status; use `get_model_schema` for that.
 
 | Model | Lane | Contract source | Example + validator | Local test | Live verification |
 | --- | --- | --- | --- | --- | --- |
@@ -49,18 +53,19 @@ binding and pick up the new primary on next start/redeploy.
 | cosmos3-nano | native | pending probe | partial | n/a | not tested |
 | alphafold3, openfold3-openbind, protenix-v2, esmfold2, esmfold2-fast, proteina-complexa, bindcraft, boltzgen, mosaic, rfdiffusion | batch | `catalog/runtime/schema/*-parameters.schema.json` + scientific-run-request v1 | shared `scientific-batch` skill | shape only | not tested |
 
-## Notes / API gaps
+## Notes / remaining integration gaps
 
-- No public per-model parameter-schema endpoint on the gateway; skill contracts
-  rely on operator adapter source + live probes. Per handoff this is the
-  documented gap: a published schema/examples endpoint per model would remove
-  the source-tree dependency.
-- `evo2-40b`, `nv-segment-ct`, `nv-reason-cxr-3b`, `cosmos3-nano` payload
-  field names still need a live probe before their skills can carry exact
-  examples.
+- The previous public-schema gap is closed by `get_model_schema` and flat typed
+  named tools. Twenty-five current Apps publish validated examples. AltumAge
+  and NV-Segment CT deliberately require complete domain assets rather than
+  fabricated tiny examples.
 - Handoff's priority list (proteina-complexa, boltzgen, mosaic, bindcraft,
   rfdiffusion, esmfold2/f2-fast, protenix-v2, alphafold3) exists on the
   scientific batch lane of this key; native lane has no rfdiffusion/proteina.
 - Evidence snapshots: `/home/tux/fs2-skill-adaptation/evidence/` (models.json,
   scientific-models.json, mcp-tools.json).
 - Live smoke operations used idempotency keys `skill-adapt-*-20260909a`.
+- `seed-workbench.js` now attaches complete live MCP servers through its
+  `mcpServerNames` dynamic wildcard instead of pinning the invalid old
+  `scientific_models__*` IDs. The old artifact bridge still speaks a ClawBio
+  upload protocol and must be replaced before file-based workflows are advertised.

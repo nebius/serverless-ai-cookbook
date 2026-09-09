@@ -1,118 +1,94 @@
 ---
 name: scientific-gateway
-description: Shared manual for the Nebius scientific model gateway. Read first to discover models, choose the right invocation lane, submit once with idempotency, poll operations, and handle errors and artifacts.
+description: Use the hosted fs2 scientific and inference Apps through their typed MCP tools. Apply when discovering models, choosing an App, preparing model inputs, submitting or resuming work, polling an operation or scientific batch, uploading inputs, downloading results, or explaining a gateway error.
 license: Apache-2.0 AND CC-BY-4.0
 ---
 
-# Scientific model gateway (shared client manual)
+# Scientific model gateway
 
-All model skills share this contract. Config comes from the environment, never
-hard-coded: `SCIENTIFIC_MODELS_API_BASE_URL` (HTTP, e.g. `https://89.169.99.188/v1`)
-and `SCIENTIFIC_MODELS_MCP_URL` (MCP) with the non-admin key
-`SCIENTIFIC_MODELS_API_KEY` (`Authorization: Bearer <key>`). These match the
-`FS2_BASE_URL` / `FS2_MCP_URL` / `FS2_API_KEY` conventions. Never embed keys in
-skills, examples, logs or chat. This key is a customer inference key, not an
-admin credential; there is no academic self-assertion flow.
+Use the `bionemo-models` MCP server. Authentication is supplied by LibreChat;
+never ask for, print, copy, or place an API key in tool arguments. The caller's
+key determines the visible Apps and owns the resulting operations and artifacts.
 
-## Discovery (always confirm before first use of a session)
+## Discover before invoking
 
-- HTTP: `GET /v1/models` (native and OpenAI-compatible serving) and
-  `GET /v1/scientific-models` (scientific batch profiles).
-- MCP: `list_models`, `list_scientific_models`.
-- A model entry records: public `id`, `capabilities` (`native` | `openai-chat` |
-  scientific batch), `operations`, `revision`, `active_runtime.variant_id`,
-  `active_runtime.relationship`, `nim_artifact_parity`, and license/use policy.
-  Being listed does not mean a model accepts chat messages. NIM artifact parity
-  is generally unverified: describe runtimes by their variant, not by NIM
-  package claims. Model lists are scoped to this key; do not reuse another
-  customer's cached list. Availability changes; re-discover when a call 404s or
-  403s.
+1. Call `list_models` and `list_scientific_models` when the requested App or
+   current availability is not already established in this conversation.
+2. Call `get_model_schema` with the selected public `model_id` and protocol.
+3. Use the returned `contracts[].tool_name`, flat `input_schema`, examples,
+   source references and active-runtime identity. Independent Apps using the
+   same underlying model remain separate Apps.
+4. Prefer that named typed tool. Do not infer fields from a model's name, an
+   NVIDIA REST example, or an old skill. Re-discover after an authorization,
+   missing-tool, or stale-schema error.
 
-## Three invocation lanes — keep them distinct
+Named serving tools accept the model fields directly plus optional
+`idempotency_key` and `wait_seconds`; named scientific tools accept the
+scientific run fields directly plus optional `idempotency_key`. Do not wrap new
+calls in `payload` or `request`. Do not send `model` to a named OpenAI-chat tool:
+the App already selects it. The generic `invoke_model` and
+`submit_scientific_run` envelopes are compatibility routes for model-agnostic
+clients, not the default for a skill-directed call.
 
-| Contract | HTTPS | MCP |
-| --- | --- | --- |
-| OpenAI-compatible | `POST /v1/chat/completions` with the model's OpenAI payload | `invoke_model` with `protocol: "openai-chat"` |
-| Native HTTP | `POST /v1/models/{model_id}:invoke` with `{"operation": "<advertised op>", "payload": {...}}` | `invoke_model` with `protocol: "native"` and the **inner model payload** |
-| Scientific batch | `POST /v1/models/{model_id}:submit` with the run document | `submit_scientific_run` with `model_id` and `request` |
+If this skill disagrees with the tool's current schema, the tool schema wins.
+Do not silently omit unsupported scientific inputs or switch models. Explain the
+specific incompatibility and ask the user to choose a supported workflow.
 
-`invoke_model` arguments: `model_id`, `protocol`, `payload`, `idempotency_key`,
-`wait_seconds`. Convenience tools exist per model (e.g. `boltz2_predict_native`,
-`submit_alphafold3`); their `payload`/`request` schemas are intentionally
-generic `object` — the real payload contract lives in the model skill. For a
-native model with several operations, use the HTTP wrapper's explicit
-`operation`; do not guess what a convenience tool selects. Never call the
-internal pod `/biology/...` paths on the public gateway.
+## Submit once and resume
 
-## Submit once, then resume
+- Create one stable idempotency key of 8–200 characters per logical submission.
+  Reuse it only with the identical payload after an uncertain transport failure.
+  A corrected or deliberately new request gets a new key.
+- Set serving `wait_seconds` to `0` unless a short bounded wait materially helps.
+  Submission returns a durable operation/status record, not the final prediction.
+- Save and report the operation ID. Poll `get_operation`; use
+  `get_operation_result` only after `result_available` is true.
+- Scientific submissions return an operation plus batch state. Poll
+  `get_scientific_status` and incrementally read `list_scientific_events`.
+  Wait for result publication, then call `get_scientific_result` and retrieve
+  the returned artifacts. Execution success alone may precede publication.
+- Treat `queued`, `activating`, and `running` as progress. Do not resubmit or
+  cancel because a chat/tool timeout elapsed. Terminal states are `succeeded`,
+  `failed`, `cancelled`, `preempted`, and `expired`.
+- Download and verify outputs before `acknowledge_operation`; acknowledgement
+  purges an ordinary retained payload/result.
 
-- Generate an explicit idempotency key (8–200 chars) per logical request. On
-  transport retries or uncertain outcomes reuse the **same key and same
-  payload**. A corrected payload or deliberate new run uses a new key. Keep a
-  private mapping: workload item → key, payload hash, operation ID.
-- A submission may return the result directly or `202 Accepted` with an
-  `x-fs2-operation-id` header and `Location: /v1/operations/{id}`. Accepted is
-  not completed.
-- Poll `GET /v1/operations/{id}` (MCP `get_operation`); scientific jobs also
-  expose `get_scientific_status` and `list_scientific_events`. The same path
-  returns different document shapes for serving vs batch — parse what is there.
-- Queued/loading/running states are ongoing work. Honor `Retry-After`; else
-  bounded backoff with jitter. A wait deadline yields a resumable operation ID,
-  never a duplicate job or a "model failed" claim. Never cancel ongoing work
-  because a client timeout elapsed. Do not invent payload flags such as
-  `gpu_snapshot=true` or promise unmeasured cold-start times.
-- On terminal success fetch `GET /v1/operations/{id}/result` (MCP
-  `get_operation_result`, scientific `get_scientific_result`); wrappers differ
-  — normalize JSON/text/binary/artifact outputs deliberately. Download needed
-  artifacts and verify declared hashes. Call `acknowledge_operation` /
-  `POST .../:acknowledge` only after the user has their outputs: it purges the
-  ordinary result payload.
+## Scientific artifacts
 
-## Errors: make them useful, not retry loops
+Chat attachments and local paths are not gateway artifacts. For every input:
 
-| Observation | Behavior |
-| --- | --- |
-| Local schema failure | Explain the exact field/type/format problem first; do not guess scientific inputs. |
-| 400/422 or MCP invalid args | Inspect response detail and the submitted payload before assigning blame; an adapter may map execution errors to 400/422. Correct demonstrated input errors; never blind-repeat. |
-| 401/403, unknown model, policy error | Check endpoint/key/model grant; re-run discovery. Do not switch tenants or invent access flags. |
-| 404 | Check saved operation/artifact ID and retention; another tenant's objects are never accessible. |
-| 409 | Read the error code: idempotency payload conflict, unfinished result, expired/purged result need different actions. |
-| 429 / retryable 503 / transport | Reuse request identity, back off, check the existing operation, stop at deadline. |
-| MCP HTTP 200 | HTTP 200 alone is not success: check JSON-RPC errors, `isError`, structured content, and final operation status. |
-| Terminal failed/preempted | Preserve evidence; distinguish platform retries from a new user-authorized submission. |
+1. Read the actual caller-owned bytes outside the language-model context.
+2. Compute exact SHA-256, byte count, media type and compression.
+3. Call `begin_scientific_artifact_upload`, transfer using its returned handle
+   or `put_scientific_artifact_bytes`, then finalize.
+4. Build a canonical manifest from the returned immutable artifact references;
+   upload and finalize that manifest too.
+5. Submit the named scientific tool with the finalized manifest reference.
 
-For support keep a private debug record (endpoint, method, model ID, runtime
-revision, UTC timestamps, request/operation IDs, idempotency key, attempts,
-outcomes, elapsed time, submitted payload, returned error) without secrets or
-signed download tokens. Give the user a short summary plus correlation IDs.
+Never invent or reuse another user's artifact ID. Keep large base64 values and
+structure/media files out of chat. MCP inline transfer has base64 overhead and
+is suitable only below the advertised ceiling; use returned upload/download
+handles or the HTTPS artifact path for larger files. Check handle expiry.
 
-## Scientific batch requests are real
+## Errors and user-facing results
 
-Run document schema `fs2-serve.nebius.ai/scientific-run-request/v1`: `schema`,
-`operation`, `service_class` (`presentation`, `interactive`, `customer-batch`,
-`bulk-backfill` — use one your key may select; checked-in examples typically
-use `customer-batch`), `input_manifest` (artifact ref), `parameters` (≤256
-properties), optional `client_context` (`batch_id`, `correlation_id`,
-`display_name`). Artifact refs require `artifact_id`, `sha256` (64 hex),
-`size_bytes`, `media_type`. Upload real input bytes first
-(`begin_scientific_artifact_upload` → `put_scientific_artifact_bytes` →
-`finalize_scientific_artifact_upload`), then build the manifest from returned
-immutable pointers, computing hashes/lengths from the actual bytes. Checked-in
-`public-request.json` files are templates with fixture IDs — always materialize
-this customer's artifacts; never send local paths or invented artifact IDs.
-Batch by model-native batching only if the schema supports it; otherwise
-independent jobs with shared `client_context.batch_id` and distinct item IDs at
-bounded concurrency. Never alter replicas, node groups, priorities or quotas
-from a client skill.
+- MCP `-32602` with `data.type: model_input_validation` means no work was
+  admitted. Use each issue's JSON-pointer `field`, `rule`, and any
+  `missing_fields`, `allowed_fields`, or `expected` details to fix the input.
+- For 401/403 or a missing App, check this user's key and current catalog. Never
+  substitute an admin credential or claim academic eligibility in the request.
+- For 429, retryable 503, or an interrupted submission, retain the same
+  idempotency identity, back off, and check the saved operation.
+- For a terminal model failure, report the public model/App, operation ID,
+  timestamps and returned structured error. Do not label acceptance as success.
+- Serving `get_operation_result` returns `{operation, result}`. Scientific
+  results are versioned run documents whose output manifests point to artifacts.
+  Preserve structured fields and verify artifact hashes rather than pasting raw
+  files into the answer.
 
-## Model-specific contracts
+Model access is authorization, not a license grant or biological/clinical
+validation. Describe outputs as model predictions. Do not invent snapshot,
+replica, priority, or GPU controls in model payloads; those are platform settings.
 
-Each model skill states the exact public ID, protocol, operation, bounds and
-one minimal valid example. Model IDs to expect (verify via discovery; keys
-grant different subsets): native `boltz2`, `openfold2`, `openfold3`,
-`diffdock`, `genmol`, `molmim`, `msa-search-pdb70`, `evo2-40b`, `proteinmpnn`,
-`altumage`, `phenoage`, `nv-segment-ct`, `nv-reason-cxr-3b` (openai-chat),
-`qwen3-8b` (openai-chat), `sdxl`, `cosmos3-nano`; scientific batch
-`alphafold3`, `openfold3-openbind`, `protenix-v2`, `esmfold2`, `esmfold2-fast`,
-`proteina-complexa`, `bindcraft`, `boltzgen`, `mosaic`, `rfdiffusion`.
-Keep `openfold3` (native) and `openfold3-openbind` (batch) distinct.
+Read [the complete client contract](references/client-contract.md) for transport
+limits, scopes, retention, scientific-file details, and known BioNeMo differences.

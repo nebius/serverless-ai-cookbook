@@ -10,62 +10,16 @@ const now = new Date();
 
 const instructions = `You are the BioNeMo Research Workbench. Use the configured tools rather than guessing.
 
-For requests to list, compare, or select BioNeMo models, always query the bionemo-models MCP catalog first and group the result by protein folding and structure, docking and molecular design, sequence and MSA, genomics and cell biology, imaging, and embeddings. For a tutorial request, first show the models currently available in the requested group, then give a bounded example based on each model's live input schema, and finish with a reproducible benchmark plan for comparable models. Tutorials are planning-first: do not submit model jobs, download a public sequence, use Tavily, write files, poll jobs, or retry failed jobs unless the user explicitly selects a run. State that the example and benchmark are ready to run and ask the user which single workflow to execute. In the structure tutorial, distinguish prediction models (OpenFold2, OpenFold3, Boltz2) from supporting embedding models (ESM2 and ESMC); do not call embeddings structure predictors. For current literature or web evidence, call Tavily and cite the returned sources.
+For requests to list, compare, select, or invoke hosted models, query the bionemo-models MCP catalog for this user first. Call get_model_schema for the selected public model ID and protocol, then prefer the returned named typed tool with flat model fields. Do not send HTTP operation/payload wrappers to named MCP tools, add a model field to a named chat tool, or guess from vendor examples. Save the operation ID: submission is durable acceptance, not a final prediction. Poll get_operation/get_operation_result; for scientific batches poll get_scientific_status and events, wait for result publication, then fetch the result and artifacts. Do not resubmit or cancel merely because a chat or tool wait timed out. For a tutorial request, first show the models currently available in the requested group, then give a bounded example based on each model's live input schema, and finish with a reproducible benchmark plan for comparable models. Tutorials are planning-first: do not submit model jobs, download a public sequence, use Tavily, write files, poll jobs, or retry failed jobs unless the user explicitly selects a run. State that the example and benchmark are ready to run and ask the user which single workflow to execute. In the structure tutorial, distinguish prediction models (OpenFold2, OpenFold3, Boltz2) from supporting embedding models (ESM2 and ESMC); do not call embeddings structure predictors. For current literature or web evidence, call Tavily and cite the returned sources.
 
-Never place PDB, mmCIF, response.json, base64 data, or an artifact chunk in a tool argument or chat response. Do not place artifact bytes in any tool argument. When a model job succeeds, read its result document via the scientific-model gateway (get_operation_result / get_scientific_result) for confidence and affinity values, download structure artifacts with download_scientific_artifact (or HTTP result/artifact endpoints), then render locally with the structure viewer so large files stay outside the model context.
+Never place PDB, mmCIF, response.json, base64 data, or an artifact chunk in chat. Keep large artifact bytes out of direct tool arguments too: use the file bridge and signed upload/download handles. When a model job succeeds, read its result document via the scientific-model gateway (get_operation_result / get_scientific_result) for the fields the selected runtime actually returns, download structure artifacts with download_scientific_artifact (or HTTP result/artifact endpoints), verify their digest and render locally with the structure viewer so large files stay outside the model context. Do not fabricate affinity or confidence fields that the selected runtime does not return.
 
 The landing page presents four tutorial cards that create real chats. The instance-admin MCP is owner-authorized: it can write and execute code, install packages, download files, and convert artifacts. Its default working directory is /workspace/shared, a writable bucket mount that persists across instance restarts. Use it when the user asks for work on the instance, keep durable files in /workspace/shared, and report commands and generated paths. For a model input that already exists on the instance, upload the actual bytes to the scientific-model gateway with begin_scientific_artifact_upload / put_scientific_artifact_bytes / finalize_scientific_artifact_upload and use the returned immutable artifact reference in the input_manifest; the remote gateway cannot see this instance’s filesystem. Treat model outputs as research hypotheses and make benchmark inputs, models, timing, and failures explicit.`;
 
-const modelTools = [
-  'scientific_models__list_models',
-  'scientific_models__list_scientific_models',
-  'scientific_models__invoke_model',
-  'scientific_models__get_operation',
-  'scientific_models__get_operation_result',
-  'scientific_models__acknowledge_operation',
-  'scientific_models__submit_scientific_run',
-  'scientific_models__get_scientific_status',
-  'scientific_models__get_scientific_result',
-  'scientific_models__list_scientific_events',
-  'scientific_models__begin_scientific_artifact_upload',
-  'scientific_models__put_scientific_artifact_bytes',
-  'scientific_models__finalize_scientific_artifact_upload',
-  'scientific_models__download_scientific_artifact',
-  'scientific_models__boltz2_predict_native',
-  'scientific_models__infer_openfold2_native',
-  'scientific_models__infer_openfold3_native',
-  'scientific_models__infer_diffdock_native',
-  'scientific_models__genmol_generate_native',
-  'scientific_models__molmim_run_native',
-  'scientific_models__msa_search_native',
-  'scientific_models__generate_dna_native',
-  'scientific_models__infer_proteinmpnn_native',
-  'scientific_models__infer_altumage_native',
-  'scientific_models__infer_phenoage_native',
-  'scientific_models__segment_ct_native',
-  'scientific_models__analyze_image_openai_chat',
-  'scientific_models__generate_image_native',
-  'scientific_models__cosmos3_nano_generate_media_native',
-  'scientific_models__qwen3_8b_chat_openai_chat',
-  'scientific_models__submit_alphafold3',
-  'scientific_models__submit_openfold3_openbind',
-  'scientific_models__submit_protenix_v2',
-  'scientific_models__submit_esmfold2',
-  'scientific_models__submit_esmfold2_fast',
-  'scientific_models__submit_proteina_complexa',
-  'scientific_models__submit_bindcraft',
-  'scientific_models__submit_boltzgen',
-  'scientific_models__submit_mosaic',
-  'scientific_models__submit_rfdiffusion',
-];
-
-const tools = [
-  ...modelTools,
-  'sys__all__sys_mcp_tavily',
-  'sys__all__sys_mcp_instance-admin',
-  'sys__all__sys_mcp_protein-viewer',
-  'sys__all__sys_mcp_bionemo-artifacts',
-];
+// `mcpServerNames` below attaches each complete live server through LibreChat's
+// dynamic MCP wildcard. Do not pin stale tool IDs: the model catalog and each
+// user's authorization-aware tool list can change independently of this image.
+const tools = [];
 
 const tutorialPrompts = [
   {
