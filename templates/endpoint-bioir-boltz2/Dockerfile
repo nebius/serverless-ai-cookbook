@@ -1,6 +1,6 @@
 # This image intentionally contains only the HTTP tutorial adapter and its
-# bootstrapper. BioIR itself is fetched from NVIDIA's public GitHub release at
-# endpoint start-up; no early-access image, wheel, or checkpoint is copied
+# bootstrapper. BioIR itself is installed from NVIDIA's public package release
+# at endpoint start-up; no early-access image, wheel, or checkpoint is copied
 # into the published image.
 FROM nvidia/cuda:13.2.0-base-ubuntu24.04
 
@@ -20,9 +20,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     OUTPUT_DIR=/var/lib/bioir/output \
     BIOIR_SAMPLING_STEPS=50 \
     MAX_SEQUENCE_LENGTH=1024 \
-    BIOIR_REPOSITORY=NVIDIA-BioNeMo/BioNeMo-Inference-Runtime \
-    BIOIR_RELEASE=latest \
-    BIOIR_WHEEL_PATTERN='bionemo_ir-.*\+cu132-.*cp312.*x86_64.*\.whl'
+    BIOIR_DISTRIBUTION=bionemo-ir
 
 RUN apt-get update \
  && apt-get install --yes --no-install-recommends \
@@ -40,12 +38,14 @@ COPY requirements.txt /tmp/requirements.txt
 RUN "$VIRTUAL_ENV/bin/pip" install --no-cache-dir -r /tmp/requirements.txt
 
 COPY entrypoint.sh /usr/local/bin/bioir-bootstrap
+COPY notebook.sh /usr/local/bin/bioir-notebook
 COPY src /app
-RUN chmod 0755 /usr/local/bin/bioir-bootstrap \
- && chown -R bioir:bioir /app "$VIRTUAL_ENV"
+COPY notebooks /workspace/notebooks
+RUN chmod 0755 /usr/local/bin/bioir-bootstrap /usr/local/bin/bioir-notebook \
+ && chown -R bioir:bioir /app /workspace "$VIRTUAL_ENV"
 
 USER 10001:10001
-EXPOSE 8000
+EXPOSE 8000 8888
 
 ENTRYPOINT ["/usr/local/bin/bioir-bootstrap"]
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -8,50 +8,81 @@ keywords: [protein-structure-prediction, boltz-2, biomolecular-ai, serverless-en
 difficulty: advanced
 ---
 
-# BioNeMo Inference Runtime: Boltz-2
+# BioNeMo Inference Runtime: Boltz-2 tutorial
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fbionemo-inference-runtime-boltz2%3A0.1.0&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;auth=true&amp;env=BIOIR_RELEASE%3Dlatest"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fbionemo-inference-runtime-boltz2%3A0.2.0&amp;targetPort=8888&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;command=%2Fusr%2Flocal%2Fbin%2Fbioir-notebook"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
 <!-- factory:intro -->
 
-BioNeMo Inference Runtime (BioIR) is NVIDIA's Python inference-acceleration library, not a model or a NIM. This one-click template wraps its public Boltz-2 quickstart in a small, token-protected HTTP service on one L40S.
+BioNeMo Inference Runtime (BIR) is NVIDIA's Python inference-acceleration library, not a model or a NIM. This one-click template launches a hands-on Boltz-2 tutorial notebook on one L40S, with an optional HTTP-serving example in the same image.
 
 **License:** [BioIR license](https://github.com/NVIDIA-BioNeMo/BioNeMo-Inference-Runtime) · [Boltz-2 MIT license](https://github.com/jwohlwend/boltz)
 
 <!-- /factory:intro -->
 
-Click **Create Endpoint** above, retain authentication, and create the endpoint.
-The Nebius-managed public launcher image contains only this FastAPI adapter and
-its bootstrapper. Its `entrypoint.sh`—not a notebook—installs the selected
-public BioIR GitHub Release wheel from
-`NVIDIA-BioNeMo/BioNeMo-Inference-Runtime` at first start. BioIR then retrieves
-the public Boltz-2 assets and warms the model. The image contains no NVIDIA
-early-access image, wheel, model weights, NGC credential, or Hugging Face
-credential.
+Click **Create Endpoint** above and create the endpoint. It launches JupyterLab
+on port `8888`, with the tutorial already at
+`notebooks/bir_boltz2_tutorial.ipynb`. The launcher image contains only the
+notebook, the optional FastAPI adapter, and a bootstrapper. Its `entrypoint.sh`
+installs NVIDIA's public BIR package at first start; BIR then retrieves the
+public Boltz-2 assets when the notebook builds the processor. The image contains
+no NVIDIA early-access image, wheel, model weights, NGC credential, or Hugging
+Face credential.
 
 The published launcher is
-`cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/bionemo-inference-runtime-boltz2@sha256:24a1409f8d41ea7e976b967d8c0e309fb6f531a9782f98de9eb285408e54a677`.
+`cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/bionemo-inference-runtime-boltz2@sha256:c5499058a5e0c94712ed427ded910b422e233f0efddea1b37e5d4278f057c8fe`.
 
-The deployment form is prefilled for port `8000`, one L40S, 500 GiB of disk,
-and token authentication. Cold start includes Python dependencies, model assets,
-and compilation, so wait for `/readyz` rather than treating endpoint `RUNNING`
-as model-ready. The L40S is in BioIR's released support matrix; choose a
-different compatible platform and preset if that better suits your project.
+The deployment form is prefilled for port `8888`, one L40S, and 500 GiB of
+disk. At first start the server writes a generated Jupyter password to the
+private endpoint logs. Copy it, open the port-`8888` public endpoint URL from
+the Console, sign in, and open `notebooks/bir_boltz2_tutorial.ipynb`. Set
+`JUPYTER_PASSWORD` in the endpoint environment before creation if you prefer a
+password you choose. Cold start includes package installation and model assets;
+the model download begins at the processor-build cell, not when Jupyter opens.
+The L40S is in BIR's released support matrix; choose a different compatible
+platform and preset if that better suits your project.
 
 ## What this demonstrates
 
 This is a tutorial for integrating a library, rather than a prepackaged model
-endpoint. The adapter follows NVIDIA's [BioIR quickstart](https://docs.nvidia.com/bionemo/inference-runtime/quickstart/):
+endpoint. The included notebook follows NVIDIA's [BIR quickstart](https://docs.nvidia.com/bionemo/inference-runtime/quickstart/):
 
 1. Create `InputRequest`, `Polymer`, and an inline `MSARecord`.
 2. Configure `EngineProcessorConfig(model_source="boltz-2")`.
 3. Build and warm the `build_processor` pipeline once per GPU worker.
-4. Serialize one request at a time, validate its mmCIF output, and return its
-   decoded scores.
+4. Run the request and inspect its mmCIF output and decoded scores.
+
+The notebook is deliberately authored for this public tutorial; it does not
+copy the gated early-access notebook or any of its model-specific examples.
+
+## Open the tutorial notebook
+
+1. Create the one-click endpoint and wait for it to become `RUNNING`.
+2. In the endpoint logs, find `Generated Jupyter password (shown once)` and
+   copy the value. The value is generated per endpoint unless you set
+   `JUPYTER_PASSWORD` yourself.
+3. In the Console, open the public port-`8888` endpoint URL, enter that
+   password, then open `notebooks/bir_boltz2_tutorial.ipynb`.
+4. Run the cells in order. The processor-build cell is the first one that
+   fetches public Boltz-2 assets and can take several minutes on a cold disk.
+
+The notebook starts with the BIR imports and shows the exact `InputRequest`,
+`Polymer`, `MSARecord`, `EngineProcessorConfig`, and `build_processor` calls.
+It then runs a query-only example and reads its mmCIF and score fields. That is
+the teaching path; the HTTP service below is a companion deployment pattern.
+
+## Optional HTTP service
+
+The same image also contains a small FastAPI example on port `8000`. To deploy
+it, create another endpoint using the same image, set target port `8000`, and
+leave the command at its default (`uvicorn server:app --host 0.0.0.0 --port 8000`).
+Enable endpoint token authentication for that service. It keeps one BIR
+processor resident and maps a request to the same library objects used by the
+notebook.
 
 The resulting service exposes:
 
@@ -68,7 +99,7 @@ schema, model-weight source, license review, memory profile, and output checks.
 This is neither a replacement for NVIDIA NIMs nor a way to redistribute the
 early-access multi-model container.
 
-## Call the endpoint
+## Call the optional HTTP service
 
 Copy the public HTTPS endpoint URL and generated token from the Nebius Console.
 Keep the token out of shell history where possible; this example reads it from
@@ -109,14 +140,12 @@ export AUTH_TOKEN="$TOKEN"
 scripts/smoke-test.sh
 ```
 
-## Choose and pin a BioIR release
+## Choose and pin a BIR release
 
-The template defaults to `BIOIR_RELEASE=latest` so the public launch works
-without credentials. For a repeatable environment, set this variable in the
-endpoint form to a public GitHub release tag before creating the endpoint, for
-example `BIOIR_RELEASE=vX.Y.Z`. The launcher selects the matching CUDA 13.2,
-Python 3.12, x86_64 wheel from that release. `BIOIR_WHEEL_URL` is an advanced
-override for a specific official release asset.
+The template installs the public `bionemo-ir` distribution without a version
+pin so that it works at launch. For repeatable work, set `BIOIR_VERSION` in the
+endpoint environment to the published version before creating the endpoint.
+`BIOIR_WHEEL_URL` is an advanced override for a specific official public wheel.
 
 The package release and the public model assets are separate provenance
 decisions. Record the selected release, endpoint image digest, asset revision,
@@ -161,11 +190,15 @@ scripts/deploy-endpoint.sh
 
 ## Troubleshooting
 
-- **`RUNNING` but `/readyz` returns `503`** — normal during the first download
-  and warmup. Check logs; a successful response has `{"status":"ready"}`.
-- **Bootstrap cannot find a release wheel** — set `BIOIR_RELEASE` to the public
-  launch tag or set `BIOIR_WHEEL_URL` to an official CUDA 13.2 / CPython 3.12
-  / x86_64 release asset.
+- **Jupyter shows a password prompt** — use the generated password from the
+  endpoint logs, or set `JUPYTER_PASSWORD` before starting the endpoint.
+- **BIR installation fails at boot** — NVIDIA's public package has not yet
+  been published, or the selected `BIOIR_VERSION` is unavailable. Set
+  `BIOIR_WHEEL_URL` only to an official public wheel if a specific wheel is
+  required.
+- **`RUNNING` but `/readyz` returns `503`** — applies to the optional HTTP
+  service while it downloads assets and warms the processor. Check logs; a
+  successful response has `{"status":"ready"}`.
 - **`401` or `403` calling the endpoint** — send the generated endpoint token
   as `Authorization: Bearer <token>`.
 - **Out of memory or slow requests** — keep one worker per GPU, reduce input
