@@ -6,7 +6,7 @@ license: Apache-2.0 AND CC-BY-4.0
 
 # ClawBio catalog
 
-Availability note (2026-09-09): the current Nebius Scientific AI Agent deployment wires only the scientific-model gateway and GROMACS MCP servers. A `clawbio` MCP server is not configured there; if `clawbio__*` tools are absent, say so instead of simulating them. The instructions below apply when the server is configured.
+Availability note (2026-09-09): the current Nebius Scientific AI Agent deployment connects the scientific-model gateway and Tavily MCP servers. A `clawbio` MCP server is not configured there; if `clawbio__*` tools are absent, say so instead of simulating them. The instructions below apply when the server is configured.
 
 Use the local `clawbio` MCP server when a user asks what ClawBio can do or wants
 to inspect a ClawBio workflow contract.

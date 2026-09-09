@@ -17,16 +17,21 @@ publication names.
 
 ## How to submit
 
-1. Discover `GET /v1/scientific-models` — each entry lists its `operations`
-   and the deployed runtime identity; the per-model parameter schema is
-   exposed by the operator (`catalog/runtime/schema/<model>-parameters.schema.json`
-   in the solutions-library source; resolve the actual schema, never guess).
+1. Discover `list_scientific_models`, then call `get_model_schema` with the
+   selected model ID and `protocol: "scientific-batch-v1"`. Use the returned
+   contract's embedded parameter schema, allowed operations and examples.
+   Source-tree access is unnecessary for normal schema discovery.
 2. Prepare real inputs: upload FASTA/PDB/A3M bytes via
    `begin_scientific_artifact_upload` → `put_scientific_artifact_bytes` →
    `finalize_scientific_artifact_upload`; compute sha256/size from the actual
    bytes; build the `input_manifest` from returned immutable artifact refs.
    Fixture artifact IDs from checked-in examples are templates, never
    submissions.
+   The current LibreChat deployment has no compatible attachment/file bridge.
+   Continue only with existing caller-owned finalized artifacts or a verified
+   helper that reads, hashes and transfers the actual bytes outside the model
+   context. Otherwise explain the missing file capability and keep this workflow
+   at the preparation stage. Do not invent hashes or move base64 through chat.
 3. Submit once with the named typed tool — `submit_alphafold3`,
    `submit_openfold3_openbind`, `submit_protenix_v2`, `submit_esmfold2`,
    `submit_esmfold2_fast`, `submit_proteina_complexa`, `submit_bindcraft`,

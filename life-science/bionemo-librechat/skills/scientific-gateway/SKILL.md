@@ -55,6 +55,14 @@ specific incompatibility and ask the user to choose a supported workflow.
 
 ## Scientific artifacts
 
+Deployment limitation: the current LibreChat image has no compatible attachment
+bridge or connected structure viewer. These transfer steps require a verified
+file helper using the caller's gateway key and isolated workspace. Without one,
+use existing caller-owned finalized artifact references or explain the missing
+capability; do not promise attachment upload, verified file downloads, a UI
+download link or embedded visualization. Legacy ClawBio helpers do not implement
+this contract. Signed handles and bearer tokens must stay outside model context.
+
 Chat attachments and local paths are not gateway artifacts. For every input:
 
 1. Read the actual caller-owned bytes outside the language-model context.
