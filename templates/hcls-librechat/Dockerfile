@@ -24,8 +24,12 @@ COPY templates/hcls-librechat/seed-workbench.js /app/seed-hcls-workbench.js
 COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entrypoint
 COPY templates/hcls-librechat/brand-client.mjs /opt/hcls-librechat/brand-client.mjs
 COPY templates/hcls-librechat/seed-user.js /app/seed-user.js
-# Overlay the typed-contract skills maintained in the workbench directory.
+# Overlay the typed-contract skills maintained in the workbench directory and
+# drop the stale pre-adaptation skill directories from the base image.
 COPY life-science/bionemo-librechat/skills/ /app/skill/
+RUN cd /app/skill && rm -rf boltz2-nim openfold2-nim openfold3-nim diffdock-nim \
+      genmol-nim molmim-nim msa-search-nim evo2-nim proteinmpnn-nim \
+      rfdiffusion-nim bionemo-workbench-tutorials
 COPY templates/hcls-librechat/assets/nebius-logo.svg /app/client/dist/assets/logo.svg
 RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
  && node /opt/hcls-librechat/brand-client.mjs /app/client/dist \
