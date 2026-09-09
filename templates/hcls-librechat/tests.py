@@ -38,6 +38,7 @@ def test_scientific_gateway_and_gromacs_are_preconfigured() -> None:
 
 def test_model_grouped_tutorials_are_seeded() -> None:
     seeder = (ROOT / "seed-workbench.js").read_text(encoding="utf-8")
+    assert "agent_nebius_scientific_ai" in seeder
     assert "agent_protein_structure" in seeder
     assert "agent_molecular_design" in seeder
     assert "agent_biomedical_imaging" in seeder
@@ -47,6 +48,24 @@ def test_model_grouped_tutorials_are_seeded() -> None:
     assert "boltz2_predict_native" in seeder
     assert "segment_ct_native" in seeder
     assert "Do not give a diagnosis" in seeder
+
+
+def test_default_agent_and_visible_workbench_are_nebius_branded() -> None:
+    renderer = (ROOT / "render-config.mjs").read_text(encoding="utf-8")
+    brand_client = (ROOT / "brand-client.mjs").read_text(encoding="utf-8")
+    assert "label: 'Nebius Scientific AI Agent'" in renderer
+    assert "agent_id: 'agent_nebius_scientific_ai'" in renderer
+    assert "default: true" in renderer
+    assert "nebius-scientific-workbench" in brand_client
+    for title in (
+        "Protein Folding & Structure",
+        "Molecular Docking & Design",
+        "Molecular Dynamics · GROMACS",
+        "Biomedical Imaging",
+        "Genomics & Biological Age",
+        "Audio Transcription · Tutorial",
+    ):
+        assert title in brand_client
 
 
 def test_client_branding_is_baked_into_the_wrapper() -> None:

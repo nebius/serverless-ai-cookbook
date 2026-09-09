@@ -88,10 +88,21 @@ endpoints:
 modelSpecs:
   prioritize: true
   list:
+    - name: 'nebius-scientific-ai-agent'
+      label: 'Nebius Scientific AI Agent'
+      description: 'Your scientific AI workbench: choose a guided tutorial below or ask for a live model recommendation.'
+      default: true
+      showOnLanding: true
+      conversation_starters:
+        - 'Show the scientific model catalog grouped by protein structure, docking and design, imaging, genomics, and generative models.'
+        - 'Help me choose a model and a reproducible benchmark for my scientific task.'
+        - 'Show the six guided tutorials and recommend where to start.'
+      preset:
+        endpoint: agents
+        agent_id: 'agent_nebius_scientific_ai'
     - name: 'protein-folding-and-structure'
       label: 'Protein Folding & Structure'
       description: 'Compare Boltz2, OpenFold2, and OpenFold3 through the live scientific model gateway.'
-      default: true
       showOnLanding: true
       conversation_starters:
         - 'List live protein folding and structure models, their inputs, and model-specific limits.'
