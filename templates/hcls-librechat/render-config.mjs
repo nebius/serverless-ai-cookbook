@@ -93,10 +93,6 @@ modelSpecs:
       description: 'Your scientific AI workbench: choose a guided tutorial below or ask for a live model recommendation.'
       default: true
       showOnLanding: true
-      conversation_starters:
-        - 'Show the scientific model catalog grouped by protein structure, docking and design, imaging, genomics, and generative models.'
-        - 'Help me choose a model and a reproducible benchmark for my scientific task.'
-        - 'Show the six guided tutorials and recommend where to start.'
       preset:
         endpoint: agents
         agent_id: 'agent_nebius_scientific_ai'
@@ -104,10 +100,6 @@ modelSpecs:
       label: 'Protein Folding & Structure'
       description: 'Compare Boltz2, OpenFold2, and OpenFold3 through the live scientific model gateway.'
       showOnLanding: true
-      conversation_starters:
-        - 'List live protein folding and structure models, their inputs, and model-specific limits.'
-        - 'Prepare one small protein sequence benchmark across Boltz2, OpenFold2, and OpenFold3. Explain the comparison before running anything.'
-        - 'Show how to retrieve a finished structure artifact and inspect its confidence metrics.'
       preset:
         endpoint: agents
         agent_id: 'agent_protein_structure'
@@ -115,9 +107,6 @@ modelSpecs:
       label: 'Molecular Docking & Design'
       description: 'Use DiffDock, GenMol, MolMIM, and ProteinMPNN from the live scientific catalog.'
       showOnLanding: true
-      conversation_starters:
-        - 'List the available docking and molecular-design models with their live operations.'
-        - 'Outline a reproducible DiffDock versus Boltz2 binding benchmark without submitting it yet.'
       preset:
         endpoint: agents
         agent_id: 'agent_molecular_design'
@@ -125,9 +114,6 @@ modelSpecs:
       label: 'Molecular Dynamics · GROMACS'
       description: 'Prepare, submit, monitor, and retrieve bounded GPU molecular-dynamics runs.'
       showOnLanding: true
-      conversation_starters:
-        - 'List the available GROMACS capabilities and explain the safety limits.'
-        - 'Prepare a small argon GPU smoke simulation, ask before submitting it, then monitor it and summarize the artifacts.'
       preset:
         endpoint: agents
         agent_id: 'agent_molecular_dynamics'
@@ -135,9 +121,6 @@ modelSpecs:
       label: 'Biomedical Imaging'
       description: 'Explore the live chest X-ray reasoning and CT segmentation models as research workflows.'
       showOnLanding: true
-      conversation_starters:
-        - 'List the live biomedical imaging models and the inputs they accept.'
-        - 'Explain a research-only CT segmentation evaluation workflow with validation and human review.'
       preset:
         endpoint: agents
         agent_id: 'agent_biomedical_imaging'
@@ -145,9 +128,6 @@ modelSpecs:
       label: 'Genomics & Biological Age'
       description: 'Discover Evo2, AltumAge, and PhenoAge workflows from the live scientific catalog.'
       showOnLanding: true
-      conversation_starters:
-        - 'List the live genomics and biological-age models and their required inputs.'
-        - 'Design a reproducible evaluation for a biological-age model with a held-out cohort.'
       preset:
         endpoint: agents
         agent_id: 'agent_genomics_aging'
@@ -155,9 +135,6 @@ modelSpecs:
       label: 'Audio Transcription · Tutorial'
       description: 'A readiness checklist for a future real-time transcription service; no audio model is connected.'
       showOnLanding: true
-      conversation_starters:
-        - 'Show the real-time transcription requirements and how a connected model would be evaluated.'
-        - 'Which live scientific models currently support audio transcription?'
       preset:
         endpoint: agents
         agent_id: 'agent_audio_transcription_tutorial'
