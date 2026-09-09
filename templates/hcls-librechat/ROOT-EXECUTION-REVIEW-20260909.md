@@ -40,7 +40,7 @@ All browser inference/workflow tests below used `zai-org/GLM-5.3-Flash`.
 | Root execution | UID 0; wrote and reread `/root/root-smoke/probe.txt`; pip installed humanize 4.16.0; downloaded 12,116 bytes; Python calculated 338350 and saved a verified JSON receipt. Five execution calls, all exit 0. |
 | Clinical PhenoAge | PASS. Operation `5e907fbf-8f59-4892-b883-17884f568076`; one synthetic clinical sample; result retrieved through MCP; `phenotypic_age_years=41.90792243377997`. Actual submission tool was generic `invoke_model`, after skill/schema discovery. |
 | GenMol | PASS. Named typed tool; operation `6a73a960-17c8-41f7-95a1-e287d4fabce1`; one returned molecule; `score=0.7745095304980193`; final result retrieved through MCP. |
-| OpenFold2 | UNRESOLVED. Named typed tool returned `Error executing tool infer_openfold2_native` with no operation ID. Admission is unknown, not proof that no operation exists. No new-key retry was made. |
+| OpenFold2 | RECOVERY PASS. The first named-tool call returned the bare `Error executing tool infer_openfold2_native` before returning a receipt. Replaying the exact public input under the same idempotency key accepted operation `14d87d2c-fd59-4f26-af2e-cad679a290a2` with `reused=false`, establishing that the first call had not reached durable admission. The operation succeeded with HTTP 200 and `semantic_outcome=protocol_valid`; confidence was `75.11457118988037`, `ptm_score=0.04927242919802666`, and inference time `1.0396960689686239` s. The final cloud agent then retrieved that existing operation without another submission and rendered its real 167-atom PDB in the interactive structure viewer. |
 | AltumAge | ASSISTED PASS. GLM invoked the file helper for one 665,948-byte synthetic reference-center fixture with all 20,318 canonical CpGs. Named MCP tool accepted operation `6241fa80-1275-407e-8d8d-5296d275781a`. The helper initially misparsed the flat receipt's `operation` string; after fixing it, the operator resumed that saved operation without a second submission and retrieved the result. GLM subsequently read the saved results with Python and independently checked the same operation through MCP. CUDA result: `predicted_chronological_age_years=38.22121047973633`, `imputed_cpg_count=0`, `feature_count=20318`. |
 | Cloud root + infrastructure skills + Tavily | PASS for tool execution/access. GLM installed Debian tree, verified UID 0, wrote/reread `/root/cloud-root-check.json`, loaded nebius-cloud-basics and nebius-serverless-data-secrets, read an attached reference, used Tavily, and wrote/validated a proposed storage-plan JSON. Cloud provisioning and that plan's mount commands were not executed or accepted as validated infrastructure. |
 
@@ -52,13 +52,17 @@ acceptance evidence, outside Git.
 
 ## Limitations discovered
 
-- Catalog qualification flags are insufficient: GenMol reported
-  `route_active: false` but completed successfully. OpenFold2 reported the same
-  flag and returned a bare MCP error. Runtime qualification needs operator review.
+- Catalog qualification flags are insufficient: GenMol and OpenFold2 reported
+  `route_active: false` but completed successfully. Runtime qualification needs
+  operator review. The initial OpenFold2 call also exposed a separate caller-
+  visible defect: a pre-admission MCP failure was reduced to a bare tool error
+  with no structured error code or correlation receipt.
 - GLM incorrectly called PhenoAge's generic submission a named-tool submission
-  in its prose, and incorrectly inferred that OpenFold2's missing ID meant no
-  operation existed. Reports here use actual tool receipts. Shared instructions
-  now explicitly require that distinction; this is not proof prose cannot err.
+  in its prose, and initially inferred that OpenFold2's missing ID meant no
+  operation existed. At that point admission was unknown; the same-key recovery
+  later established no prior durable admission. Reports here use actual tool
+  receipts. Shared instructions now explicitly require that distinction; this
+  is not proof prose cannot err.
 - The AltumAge final prose incorrectly attributed the helper error to client
   teardown and suggested reusing a methylation fixture with clinical PhenoAge.
   The actual bug was flat-receipt parsing, and those model inputs are incompatible.
@@ -87,6 +91,8 @@ Final image tag: `20260909-cc85e14`.
 Image digest: `sha256:9c6ec39287eb52c864c710e60521836b6edef31a01623a02c7c4fb962a5b0c87`.
 
 Private receipts: `/home/tux/fs2-skill-adaptation/root-glm-20260909/`.
+OpenFold2 recovery receipts:
+`/home/tux/fs2-skill-adaptation/root-glm-20260909/openfold2-run/`.
 Local candidate: `scientific-root-candidate`, port 13089.
 Root UI release: `scientific-root-release`, port 13090.
 Root cloud acceptance endpoint: `aiendpoint-e00cxvmvtm3gaccr30` (12718ef), chat
@@ -108,3 +114,10 @@ Final-image GLM cloud execution acceptance also passed in chat
 installed native helper's `--help`, returned UID 0 and exit code 0, with execution
 job `ef6285b4-f21e-4bf4-bc07-6659baa269bb`. This checks actual deployed execution
 and dependency imports; the help invocation did not submit another inference.
+
+OpenFold2 recovery acceptance passed on the final deployment in chat
+`412a9965-ca4b-5bd1-a38f-1dcde84a7bc0`. GLM used `get_operation`,
+`get_operation_result`, and `visualize_structure` for the existing operation;
+the viewer reported 167 atoms, PDB format, reset/rotation/representation/fullscreen
+controls, and the authenticated browser recorded zero console errors. No inference
+submission tool was called from that chat.
