@@ -22,6 +22,16 @@ def test_serverless_and_librechat_auth_are_separated() -> None:
     assert '--env-secret "AUTH_TOKEN=' in deploy
 
 
+def test_footer_is_powered_by_nvidia() -> None:
+    footer = (ROOT / "PoweredByFooter.tsx").read_text(encoding="utf-8")
+    assert "Powered by" in footer
+    assert "NVIDIA" in footer
+    # The upstream default attribution must not be rendered.
+    assert "com_ui_latest_footer" not in footer
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "PoweredByFooter.tsx /app/client/src/components/Chat/Footer.tsx" in dockerfile
+
+
 def test_scientific_gateway_and_gromacs_are_preconfigured() -> None:
     renderer = (ROOT / "render-config.mjs").read_text(encoding="utf-8")
     assert "SCIENTIFIC_MODELS_API_BASE_URL" in renderer

@@ -3,6 +3,7 @@ ARG LIBRECHAT_BASE=cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/ba:librechat-0.2
 FROM ${LIBRECHAT_BASE} AS scientific-client
 USER root
 COPY templates/hcls-librechat/ScientificLanding.tsx /app/client/src/components/Chat/Landing.tsx
+COPY templates/hcls-librechat/PoweredByFooter.tsx /app/client/src/components/Chat/Footer.tsx
 COPY templates/hcls-librechat/patch-client.mjs /tmp/patch-client.mjs
 RUN node /tmp/patch-client.mjs
 WORKDIR /app/client
