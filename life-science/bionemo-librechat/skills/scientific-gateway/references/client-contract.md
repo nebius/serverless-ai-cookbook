@@ -105,4 +105,3 @@ SHA-256 and byte size.
   parity, and no assumption that a discoverable App is already warm.
 
 For exact examples and selected-runtime sources, call `get_model_schema`.
-

@@ -27,15 +27,18 @@ publication names.
    bytes; build the `input_manifest` from returned immutable artifact refs.
    Fixture artifact IDs from checked-in examples are templates, never
    submissions.
-3. Submit once: `submit_scientific_run` (MCP) or
-   `POST /v1/models/{id}:submit` (HTTP) with a run document
-   (`schema: "fs2-serve.nebius.ai/scientific-run-request/v1"`, `operation`
+3. Submit once with the named typed tool — `submit_alphafold3`,
+   `submit_openfold3_openbind`, `submit_protenix_v2`, `submit_esmfold2`,
+   `submit_esmfold2_fast`, `submit_proteina_complexa`, `submit_bindcraft`,
+   `submit_boltzgen`, `submit_mosaic`, `submit_rfdiffusion` (LibreChat
+   suffixes tool IDs) — or `submit_scientific_run` as the model-agnostic
+   route. The run document fields go in **flat** (no `request` wrapper):
+   `schema: "fs2-serve.nebius.ai/scientific-run-request/v1"`, `operation`
    from discovery, `service_class` your key may select — checked-in examples
    use `customer-batch`, `parameters` from the model schema, optional
-   `client_context` with `batch_id`/`correlation_id`/`display_name`).
-   Convenience tools `submit_<model>` accept the same `request` document.
-   For `rfdiffusion`, `operation` selects `design-backbone` or
-   `scaffold-motif` inside the document.
+   `client_context` with `batch_id`/`correlation_id`/`display_name`, plus the
+   optional `idempotency_key`. For `rfdiffusion`, `operation` selects
+   `design-backbone` or `scaffold-motif`.
 4. Follow with `get_scientific_status` / `list_scientific_events`, then
    `get_scientific_result`; download artifacts and verify hashes; acknowledge
    only after the user has outputs.

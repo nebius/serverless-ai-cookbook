@@ -71,19 +71,18 @@ def test_tool_names_against_live_snapshot():
                 assert name in tools, f"{directory.name}: unknown gateway tool {name}"
 
 
-def _extract_example(path, op_key):
+def _extract_example(path):
+    """Return the flat typed-tool example from a skill file."""
     text = path.read_text(encoding="utf-8")
     block = re.search(r"```json\n(.*?)\n```", text, re.S)
     assert block, f"{path}: no json example"
-    payload = json.loads(block.group(1))
-    assert payload["operation"] == op_key
-    return payload["payload"]
+    return json.loads(block.group(1))
 
 
 def test_boltz2_example_matches_adapter():
     module = load_server(FS2 / "models" / "bionemo" / "boltz2" / "server.py", "boltz2_server")
 
-    payload = _extract_example(SKILLS / "boltz2" / "SKILL.md", "predict")
+    payload = _extract_example(SKILLS / "boltz2" / "SKILL.md")
     request = module.PredictRequest.model_validate(payload)
     assert request.polymers[0].molecule_type == "protein"
     with pytest.raises(ValidationError):
@@ -97,7 +96,7 @@ def test_boltz2_example_matches_adapter():
 def test_openfold2_example_matches_adapter():
     module = load_server(FS2 / "models" / "structure" / "openfold2-upstream" / "server.py", "openfold2_server")
 
-    payload = _extract_example(SKILLS / "openfold2" / "SKILL.md", "predict-structure")
+    payload = _extract_example(SKILLS / "openfold2" / "SKILL.md")
     assert module.parse_request(payload) == ("skill-smoke-openfold2", "MKTAYIAKQRQISFVK")
     with pytest.raises(ValueError):
         module.parse_request({**payload, "templates": "x"})
@@ -106,21 +105,21 @@ def test_openfold2_example_matches_adapter():
 
 
 def test_diffdock_and_proteinmpnn_bounds():
-    diffdock = _extract_example(SKILLS / "diffdock" / "SKILL.md", "predict")
+    diffdock = _extract_example(SKILLS / "diffdock" / "SKILL.md")
     assert 1 <= diffdock["num_poses"] <= 4 and "ATOM" in diffdock["protein"]
     assert len(diffdock["ligand"]) <= 4096
-    pmnn = _extract_example(SKILLS / "proteinmpnn" / "SKILL.md", "sequence-design")
+    pmnn = _extract_example(SKILLS / "proteinmpnn" / "SKILL.md")
     assert 1 <= pmnn["num_seq_per_target"] <= 8 and "ATOM" in pmnn["input_pdb"]
 
 
 def test_genmol_molmim_msa_examples():
-    genmol = _extract_example(SKILLS / "genmol" / "SKILL.md", "generate")
+    genmol = _extract_example(SKILLS / "genmol" / "SKILL.md")
     assert 1 <= genmol["num_molecules"] <= 16
-    molmim = _extract_example(SKILLS / "molmim" / "SKILL.md", "generate")
+    molmim = _extract_example(SKILLS / "molmim" / "SKILL.md")
     assert len(molmim["smi"]) <= 512
-    msa = _extract_example(SKILLS / "msa-search" / "SKILL.md", "search")
+    msa = _extract_example(SKILLS / "msa-search" / "SKILL.md")
     assert 6 <= len(msa["sequence"]) <= 4096
-    assert 1 <= msa["max_msa_sequences"] <= 5000
+    assert "pdb70" in msa["databases"][0] and "a3m" in msa["output_alignment_formats"]
 
 
 def test_gateway_skill_covers_contract():

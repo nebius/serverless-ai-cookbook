@@ -6,8 +6,7 @@ license: Apache-2.0 AND CC-BY-4.0
 
 # genmol (native)
 
-Public model ID `genmol`; MCP `genmol_generate_native` or `invoke_model`
-(`model_id: "genmol"`, `protocol: "native"`). Shared rules: `scientific-gateway`.
+Public model ID `genmol`; MCP typed tool `genmol_generate_native` (the server is `bionemo-models`; LibreChat suffixes tool IDs). Shared rules: `scientific-gateway`.
 
 ## Payload contract (verified against the deployed adapter, 2026-09-09)
 
@@ -20,17 +19,9 @@ Public model ID `genmol`; MCP `genmol_generate_native` or `invoke_model`
   `step_size` 1–100 (default 1), `unique` bool (default false).
 
 ```json
-{
-  "operation": "generate",
-  "payload": {
-    "smiles": "CC(=O)N[*{1-3}]",
-    "num_molecules": 4,
-    "unique": true
-  }
-}
+{"smiles": "[*{20-30}]", "num_molecules": 1}
 ```
 
-(Confirm the advertised operation name from discovery.)
 
 ## Result
 

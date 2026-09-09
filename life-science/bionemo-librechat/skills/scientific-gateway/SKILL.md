@@ -1,7 +1,7 @@
 ---
 name: scientific-gateway
 description: Use the hosted fs2 scientific and inference Apps through their typed MCP tools. Apply when discovering models, choosing an App, preparing model inputs, submitting or resuming work, polling an operation or scientific batch, uploading inputs, downloading results, or explaining a gateway error.
-license: Apache-2.0 AND CC-BY-4.0
+license: Apache-2.0
 ---
 
 # Scientific model gateway

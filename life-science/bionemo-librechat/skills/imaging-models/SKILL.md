@@ -9,21 +9,19 @@ license: Apache-2.0 AND CC-BY-4.0
 Shared rules: `scientific-gateway`. Research use only; outputs are not
 diagnoses.
 
-## nv-reason-cxr-3b (protocol `openai-chat`)
+## nv-reason-cxr-3b (typed tool `analyze_image_openai_chat`)
 
-Chest X-ray reasoning model speaking the OpenAI chat protocol. Send standard
-chat payloads with the image per the deployed runtime's expected encoding
-(base64 data URL or artifact reference — confirm via a minimal call and the
-400/422 detail; do not guess). MCP `analyze_image_openai_chat` or
-`invoke_model` with `protocol: "openai-chat"`. Being OpenAI-compatible does
-not mean arbitrary chat text works — the model is domain-bound to CXR imagery.
+Chest X-ray reasoning model speaking the OpenAI chat protocol: pass standard
+`messages` (with the image per the schema's content format), plus optional
+OpenAI sampling fields; do **not** send a `model` field — the App selects it.
+Being OpenAI-compatible does not mean arbitrary chat text works — the model is
+domain-bound to CXR imagery. Call `get_model_schema` for the live schema.
 
-## nv-segment-ct (native)
+## nv-segment-ct (typed tool `segment_ct_native`)
 
-CT segmentation. Payload requires either `label_prompt` (non-empty list of
-integer labels) or `points` with matching `point_labels`; image input is a
-NIfTI volume (`nibabel`-loadable) supplied per the runtime's input convention.
-Exact field names were being pinned from the deployed adapter at adaptation
-time — probe minimally and read error details. MCP `segment_ct_native`.
+CT segmentation: `input_nifti_base64` (required) plus either `label_prompt`
+(non-empty integer label list) or `points` with matching `point_labels`. There
+is deliberately no tiny fake example — supply the real NIfTI volume. Call
+`get_model_schema` for bounds.
 
-Live verification status: readiness report (explicitly not yet live-tested).
+Live verification status: readiness report (not yet live-tested).

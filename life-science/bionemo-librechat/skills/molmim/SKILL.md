@@ -6,8 +6,7 @@ license: Apache-2.0 AND CC-BY-4.0
 
 # molmim (native)
 
-Public model ID `molmim`; MCP `molmim_run_native` or `invoke_model`
-(`model_id: "molmim"`, `protocol: "native"`). Shared rules: `scientific-gateway`.
+Public model ID `molmim`; MCP typed tool `molmim_run_native` (the server is `bionemo-models`; LibreChat suffixes tool IDs). Shared rules: `scientific-gateway`.
 
 ## Payload contract (verified against the deployed adapter, 2026-09-09)
 
@@ -20,17 +19,9 @@ Public model ID `molmim`; MCP `molmim_run_native` or `invoke_model`
   `iterations` 1–16 (default 1), `radius` 0–10 (default 1.0).
 
 ```json
-{
-  "operation": "generate",
-  "payload": {
-    "smi": "CC(=O)OC1=CC=CC=C1C(=O)O",
-    "num_molecules": 4,
-    "min_similarity": 0.4
-  }
-}
+{"smi": "CC(=O)OC1=CC=CC=C1C(=O)O", "num_molecules": 1}
 ```
 
-(Confirm the advertised operation name from discovery.)
 
 ## Result
 

@@ -6,35 +6,41 @@ license: Apache-2.0 AND CC-BY-4.0
 
 # openfold3 (native)
 
-Public model ID `openfold3`; MCP `infer_openfold3_native` or `invoke_model`
-(`model_id: "openfold3"`, `protocol: "native"`). Keep this distinct from the
-batch model `openfold3-openbind` (different runtime and request document; see
-that skill).
+Public model ID `openfold3`; typed tool `infer_openfold3_native` on the
+`bionemo-models` MCP server (LibreChat suffixes tool IDs). Keep this distinct
+from the batch model `openfold3-openbind` (different runtime and run document;
+see `scientific-batch`). Call `get_model_schema` when unsure — its live schema
+and example win over this skill.
 
-## Payload contract (verified against the deployed adapter parser, 2026-09-09)
+## Flat model fields (typed tool; no wrapper)
 
-Each input item must have exactly `input_id`, `output_format: "cif"` and
-`molecules`:
-
-- molecule allowed keys: `type`, `id`, `sequence`, `diffusion_samples`, `msa`;
-- protein `sequence` must be nonempty canonical amino acids;
-- optional `msa` switches the runtime's `use_msas` behavior;
-- seeds are platform-fixed (42) — do not send seed fields.
+- `request_id` (required): bounded identifier for the prediction request.
+- `inputs` (required): list of items, each with exactly `input_id`,
+  `output_format: "cif"` and `molecules`; molecule allowed keys `type`, `id`,
+  `sequence`, `diffusion_samples`, `msa`; protein `sequence` must be nonempty
+  canonical amino acids. Seeds are platform-fixed — do not send seed fields.
 
 ```json
 {
-  "operation": "predict-complex-structure",
-  "payload": {
-    "input_id": "skill-smoke-openfold3",
-    "output_format": "cif",
-    "molecules": [
-      { "type": "protein", "id": "A", "sequence": "MKTAYIAKQRQISFVK" }
-    ]
-  }
+  "request_id": "synthetic-protein",
+  "inputs": [
+    {
+      "input_id": "protein",
+      "output_format": "cif",
+      "molecules": [
+        {
+          "id": "A",
+          "type": "protein",
+          "sequence": "ACDEFGHIKLMNPQRSTVWY"
+        }
+      ]
+    }
+  ]
 }
 ```
 
-(Confirm the advertised operation name from discovery.)
+Pass `idempotency_key` per `scientific-gateway`; leave `wait_seconds` at 0 and
+poll `get_operation` / `get_operation_result`.
 
 ## Result
 

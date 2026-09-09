@@ -7,8 +7,9 @@ license: Apache-2.0 AND CC-BY-4.0
 # msa-search (native)
 
 Public model ID `msa-search-pdb70` (ColabFold MSA fallback against PDB70);
-MCP `msa_search_native` or `invoke_model` (`model_id: "msa-search-pdb70"`,
-`protocol: "native"`). Shared rules: `scientific-gateway`.
+typed tool `msa_search_native` on the `bionemo-models` MCP server (LibreChat
+suffixes tool IDs). Shared rules: `scientific-gateway`. Call `get_model_schema`
+when unsure — its live schema and example win over this skill.
 
 ## Payload contract (verified against the deployed adapter, 2026-09-09)
 
@@ -16,16 +17,9 @@ MCP `msa_search_native` or `invoke_model` (`model_id: "msa-search-pdb70"`,
 - `max_msa_sequences` 1–5000 (default 500).
 
 ```json
-{
-  "operation": "search",
-  "payload": {
-    "sequence": "MKTAYIAKQRQISFVK",
-    "max_msa_sequences": 500
-  }
-}
+{"sequence": "ACDEFGHIKLMNPQRSTVWY", "databases": ["pdb70_220313"], "output_alignment_formats": ["a3m"]}
 ```
 
-(Confirm the advertised operation name from discovery.)
 
 ## Result
 
