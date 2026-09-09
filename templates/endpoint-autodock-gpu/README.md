@@ -153,9 +153,13 @@ by `/v1/capabilities`.
 A successful run reports the GPU and driver, engine/source revision, scoring
 semantics, requested runs/evaluations, and best estimated binding energy for each
 ligand. Artifacts include DLG/XML output, score CSV, input copies, summary, logs,
-and SHA-256 values. The earlier H100 acceptance run produced an AutoDock4 score
-near `-2.77 kcal/mol` in about 0.51 seconds; use that only as a plumbing sanity
-check for this bundled case.
+and SHA-256 values. Qualification on 2026-09-09 used an H100 and the public image
+at digest
+`sha256:6e5090b387dfeef7a6a20fce6b12ed7d2d1b2d79675db8c7813dadb5a0087f77`.
+Independent REST and MCP runs completed in about 0.6 seconds and reported best
+AutoDock4 energies of `-8.26` and `-8.17 kcal/mol`; both result artifacts were
+hash-verified through REST and all artifacts were confirmed in the mounted
+bucket. Use these only as plumbing checks for this bundled case.
 
 Docking scores are research heuristics, not experimental binding free energies.
 Validate molecule preparation, grids, parameters, poses, and conclusions
