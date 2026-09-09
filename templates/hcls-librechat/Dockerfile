@@ -54,7 +54,7 @@ ENV HOST=0.0.0.0 \
     SCHEDULES_SINGLE_PROCESS=true \
     ENDPOINTS=agents,custom \
     SCIENTIFIC_MODELS_API_BASE_URL=https://89.169.99.188/v1 \
-    SCIENTIFIC_MODELS_MCP_URL=https://89.169.99.188/mcp \
+    SCIENTIFIC_MODELS_MCP_URL=https://89.169.99.188/mcp
 
 EXPOSE 3080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
