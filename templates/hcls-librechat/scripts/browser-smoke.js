@@ -26,6 +26,13 @@ async (page) => {
       check(await page.getByTestId('model-selector-button').innerText() === chosenModel, 'Workflow changed LLM');
       prompts.push(await page.getByRole('textbox', { name: 'Message input' }).inputValue());
       await page.getByRole('button', { name: 'Send message', exact: true }).click({ trial: true });
+      if (await card.getAttribute('data-workflow') === 'infra') {
+        const panel = page.getByRole('complementary', { name: 'Infrastructure setup handoff' });
+        check((await panel.innerText()).includes('not connected'), 'Infrastructure setup misrepresents account access');
+        await panel.getByRole('button', { name: 'Copy MCP setup prompt' }).click();
+        await panel.getByRole('status').filter({ hasText: 'Setup prompt copied' }).waitFor();
+        check(prompts.at(-1).includes('SAFE_MODE=true'), 'Infrastructure handoff lacks safe mode');
+      }
     }
     check(prompts.length === 6 && new Set(prompts).size === 6, 'Expected six distinct workflow prompts');
     check(requests.length === 0, 'Workflow sent a chat request');
@@ -44,11 +51,13 @@ async (page) => {
     }
     await select('Nebius Token Factory', 'Qwen 3 30B');
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile horizontal overflow');
     await page.getByTestId('model-selector-button').click();
+    await page.getByRole('option', { name: 'Nebius Token Factory', exact: true }).waitFor();
     await page.screenshot({ path: 'output/playwright/after-mobile-selector.png' });
     await page.keyboard.press('Escape');
-    await page.locator('[data-workflow="literature"]').click();
+    await page.locator('[data-workflow="wildcard"]').click();
     check((await page.getByRole('textbox', { name: 'Message input' }).inputValue()).includes('scientific question'), 'Mobile workflow is inaccessible');
     await page.getByRole('button', { name: 'Send message', exact: true }).click({ trial: true });
     const sendBox = await page.getByRole('button', { name: 'Send message', exact: true }).boundingBox();

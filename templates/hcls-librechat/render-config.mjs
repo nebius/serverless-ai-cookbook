@@ -70,10 +70,11 @@ const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => model
   const isDefault = endpoint === 'Nebius Token Factory' && index === 0;
   return {
     name: isDefault ? 'nebius-scientific-ai-agent' : `science-${endpoint}-${model}`.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase(),
-    label, group, groupIcon: endpoint === 'anthropic' ? 'anthropic' : endpoint === 'openAI' ? 'openAI' : undefined,
+    label, group, groupIcon: endpoint === 'anthropic' ? 'anthropic' : endpoint === 'openAI' ? 'openAI' : '/assets/token-factory.svg',
+    iconURL: endpoint === 'Nebius Token Factory' ? '/assets/token-factory.svg' : endpoint,
     default: isDefault, showOnLanding: false, showIconInHeader: true,
     description: endpoint === 'Nebius Token Factory' ? 'Scientific tools and web research' : 'Scientific tools · connect your provider key',
-    mcpServers: ['bionemo-models', 'tavily'], skills: true, artifacts: true,
+    mcpServers: ['bionemo-models', 'tavily', 'structure-viewer'], skills: true, artifacts: true,
     preset: { endpoint, model, modelLabel: label, promptPrefix: instructions,
       ...(endpoint === 'openAI' ? { useResponsesApi: true } : {}),
     },
@@ -103,6 +104,7 @@ const config = {
     anthropic: { titleConvo: true, titleModel: 'claude-haiku-4-5' },
     custom: [{
       name: 'Nebius Token Factory',
+      iconURL: '/assets/token-factory.svg',
       apiKey: process.env.NEBIUS_API_KEY ? '${NEBIUS_API_KEY}' : 'user_provided',
       baseURL: 'https://api.tokenfactory.nebius.com/v1',
       models: { default: availableTokenModels.map(([id]) => id), fetch: false },
@@ -112,6 +114,17 @@ const config = {
   },
   modelSpecs: { prioritize: true, enforce: false, list: modelSpecs },
   mcpServers: {
+    'structure-viewer': {
+      title: 'Structure viewer', description: 'Read-only interactive protein and molecule visualization.',
+      type: 'stdio', command: 'python3', args: ['/opt/bionemo/structure-mcp.py'],
+      startup: sharedGatewayKey,
+      env: { SCIENTIFIC_MODELS_API_BASE_URL: '${SCIENTIFIC_MODELS_API_BASE_URL}',
+        SCIENTIFIC_MODELS_API_KEY: sharedGatewayKey ? '${SCIENTIFIC_MODELS_API_KEY}' : '{{SCIENTIFIC_MODELS_API_KEY}}' },
+      ...(!sharedGatewayKey ? { customUserVars: { SCIENTIFIC_MODELS_API_KEY: {
+        title: 'Scientific platform API key', description: 'Use your own scientific model-access key for result visualization.', sensitive: true,
+      } } } : {}),
+      timeout: 60000,
+    },
     tavily: { type: 'stdio', command: 'node', args: ['/opt/bionemo/tavily-mcp.mjs'],
       env: { TAVILY_API_KEY: '${TAVILY_API_KEY}' } },
     'bionemo-models': {

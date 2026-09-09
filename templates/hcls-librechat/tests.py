@@ -45,6 +45,9 @@ def test_footer_is_powered_by_nvidia() -> None:
     footer = (ROOT / "PoweredByFooter.tsx").read_text(encoding="utf-8")
     assert "Powered by" in footer
     assert "NVIDIA" in footer
+    assert 'alt="Nebius"' in footer
+    assert "fill: '#000000'" in footer
+    assert "fill: 'rgb(118,185,0)'" in footer
     assert "const localize = useLocalize()" in footer
     # The upstream default attribution must not be rendered.
     assert "com_ui_latest_footer" not in footer
@@ -55,7 +58,7 @@ def test_footer_is_powered_by_nvidia() -> None:
 @pytest.mark.parametrize("shared_key", [False, True])
 def test_rendered_gateway_authentication(tmp_path, shared_key) -> None:
     config, output = render_config(tmp_path, **({"SCIENTIFIC_MODELS_API_KEY": "synthetic-test-credential"} if shared_key else {}))
-    assert set(config["mcpServers"]) == {"bionemo-models", "tavily"}
+    assert set(config["mcpServers"]) == {"bionemo-models", "tavily", "structure-viewer"}
     gateway = config["mcpServers"]["bionemo-models"]
     assert gateway["type"] == "streamable-http"
     assert gateway["url"] == "${SCIENTIFIC_MODELS_MCP_URL}"
@@ -133,7 +136,7 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     for agent in agents:
         assert agent["skills_enabled"] is True
         assert instructions.read_text().strip() in agent["instructions"]
-        assert set(agent["mcpServerNames"]) == {"bionemo-models", "tavily"}
+        assert set(agent["mcpServerNames"]) == {"bionemo-models", "tavily", "structure-viewer"}
         assert "tavily_search_mcp_tavily" in agent["tools"]
 
 
@@ -146,7 +149,7 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
     assert len({item["name"] for item in specs}) == len(specs)
     for item in specs:
         assert item["skills"] is True
-        assert item["mcpServers"] == ["bionemo-models", "tavily"]
+        assert item["mcpServers"] == ["bionemo-models", "tavily", "structure-viewer"]
         assert INSTRUCTIONS.read_text().strip() in item["preset"]["promptPrefix"]
         assert item["preset"]["model"] not in {"evo2-40b", "boltz2", "openfold2", "sdxl", "nv-segment-ct"}
         assert "agent_id" not in item["preset"]
@@ -175,8 +178,8 @@ def test_default_model_and_visible_workbench(tmp_path) -> None:
     assert default["preset"]["model"] == "zai-org/GLM-5.3-Flash"
     assert "nebius-scientific-workbench" in brand_client
     for title in (
-        "Find the right model", "Fold a protein", "Explore molecular design",
-        "Study sequences & aging", "Investigate biomedical images", "Research the literature",
+        "Prepare your Nebius workspace", "Explore aging & biomarkers", "Investigate a longevity target",
+        "Make longevity science clear", "Prototype a healthspan workflow", "Shape your own challenge",
     ):
         assert title in (ROOT / "ScientificLanding.tsx").read_text(encoding="utf-8")
 

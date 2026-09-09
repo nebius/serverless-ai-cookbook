@@ -68,3 +68,16 @@ if (!requiredKey.includes(oldRequired)) throw new Error('Unsupported requires-ke
 requiredKey = requiredKey.replace(oldRequired, `  const expired = expiryTime && expiryTime !== 'never' && new Date(expiryTime) <= new Date();
   const requiresKey = (!expiryTime || expired) && userProvidesKey;`);
 await writeFile(requiredKeyPath, requiredKey);
+
+// Restore embedded-viewer sizing and fullscreen delegation without relaxing
+// the upstream HTML-only renderer or its sandbox.
+const resourcePath = '/app/client/src/components/MCPUIResource/MCPUIResource.tsx';
+let resource = await readFile(resourcePath, 'utf8');
+const resizeOption = 'autoResizeIframe: { width: true, height: true },';
+if (!resource.includes(resizeOption)) throw new Error('Unsupported MCP UI resource renderer');
+resource = resource.replace(resizeOption, `autoResizeIframe: { width: false, height: true },
+            iframeProps: {
+              allow: 'fullscreen', allowFullScreen: true,
+              style: { display: 'block', width: '100%', border: 0 },
+            } as React.IframeHTMLAttributes<HTMLIFrameElement>,`);
+await writeFile(resourcePath, resource);

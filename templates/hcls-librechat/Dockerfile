@@ -23,6 +23,9 @@ COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-confi
 COPY templates/hcls-librechat/scientific-tool-options.cjs /opt/hcls-librechat/scientific-tool-options.cjs
 COPY templates/hcls-librechat/patch-server.mjs /opt/hcls-librechat/patch-server.mjs
 COPY templates/hcls-librechat/tavily-mcp.mjs /opt/bionemo/tavily-mcp.mjs
+COPY templates/hcls-librechat/structure-mcp.py /opt/bionemo/structure-mcp.py
+COPY life-science/bionemo-librechat/viewer-mcp.py /opt/bionemo/viewer-mcp.py
+COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 RUN node /opt/hcls-librechat/patch-server.mjs
 COPY templates/hcls-librechat/seed-workbench.js /app/seed-hcls-workbench.js
 COPY life-science/bionemo-librechat/scientific-agent-instructions.md /app/scientific-agent-instructions.md
@@ -32,10 +35,12 @@ COPY templates/hcls-librechat/seed-user.js /app/seed-user.js
 # Overlay the typed-contract skills maintained in the workbench directory and
 # drop the stale pre-adaptation skill directories from the base image.
 COPY life-science/bionemo-librechat/skills/ /app/skill/
+COPY templates/hcls-librechat/skills/ /app/skill/
 RUN cd /app/skill && rm -rf boltz2-nim openfold2-nim openfold3-nim diffdock-nim \
       genmol-nim molmim-nim msa-search-nim evo2-nim proteinmpnn-nim \
       rfdiffusion-nim bionemo-workbench-tutorials
 COPY templates/hcls-librechat/assets/nebius-logo.svg /app/client/dist/assets/logo.svg
+COPY templates/hcls-librechat/assets/token-factory.svg /app/client/dist/assets/token-factory.svg
 RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
  && node /opt/hcls-librechat/brand-client.mjs /app/client/dist \
  && mkdir -p /data/db /data/hcls-librechat /app/uploads /app/logs \

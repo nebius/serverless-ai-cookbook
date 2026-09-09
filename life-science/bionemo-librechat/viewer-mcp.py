@@ -139,7 +139,7 @@ def normalise_mmcif_for_viewer(structure_text):
     return '\n'.join(pdb_records + ['END', ''])
 
 
-def viewer_html(structure_text, structure_format, title):
+def viewer_html(structure_text, structure_format, title, structures=None):
     safe_title = html.escape(title)
     if structure_format == 'cif':
         normalised_structure = normalise_mmcif_for_viewer(structure_text)
@@ -148,6 +148,9 @@ def viewer_html(structure_text, structure_format, title):
             structure_format = 'pdb'
     structure_data = javascript_string(structure_text)
     format_data = javascript_string(structure_format)
+    entries = structures or [{'text': structure_text, 'format': structure_format, 'label': title}]
+    entries_data = javascript_string(entries)
+    entry_options = ''.join(f'<option value="{index}">{html.escape(entry["label"])}</option>' for index, entry in enumerate(entries))
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{safe_title}</title><style>
@@ -156,19 +159,30 @@ html,body {{ min-height:100%; width:100%; overflow-x:hidden; }} body {{ margin:0
 .toolbar {{ position:relative; z-index:2; min-height:52px; display:flex; gap:9px; align-items:center; flex-wrap:wrap; padding:10px 12px; border-bottom:1px solid #e8edf5; }}
 .title {{ font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:auto; max-width:38ch; }} button,select {{ border:1px solid #cbd5e1; border-radius:7px; background:#fff; color:#14213d; font:inherit; font-size:13px; padding:6px 9px; cursor:pointer; }}
 button:hover,select:hover {{ border-color:#2563eb; }} button[aria-pressed="true"] {{ color:#fff; border-color:#2563eb; background:#2563eb; }} label {{ color:#475569; font-size:13px; }}
-#viewer {{ position:relative; z-index:1; height:min(74vh,820px); min-height:560px; width:100%; overflow:hidden; isolation:isolate; }} .hint {{ position:relative; z-index:2; color:#64748b; font-size:12px; padding:8px 12px; border-top:1px solid #e8edf5; }}
-html:fullscreen,html:fullscreen body {{ width:100%; height:100%; background:#f7f9fc; }} html:fullscreen .panel {{ min-height:100vh; height:100vh; border:0; border-radius:0; box-shadow:none; }} html:fullscreen #viewer {{ height:calc(100vh - 112px); min-height:0; max-height:none; }}
+#viewer {{ position:relative; z-index:1; height:480px; min-height:300px; width:100%; overflow:hidden; isolation:isolate; }} .hint {{ position:relative; z-index:2; color:#64748b; font-size:12px; padding:8px 12px; border-top:1px solid #e8edf5; }}
+html:fullscreen,html:fullscreen body {{ width:100%; height:100%; background:#f7f9fc; }} html:fullscreen .panel {{ display:flex; flex-direction:column; width:100%; height:100vh; border:0; border-radius:0; box-shadow:none; }} html:fullscreen #viewer {{ flex:1; height:auto; min-height:0; max-height:none; }}
 @media (max-width:560px) {{ .title {{ width:100%; max-width:none; }} #viewer {{ min-height:420px; }} }}</style></head>
-<body><section class="panel" aria-label="Protein structure viewer"><div class="toolbar"><div class="title">{safe_title}</div>
+<body><section class="panel" aria-label="Molecular structure viewer"><div class="toolbar"><div class="title">{safe_title}</div>
+<label>Structure <select id="structure" aria-label="Structure">{entry_options}</select></label>
 <button id="reset" type="button">Reset view</button><button id="spin" type="button" aria-pressed="false">Start rotation</button>
 <label>Representation <select id="style" aria-label="Molecular representation"><option value="cartoon">Cartoon</option><option value="cartoon-sticks">Cartoon + sticks</option><option value="sticks">Sticks</option><option value="surface">Surface</option></select></label><button id="fullscreen" type="button" aria-pressed="false">Full screen</button></div>
-<div id="viewer"></div><div class="hint">Drag to rotate · scroll or pinch to zoom · right-drag to pan</div></section>
+<div id="viewer"></div><div id="viewer-status" role="status" class="hint">Loading structure…</div><div class="hint">Drag to rotate · scroll or pinch to zoom · right-drag to pan · Predictions are not experimental validation</div></section>
 <script>{THREEDMOL}</script><script>
-const viewer=$3Dmol.createViewer(document.getElementById('viewer'),{{backgroundColor:'#f8fafc'}}); const structure={structure_data}; const format={format_data}; let spinning=false;
-const model=viewer.addModel(structure,format);
-const alphaCarbons=model.selectedAtoms({{atom:'CA'}});
-const polymerAtoms=model.selectedAtoms({{hetflag:false}});
-const hasCartoonBackbone=alphaCarbons.length>=4&&polymerAtoms.length>alphaCarbons.length*2;
+let viewer; const entries={entries_data}; let spinning=false;
+let model, initialView, alphaCarbons=[], polymerAtoms=[], hasCartoonBackbone=false;
+function loadStructure(index) {{
+  viewer.removeAllModels(); viewer.removeAllShapes(); viewer.removeAllSurfaces();
+  const entry=entries[index]; model=viewer.addModel(entry.text,entry.format);
+  const atoms=model.selectedAtoms({{}});
+  if(!atoms.length) throw new Error('No readable atoms in this structure.');
+  if(atoms.some(a=>![a.x,a.y,a.z].every(Number.isFinite))) throw new Error('Invalid atom coordinates.');
+  alphaCarbons=model.selectedAtoms({{atom:'CA'}}); polymerAtoms=model.selectedAtoms({{hetflag:false}});
+  hasCartoonBackbone=alphaCarbons.length>=4&&polymerAtoms.length>alphaCarbons.length*2;
+  const style=entry.format==='sdf'||entry.format==='mol'?'sticks':'cartoon';
+  document.getElementById('style').value=style; setRepresentation(style); initialView=viewer.getView();
+  document.getElementById('viewer-status').textContent=atoms.length+' atoms · '+entry.format.toUpperCase()+' · '+entry.label;
+  document.querySelector('.panel').dataset.viewerReady='true';
+}}
 function point(atom) {{ return {{x:atom.x,y:atom.y,z:atom.z}}; }}
 function backboneFallback() {{
   if(alphaCarbons.length<4) return false;
@@ -186,8 +200,20 @@ function setSpin(enabled) {{ spinning=enabled; viewer.spin(enabled?'y':false,1);
 function reportHeight() {{ const panel=document.querySelector('.panel'); window.parent.postMessage({{type:'ui-size-change',payload:{{height:Math.ceil(panel.scrollHeight)}}}},'*'); }}
 function resizeViewer() {{ viewer.resize(); viewer.render(); reportHeight(); }}
 function syncFullscreen() {{ const active=Boolean(document.fullscreenElement); const button=document.getElementById('fullscreen'); button.setAttribute('aria-pressed',String(active)); button.textContent=active?'Exit full screen':'Full screen'; requestAnimationFrame(resizeViewer); }}
-async function toggleFullscreen() {{ try {{ if(document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }} catch(error) {{ console.warn('Fullscreen is unavailable',error); }} }}
-document.getElementById('reset').addEventListener('click',()=>{{viewer.zoomTo();viewer.render();}}); document.getElementById('spin').addEventListener('click',()=>setSpin(!spinning)); document.getElementById('style').addEventListener('change',(event)=>setRepresentation(event.target.value)); document.getElementById('fullscreen').addEventListener('click',toggleFullscreen); document.addEventListener('fullscreenchange',syncFullscreen); setRepresentation('cartoon'); setSpin(false); requestAnimationFrame(reportHeight); window.addEventListener('resize',resizeViewer); new ResizeObserver(reportHeight).observe(document.querySelector('.panel'));
+async function toggleFullscreen() {{ try {{ if(document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }} catch(error) {{ document.getElementById('viewer-status').textContent='Fullscreen is unavailable in this browser. Rotation and zoom remain available.'; }} }}
+function showError(error) {{ document.querySelector('.panel').dataset.viewerReady='false'; document.getElementById('viewer-status').textContent='Unable to display structure: '+error.message; }}
+try {{
+  viewer=$3Dmol.createViewer(document.getElementById('viewer'),{{backgroundColor:'#f8fafc'}});
+  document.getElementById('reset').addEventListener('click',()=>{{setSpin(false);viewer.setView(initialView);viewer.render();}});
+  document.getElementById('spin').addEventListener('click',()=>setSpin(!spinning));
+  document.getElementById('style').addEventListener('change',(event)=>setRepresentation(event.target.value));
+  document.getElementById('structure').addEventListener('change',(event)=>{{try {{loadStructure(Number(event.target.value));}} catch(error) {{showError(error);}}}});
+  document.getElementById('fullscreen').addEventListener('click',toggleFullscreen);
+  document.addEventListener('fullscreenchange',syncFullscreen); loadStructure(0); setSpin(false);
+  window.addEventListener('resize',resizeViewer);
+  new ResizeObserver(()=>{{viewer.resize();viewer.render();}}).observe(document.getElementById('viewer'));
+}} catch(error) {{ showError(error); }}
+requestAnimationFrame(reportHeight); new ResizeObserver(reportHeight).observe(document.querySelector('.panel'));
 </script></body></html>'''
 
 
@@ -239,7 +265,7 @@ def call_viewer(arguments):
     }
 
 
-for line in sys.stdin:
+for line in sys.stdin if __name__ == '__main__' else ():
     request = None
     try:
         request = json.loads(line)
