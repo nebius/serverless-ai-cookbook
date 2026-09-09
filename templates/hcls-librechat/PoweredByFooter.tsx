@@ -76,7 +76,7 @@ function Footer({ className, startupConfig }: FooterProps) {
 
   const mainContentRender =
     mainContentParts == null ? (
-      defaultContent
+      [defaultContent]
     ) : (
       mainContentParts.split('|').map((text, index) => (
         <React.Fragment key={`main-content-part-${index}`}>
