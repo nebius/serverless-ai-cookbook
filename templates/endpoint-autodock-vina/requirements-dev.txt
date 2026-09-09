@@ -1,0 +1,7 @@
+-r requirements-client.txt
+fastapi==0.136.1
+httpx==0.28.1
+pydantic==2.12.5
+pytest==9.1.1
+ruff==0.13.1
+uvicorn==0.52.4
