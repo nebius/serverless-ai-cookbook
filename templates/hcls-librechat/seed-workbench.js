@@ -4,10 +4,10 @@ const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/LibreChat';
 const serviceEmail = 'nebius-scientific-ai-agent@localhost.invalid';
 const model = 'zai-org/GLM-5.3-Flash';
 
-const scientificModelsServerName = 'scientific_models';
+const scientificModelsServerName = 'bionemo-models';
 const mcpTool = (name) => `${name}_mcp_${scientificModelsServerName}`;
 const scientificCatalogTools = [
-  'list_models', 'list_scientific_models', 'invoke_model', 'get_operation',
+  'list_models', 'list_scientific_models', 'get_model_schema', 'invoke_model', 'get_operation',
   'get_operation_result', 'cancel_operation', 'acknowledge_operation',
   'submit_scientific_run', 'get_scientific_status', 'cancel_scientific_run',
   'list_scientific_events', 'get_scientific_artifact', 'get_scientific_result',

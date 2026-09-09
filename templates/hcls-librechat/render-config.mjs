@@ -11,10 +11,16 @@ const tokenFactoryApiKey = process.env.NEBIUS_API_KEY
   ? "'${NEBIUS_API_KEY}'"
   : "'user_provided'";
 
-// Per-user gateway key (recommended baseline): each chat user supplies their own
-// ordinary inference key in MCP Settings; startup stays false because discovery
-// is caller-specific. Double braces resolve the current user's custom variable.
-const scientificModelsMcpAuthentication = `    startup: false
+// Two supported modes (see integrations/librechat handover):
+// - Injected shared key (deliberately single-customer deployments): set
+//   SCIENTIFIC_MODELS_API_KEY as a deployment env var; the server connects at
+//   startup so agents have MCP tools immediately.
+// - Per-user keys (recommended for multi-customer): leave the env unset; each
+//   user supplies their own key in MCP Settings (startup: false because
+//   discovery is caller-specific).
+const scientificModelsMcpAuthentication = process.env.SCIENTIFIC_MODELS_API_KEY
+  ? "    startup: true\n    requiresOAuth: false\n    headers:\n      Authorization: 'Bearer ${SCIENTIFIC_MODELS_API_KEY}'"
+  : `    startup: false
     requiresOAuth: false
     headers:
       Authorization: 'Bearer {{SCIENTIFIC_MODELS_API_KEY}}'
