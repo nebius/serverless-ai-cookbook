@@ -60,3 +60,45 @@ consume different data and are not interchangeable clocks.
 This update does not add an attachment-to-gateway bridge, batch-result downloader,
 clinical integration or participant cloud authentication. Earlier endpoints and
 their chat data must be preserved when publishing a new release.
+
+## Release provenance
+
+Source: `d4e3e26485c2a69ae6714a6857bee5d7e4ba1f28` (including `dd1916d`).
+Image: `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/nebius-scientific-ai-agent:20260909-d4e3e26`.
+Digest: `sha256:020bdbb54621f45f7c63d6b29bcf2e76998ccc5b736b95cdd67eec80381fdc0d`.
+Endpoint: `aiendpoint-e00r6bmnz10rtfbxre`, project `project-e00z6b02t8ddk96c49`,
+CPU D3 / 4 vCPU / 16 GB / 100 GiB, same three secret-version bindings as the
+previous release. Existing endpoint `aiendpoint-e00vw7asvgvc2kxrrm` remains intact.
+
+Local final release: `scientific-capabilities-release`, port 13088. Final-image
+production build, TypeScript, all 39 offline checks and browser smoke pass.
+The image label matches the full source revision and it loads all 32 skills.
+
+The first infrastructure trial loaded the installed skill bodies, retrieved the
+endpoint command reference, used Tavily and produced an unexecuted configuration.
+It loaded six skills and the full scientific catalog, exceeding the 120-second
+browser wait. The follow-up commit narrows the starter to cloud basics and one
+workload-specific skill, and avoids full-catalog discovery for a cloud-only task.
+Model-dependent response time remains a practical limitation.
+
+### Cloud acceptance
+
+The new endpoint is RUNNING and `/health` returns 200:
+https://port3080-j49j8a0re45wb0c.tunnel.applications.eu-north1.nebius.cloud
+
+Cloud login with the existing deployment demo account succeeds. Authenticated
+APIs expose all 32 skills, including every official Nebius skill; all 13
+supporting-file contents match the pinned upstream hashes.
+
+The final-image aging starter completed in local chat
+`c319f494-4bdf-5aee-aa7f-4e97342d2ae2`: two skills loaded, Tavily research returned,
+both live model schemas retrieved, and both named typed tools discovered. It
+explained the distinct inputs and offered starting demos without submitting
+inference. This verifies routing and tool use, not scientific accuracy of all
+model-generated prose or clinical validity.
+
+Cloud browser smoke passed all six capability-labelled starters, unchanged model
+selection, both provider-key dialogs, copyable infrastructure handoff and mobile
+Send readiness. Card selection sent zero chat/compute requests. No console errors
+were recorded in the fresh cloud browser session. The served client bundle
+`index.CSZjiHMM.js` matches the final local image.
