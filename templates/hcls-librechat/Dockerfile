@@ -25,6 +25,9 @@ COPY templates/hcls-librechat/patch-server.mjs /opt/hcls-librechat/patch-server.
 COPY templates/hcls-librechat/tavily-mcp.mjs /opt/bionemo/tavily-mcp.mjs
 COPY templates/hcls-librechat/structure-mcp.py /opt/bionemo/structure-mcp.py
 COPY templates/hcls-librechat/execution-mcp.py /opt/bionemo/execution-mcp.py
+COPY templates/hcls-librechat/invoke-native.py /opt/bionemo/invoke-native.py
+RUN python3 -m venv /opt/scientific-client \
+ && /opt/scientific-client/bin/pip install --no-cache-dir mcp==2.2.0 httpx2==2.12.0 jsonschema==4.26.0
 COPY life-science/bionemo-librechat/viewer-mcp.py /opt/bionemo/viewer-mcp.py
 COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 RUN node /opt/hcls-librechat/patch-server.mjs
