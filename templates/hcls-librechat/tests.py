@@ -65,7 +65,7 @@ def test_default_agent_and_visible_workbench_are_nebius_branded() -> None:
         "Genomics & Biological Age",
         "Audio Transcription · Tutorial",
     ):
-        assert title in brand_client
+        assert title in (ROOT / "ScientificLanding.tsx").read_text(encoding="utf-8")
 
 
 def test_client_branding_is_baked_into_the_wrapper() -> None:

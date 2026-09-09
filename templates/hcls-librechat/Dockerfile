@@ -1,5 +1,13 @@
 # syntax=docker/dockerfile:1.7
 ARG LIBRECHAT_BASE=cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/ba:librechat-0.2.7-20260908@sha256:1eaa9a5e7dc7e7a141d6f452f46e5547646a7c6113e610348511f801e7b185d1
+FROM ${LIBRECHAT_BASE} AS scientific-client
+USER root
+COPY templates/hcls-librechat/ScientificLanding.tsx /app/client/src/components/Chat/Landing.tsx
+COPY templates/hcls-librechat/patch-client.mjs /tmp/patch-client.mjs
+RUN node /tmp/patch-client.mjs
+WORKDIR /app/client
+RUN NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 /app/node_modules/.bin/vite build
+
 FROM ${LIBRECHAT_BASE}
 
 ARG HCLS_IMAGE_REVISION=unknown
@@ -9,6 +17,7 @@ LABEL org.opencontainers.image.title="Nebius Scientific AI Agent" \
       org.opencontainers.image.licenses="MIT"
 
 USER root
+COPY --from=scientific-client /app/client/dist /app/client/dist
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
 COPY templates/hcls-librechat/seed-workbench.js /app/seed-hcls-workbench.js
 COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entrypoint
