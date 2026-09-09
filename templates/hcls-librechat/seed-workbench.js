@@ -1,4 +1,9 @@
 const { MongoClient, ObjectId } = require('mongodb');
+const { readFileSync } = require('node:fs');
+
+const gatewayInstructions = readFileSync(
+  process.env.SCIENTIFIC_AGENT_INSTRUCTIONS_PATH || '/app/scientific-agent-instructions.md', 'utf8',
+).trim();
 
 const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/LibreChat';
 const serviceEmail = 'nebius-scientific-ai-agent@localhost.invalid';
@@ -12,6 +17,8 @@ const scientificCatalogTools = [
   'submit_scientific_run', 'get_scientific_status', 'cancel_scientific_run',
   'list_scientific_events', 'get_scientific_artifact', 'get_scientific_result',
   'download_scientific_artifact', 'read_scientific_artifact_bytes',
+  'begin_scientific_artifact_upload', 'put_scientific_artifact_bytes',
+  'finalize_scientific_artifact_upload',
 ].map(mcpTool);
 
 const structureTools = [
@@ -52,7 +59,7 @@ function agents() {
       description: 'The Nebius Scientific AI workbench for model discovery, scientific workflows, and reproducible comparisons.',
       instructions: `You are Nebius Scientific AI Agent. You are the primary scientific workbench, not a tutorial. Start by asking about the user’s scientific goal, data, constraints, and evaluation target. Inspect the live scientific model catalog before stating which services are available.
 
-Present the catalog in these six guided areas: Protein Folding & Structure; Molecular Docking & Design; Molecular Dynamics; Biomedical Imaging; Genomics & Biological Age; and Audio Transcription. The scientific gateway currently exposes models including AltumAge, Boltz2, Cosmos3 Nano, DiffDock, Evo2-40B, GenMol, MolMIM, MSA Search PDB70, chest X-ray reasoning, CT segmentation, OpenFold2, OpenFold3, PhenoAge, ProteinMPNN, Qwen3-8B, and SDXL. Verify this list live because availability can change.
+Present the catalog in these guided areas: Protein Folding & Structure; Molecular Docking & Design; Biomedical Imaging; Genomics & Biological Age; and Generative Media. Audio Transcription is an integration tutorial with no connected model. The scientific gateway currently exposes models including AltumAge, Boltz2, Cosmos3 Nano, DiffDock, Evo2-40B, GenMol, MolMIM, MSA Search PDB70, chest X-ray reasoning, CT segmentation, OpenFold2, OpenFold3, PhenoAge, ProteinMPNN, Qwen3-8B, and SDXL. Verify this list live because availability can change.
 
 For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. State limitations and ask before submitting compute. Use the scientific gateway for model operations, and preserve operation IDs for reproducibility. Never present scientific model output as clinical advice or experimental validation.`,
       tools: allScientificTools,
@@ -60,7 +67,7 @@ For any proposed benchmark, fix inputs, preprocessing, random seeds, compute set
       conversation_starters: [
         'Show the scientific model catalog grouped by protein structure, docking and design, imaging, genomics, and generative models.',
         'Help me choose a model and a reproducible benchmark for my scientific task.',
-        'Show the six guided tutorials and recommend where to start.',
+        'Show the available guided tutorials and recommend where to start.',
       ],
     },
     {
@@ -69,7 +76,7 @@ For any proposed benchmark, fix inputs, preprocessing, random seeds, compute set
       description: 'Guided use of the live Nebius Scientific AI Agent structure-prediction catalog.',
       instructions: `You are the Nebius Scientific AI Agent Protein Folding & Structure tutorial. Start each session with a short workbench: (1) query the live catalog; (2) list every available structure model and operation, beginning with Boltz2, OpenFold2, and OpenFold3; (3) show one bounded sequence example; and (4) give a matched benchmark table before compute. Report actual schemas, limits, output artifact types, and confidence fields before proposing a run.
 
-For a comparison, hold input sequence, MSA/template treatment, preprocessing, seeds, hardware setting, and evaluation criteria fixed. Compare wall time, completion state, confidence outputs, and structure artifacts; do not collapse a failed service into a score. Explain the proposed inputs and get confirmation before submitting a scientific run. Track operation IDs, surface failures honestly, retrieve only bounded artifact summaries in chat, and offer the embedded structure viewer for a final PDB/mmCIF artifact.
+For a comparison, record input sequence, MSA/template treatment, preprocessing, supported seeds, observed runtime and evaluation criteria. Compare only compatible input treatments and state differences between runtimes. Compare wall time, completion state, confidence outputs, and structure artifacts; do not collapse a failed service into a score. Explain the proposed inputs and get confirmation before submitting a scientific run. Track operation IDs, surface failures honestly, and retrieve only bounded artifact summaries in chat. This deployment has no connected structure viewer or compatible attachment/file bridge.
 
 Predictions and confidence metrics are research outputs. Do not represent them as experimentally validated structures or clinical advice.`,
       tools: structureTools,
@@ -91,7 +98,7 @@ Then give one concrete, bounded example and a benchmark plan: use the same prepa
       mcpServerNames: [scientificModelsServerName, 'tavily'],
       conversation_starters: [
         'List the available docking and molecular-design models with their live operations.',
-        'Outline a reproducible DiffDock versus Boltz2 binding benchmark without submitting it yet.',
+        'Outline a reproducible DiffDock docking benchmark without submitting it yet.',
       ],
     },
     {
@@ -145,6 +152,9 @@ async function seedAgent({ agents: collection, aclEntries, owner, now, definitio
     {
       $set: {
         ...definition,
+        instructions: `${definition.instructions}\n\n${gatewayInstructions}`,
+        skills_enabled: true,
+        artifacts: 'default',
         tools: [...new Set([...(definition.tools || []), 'tavily_search_mcp_tavily'])],
         provider: 'Nebius Token Factory',
         model,

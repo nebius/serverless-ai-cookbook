@@ -20,7 +20,12 @@ LABEL org.opencontainers.image.title="Nebius Scientific AI Agent" \
 USER root
 COPY --from=scientific-client /app/client/dist /app/client/dist
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
+COPY templates/hcls-librechat/scientific-tool-options.cjs /opt/hcls-librechat/scientific-tool-options.cjs
+COPY templates/hcls-librechat/patch-server.mjs /opt/hcls-librechat/patch-server.mjs
+COPY templates/hcls-librechat/tavily-mcp.mjs /opt/bionemo/tavily-mcp.mjs
+RUN node /opt/hcls-librechat/patch-server.mjs
 COPY templates/hcls-librechat/seed-workbench.js /app/seed-hcls-workbench.js
+COPY life-science/bionemo-librechat/scientific-agent-instructions.md /app/scientific-agent-instructions.md
 COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entrypoint
 COPY templates/hcls-librechat/brand-client.mjs /opt/hcls-librechat/brand-client.mjs
 COPY templates/hcls-librechat/seed-user.js /app/seed-user.js
@@ -52,7 +57,9 @@ ENV HOST=0.0.0.0 \
     LOG_TO_FILE=false \
     SEARCH=false \
     SCHEDULES_SINGLE_PROCESS=true \
-    ENDPOINTS=agents,custom \
+    ENDPOINTS=agents,custom,openAI,anthropic \
+    OPENAI_API_KEY=user_provided \
+    ANTHROPIC_API_KEY=user_provided \
     SCIENTIFIC_MODELS_API_BASE_URL=https://89.169.99.188/v1 \
     SCIENTIFIC_MODELS_MCP_URL=https://89.169.99.188/mcp
 

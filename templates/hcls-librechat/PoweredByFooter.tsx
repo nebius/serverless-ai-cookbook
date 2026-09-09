@@ -51,6 +51,7 @@ function Footer({ className, startupConfig }: FooterProps) {
   const shouldFetchConfig = startupConfig === undefined;
   const { data: fetchedConfig } = useGetStartupConfig({ enabled: shouldFetchConfig });
   const config = shouldFetchConfig ? fetchedConfig : startupConfig;
+  const localize = useLocalize();
 
   const privacyPolicy = config?.interface?.privacyPolicy;
   const termsOfService = config?.interface?.termsOfService;
