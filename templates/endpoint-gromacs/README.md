@@ -176,6 +176,13 @@ Transport: Streamable HTTP
 Available tools are `get_capabilities`, `submit_run`, `get_run`, `list_runs`,
 `cancel_run`, and `list_run_artifacts`.
 
+For an agent that supports the portable Agent Skills format, install the included
+[`gromacs-serverless` skill](./skills/gromacs-serverless/SKILL.md). The skill
+teaches the agent how to select an input mode, submit idempotently, monitor runs,
+verify artifacts, and interpret GROMACS output without treating a smoke test as a
+scientifically validated workflow. Configure the MCP URL and bearer token in the
+agent or MCP client; never copy credentials into the skill file.
+
 ## Expected output
 
 A successful run reaches `status: succeeded`, reports `gpu_selected: true`, and
