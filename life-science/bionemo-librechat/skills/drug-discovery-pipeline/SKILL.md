@@ -1,18 +1,25 @@
 ---
 name: drug-discovery-pipeline
-description: Run the bounded GenMol to DiffDock to Boltz2 research workflow with bionemo_drug_discovery.
+description: Run the bounded GenMol to DiffDock to Boltz2 research workflow with the scientific gateway skills and tools.
 license: Apache-2.0 AND CC-BY-4.0
 ---
 
 # Drug discovery pipeline
 
-Prefer the bundled target by calling `bionemo_drug_discovery` with
-`protein_sample: "egfr_kinase_public"` and a real GenMol de novo SAFE mask such
-as `safe_notation: "[*{5-10}]"`. Never invent placeholder values such as
-`SAFE_1`, and never combine the bundled sample with inline PDB/sequence fields.
-For another public or synthetic target, confirm its full inline PDB, matching
-protein sequence, SAFE mask, and request count before calling the tool. It
-generates a small QED-ranked set with GenMol, docks a capped shortlist with
-DiffDock, and affinity-scores at most three candidates with Boltz2. Report each
-step and all artifacts. QED, docking confidence, pIC50, and P(bind) are model
-outputs—not evidence of efficacy, toxicity, or clinical suitability.
+Compose the gateway skills yourself — there is no bundled pipeline tool:
+
+1. **Generate** with `genmol`: a real SMILES scaffold with masked growing
+   sites `[*{n-m}]` (never placeholder masks such as `SAFE_1`), `num_molecules`
+   1–16, `unique: true`.
+2. **Dock** a capped shortlist with `diffdock`: inline target PDB bytes
+   (40 B–2 MB with `ATOM` records) plus one SMILES ligand per call,
+   `num_poses` 1–4.
+3. **Score** at most three candidates with `boltz2` — noting the portable
+   runtime takes protein polymers with MSA only; treat any affinity output as
+   a prediction, and never present docking confidence, QED, pIC50 or P(bind)
+   as efficacy, toxicity or clinical evidence.
+
+Report every step and artifact through the shared
+`scientific-gateway` lifecycle (one idempotency key per logical request;
+poll; download artifacts; acknowledge last). If a step's model is absent from
+discovery, report it instead of substituting a different model.

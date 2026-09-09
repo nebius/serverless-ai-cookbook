@@ -1,9 +1,12 @@
 ---
 name: clawbio-catalog
 description: Discover the pinned ClawBio bioinformatics skill catalog, read a skill contract, or run one of the image-qualified demo-only workflows without local patient-file access.
+license: Apache-2.0 AND CC-BY-4.0
 ---
 
 # ClawBio catalog
+
+Availability note (2026-09-09): the current Nebius Scientific AI Agent deployment wires only the scientific-model gateway and GROMACS MCP servers. A `clawbio` MCP server is not configured there; if `clawbio__*` tools are absent, say so instead of simulating them. The instructions below apply when the server is configured.
 
 Use the local `clawbio` MCP server when a user asks what ClawBio can do or wants
 to inspect a ClawBio workflow contract.
