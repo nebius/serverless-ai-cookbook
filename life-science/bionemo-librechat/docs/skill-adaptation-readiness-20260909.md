@@ -4,8 +4,14 @@ Adaptation of the packed agent skills to the scientific model gateway
 (`https://89.169.99.188`), per `/home/tux/model-skill-adaptation-instructions.md`.
 Branch `agent/bionemo-librechat-20260907` (commits `504f5e5` baseline,
 `9823149` adaptation). Customer key: MysteryBox
-`nebius-scientific-model-gateway-20260908` (`SCIENTIFIC_MODELS_API_KEY`),
-stored locally at `~/.config/fs2-gateway.env` (0600, outside any repo).
+`nebius-scientific-model-gateway-20260908` (`SCIENTIFIC_MODELS_API_KEY`);
+on 2026-09-09 the operator supplied the canonical `fs2_pat_…` key, which was
+stored as the new primary secret version `mbsecver-e00khf53t8gey7qd9y` and
+locally at `~/.config/fs2-gateway.env` (0600, outside any repo). All live
+verifications below were re-run with this key (openfold2 sync 200 conf 93.22;
+boltz2 op `adff65b2-a479-42db-ba65-6b0b68c07ee0` → succeeded). Running
+endpoints created before the rotation still hold the previous env-secret
+binding and pick up the new primary on next start/redeploy.
 
 ## Live catalog observed 2026-09-09 (this key only)
 
