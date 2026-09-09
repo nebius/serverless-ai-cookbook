@@ -23,9 +23,12 @@ async (page) => {
   const box = await frame.locator('canvas').first().boundingBox();
   check(box && box.width > 200 && box.height > 200, 'Viewer collapsed');
   const beforeDrag = await frame.evaluate(() => viewer.getView());
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // The sticky composer can cover the bottom of a tall in-chat canvas.
+  // Drag the visible portion, not the composer above it.
+  const dragY = Math.max(box.y + 25, Math.min(box.y + box.height / 2, page.viewportSize().height - 220));
+  await page.mouse.move(box.x + box.width / 2, dragY);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 + 70, box.y + box.height / 2 + 35, { steps: 8 });
+  await page.mouse.move(box.x + box.width / 2 + 70, dragY + 35, { steps: 8 });
   await page.mouse.up();
   check(JSON.stringify(await frame.evaluate(() => viewer.getView())) !== JSON.stringify(beforeDrag), 'Drag rotation did not change camera');
   await frame.getByRole('button', { name: 'Full screen', exact: true }).click();

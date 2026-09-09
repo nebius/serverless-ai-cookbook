@@ -1,5 +1,13 @@
 # Event and interactive-viewer follow-up — 2026-09-09
 
+Release: source `5470618`, image `20260909-5470618`, registry digest
+`sha256:bc22be7ee4ce06985c778f4ce5f5b5775d3bee000d514115416f1106d68bad15`.
+Endpoint `aiendpoint-e00vw7asvgvc2kxrrm` is RUNNING and health200 at
+https://port3080-eznvz2tzjent9zz.tunnel.applications.eu-north1.nebius.cloud .
+The previous two endpoints and their chat storage were preserved. The image
+digest form hit a Serverless label-length validation error before creation;
+the verified release tag was used after confirming no endpoint existed.
+
 ## Findings and scope
 
 - The Token Factory model group had no icon. The official app favicon at
@@ -41,7 +49,7 @@ gateway mode, users must configure their key for the viewer server as well;
 the shared demo mode uses the existing server-managed gateway key.
 
 The infrastructure card supplies an exact copyable setup prompt and public links.
-The new preparation skill distinguishes a installed skill, an MCP configuration,
+The new preparation skill distinguishes an installed skill, an MCP configuration,
 and an authenticated participant-owned cloud connection. It does not install a
 cloud-management MCP server or copy operator credentials into the application.
 
@@ -55,7 +63,18 @@ cloud-management MCP server or copy operator credentials into the application.
   an in-chat viewer with 133 parsed atoms. Browser checks verify real camera
   changes for spin/drag, fullscreen, representation controls and reload.
 - Existing DiffDock operation `91c4bef9-9dcf-4dfb-a1f8-44eabd0d646e` supplies
-  both its actual receptor PDB and ligand SDF to the read-only bridge.
+  both its actual receptor PDB and ligand SDF to the read-only bridge. On the
+  final release image, GLM 5.3 Flash called the viewer once; the browser rendered
+  the 13-atom SDF, switched to the protein, and passed spin, drag, fullscreen and
+  reload checks. No coordinate retrieval tool was sent through the LLM.
+- The final footer renders black NVIDIA wordmark paths and a green symbol,
+  alongside Nebius, in both light and dark themes (browser-computed colors and
+  screenshots checked).
+- GLM loaded `nebius-infrastructure-prep` and produced a participant-local
+  handoff without account access or resource creation. It also attempted an
+  unavailable Tavily tool alias before completing from the supplied guide;
+  this is not a successful live web-verification acceptance. Exact-tool-name
+  adherence remains model-dependent.
 - No scientific models were submitted for these viewer checks. Successful
   visualization is not validation of a model's scientific accuracy.
 - Batch artifact downloading, attachment upload, participant cloud accounts,
