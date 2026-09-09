@@ -11,6 +11,10 @@ infrastructure preparation, aging/biomarkers, target/drug exploration,
 communication/trust/policy, healthspan/clinical translation, and wildcard ideas.
 Every signed-in participant sees the same starters. Clicking a card does not
 switch the LLM, send a message, or submit compute.
+Each card names models/tools and installed skills, and prepares a concrete
+research, model-discovery or demo workflow. AltumAge and Clinical PhenoAge are
+highlighted as the event models; other tracks introduce folding, docking,
+genomics, molecule/protein design, imaging and Tavily research.
 
 The image contains no model or MCP credential. One non-admin gateway key is used
 for both the model API and MCP service. Store it in MysteryBox under the payload
@@ -64,11 +68,17 @@ establish tenant isolation; multi-user acceptance needs separate customer keys.
   Results are limited to 4 MiB and 20 structures; small user-provided inline
   structures are limited to 64 KiB. No arbitrary URL or filesystem access.
 - **Infrastructure preparation:** the bundled `nebius-infrastructure-prep`
-  skill and card prepare a participant-local MCP setup handoff with
+  skill routes to ten installed official Nebius skills: cloud basics, compute
+  inventory/provisioning, capacity/quotas, Serverless setup, jobs, endpoints,
+  data/secrets, troubleshooting and recipes. Their reference files and assets
+  are included. They prepare configurations and a participant-local MCP setup handoff with
   `SAFE_MODE=true`. No participant cloud account is connected to this hosted
   app. The public setup guide supports their local coding agent and CLI profile.
-  `nebius/skills` was private at review time; its contents are not bundled or
-  redistributed pending authorization. Its link explicitly warns about access.
+  The official skill bundle is pinned to
+  `292c7e65a46d0c29994d2babfc19da129d16fa62`, with its Apache-2.0 license and file
+  hashes retained in the image. The upstream repository requires access; its
+  source files are fetched into an ignored build directory, not this public Git
+  repository. Participants can use the installed guidance without repo access.
 - **Limitations:** no compatible attachment-to-gateway upload bridge or GROMACS
   server. The viewer does not download scientific-batch artifact references or
   invent coordinates for sequences/SMILES. Inline inputs and finalized artifacts
@@ -80,7 +90,12 @@ establish tenant isolation; multi-user acceptance needs separate customer keys.
 
 ## Verify
 
+Prepare the official skills with the builder's existing authorized GitHub access
+before building. This fetches only the pinned source; no GitHub credential is
+copied into the build context or image.
+
 ```bash
+bash templates/hcls-librechat/scripts/prepare-nebius-skills.sh
 curl -fsS 'https://<librechat-host>/health'
 python -m pytest templates/hcls-librechat/tests.py templates/hcls-librechat/test_structure_viewer.py -q
 docker build --target scientific-client -t scientific-client-check \

@@ -178,8 +178,8 @@ def test_default_model_and_visible_workbench(tmp_path) -> None:
     assert default["preset"]["model"] == "zai-org/GLM-5.3-Flash"
     assert "nebius-scientific-workbench" in brand_client
     for title in (
-        "Prepare your Nebius workspace", "Explore aging & biomarkers", "Investigate a longevity target",
-        "Make longevity science clear", "Prototype a healthspan workflow", "Shape your own challenge",
+        "Build the compute plan for your demo", "Try the event’s two aging models", "Explore a longevity target in 3D",
+        "Fact-check a longevity claim", "Prototype a healthspan research assistant", "Combine models for your own idea",
     ):
         assert title in (ROOT / "ScientificLanding.tsx").read_text(encoding="utf-8")
 

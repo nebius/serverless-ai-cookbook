@@ -36,6 +36,8 @@ COPY templates/hcls-librechat/seed-user.js /app/seed-user.js
 # drop the stale pre-adaptation skill directories from the base image.
 COPY life-science/bionemo-librechat/skills/ /app/skill/
 COPY templates/hcls-librechat/skills/ /app/skill/
+# Prepared from the pinned official repository; private source stays out of Git.
+COPY templates/hcls-librechat/vendor/nebius-skills/ /app/skill/
 RUN cd /app/skill && rm -rf boltz2-nim openfold2-nim openfold3-nim diffdock-nim \
       genmol-nim molmim-nim msa-search-nim evo2-nim proteinmpnn-nim \
       rfdiffusion-nim bionemo-workbench-tutorials

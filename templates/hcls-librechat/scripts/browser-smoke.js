@@ -21,10 +21,14 @@ async (page) => {
     const chosenModel = await page.getByTestId('model-selector-button').innerText();
     const prompts = [];
     for (const card of await page.locator('[data-workflow]').all()) {
+      const text = await card.innerText();
+      check(text.includes('Models & tools:') && text.includes('Skills:'), 'Card hides its available capabilities');
+      check(text.includes('Tavily'), 'Card does not surface research access');
       await card.click();
       check(await card.getAttribute('aria-pressed') === 'true', 'Missing workflow selection feedback');
       check(await page.getByTestId('model-selector-button').innerText() === chosenModel, 'Workflow changed LLM');
       prompts.push(await page.getByRole('textbox', { name: 'Message input' }).inputValue());
+      check(prompts.at(-1).includes('Tavily'), 'Draft lost the named research tool');
       await page.getByRole('button', { name: 'Send message', exact: true }).click({ trial: true });
       if (await card.getAttribute('data-workflow') === 'infra') {
         const panel = page.getByRole('complementary', { name: 'Infrastructure setup handoff' });
@@ -64,7 +68,7 @@ async (page) => {
     check(sendBox && sendBox.y >= 0 && sendBox.y + sendBox.height <= 844, 'Mobile draft hides Send below the viewport');
     await page.screenshot({ path: 'output/playwright/after-mobile.png' });
     check(requests.length === 0, 'Setup unexpectedly sent a chat request');
-    return { workflows: 6, preservedModel: chosenModel, providerKeyDialogs: 2, computeRequests: requests.length, mobile: 'pass' };
+    return { workflows: 6, capabilitiesVisible: true, preservedModel: chosenModel, providerKeyDialogs: 2, computeRequests: requests.length, mobile: 'pass' };
   } finally {
     page.off('request', collect);
   }

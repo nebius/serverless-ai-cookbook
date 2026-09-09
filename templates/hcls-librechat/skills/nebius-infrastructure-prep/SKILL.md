@@ -1,12 +1,14 @@
 ---
 name: nebius-infrastructure-prep
-description: Prepare a Stockholm hackathon infrastructure project, Nebius skills selection and participant-side MCP setup handoff. Use for cloud-account readiness and infrastructure planning, not for executing cloud changes from this hosted scientific chat.
+description: Apply the ten installed Nebius infrastructure skills to a hackathon compute plan and prepare a participant-side MCP setup handoff. Use for workload architecture, cloud readiness and choosing the relevant compute or Serverless skills.
 ---
 
 # Nebius infrastructure preparation
 
-This hosted scientific workspace can plan an infrastructure project and explain
-setup. It is not connected to the participant's Nebius cloud account and has no
+This hosted scientific workspace includes the official Nebius infrastructure
+skills and their reference files. Load the relevant skills to prepare a concrete
+infrastructure project, configuration, commands and benchmark plan. It is not
+connected to the participant's Nebius cloud account and has no
 local terminal for that account. The scientific-model gateway and Token Factory
 credentials are not credentials for the participant's cloud project.
 
@@ -48,15 +50,31 @@ participant verifies it locally.
 
 Official source: https://github.com/nebius/skills
 
-This repository required authenticated access when checked on 2026-09-09.
-Participants may need organizer-granted access. Do not claim its contents are
-public, already installed or enabled unless verified in their environment.
-Once they can access it, have their local agent review the repository's current
-installation instructions and choose skills relevant to the workload. Skill
-instructions do not install an MCP server or authenticate a cloud account.
+The following official skills and their supporting files are installed in this
+deployment, pinned to revision `292c7e65a46d0c29994d2babfc19da129d16fa62`:
 
-If access is unavailable, the public MCP guide still provides a setup path.
-Do not substitute an unrelated third-party skill pack without asking.
+| Skill | Use it here for |
+| --- | --- |
+| `nebius-cloud-basics` | CLI setup, profiles, project context and command structure |
+| `nebius-compute-inventory` | Preparing resource discovery and interpreting participant-provided inventory |
+| `nebius-capacity-quotas` | Planning capacity/quota checks for a chosen workload |
+| `nebius-compute-provision` | VM, disk and GPU configuration templates |
+| `nebius-serverless-setup` | Explaining participant-side authentication setup |
+| `nebius-serverless-jobs` | A bounded batch-job configuration and timeout |
+| `nebius-serverless-endpoints` | Container serving, health checks and endpoint configuration |
+| `nebius-serverless-data-secrets` | Storage mounts and secret references |
+| `nebius-serverless-troubleshooting` | Diagnosing provided status and redacted logs |
+| `nebius-serverless-recipes` | Training, inference and batch workflow recipes |
+
+Load `nebius-cloud-basics` and the task-specific skill. Read its attached
+references or assets when preparing commands. The CLI instructions describe
+execution in the participant's connected environment; they do not establish a
+terminal or cloud connection in this hosted chat. Use Tavily to check current
+official documentation and return useful configurations or handoffs rather than
+stopping at “you need to install skills.” Local installation is needed only if
+the participant wants the same skills in a separate coding agent. Source-repo
+access may still require organizer access; it is not needed to use the bundled
+skills here. Skill instructions do not authenticate a cloud account.
 
 ## Useful output here
 
