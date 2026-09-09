@@ -160,6 +160,18 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
     assert config["interface"]["modelSelect"] is False  # curated specs remain selectable
     assert [item["name"] for item in config["endpoints"]["custom"]] == [
         "Nebius Token Factory Dedicated", "Nebius Token Factory"]
+    token_configs = {
+        endpoint["name"]: endpoint["tokenConfig"]
+        for endpoint in config["endpoints"]["custom"]
+    }
+    for item in specs:
+        if item["group"] not in {"Dedicated Token Factory", "Public Token Factory"}:
+            continue
+        endpoint = item["preset"]["endpoint"]
+        model = item["preset"]["model"]
+        assert token_configs[endpoint][model]["context"] >= 65536
+    dedicated_nemotron = "dedicated/LongevityHack2026/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4-prQAQn"
+    assert token_configs["Nebius Token Factory Dedicated"][dedicated_nemotron]["context"] == 1048576
 
 
 def test_model_grouped_tutorials_are_seeded() -> None:

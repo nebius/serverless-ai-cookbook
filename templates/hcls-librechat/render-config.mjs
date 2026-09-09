@@ -42,6 +42,33 @@ const dedicatedTokenFactoryModels = [
   ['dedicated/LongevityHack2026/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4-prQAQn', 'Nemotron 3 Super · Dedicated'],
 ];
 
+// LibreChat cannot infer context sizes for several new Token Factory model IDs.
+// An unknown model otherwise falls back to 32k, which is smaller than the
+// scientific instructions plus tool schemas and causes every user message to
+// be pruned before the request reaches Token Factory.
+const tokenFactoryContext = new Map([
+  ['zai-org/GLM-5.3-Flash', 1048576],
+  ['deepseek-ai/DeepSeek-V4-Flash-0731', 1048576],
+  ['moonshotai/Kimi-K3', 1048576],
+  ['meta-llama/Llama-3.3-70B-Instruct', 127500],
+  ['zai-org/GLM-5.2', 1048576],
+  ['zai-org/GLM-5.1', 204800],
+  ['deepseek-ai/DeepSeek-V4-Pro', 1048576],
+  ['MiniMaxAI/MiniMax-M3', 1048576],
+  ['moonshotai/Kimi-K2.6', 262144],
+  ['NousResearch/Hermes-4-405B', 131072],
+  ['nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B', 1048576],
+  ['nvidia/Nemotron-3_5-Lightning', 1048576],
+  ['nvidia/Nemotron-3-Ultra-550b-a55b', 1048576],
+  ['nvidia/nemotron-3-super-120b-a12b', 1048576],
+  ['dedicated/LongevityHack2026/GLM-5.3-Flash-FP8-6f1F49', 1048576],
+  ['dedicated/LongevityHack2026/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4-prQAQn', 1048576],
+]);
+
+const makeTokenConfig = (models) => Object.fromEntries(models.map(([id]) => [id, {
+  prompt: 0, completion: 0, context: tokenFactoryContext.get(id) ?? 131072,
+}]));
+
 let availablePublicTokenModels = publicTokenFactoryModels;
 if (process.env.NEBIUS_API_KEY && process.env.NEBIUS_API_KEY !== 'user_provided'
     && process.env.SCIENTIFIC_DISCOVER_CHAT_MODELS !== 'false') {
@@ -119,6 +146,7 @@ const config = {
       apiKey: process.env.NEBIUS_API_KEY ? '${NEBIUS_API_KEY}' : 'user_provided',
       baseURL: 'https://api.tokenfactory.us-central1.nebius.com/v1',
       models: { default: dedicatedTokenFactoryModels.map(([id]) => id), fetch: false },
+      tokenConfig: makeTokenConfig(dedicatedTokenFactoryModels),
       titleConvo: true, titleModel: dedicatedTokenFactoryModels[0][0],
       modelDisplayLabel: 'Nebius Dedicated', dropParams: ['stop'],
     }, {
@@ -127,6 +155,7 @@ const config = {
       apiKey: process.env.NEBIUS_API_KEY ? '${NEBIUS_API_KEY}' : 'user_provided',
       baseURL: 'https://api.tokenfactory.nebius.com/v1',
       models: { default: availablePublicTokenModels.map(([id]) => id), fetch: false },
+      tokenConfig: makeTokenConfig(availablePublicTokenModels),
       titleConvo: true, titleModel: availablePublicTokenModels[0][0],
       modelDisplayLabel: 'Nebius Public', dropParams: ['stop'],
     }],
