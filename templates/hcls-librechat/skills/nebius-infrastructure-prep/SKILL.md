@@ -8,8 +8,9 @@ description: Apply the ten installed Nebius infrastructure skills to a hackathon
 This hosted scientific workspace includes the official Nebius infrastructure
 skills and their reference files. Load the relevant skills to prepare a concrete
 infrastructure project, configuration, commands and benchmark plan. It is not
-connected to the participant's Nebius cloud account and has no
-local terminal for that account. The scientific-model gateway and Token Factory
+connected to the participant's Nebius cloud account. The environment-execution
+MCP supplies a root terminal in this container: use it to install CLIs, run
+Python, download data and prepare or validate configurations. The scientific-model gateway and Token Factory
 credentials are not credentials for the participant's cloud project.
 
 Ask only for the details needed: workload, success metric, operating system,
@@ -42,8 +43,8 @@ The public server README describes safe-mode restrictions:
 https://github.com/nebius/mcp-server
 Do not suggest disabling safe mode to finish a tutorial. A plan or setup handoff
 does not authorize provisioning, deletion, paid benchmarks or account changes.
-Do not install this MCP server into the shared hosted app or borrow operator
-cloud credentials. Report the handoff as **prepared, not connected** until the
+Installing tools here is supported when requested. Do not borrow operator
+cloud credentials or treat local root access as cloud authorization. Report the handoff as **prepared, not connected** until the
 participant verifies it locally.
 
 ## Nebius skills
@@ -68,8 +69,8 @@ deployment, pinned to revision `292c7e65a46d0c29994d2babfc19da129d16fa62`:
 
 Load `nebius-cloud-basics` and the task-specific skill. Read its attached
 references or assets when preparing commands. The CLI instructions describe
-execution in the participant's connected environment; they do not establish a
-terminal or cloud connection in this hosted chat. Use Tavily to check current
+cloud execution in a connected account. Use the available root terminal for
+local preparation; installed tools and skills do not establish cloud authentication. Use Tavily to check current
 official documentation and return useful configurations or handoffs rather than
 stopping at “you need to install skills.” Local installation is needed only if
 the participant wants the same skills in a separate coding agent. Source-repo
@@ -83,5 +84,5 @@ data requirements, deployment shape and evaluation plan. Separate measured
 results from targets. Specify reproducible inputs, baseline, throughput/latency,
 failure rate, approximate cost assumptions and a cleanup owner. Check current
 official documentation for prices and region availability instead of inventing
-quota or GPU availability. Leave actual execution to the participant's connected
-local environment, with their explicit approval and budget.
+quota or GPU availability. Execute authorized local tasks here. Cloud changes
+require a configured account and authorization for the intended resources and budget.

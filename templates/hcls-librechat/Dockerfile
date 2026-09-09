@@ -24,6 +24,7 @@ COPY templates/hcls-librechat/scientific-tool-options.cjs /opt/hcls-librechat/sc
 COPY templates/hcls-librechat/patch-server.mjs /opt/hcls-librechat/patch-server.mjs
 COPY templates/hcls-librechat/tavily-mcp.mjs /opt/bionemo/tavily-mcp.mjs
 COPY templates/hcls-librechat/structure-mcp.py /opt/bionemo/structure-mcp.py
+COPY templates/hcls-librechat/execution-mcp.py /opt/bionemo/execution-mcp.py
 COPY life-science/bionemo-librechat/viewer-mcp.py /opt/bionemo/viewer-mcp.py
 COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 RUN node /opt/hcls-librechat/patch-server.mjs
@@ -48,8 +49,7 @@ RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
  && mkdir -p /data/db /data/hcls-librechat /app/uploads /app/logs \
  && chown -R node:node /data /app/uploads /app/logs \
  && chmod 0700 /data/hcls-librechat \
- && rm -f /usr/local/bin/npm /usr/local/bin/npx \
- && rm -rf /usr/local/lib/node_modules/npm
+ && mkdir -p /workspace /data/hcls-execution
 
 ENV HOST=0.0.0.0 \
     PORT=3080 \
@@ -73,5 +73,6 @@ ENV HOST=0.0.0.0 \
 EXPOSE 3080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
   CMD ["wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3080/health"]
-USER node
+# The operator explicitly enables root command execution in this environment.
+USER root
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/hcls-librechat-entrypoint"]

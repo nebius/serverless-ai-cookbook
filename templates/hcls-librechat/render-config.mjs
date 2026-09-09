@@ -74,7 +74,7 @@ const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => model
     iconURL: endpoint === 'Nebius Token Factory' ? '/assets/token-factory.svg' : endpoint,
     default: isDefault, showOnLanding: false, showIconInHeader: true,
     description: endpoint === 'Nebius Token Factory' ? 'Scientific tools and web research' : 'Scientific tools · connect your provider key',
-    mcpServers: ['bionemo-models', 'tavily', 'structure-viewer'], skills: true, artifacts: true,
+    mcpServers: ['bionemo-models', 'tavily', 'structure-viewer', 'environment-execution'], skills: true, artifacts: true,
     preset: { endpoint, model, modelLabel: label, promptPrefix: instructions,
       ...(endpoint === 'openAI' ? { useResponsesApi: true } : {}),
     },
@@ -114,6 +114,15 @@ const config = {
   },
   modelSpecs: { prioritize: true, enforce: false, list: modelSpecs },
   mcpServers: {
+    'environment-execution': {
+      title: 'Environment execution', description: 'Root shell, Python, packages, internet and mounted files.',
+      type: 'stdio', command: 'python3', args: ['/opt/bionemo/execution-mcp.py'],
+      startup: true, timeout: 30000,
+      env: { SCIENTIFIC_WORKSPACE: '/workspace',
+        ...(sharedGatewayKey ? { SCIENTIFIC_MODELS_API_KEY: '${SCIENTIFIC_MODELS_API_KEY}' } : {}),
+        SCIENTIFIC_MODELS_API_BASE_URL: '${SCIENTIFIC_MODELS_API_BASE_URL}',
+        SCIENTIFIC_MODELS_MCP_URL: '${SCIENTIFIC_MODELS_MCP_URL}' },
+    },
     'structure-viewer': {
       title: 'Structure viewer', description: 'Read-only interactive protein and molecule visualization.',
       type: 'stdio', command: 'python3', args: ['/opt/bionemo/structure-mcp.py'],

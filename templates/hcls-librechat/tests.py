@@ -58,7 +58,7 @@ def test_footer_is_powered_by_nvidia() -> None:
 @pytest.mark.parametrize("shared_key", [False, True])
 def test_rendered_gateway_authentication(tmp_path, shared_key) -> None:
     config, output = render_config(tmp_path, **({"SCIENTIFIC_MODELS_API_KEY": "synthetic-test-credential"} if shared_key else {}))
-    assert set(config["mcpServers"]) == {"bionemo-models", "tavily", "structure-viewer"}
+    assert set(config["mcpServers"]) == {"bionemo-models", "tavily", "structure-viewer", "environment-execution"}
     gateway = config["mcpServers"]["bionemo-models"]
     assert gateway["type"] == "streamable-http"
     assert gateway["url"] == "${SCIENTIFIC_MODELS_MCP_URL}"
@@ -136,7 +136,7 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     for agent in agents:
         assert agent["skills_enabled"] is True
         assert instructions.read_text().strip() in agent["instructions"]
-        assert set(agent["mcpServerNames"]) == {"bionemo-models", "tavily", "structure-viewer"}
+        assert set(agent["mcpServerNames"]) == {"bionemo-models", "tavily", "structure-viewer", "environment-execution"}
         assert "tavily_search_mcp_tavily" in agent["tools"]
 
 
@@ -149,7 +149,7 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
     assert len({item["name"] for item in specs}) == len(specs)
     for item in specs:
         assert item["skills"] is True
-        assert item["mcpServers"] == ["bionemo-models", "tavily", "structure-viewer"]
+        assert item["mcpServers"] == ["bionemo-models", "tavily", "structure-viewer", "environment-execution"]
         assert INSTRUCTIONS.read_text().strip() in item["preset"]["promptPrefix"]
         assert item["preset"]["model"] not in {"evo2-40b", "boltz2", "openfold2", "sdxl", "nv-segment-ct"}
         assert "agent_id" not in item["preset"]

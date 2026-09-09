@@ -85,7 +85,7 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
         <h2 className="text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">Build something for healthier lives.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
           Search with Tavily, explore hosted scientific models, inspect structures in 3D,
-          and plan your compute with the installed Nebius skills. Pick a challenge to see where to begin.
+          run Python, install packages, and work with files using the root terminal. Use the installed Nebius skills to plan your compute.
         </p>
       </header>
 
@@ -130,7 +130,7 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
       {selected === 'infra' && (
         <aside aria-label="Infrastructure setup handoff" className="mt-4 rounded-xl border border-border-medium bg-surface-secondary p-4 text-sm text-text-primary">
           <h4 className="font-semibold">Ten Nebius infrastructure skills are installed.</h4>
-          <p className="mt-2 text-xs leading-5 text-text-secondary">Use them here for cloud setup, capacity, compute, Serverless jobs and endpoints, data and secrets, recipes, and troubleshooting. Your cloud account is not connected to this chat; use the handoff below to execute the plan in your own environment.</p>
+          <p className="mt-2 text-xs leading-5 text-text-secondary">Use them here for cloud setup, capacity, compute, Serverless jobs and endpoints, data and secrets, recipes, and troubleshooting. Your cloud account is not connected to this chat. The root terminal can prepare files, install tools and validate your plan here; cloud changes require your account connection.</p>
           <p className="my-3 select-all break-words text-xs">Fetch and follow the installation guide: https://github.com/nebius/mcp-server/blob/main/AGENT_SETUP.md</p>
           <div className="flex flex-wrap items-center gap-3 text-xs">
             <Button type="button" variant="outline" size="sm" onClick={async () => {
@@ -145,7 +145,7 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
           <p role="status" className="mt-2 text-xs text-text-secondary">{copyStatus}</p>
         </aside>
       )}
-      <p className="mt-4 text-xs leading-5 text-text-secondary">Research prototypes, not clinical advice. Infrastructure planning and setup guidance are available here; account connection and execution happen outside this agent.</p>
+      <p className="mt-4 text-xs leading-5 text-text-secondary">Research prototypes, not clinical advice. The agent can execute commands as root in this environment and use its mounted files. Cloud account access is configured separately.</p>
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
         <span aria-live="polite">{selected ? 'Your starting prompt is ready below. Edit it or send when ready.' : 'Choose a card to prepare a prompt, or type your own question below.'}</span>
         {selected && <Button variant="ghost" size="sm" onClick={() => { methods.setValue('text', ''); setSelected(null); }}>Clear</Button>}

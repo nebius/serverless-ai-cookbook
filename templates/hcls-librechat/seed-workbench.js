@@ -156,7 +156,7 @@ async function seedAgent({ agents: collection, aclEntries, owner, now, definitio
         skills_enabled: true,
         artifacts: 'default',
         tools: [...new Set([...(definition.tools || []), 'tavily_search_mcp_tavily', 'visualize_structure_mcp_structure-viewer'])],
-        mcpServerNames: [...new Set([...(definition.mcpServerNames || []), 'structure-viewer'])],
+        mcpServerNames: [...new Set([...(definition.mcpServerNames || []), 'structure-viewer', 'environment-execution'])],
         provider: 'Nebius Token Factory',
         model,
         model_parameters: { model, max_tokens: 8192 },

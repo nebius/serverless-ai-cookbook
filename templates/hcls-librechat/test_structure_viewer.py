@@ -85,5 +85,6 @@ def test_token_factory_has_official_color_icon_and_all_participants_get_starters
     assert "groupIcon:" in config and "iconURL: '/assets/token-factory.svg'" in config
     assert '#E0FF4F' in asset and '#052B42' in asset
     assert 'https://luma.com/5b82vwsa' in landing
-    assert 'outside this agent' in landing
+    assert 'execute commands as root' in landing
+    assert 'Cloud account access is configured separately' in landing
     assert 'useAuth' not in landing  # No special admin-only/event-account branch.
