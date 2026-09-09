@@ -130,11 +130,11 @@ remain in the MCP client configuration, never in the skill.
 
 The bounded chr20 smoke should reach `succeeded`, report 78 variant records, and
 produce an indexed compressed VCF, logs, input hashes, provenance, and artifact
-hashes. Qualification on 2026-09-08 used regular H100; `latest` selected
+hashes. Qualification was repeated on 2026-09-09 using regular H100; `latest` selected
 Parabricks `4.7.1-1` at digest
 `sha256:a748d86cbb850641a1e0afae6de2e7422f1375e4a0cce08a5c2cead9fa302237`.
-Independent REST and MCP runs both produced 78 variants and their artifacts were
-verified through REST and in the mounted bucket.
+Independent REST and MCP chr20 runs each produced 78 variants in about 12 seconds;
+their artifacts were verified through REST and in the mounted bucket.
 
 The one-H100 shape is sized for the bounded demonstration. Production genomics
 throughput and disk needs depend on genome, coverage, caller mode, and input
