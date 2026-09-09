@@ -1,9 +1,10 @@
 # Nebius Scientific AI Agent
 
-A scientific workspace built on pinned LibreChat. Choose a chat LLM from Nebius
-Token Factory, OpenAI or Claude; the same scientific gateway, research skills and
-Tavily search stay attached when you change models. Evo2, Boltz2, DiffDock and
-other scientific models are tools, not chat-provider choices.
+A scientific workspace built on pinned LibreChat. Dedicated GLM 5.3 is the
+event default; dedicated Nemotron and tested public Nebius Token Factory models
+remain selectable. The same scientific gateway, research skills and Tavily
+search stay attached when you change models. Evo2, Boltz2, DiffDock and other
+scientific models are tools, not chat-provider choices.
 
 Six event-focused cards prepare editable prompts for the
 [Stockholm Longevity × AI Hackathon](https://luma.com/5b82vwsa): Nebius
@@ -34,10 +35,9 @@ export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/nebius-scientifi
 ```
 
 The script creates a public CPU D3 endpoint on port `3080`; LibreChat keeps its
-own email/password sign-in page reachable. Provision secrets separately; never
-put real keys in commands, Git, image layers or chat prompts. Optional
-`OPENAI_SECRET_SELECTOR` and `ANTHROPIC_SECRET_SELECTOR` provide deployment-managed
-chat keys. Without them, these providers use LibreChat's per-user key setup.
+own email/password sign-in page reachable. Event deployments mount each team's
+read-write Object Storage bucket at `/workspace`. Provision secrets separately; never
+put real keys in commands, Git, image layers or chat prompts.
 
 Never delete an existing endpoint without preserving `/data` and `/app/uploads`:
 the self-contained image runs its own MongoDB. Shared gateway credentials do not
@@ -45,11 +45,10 @@ establish tenant isolation; multi-user acceptance needs separate customer keys.
 
 ## What is configured
 
-- **Chat models:** GLM 5.3 Flash is the default. The Token Factory chat allowlist
-  is intersected with authenticated discovery at startup (configured-list fallback).
-  Embedding and dedicated endpoints are excluded. OpenAI and Claude require their
-  own provider key: select a model, then choose **Provider key**. Visibility does
-  not establish entitlement or successful inference.
+- **Chat models:** Dedicated GLM 5.3 Flash is the default, with dedicated
+  Nemotron and the tested public Token Factory allowlist available. The public
+  allowlist is intersected with authenticated discovery at startup
+  (configured-list fallback). Qwen models are excluded for this event.
 - **Scientific models:** available only through the gateway tools. Model-specific
   schemas load on demand with `tool_search`; discovery and durable operation tools
   stay ready. Gateway authorization, validation and execution are unchanged.

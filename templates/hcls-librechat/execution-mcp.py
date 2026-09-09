@@ -110,7 +110,7 @@ def execute(args):
 
 TOOLS = [
     {'name': 'execute_command',
-     'description': 'Execute Bash as root in this application container. Install packages with apt-get/pip/npm, run Python, download internet resources, read/write any container path and mounted storage. Use /workspace for work. This is real execution, not a code suggestion. For long work save job_id and use read_execution; do not submit again. Output is capped; redirect datasets/results to files. timeout_seconds=0 disables the deadline. Root applies to the container and its mounts, not the cloud host. Never print credentials.',
+     'description': 'Execute Bash as root in this application container. Install packages with apt-get/pip/npm, run Python, download internet resources, read/write any container path and mounted storage. /workspace is the team Object Storage bucket mount and the durable location for team files. This is real execution, not a code suggestion. For long work save job_id and use read_execution; do not submit again. Output is capped; redirect datasets/results to files. timeout_seconds=0 disables the deadline. Root applies to the container and its mounts, not the cloud host. Never print credentials.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': True, 'openWorldHint': True},
      'inputSchema': {'type': 'object', 'additionalProperties': False, 'required': ['command'],
         'properties': {'command': {'type': 'string'}, 'cwd': {'type': 'string'},

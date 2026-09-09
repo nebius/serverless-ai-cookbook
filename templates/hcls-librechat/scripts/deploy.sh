@@ -32,12 +32,4 @@ CREATE_CMD=(
   --format json
 )
 
-# Optional deployment-managed chat providers; absent selectors use per-user keys.
-for provider in OPENAI ANTHROPIC; do
-  selector_name="${provider}_SECRET_SELECTOR"
-  if [[ -n "${!selector_name:-}" ]]; then
-    CREATE_CMD+=(--env-secret "${provider}_API_KEY=${!selector_name}")
-  fi
-done
-
 "${CREATE_CMD[@]}"

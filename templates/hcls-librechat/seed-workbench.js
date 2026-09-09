@@ -7,7 +7,7 @@ const gatewayInstructions = readFileSync(
 
 const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/LibreChat';
 const serviceEmail = 'nebius-scientific-ai-agent@localhost.invalid';
-const model = 'zai-org/GLM-5.3-Flash';
+const model = 'dedicated/LongevityHack2026/GLM-5.3-Flash-FP8-6f1F49';
 
 const scientificModelsServerName = 'bionemo-models';
 const mcpTool = (name) => `${name}_mcp_${scientificModelsServerName}`;
@@ -157,7 +157,7 @@ async function seedAgent({ agents: collection, aclEntries, owner, now, definitio
         artifacts: 'default',
         tools: [...new Set([...(definition.tools || []), 'tavily_search_mcp_tavily', 'visualize_structure_mcp_structure-viewer'])],
         mcpServerNames: [...new Set([...(definition.mcpServerNames || []), 'structure-viewer', 'environment-execution'])],
-        provider: 'Nebius Token Factory',
+        provider: 'Nebius Token Factory Dedicated',
         model,
         model_parameters: { model, max_tokens: 8192 },
         category: 'life-science',
