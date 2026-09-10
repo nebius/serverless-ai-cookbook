@@ -114,7 +114,7 @@ External examples and writeups from the community running serverless workloads o
 
 ### Training / Fine-tuning
 
-- 🛡️ **rl-gym — Audited RLVR for secure Terraform** — Train open models with SFT + GRPO on Nebius Serverless AI Jobs to generate secure Terraform, using verifiable security rewards, self-repair, and reward-hacking audits. — _by Nikita Shigarov_ · [💻 code](https://github.com/SkyForce/rl-gym/tree/master) · [📝 post](https://medium.com/@nikita.shigarov/the-verifier-is-the-moat-self-improving-rlvr-for-secure-terraform-6c859f37db18)
+- 🛡️ **rl-gym — Audited RLVR for secure Terraform** — Train open models with SFT + GRPO on Nebius Serverless AI Jobs to generate secure Terraform, using verifiable security rewards, self-repair, and reward-hacking audits. Future work extends the same training and audit pipeline to Kubernetes, tool-calling, and voice environments. — _by Nikita Shigarov_ · [💻 code](https://github.com/SkyForce/rl-gym/tree/master) · [📝 post](https://medium.com/@nikita.shigarov/the-verifier-is-the-moat-self-improving-rlvr-for-secure-terraform-6c859f37db18)
 
 ### Robotics
 
