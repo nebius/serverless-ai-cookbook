@@ -112,6 +112,10 @@ Robotics and physical-AI experiment loops.
 
 External examples and writeups from the community running serverless workloads on Nebius. Got something to add? Open a PR.
 
+### Training / Fine-tuning
+
+- 🛡️ **rl-gym — Audited RLVR for secure Terraform** — Train open models with SFT + GRPO on Nebius Serverless AI Jobs to generate secure Terraform, using verifiable security rewards, self-repair, and reward-hacking audits. Future work extends the same training and audit pipeline to Kubernetes, tool-calling, and voice environments. — _by Nikita Shigarov_ · [💻 code](https://github.com/SkyForce/rl-gym/tree/master) · [📝 post](https://medium.com/@nikita.shigarov/the-verifier-is-the-moat-self-improving-rlvr-for-secure-terraform-6c859f37db18)
+
 ### Robotics
 
 - 🤖 **Positronic + Nebius serverless workflows** — Convert datasets, train ACT/SmolVLA, and serve checkpoints as endpoints — all serverless on Nebius. — _by vertix_ · [💻 code](https://github.com/vertix/positronic-open/tree/add-nebius-workflows/workflows/nebius)
