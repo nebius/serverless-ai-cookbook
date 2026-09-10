@@ -121,6 +121,10 @@ External examples and writeups from the community running serverless workloads o
 
 - 🎬 **Video transcription pipeline with Prefect + Nebius** — Prefect flows orchestrating S3 + ffmpeg (CPU job) + Whisper (GPU job) on Nebius. — _by Darko Mesaros_ · [💻 code](https://github.com/darko-mesaros/video-transcriber-prefect) · [📝 post](https://rup12.net/posts/video-transcription-pipeline-with-prefect-and-nebius/)
 
+### Finance / Market Surveillance
+
+- 📈 **LOB Arena — Adversarial market-surveillance evaluation** — Governed historical + synthetic order-book validation platform for benchmarking surveillance detectors, with Nebius Serverless AI Jobs and Endpoints for scalable evaluation and AI-assisted investigation. — _by Alexey Khabalov_ · [💻 code](https://github.com/khab40/lob-arena) · [📝 post](https://www.linkedin.com/pulse/building-lob-arena-adversarial-market-surveillance-nebius-khabalov-eqilf/)
+
 ---
 
 ## Repository structure
