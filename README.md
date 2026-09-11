@@ -116,6 +116,7 @@ External examples and writeups from the community running serverless workloads o
 
 - 🤖 **Positronic + Nebius serverless workflows** — Convert datasets, train ACT/SmolVLA, and serve checkpoints as endpoints — all serverless on Nebius. — _by vertix_ · [💻 code](https://github.com/vertix/positronic-open/tree/add-nebius-workflows/workflows/nebius)
 - 🦾 **norma-core SmolVLA — Nebius fine-tune recipe** — Upstream recipe the [`robotics/smolva-ft-norma-core`](./robotics/smolva-ft-norma-core/) example mirrors. — _by norma-core_ · [💻 code](https://github.com/norma-core/norma-core/blob/main/software/ai/smolvla_py/nebius.md)
+- 🔩 **Soft-surface washer pick with Nebius Serverless AI Jobs** — A UR10e in Isaac Sim flips a flat washer off a compliant surface; 38 H100 Jobs co-optimize material × maneuver, ES-training checkpoints ride home base64-encoded in the job logs, and a CPU Endpoint serves the grasp-success scorer. — _by David Cox_ · [💻 code](https://github.com/robotcompanyDave/rc-nebius-challenge-2026-public) · [🎬 video](https://youtu.be/IAawtx7Snow)
 
 ### MLOps / Pipelines
 
