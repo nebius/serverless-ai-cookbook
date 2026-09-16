@@ -99,9 +99,12 @@ RUN_ID="$({
 ```
 
 Use the included client for one real run through each protocol plus cross-protocol
-artifact verification:
+artifact verification. It requires a local clone of this repository; run it from
+the Vina template directory:
 
 ```bash
+git clone --depth 1 https://github.com/nebius/serverless-ai-cookbook.git
+cd serverless-ai-cookbook/templates/endpoint-autodock-vina
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-client.txt
 export HCLS_ENDPOINT_TOKEN="$TOKEN"
@@ -119,10 +122,54 @@ MCP client configuration, never in the skill.
 
 ## Custom inputs
 
-Supply `receptor_pdbqt` and/or `ligand_pdbqt` as bounded PDBQT text. Any custom
-structure requires explicit three-number `center` and `size` fields. The endpoint
-does not infer a binding site, prepare arbitrary molecular formats, accept shell
-commands, or fetch URLs.
+Supply one or both custom structures as PDBQT text. A custom structure requires
+an explicit three-number `center` and `size`; the endpoint does not infer a
+binding site or prepare PDB, SDF, MOL2, or SMILES files.
+
+| Input field | Required | Description |
+| --- | --- | --- |
+| `receptor_pdbqt` | custom receptor | Receptor PDBQT text, up to 2,000,000 characters. |
+| `ligand_pdbqt` | custom ligand | Ligand PDBQT text, up to 2,000,000 characters. |
+| `center` | custom input | `[x, y, z]` center of the docking box. |
+| `size` | custom input | `[x, y, z]` box dimensions; each value is 1 to 60 Å. |
+| `exhaustiveness` | no | Search effort: default 8, maximum 64. |
+| `n_poses` | no | Number of poses: default 9, maximum 20. |
+| `cpu` | no | CPU threads: default automatic, maximum 32. |
+| `seed` | no | Random seed: default 17. |
+
+The following example builds `request.json` from local PDBQT files, then sends
+it through the REST API:
+
+```bash
+python3 - <<'PY' > request.json
+import json
+from pathlib import Path
+
+print(json.dumps({
+    "input": {
+        "receptor_pdbqt": Path("receptor.pdbqt").read_text(),
+        "ligand_pdbqt": Path("ligand.pdbqt").read_text(),
+        "center": [30.103, 6.152, 15.584],
+        "size": [20.0, 20.0, 20.0],
+        "exhaustiveness": 8,
+        "n_poses": 20,
+        "seed": 17,
+    },
+    "client_request_id": "custom-vina-run-001",
+    "research_use_acknowledgement": True,
+}))
+PY
+
+RUN_ID="$(curl -sS -X POST "$BASE_URL/v1/runs" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data-binary @request.json \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])')"
+echo "$RUN_ID"
+```
+
+Use `GET /v1/runs/<run-id>` to monitor the run and download its artifacts after
+it succeeds.
 
 ## Expected output
 
