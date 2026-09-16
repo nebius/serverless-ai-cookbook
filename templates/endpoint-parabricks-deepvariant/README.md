@@ -75,13 +75,82 @@ tags never silently fall back.
 
 For production-scale data, attach a persistent resource at `/mnt/hcls` and put
 reference, index, reads, and reads-index files under
-`/mnt/hcls/parabricks-deepvariant/fixtures`. Requests use safe basenames and
-mounted paths confined to that directory.
+`/mnt/hcls/parabricks-deepvariant/fixtures`. The same storage resource must be
+mounted on the machine preparing the request and on the endpoint. Requests use
+safe basenames and mounted paths confined to that directory.
 
 The API can also download a public HTTPS input when the request provides its
 filename, URL, and SHA-256. Redirects, resolved addresses, size, and digest are
 validated. Signed URLs may be used for a single run but are redacted from
 persisted results and logs. Prefer the mounted lane for private or large inputs.
+
+### Request fields
+
+| Field | Required | Description |
+| --- | --- | --- |
+| `sample_id` | yes | Sample name: letters, digits, `.`, `_`, or `-`; maximum 80 characters. |
+| `reference` | yes | Reference FASTA source object. |
+| `reference_index` | yes | Matching FASTA `.fai` source object. |
+| `reads` | yes | Aligned reads BAM source object. |
+| `reads_index` | yes | Matching BAM `.bai` source object. |
+| `mode` | no | `shortread` (default), `pacbio`, or `ont`. |
+| `intervals` | no | Up to 32 reference regions, for example `chr20:10000000-10010000`. |
+| `use_wes_model` | no | `true` only for `shortread` whole-exome data. |
+
+Each source object needs a safe `filename`, a SHA-256 checksum, and exactly one
+input location: `path` for a basename in the mounted fixture directory, or
+`url` for a public HTTPS download. Reference/index and BAM/index pairs must
+match; intervals must use the reference contig names.
+
+The following example builds `request.json` for four files already in the shared
+fixture directory. Replace the filenames, sample ID, and interval with your own
+validated inputs. Run it on a machine where that same storage is mounted at
+`/mnt/hcls`:
+
+```bash
+python3 - <<'PY' > request.json
+import hashlib
+import json
+from pathlib import Path
+
+fixtures = Path("/mnt/hcls/parabricks-deepvariant/fixtures")
+
+def sha256_file(source):
+    digest = hashlib.sha256()
+    with source.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+def mounted(filename):
+    source = fixtures / filename
+    return {"filename": filename, "path": filename, "sha256": sha256_file(source)}
+
+print(json.dumps({
+    "input": {
+        "sample_id": "HG003-chr20",
+        "reference": mounted("GRCh38_no_alt.fna"),
+        "reference_index": mounted("GRCh38_no_alt.fna.fai"),
+        "reads": mounted("HG003.chr20.bam"),
+        "reads_index": mounted("HG003.chr20.bam.bai"),
+        "mode": "shortread",
+        "intervals": ["chr20"],
+    },
+    "client_request_id": "deepvariant-custom-001",
+    "research_use_acknowledgement": True,
+}))
+PY
+
+RUN_ID="$(curl -sS -X POST "$BASE_URL/v1/runs" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data-binary @request.json \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["run_id"])')"
+echo "$RUN_ID"
+```
+
+Use `GET /v1/runs/<run-id>` to monitor the run and download its artifacts after
+it succeeds.
 
 Object Storage credentials are configured on the Serverless volume, not passed
 to the API. Without an attached volume, inputs and results can disappear when a
@@ -105,9 +174,12 @@ until curl -sf -H "Authorization: Bearer $TOKEN" \
 ```
 
 The live capabilities document supplies the exact public chr20 smoke input and
-SHA-256 values. Test both protocols with it:
+SHA-256 values. Test both protocols with it. The included client requires a
+local clone of this repository; run it from the DeepVariant template directory:
 
 ```bash
+git clone --depth 1 https://github.com/nebius/serverless-ai-cookbook.git
+cd serverless-ai-cookbook/templates/endpoint-parabricks-deepvariant
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-client.txt
 export HCLS_ENDPOINT_TOKEN="$TOKEN"
