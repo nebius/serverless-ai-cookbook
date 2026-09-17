@@ -6,6 +6,10 @@ COPY templates/hcls-librechat/ScientificLanding.tsx /app/client/src/components/C
 COPY templates/hcls-librechat/PoweredByFooter.tsx /app/client/src/components/Chat/Footer.tsx
 COPY templates/hcls-librechat/patch-client.mjs /tmp/patch-client.mjs
 RUN node /tmp/patch-client.mjs
+COPY templates/hcls-librechat/demos/Demos.tsx /app/client/src/components/ScientificDemos.tsx
+COPY templates/hcls-librechat/demos/comparison.ts /app/client/src/components/scientific-comparison.ts
+COPY templates/hcls-librechat/demos/patch.mjs /tmp/patch-demos.mjs
+RUN node /tmp/patch-demos.mjs client
 WORKDIR /app/client
 RUN NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 /app/node_modules/.bin/vite build
 
@@ -22,6 +26,13 @@ COPY --from=scientific-client /app/client/dist /app/client/dist
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
 COPY templates/hcls-librechat/scientific-tool-options.cjs /opt/hcls-librechat/scientific-tool-options.cjs
 COPY templates/hcls-librechat/patch-server.mjs /opt/hcls-librechat/patch-server.mjs
+COPY templates/hcls-librechat/demos/service.cjs \
+     templates/hcls-librechat/demos/worker.cjs \
+     templates/hcls-librechat/demos/mcp.cjs \
+     templates/hcls-librechat/demos/seed.cjs \
+     templates/hcls-librechat/demos/patch.mjs \
+     templates/hcls-librechat/demos/workshop-example.json /opt/hcls-librechat/demos/
+COPY templates/hcls-librechat/demos/router.cjs /app/api/server/routes/scientific-demos.js
 COPY templates/hcls-librechat/tavily-mcp.mjs /opt/bionemo/tavily-mcp.mjs
 COPY templates/hcls-librechat/structure-mcp.py /opt/bionemo/structure-mcp.py
 COPY templates/hcls-librechat/execution-mcp.py /opt/bionemo/execution-mcp.py
@@ -31,6 +42,10 @@ RUN python3 -m venv /opt/scientific-client \
 COPY life-science/bionemo-librechat/viewer-mcp.py /opt/bionemo/viewer-mcp.py
 COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 RUN node /opt/hcls-librechat/patch-server.mjs
+RUN node /opt/hcls-librechat/demos/patch.mjs server \
+ && command -v flock \
+ && python3 -m venv /opt/clinical-client \
+ && /opt/clinical-client/bin/pip install --no-cache-dir httpx==0.28.1
 COPY templates/hcls-librechat/seed-workbench.js /app/seed-hcls-workbench.js
 COPY life-science/bionemo-librechat/scientific-agent-instructions.md /app/scientific-agent-instructions.md
 COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entrypoint

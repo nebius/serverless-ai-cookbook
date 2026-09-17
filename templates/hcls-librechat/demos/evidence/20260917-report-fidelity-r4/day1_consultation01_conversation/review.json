@@ -1,0 +1,132 @@
+{
+  "uncertainties": [
+    {
+      "description": "The patient felt hot around three or four days ago but did not measure temperature; fever status is uncertain.",
+      "evidence": [
+        {
+          "source_id": "S5",
+          "quote": " weak and shaky as well would you mean by shaky do you mean you've been having uh are you been feeling feverish for example um yeah it doesn't feel like uh yeah I just mainly feel weaker I haven't had a fever um at the moment but I did notice um a temperature when the symptom started so um yeah around about three or four days ago you measure your",
+          "spans": [
+            {
+              "start": 1424,
+              "end": 1772
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "candidate": {
+        "id": "F0011",
+        "section": "history",
+        "statement": "The patient has not felt feverish recently.",
+        "uncertain": false,
+        "evidence": [
+          {
+            "source_id": "S5",
+            "quote": " weak and shaky as well would you mean by shaky do you mean you've been having uh are you been feeling feverish for example um yeah it doesn't feel like uh yeah I just mainly feel weaker I haven't had a fever um at the moment but I did notice um a temperature when the symptom started so um yeah around about three or four days ago you measure your",
+            "spans": [
+              {
+                "start": 1424,
+                "end": 1772
+              }
+            ]
+          }
+        ],
+        "citation_repair": {
+          "original_evidence": [
+            {
+              "source_id": "S5",
+              "quote": " weak and shaky as well would you mean by shaky do you mean you've been having uh are you been feeling feverish for example um yeah it doesn't feel like uh yeah I just mainly feel weaker I haven't had a fever um at the moment but I did notice um a temperature when the symptom started so um yeah around about three or four days ago you measure your",
+              "spans": [
+                {
+                  "start": 1424,
+                  "end": 1772
+                }
+              ]
+            }
+          ],
+          "reason": "The patient states they 'haven't had a fever um at the moment but I did notice a temperature when the symptom started' and mentions a temperature measurement around three or four days ago. This indicates recent feverishness at symptom onset, contradicting the claim that the patient has not felt feverish recently. The evidence does not support a clear denial of recent feverishness."
+        }
+      },
+      "verdict": "unsupported",
+      "reason": "The cited quote states 'I haven't had a fever um at the moment but I did notice a temperature when the symptom started' around three or four days ago, which indicates the patient felt feverish at symptom onset—recent in clinical context. This contradicts the claim that the patient has not felt feverish recently. Therefore, the evidence does not support the statement."
+    },
+    {
+      "candidate": {
+        "id": "F0023",
+        "section": "background",
+        "statement": "The patient's asthma is well controlled.",
+        "uncertain": false,
+        "evidence": [
+          {
+            "source_id": "S10",
+            "quote": " and two kids and one um child was vomiting but they haven't got diarrhea there's no one with the same symptoms okay okay fine um right and uh in terms of your your overall health are you normally fitting well or um yeah I mean other than um asthma um I use an inhaler everything uh else is fine okay and did your asthma well controlled uh yeah that's fine",
+            "spans": [
+              {
+                "start": 3196,
+                "end": 3552
+              }
+            ]
+          }
+        ],
+        "citation_repair": {
+          "original_evidence": [
+            {
+              "source_id": "S11",
+              "quote": " just yeah you send inhaler and uh that's under control fine and you don't have any other tummy problem bowel problems I should be aware of no no okay um in t ap apart from the inhalers do you take any other medications uh no no other medications okay fine and in terms of just your your day to day life you said it's been affecting your life um in what way",
+              "spans": [
+                {
+                  "start": 3552,
+                  "end": 3909
+                }
+              ]
+            }
+          ],
+          "reason": "The quoted text mentions the inhaler and that asthma is 'under control fine,' but this is stated by the clinician, not confirmed by the patient. The statement 'that's under control fine' is an assertion by the provider without explicit confirmation from the patient or objective measures. Therefore, the claim that 'the patient's asthma is well controlled' is not fully supported by the cited quote in context."
+        }
+      },
+      "verdict": "unsupported",
+      "reason": "The cited quote attributes the statement 'that's under control fine' to the clinician, not the patient, and there is no explicit confirmation from the patient or objective evidence in the transcript to support that the asthma is well controlled. The original evidence does not entail the claim as stated, making the fact unsupported by the provided citation."
+    },
+    {
+      "candidate": {
+        "id": "F0031",
+        "section": "background",
+        "statement": "The patient does not drink alcohol.",
+        "uncertain": false,
+        "evidence": [
+          {
+            "source_id": "S13",
+            "quote": " been at home uh yeah I've been going to work okay that must be difficult for you then yeah it's been quite difficult and you say you mentioned you live with a wife and two children is that right Yes all right um just couple of other questions we need to ask so um do you smoke at all uh no I don't smoke and do you drink much in the web alcohol  no I I don't",
+            "spans": [
+              {
+                "start": 4268,
+                "end": 4627
+              }
+            ]
+          }
+        ],
+        "citation_repair": {
+          "original_evidence": [
+            {
+              "source_id": "S14",
+              "quote": " drink alcohol no okay so um uh normally at this stage I like to um examine you if that's okay but um um but but but but but but but but but but but but but but but but but but but but but having listened to your stories uh I think um just to recap the for the last three days you've been having loose dull diarrhea a bit of tummy pain mainly on the left hand",
+              "spans": [
+                {
+                  "start": 4627,
+                  "end": 4986
+                }
+              ]
+            }
+          ],
+          "reason": "The cited quote does not contain any statement about the patient's alcohol consumption. The word 'drink' appears in the context of a speech disfluency and narrative transition, not as part of a question or answer about alcohol use. There is no clear denial or affirmation of alcohol drinking in the provided text segment."
+        }
+      },
+      "verdict": "unsupported",
+      "reason": "The cited quote in source S13 contains the patient's denial of smoking and a response 'no I I don't' to a question about drinking alcohol, but the evidence was incorrectly attributed to source S14, which does not contain any relevant statement about alcohol use. The correct source (S13) supports the statement, but the fact cites S14, which lacks the necessary information. Therefore, based on the provided citation, the statement is unsupported."
+    }
+  ]
+}

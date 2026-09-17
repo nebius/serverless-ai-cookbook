@@ -120,6 +120,13 @@ const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => model
 }));
 
 const sharedGatewayKey = Boolean(process.env.SCIENTIFIC_MODELS_API_KEY);
+modelSpecs.push(...[
+  ['clinical-report', 'Clinical Report Draft', 'agent_clinical_report'],
+  ['mindeval-workshop', 'MindEval Workshop', 'agent_mindeval_workshop'],
+].map(([name, label, agent_id]) => ({ name, label, group: 'Clinical demos',
+  iconURL: '/assets/token-factory.svg', showOnLanding: false, default: false,
+  skills: true, mcpServers: ['scientific-demos'],
+  preset: { endpoint: 'agents', agent_id } })));
 const config = {
   version: '1.3.15', cache: true,
   interface: {
@@ -162,6 +169,18 @@ const config = {
   },
   modelSpecs: { prioritize: true, enforce: false, list: modelSpecs },
   mcpServers: {
+    'scientific-demos': {
+      title: 'Clinical reports and MindEval', description: 'Durable clinical drafts and controlled workshop experiments.',
+      type: 'stdio', command: 'node', args: ['/opt/hcls-librechat/demos/mcp.cjs'],
+      startup: false, timeout: 60000,
+      env: { LIBRECHAT_USER_ID: '{{LIBRECHAT_USER_ID}}',
+        SCIENTIFIC_MODELS_API_KEY: '{{SCIENTIFIC_MODELS_API_KEY}}',
+        SCIENTIFIC_MODELS_API_BASE_URL: '${SCIENTIFIC_MODELS_API_BASE_URL}',
+        NEBIUS_API_KEY: '${NEBIUS_API_KEY}' },
+      customUserVars: { SCIENTIFIC_MODELS_API_KEY: {
+        title: 'Scientific AI API key', description: 'Your personal/team platform key, also configurable in the demo panel.', sensitive: true,
+      } }, serverInstructions: true,
+    },
     'environment-execution': {
       title: 'Environment execution', description: 'Root shell, Python, packages, internet and mounted files.',
       type: 'stdio', command: 'python3', args: ['/opt/bionemo/execution-mcp.py'],

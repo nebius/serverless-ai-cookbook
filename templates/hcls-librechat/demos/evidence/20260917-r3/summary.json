@@ -1,0 +1,29 @@
+{
+  "candidate": "scientific-demos-r3-20260917",
+  "base_url": "http://127.0.0.1:13119",
+  "results": [
+    {
+      "case": "fixture.txt",
+      "language": "de",
+      "job": "5feba8115c3ddd5184d98435ba2eacb2",
+      "status": "completed",
+      "request_wall_seconds": 0.01,
+      "reused_completed_job": true,
+      "original_workflow_seconds_including_queue": 598.09,
+      "files": [
+        "report.md",
+        "transcript.txt",
+        "follow-up.md",
+        "review.md",
+        "document.json",
+        "review.json",
+        "run.json"
+      ],
+      "clinical_validation": false,
+      "facts": 11,
+      "withheld": 0,
+      "same_request_reused": true
+    }
+  ],
+  "clinical_validation": false
+}

@@ -1,0 +1,323 @@
+{
+  "schema": "clinical-documentation/v4",
+  "kind": "consultation",
+  "language": "de",
+  "transcript_sha256": "54c200c38af75a19d089aad93da909e57b0c917d1311107cc1166ec499b79d0f",
+  "facts": [
+    {
+      "id": "F0001",
+      "section": "history",
+      "statement": "Die Patientin hat seit drei Tagen Husten.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S1",
+          "quote": "Ärztin: Was führt Sie zu mir?\nPatientin: Seit drei Tagen habe ich Husten. Fieber habe ich nicht gemessen.\nÄrztin: Haben Sie Luftnot?\nPatientin: Nein. Beim Husten tut die Brust etwas weh.\nÄrztin: Nehmen Sie Medikamente?\nPatientin: Ich nehme morgens ein Blutdruckmittel. Den Namen weiß ich gerade nicht.\nÄrztin: Bitte bringen Sie die Medikamentenliste mit.",
+          "spans": [
+            {
+              "start": 0,
+              "end": 354
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0001",
+        "verdict": "supported",
+        "reason": "Die Patientin äußert im Gespräch direkt: 'Seit drei Tagen habe ich Husten.', was den Sachverhalt, dass sie seit drei Tagen Husten hat, eindeutig und wörtlich belegt."
+      }
+    },
+    {
+      "id": "F0002",
+      "section": "history",
+      "statement": "Die Patientin hat nicht gemessen, ob sie Fieber hat.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S1",
+          "quote": "Ärztin: Was führt Sie zu mir?\nPatientin: Seit drei Tagen habe ich Husten. Fieber habe ich nicht gemessen.\nÄrztin: Haben Sie Luftnot?\nPatientin: Nein. Beim Husten tut die Brust etwas weh.\nÄrztin: Nehmen Sie Medikamente?\nPatientin: Ich nehme morgens ein Blutdruckmittel. Den Namen weiß ich gerade nicht.\nÄrztin: Bitte bringen Sie die Medikamentenliste mit.",
+          "spans": [
+            {
+              "start": 0,
+              "end": 354
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0002",
+        "verdict": "supported",
+        "reason": "Die Patientin sagt explizit: 'Fieber habe ich nicht gemessen.' Dies bestätigt direkt, dass sie kein Fieber gemessen hat."
+      }
+    },
+    {
+      "id": "F0003",
+      "section": "history",
+      "statement": "Die Patientin hat keine Luftnot.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S1",
+          "quote": "Ärztin: Was führt Sie zu mir?\nPatientin: Seit drei Tagen habe ich Husten. Fieber habe ich nicht gemessen.\nÄrztin: Haben Sie Luftnot?\nPatientin: Nein. Beim Husten tut die Brust etwas weh.\nÄrztin: Nehmen Sie Medikamente?\nPatientin: Ich nehme morgens ein Blutdruckmittel. Den Namen weiß ich gerade nicht.\nÄrztin: Bitte bringen Sie die Medikamentenliste mit.",
+          "spans": [
+            {
+              "start": 0,
+              "end": 354
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0003",
+        "verdict": "supported",
+        "reason": "Die Patientin antwortet auf die direkte Frage nach Luftnot mit 'Nein', was klar belegt, dass sie keine Luftnot hat."
+      }
+    },
+    {
+      "id": "F0004",
+      "section": "history",
+      "statement": "Die Patientin hat Brustschmerzen beim Husten.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S1",
+          "quote": "Ärztin: Was führt Sie zu mir?\nPatientin: Seit drei Tagen habe ich Husten. Fieber habe ich nicht gemessen.\nÄrztin: Haben Sie Luftnot?\nPatientin: Nein. Beim Husten tut die Brust etwas weh.\nÄrztin: Nehmen Sie Medikamente?\nPatientin: Ich nehme morgens ein Blutdruckmittel. Den Namen weiß ich gerade nicht.\nÄrztin: Bitte bringen Sie die Medikamentenliste mit.",
+          "spans": [
+            {
+              "start": 0,
+              "end": 354
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0004",
+        "verdict": "supported",
+        "reason": "Die Patientin äußert im Gespräch: 'Beim Husten tut die Brust etwas weh.', was direkt die Aussage über Brustschmerzen beim Husten belegt."
+      }
+    },
+    {
+      "id": "F0005",
+      "section": "background",
+      "statement": "Die Patientin nimmt morgens ein Blutdruckmittel.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S1",
+          "quote": "Ärztin: Was führt Sie zu mir?\nPatientin: Seit drei Tagen habe ich Husten. Fieber habe ich nicht gemessen.\nÄrztin: Haben Sie Luftnot?\nPatientin: Nein. Beim Husten tut die Brust etwas weh.\nÄrztin: Nehmen Sie Medikamente?\nPatientin: Ich nehme morgens ein Blutdruckmittel. Den Namen weiß ich gerade nicht.\nÄrztin: Bitte bringen Sie die Medikamentenliste mit.",
+          "spans": [
+            {
+              "start": 0,
+              "end": 354
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0005",
+        "verdict": "supported",
+        "reason": "Die Patientin äußert im Gespräch direkt: 'Ich nehme morgens ein Blutdruckmittel.' Diese Aussage belegt genau die in der Aussage beschriebene Einnahme eines Blutdruckmittels am Morgen. Der Name des Medikaments ist zwar unbekannt, aber die Einnahmezeit und Art sind klar genannt."
+      }
+    },
+    {
+      "id": "F0006",
+      "section": "background",
+      "statement": "Der Name des Blutdruckmittels ist der Patientin nicht bekannt.",
+      "uncertain": true,
+      "evidence": [
+        {
+          "source_id": "S1",
+          "quote": "Ärztin: Was führt Sie zu mir?\nPatientin: Seit drei Tagen habe ich Husten. Fieber habe ich nicht gemessen.\nÄrztin: Haben Sie Luftnot?\nPatientin: Nein. Beim Husten tut die Brust etwas weh.\nÄrztin: Nehmen Sie Medikamente?\nPatientin: Ich nehme morgens ein Blutdruckmittel. Den Namen weiß ich gerade nicht.\nÄrztin: Bitte bringen Sie die Medikamentenliste mit.",
+          "spans": [
+            {
+              "start": 0,
+              "end": 354
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0006",
+        "verdict": "supported",
+        "reason": "Die Patientin sagt im Gespräch: 'Den Namen weiß ich gerade nicht', bezogen auf das von ihr eingenommene Blutdruckmittel. Dieser direkte Zitat belegt, dass ihr der Name des Medikaments nicht bekannt ist."
+      }
+    },
+    {
+      "id": "F0007",
+      "section": "findings",
+      "statement": "Der Puls beträgt 78 pro Minute und ist regelmäßig.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S2",
+          "quote": " Heute ändern wir daran nichts.\nÄrztin: Der Puls ist 78 pro Minute und regelmäßig. Den Blutdruck haben wir heute noch nicht gemessen.\nPatientin: Wann sprechen wir wieder?\nÄrztin: Wir telefonieren am Donnerstag.\n",
+          "spans": [
+            {
+              "start": 354,
+              "end": 565
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0007",
+        "verdict": "supported",
+        "reason": "Die Aussage, dass der Puls 78 pro Minute beträgt und regelmäßig ist, wird direkt durch das Zitat aus S2 bestätigt: 'Der Puls ist 78 pro Minute und regelmäßig.' Dies entspricht exakt der behaupteten Tatsache."
+      }
+    },
+    {
+      "id": "F0008",
+      "section": "findings",
+      "statement": "Der Blutdruck wurde heute noch nicht gemessen.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S2",
+          "quote": " Heute ändern wir daran nichts.\nÄrztin: Der Puls ist 78 pro Minute und regelmäßig. Den Blutdruck haben wir heute noch nicht gemessen.\nPatientin: Wann sprechen wir wieder?\nÄrztin: Wir telefonieren am Donnerstag.\n",
+          "spans": [
+            {
+              "start": 354,
+              "end": 565
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0008",
+        "verdict": "supported",
+        "reason": "Die Ärztin sagt explizit: 'Den Blutdruck haben wir heute noch nicht gemessen.', was direkt die Aussage bestätigt, dass der Blutdruck an diesem Tag noch nicht erhoben wurde."
+      }
+    },
+    {
+      "id": "F0009",
+      "section": "plan",
+      "statement": "Die Patientin soll die Medikamentenliste mitbringen.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S1",
+          "quote": "Ärztin: Was führt Sie zu mir?\nPatientin: Seit drei Tagen habe ich Husten. Fieber habe ich nicht gemessen.\nÄrztin: Haben Sie Luftnot?\nPatientin: Nein. Beim Husten tut die Brust etwas weh.\nÄrztin: Nehmen Sie Medikamente?\nPatientin: Ich nehme morgens ein Blutdruckmittel. Den Namen weiß ich gerade nicht.\nÄrztin: Bitte bringen Sie die Medikamentenliste mit.",
+          "spans": [
+            {
+              "start": 0,
+              "end": 354
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0009",
+        "verdict": "supported",
+        "reason": "Die Anweisung, die Medikamentenliste mitzubringen, wird direkt von der Ärztin ausgesprochen: 'Bitte bringen Sie die Medikamentenliste mit.' Dies entspricht exakt der behaupteten Aussage."
+      }
+    },
+    {
+      "id": "F0010",
+      "section": "plan",
+      "statement": "Die aktuelle Medikation wird heute nicht geändert.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S2",
+          "quote": " Heute ändern wir daran nichts.\nÄrztin: Der Puls ist 78 pro Minute und regelmäßig. Den Blutdruck haben wir heute noch nicht gemessen.\nPatientin: Wann sprechen wir wieder?\nÄrztin: Wir telefonieren am Donnerstag.\n",
+          "spans": [
+            {
+              "start": 354,
+              "end": 565
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0010",
+        "verdict": "supported",
+        "reason": "Die Aussage 'Die aktuelle Medikation wird heute nicht geändert.' wird durch die direkte Äußerung der Ärztin 'Heute ändern wir daran nichts.' im Kontext des Gesprächs über die Medikation gestützt. Der Bezugspunkt 'daran' bezieht sich auf die vorher besprochene Medikation, was aus dem Gesprächsverlauf ersichtlich ist."
+      }
+    },
+    {
+      "id": "F0011",
+      "section": "plan",
+      "statement": "Es ist ein Telefonat am Donnerstag geplant.",
+      "uncertain": false,
+      "evidence": [
+        {
+          "source_id": "S2",
+          "quote": " Heute ändern wir daran nichts.\nÄrztin: Der Puls ist 78 pro Minute und regelmäßig. Den Blutdruck haben wir heute noch nicht gemessen.\nPatientin: Wann sprechen wir wieder?\nÄrztin: Wir telefonieren am Donnerstag.\n",
+          "spans": [
+            {
+              "start": 354,
+              "end": 565
+            }
+          ]
+        }
+      ],
+      "review": {
+        "id": "F0011",
+        "verdict": "supported",
+        "reason": "Die Aussage, dass ein Telefonat am Donnerstag geplant ist, wird direkt durch die Ärztin im zitierten Gespräch bestätigt: 'Wir telefonieren am Donnerstag.' Dies entspricht exakt der behaupteten Tatsache im Planabschnitt."
+      }
+    }
+  ],
+  "uncertainties": [
+    {
+      "description": "Der Name des von der Patientin eingenommenen Blutdruckmittels ist unklar.",
+      "evidence": [
+        {
+          "source_id": "S1",
+          "quote": "Ärztin: Was führt Sie zu mir?\nPatientin: Seit drei Tagen habe ich Husten. Fieber habe ich nicht gemessen.\nÄrztin: Haben Sie Luftnot?\nPatientin: Nein. Beim Husten tut die Brust etwas weh.\nÄrztin: Nehmen Sie Medikamente?\nPatientin: Ich nehme morgens ein Blutdruckmittel. Den Namen weiß ich gerade nicht.\nÄrztin: Bitte bringen Sie die Medikamentenliste mit.",
+          "spans": [
+            {
+              "start": 0,
+              "end": 354
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "question": "Welches Blutdruckmittel nimmt die Patientin genau, und in welcher Dosis?",
+      "reason": "Der Name und die Dosis des Blutdruckmittels sind unklar, was für die Beurteilung von Wechselwirkungen oder Kontraindikationen relevant sein könnte.",
+      "fact_ids": [
+        "F0005",
+        "F0006"
+      ],
+      "basis": "unclear_source"
+    },
+    {
+      "question": "Warum wurde der Blutdruck in dieser Untersuchung nicht gemessen, obwohl die Patientin ein Blutdruckmittel einnimmt?",
+      "reason": "Der fehlende Blutdruckwert könnte eine wichtige Information zur Beurteilung der Therapiekontrolle darstellen.",
+      "fact_ids": [
+        "F0008"
+      ],
+      "basis": "unclear_source"
+    },
+    {
+      "question": "Bestehen bekannte Allergien oder Unverträglichkeiten gegenüber Medikamenten?",
+      "reason": "Diese Information fehlt vollständig, obwohl sie für therapeutische Entscheidungen entscheidend ist.",
+      "fact_ids": [
+        "F0005"
+      ],
+      "basis": "not_documented"
+    },
+    {
+      "question": "Wie lange bestehen die Brustschmerzen bereits, und sind sie lokalisiert oder ausstrahlend?",
+      "reason": "Die Dauer und Lokalisation der Schmerzen könnten Hinweise auf die Ätiologie liefern.",
+      "fact_ids": [
+        "F0004"
+      ],
+      "basis": "unclear_source"
+    },
+    {
+      "question": "Hat die Patientin weitere Symptome wie Schleimproduktion, Fiebergefühl oder Nachtschweiß bemerkt?",
+      "reason": "Zusätzliche respiratorische oder systemische Symptome könnten die Differenzialdiagnose eingrenzen.",
+      "fact_ids": [
+        "F0001"
+      ],
+      "basis": "not_documented"
+    }
+  ],
+  "rejected": [],
+  "validation": "literal source checks and automated fact review; not clinical validation"
+}

@@ -58,7 +58,12 @@ def test_footer_is_powered_by_nvidia() -> None:
 @pytest.mark.parametrize("shared_key", [False, True])
 def test_rendered_gateway_authentication(tmp_path, shared_key) -> None:
     config, output = render_config(tmp_path, **({"SCIENTIFIC_MODELS_API_KEY": "synthetic-test-credential"} if shared_key else {}))
-    assert set(config["mcpServers"]) == {"bionemo-models", "tavily", "structure-viewer", "environment-execution"}
+    assert set(config["mcpServers"]) == {"bionemo-models", "tavily", "structure-viewer", "environment-execution", "scientific-demos"}
+    demos = config["mcpServers"]["scientific-demos"]
+    assert demos["startup"] is False
+    assert demos["env"]["SCIENTIFIC_MODELS_API_KEY"] == "{{SCIENTIFIC_MODELS_API_KEY}}"
+    assert demos["env"]["LIBRECHAT_USER_ID"] == "{{LIBRECHAT_USER_ID}}"
+    assert demos["customUserVars"]["SCIENTIFIC_MODELS_API_KEY"]["sensitive"] is True
     gateway = config["mcpServers"]["bionemo-models"]
     assert gateway["type"] == "streamable-http"
     assert gateway["url"] == "${SCIENTIFIC_MODELS_MCP_URL}"
@@ -144,12 +149,17 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
     config, _ = render_config(tmp_path)
     specs = config["modelSpecs"]["list"]
     assert {item["group"] for item in specs} == {
-        "Dedicated Token Factory", "Public Token Factory", "OpenAI", "Claude"}
+        "Dedicated Token Factory", "Public Token Factory", "OpenAI", "Claude", "Clinical demos"}
     assert len([item for item in specs if item["group"] == "Dedicated Token Factory"]) == 2
     assert len([item for item in specs if item["group"] == "Public Token Factory"]) > 2
     assert len([item for item in specs if item["default"]]) == 1
     assert len({item["name"] for item in specs}) == len(specs)
     for item in specs:
+        if item["group"] == "Clinical demos":
+            assert item["preset"]["endpoint"] == "agents"
+            assert item["preset"]["agent_id"] in {"agent_clinical_report", "agent_mindeval_workshop"}
+            assert item["mcpServers"] == ["scientific-demos"]
+            continue
         assert item["skills"] is True
         assert item["mcpServers"] == ["bionemo-models", "tavily", "structure-viewer", "environment-execution"]
         assert INSTRUCTIONS.read_text().strip() in item["preset"]["promptPrefix"]

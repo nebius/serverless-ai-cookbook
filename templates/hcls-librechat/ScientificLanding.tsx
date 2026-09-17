@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@librechat/client';
 import { Atom, BookOpen, Server, Dna, FlaskConical, ScanLine, ArrowUpRight, Check } from 'lucide-react';
 import { useChatContext, useChatFormContext } from '~/Providers';
@@ -88,6 +89,11 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
           run Python, install packages, and work with files using the root terminal. Use the installed Nebius skills to plan your compute.
         </p>
       </header>
+
+      <nav aria-label="Clinical AI demos" className="mb-5 grid gap-3 sm:grid-cols-2">
+        <Link to="/demos?tab=clinical" className="rounded-xl border border-border-medium bg-surface-secondary p-4 hover:bg-surface-hover"><strong>Clinical Report Draft</strong><p className="mt-1 text-sm text-text-secondary">Transcript or recording → source-linked Arztbrief or English report draft.</p></Link>
+        <Link to="/demos?tab=mindeval" className="rounded-xl border border-border-medium bg-surface-secondary p-4 hover:bg-surface-hover"><strong>MindEval Workshop</strong><p className="mt-1 text-sm text-text-secondary">Simulate a consultation, intervene, score and compare clinicians.</p></Link>
+      </nav>
 
       {requiresKey && (
         <div role="status" className="mb-5 rounded-xl border border-border-medium bg-surface-secondary p-4 text-sm text-text-primary">

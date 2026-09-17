@@ -1,0 +1,25 @@
+{
+  "config": {
+    "schema": "clinical-documentation/v4",
+    "source_sha256": "461b6a41f33104d2f9f51befd761a68326815d5742a26a9fe6c7851950b405cf",
+    "source_type": "transcript",
+    "language": "en",
+    "asr_model": "nemotron-speech-en-0-6b",
+    "report_model": "Qwen/Qwen3-235B-A22B-Instruct-2507",
+    "report_provider": "https://api.tokenfactory.nebius.com/v1",
+    "platform": "https://89.169.99.188",
+    "prompt_sha256": "097abf421c4de1a1f41b61d9e611593eb848bb453fb70d353c97e70eacc6d1b6",
+    "chunk_size": 8500
+  },
+  "id": "clinical-9dcb3ce4e5f44f1b81e992ec4f0f239f",
+  "started_at": "2026-09-17T08:27:05.158582+00:00",
+  "source_files": {
+    "clinical_report.py": "28510f53e68cbf0cd68ff05b01832ce785522bff1530949b22747215763c4c37",
+    "document.py": "8723ffbe1f738f3cb14948f1824a9d7ce21436b407c836e357598e62216dcd17"
+  },
+  "status": "completed",
+  "completed_at": "2026-09-17T08:28:24.269348+00:00",
+  "facts": 36,
+  "rejected": 3,
+  "transcript_sha256": "461b6a41f33104d2f9f51befd761a68326815d5742a26a9fe6c7851950b405cf"
+}

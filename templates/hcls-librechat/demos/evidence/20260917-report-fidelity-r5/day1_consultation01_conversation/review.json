@@ -1,0 +1,30 @@
+{
+  "uncertainties": [
+    {
+      "description": "The patient felt hot but did not measure their temperature; the presence of fever is uncertain.",
+      "evidence": [
+        {
+          "source_id": "S5",
+          "quote": " weak and shaky as well would you mean by shaky do you mean you've been having uh are you been feeling feverish for example um yeah it doesn't feel like uh yeah I just mainly feel weaker I haven't had a fever um at the moment but I did notice um a temperature when the symptom started so um yeah around about three or four days ago you measure your",
+          "spans": [
+            {
+              "start": 1424,
+              "end": 1772
+            }
+          ]
+        },
+        {
+          "source_id": "S6",
+          "quote": " temperature then yeah I didn't measure my temperature no but I felt um just a bit hot okay okay any other symptoms like sweating or um no and uh any vomiting at all Yeah so um I vomited at the start of the symptoms but now um I've stopped vomiting stop vomiting okay and was your vomit I know it's not nice thing to talk about but was it just normal food",
+          "spans": [
+            {
+              "start": 1772,
+              "end": 2127
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "rejected": []
+}

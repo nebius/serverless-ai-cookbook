@@ -1,0 +1,9 @@
+# Offene Punkte und mögliche Rückfragen
+
+Nicht Teil des Arztbriefs. Vorschläge, keine vollständige klinische Checkliste. Nicht im Transkript gefunden heißt nicht, dass die Frage nicht gestellt wurde.
+
+- Gibt es Hinweise auf die Einnahme von Medikamenten, Nahrungsergänzungsmitteln oder Substanzen wie Koffein, die das Herzrasen beeinflussen könnten? — Substanzen wie Koffein, Stimulanzien oder Schilddrüsenhormone können Symptome einer Schilddrüsenüberfunktion mimikry oder verstärken; eine Abklärung ist wichtig, um die Differentialdiagnose einzugrenzen. (F0016; not_documented)
+- Wurde bereits eine Schilddrüsenuntersuchung (z. B. TSH, fT3, fT4) in der Vergangenheit durchgeführt, und liegen alte Laborwerte vor? — Der Verdacht auf Schilddrüsenüberfunktion ist klinisch plausibel; der Vergleich mit Vorwerten könnte die Diagnose absichern oder ausschließen. (F0015; not_documented)
+- Bestehen weitere Symptome einer thyreotoxischen Krise wie Fieber, Übelkeit, Erbrechen oder Verwirrtheit, die eine akute Gefahr andeuten könnten? — Obwohl der Patient nicht als notfallmäßig beschrieben wird, wäre die Abklärung lebensbedrohlicher Komplikationen bei Schilddrüsenüberfunktion wichtig. (F0016; not_documented)
+- Wie ist die aktuelle körperliche Belastbarkeit des Patienten – treten die Symptome auch bei geringer körperlicher Aktivität auf oder bleibt das Herzrasen auf Ruhephasen beschränkt? — Die Differenzierung zwischen belastungsabhängigen und -unabhängigen Symptomen kann zwischen kardialen, psychogenen oder endokrinen Ursachen helfen. (F0003; unclear_source)
+- Wurde eine objektive Herzfrequenzmessung (z. B. durch EKG oder Langzeit-EKG) bereits durchgeführt oder ist der Wert von 160/min ausschließlich selbstgemessen? — Die Genauigkeit der Herzfrequenzangabe ist entscheidend für die Beurteilung der Arrhythmieart; eine objektive Validierung fehlt bisher. (F0001; not_documented)
