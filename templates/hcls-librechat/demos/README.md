@@ -95,9 +95,15 @@ speech Apps and global Token Factory. Production has **not** been changed.
   were found and fixed rather than treated as successful acceptance.
 - Unit tests cover idempotency, identity, queue serialization, bounded timeout
   recovery, MCP schemas and paired comparisons. The existing 34 cookbook
-  regression tests pass. Final frozen-image browser tests are still required.
-- Expanded global model qualification, final eight-clinician customer path and
-  ten-team acceptance of the integrated client remain separate release gates.
+  regression tests pass. Frozen source `03d70b8` passed full EN/DE recording
+  workflows, native browser upload, typed clinical-agent output retrieval,
+  create/refresh/abort, and a local data-preserving upgrade test. See
+  `evidence/20260917-frozen-03d70b8/README.md` for exact coverage and limitations.
+- Expanded global model qualification passed 40/40 ten-round conversations with
+  judging (20 each for Nemotron Super and GLM-5.2); one truncated patient
+  response required the bounded identical-payload retry. Final eight-clinician
+  public customer-path and ten-team acceptance of the integrated client remain
+  separate release gates.
   Historical backend ten-team evidence is not claimed as new-client acceptance.
 
 Run offline tests with `node --test demos/service.test.cjs` and

@@ -1,0 +1,73 @@
+{
+  "candidate": "scientific-demos-frozen-03d70b8",
+  "base_url": "http://127.0.0.1:13120",
+  "results": [
+    {
+      "case": "fixture.txt",
+      "language": "de",
+      "job": "5feba8115c3ddd5184d98435ba2eacb2",
+      "status": "completed",
+      "request_wall_seconds": 0.02,
+      "reused_completed_job": true,
+      "original_workflow_seconds_including_queue": 598.09,
+      "files": [
+        "report.md",
+        "transcript.txt",
+        "follow-up.md",
+        "review.md",
+        "document.json",
+        "review.json",
+        "run.json"
+      ],
+      "clinical_validation": false,
+      "facts": 11,
+      "withheld": 0,
+      "same_request_reused": true
+    },
+    {
+      "case": "hhu-herzrasen.wav",
+      "language": "de",
+      "job": "4d83cb588b7e865342622f9c5f827a49",
+      "status": "completed",
+      "request_wall_seconds": 63.27,
+      "reused_completed_job": false,
+      "original_workflow_seconds_including_queue": 61.196,
+      "files": [
+        "report.md",
+        "transcript.txt",
+        "follow-up.md",
+        "review.md",
+        "document.json",
+        "review.json",
+        "run.json"
+      ],
+      "clinical_validation": false,
+      "facts": 17,
+      "withheld": 3,
+      "same_request_reused": true
+    },
+    {
+      "case": "day1_consultation01_conversation.wav",
+      "language": "en",
+      "job": "a7c881855c1730ebfa4270e1f8347287",
+      "status": "completed",
+      "request_wall_seconds": 126.39,
+      "reused_completed_job": false,
+      "original_workflow_seconds_including_queue": 123.259,
+      "files": [
+        "report.md",
+        "transcript.txt",
+        "follow-up.md",
+        "review.md",
+        "document.json",
+        "review.json",
+        "run.json"
+      ],
+      "clinical_validation": false,
+      "facts": 43,
+      "withheld": 1,
+      "same_request_reused": true
+    }
+  ],
+  "clinical_validation": false
+}

@@ -11,6 +11,10 @@ production-readiness claim. The recording source and licensing notes are in
   318-second attempt was incomplete. The final 598-second receipt includes the
   operator's delay before pressing Resume; do not treat it as model inference
   time or hide the failure. Completed stages were reused.
+- `20260917-frozen-03d70b8`: frozen candidate, complete EN/DE audio workflows,
+  native upload, saved clinical-agent tools, create/refresh/abort and local
+  account/chat/credential/report migration. Its README records the precise
+  image and remaining deployment gates; production is unchanged.
 - `20260917-report-fidelity-r4` and `r5`: **rejected prompt experiments**. German
   appetite history was preserved, but English unclear medication `dire light`
   was normalized to a brand and accepted. These prompts are not shipped. The
