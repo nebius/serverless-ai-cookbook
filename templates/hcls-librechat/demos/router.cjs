@@ -55,7 +55,9 @@ router.post('/workspace', upload.single('file'), wrap(async (req, res) => {
 }));
 router.get('/workspace/file', wrap(async (req, res) => {
   const value = await service.workspaceGet(await key(req), req.query.path || '');
-  res.download(value.absolute, value.normalized);
+  // Generated result evidence lives in .scientific-runs; Express otherwise
+  // returns a misleading 404 for authenticated, valid hidden workspace files.
+  res.download(value.absolute, value.normalized, { dotfiles: 'allow' });
 }));
 router.get('/clinical', wrap(async (req, res) => res.json({ data: await service.list(req.user.id) })));
 router.post('/clinical', upload.single('file'), wrap(async (req, res) => {

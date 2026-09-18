@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import subprocess
 import time
 
@@ -41,10 +42,29 @@ def cloud(cli: list[str], arguments: list[str], folder: Path, label: str,
     return json.loads(result.stdout)
 
 
+def deploy_command(command: list[str], environment: dict) -> subprocess.CompletedProcess:
+    # deploy.sh starts a CLI child which may keep stdout open while waiting for
+    # Serverless readiness. Killing only its shell on timeout leaves communicate
+    # waiting forever. Stop our own process group; remote creation is reconciled.
+    process = subprocess.Popen(command, env=environment, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        stdout, stderr = process.communicate(timeout=180)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGTERM)
+        try:
+            process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            os.killpg(process.pid, signal.SIGKILL)
+            process.communicate()
+        raise
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
 def reconcile_endpoint(cli: list[str], manifest: dict, state: dict, folder: Path) -> str:
     inventory = cloud(cli, ["ai", "endpoint", "list", "--parent-id", manifest["project_id"]],
                       folder, "endpoint-reconcile")
-    name = "science-qualification-20260918-" + state["scientist_id"]
+    name = state.get("endpoint_name", "science-qualification-20260918-" + state["scientist_id"])
     matches = [item for item in inventory.get("items", []) if item.get("metadata", {}).get("name") == name]
     if len(matches) != 1:
         raise RuntimeError("Interrupted endpoint creation needs manual reconciliation; expected exactly one named resource")
@@ -67,7 +87,10 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
             "scientist_id": identifier, "tenant_id": person["tenant_id"],
             "principal_id": person["principal_id"], "bucket_name": person["bucket_name"],
             "email": person["email"], "image": args.image,
-            "project_id": manifest["project_id"], "state": "prepared"}
+            "project_id": manifest["project_id"], "state": "prepared",
+            "endpoint_name": args.name_prefix + "-" + identifier}
+        if state.get("endpoint_name", "science-qualification-20260918-" + identifier) != args.name_prefix + "-" + identifier:
+            raise RuntimeError('Recorded endpoint name differs; use a separate preview output directory')
         for key, value in {"image": args.image, "bucket_name": person["bucket_name"],
                            "principal_id": person["principal_id"],
                            "project_id": manifest["project_id"]}.items():
@@ -78,12 +101,26 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
         if state["state"] == "creating_endpoint":
             state.update(endpoint_id=reconcile_endpoint(cli, manifest, state, folder), state="endpoint_created")
             save(state_path, state)
+        if not state.get("secret_id") and args.source_deployments:
+            source_path = args.source_deployments / identifier / 'deployment.json'
+            source = json.loads(source_path.read_text())
+            for field in ('scientist_id', 'tenant_id', 'principal_id', 'bucket_name', 'email', 'project_id'):
+                if source.get(field) != state[field]:
+                    raise RuntimeError('Source deployment identity differs: ' + field)
+            secret_id = source.get('secret_id')
+            if not secret_id:
+                raise RuntimeError('Source deployment has no recorded secret')
+            secret = cloud(cli, ['mysterybox', 'secret', 'get', '--id', secret_id], folder, 'secret-reuse-verify')
+            if secret.get('metadata', {}).get('parent_id') != manifest['project_id']:
+                raise RuntimeError('Source secret belongs to a different project')
+            state.update(secret_id=secret_id, state='secret_reused', source_deployment=str(source_path))
+            save(state_path, state)
         if not state.get("secret_id"):
             state["state"] = "creating_secret"
             save(state_path, state)
             secret = cloud(cli, ["mysterybox", "secret", "create"], folder, "secret-create", {
                 "metadata": {"parent_id": manifest["project_id"],
-                             "name": "science-qualification-20260918-" + identifier},
+                             "name": args.name_prefix + "-" + identifier},
                 "spec": {"description": "Disposable scientist qualification workspace credentials",
                          "secret_version": {"set_primary": True, "payload": [
                              {"key": key, "string_value": value} for key, value in {
@@ -98,7 +135,7 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
             environment = {**os.environ, "NEBIUS_PROFILE": args.profile,
                 "NEBIUS_PROJECT_ID": manifest["project_id"],
                 "NEBIUS_SUBNET_ID": manifest["subnet_id"],
-                "ENDPOINT_NAME": "science-qualification-20260918-" + identifier,
+                "ENDPOINT_NAME": args.name_prefix + "-" + identifier,
                 "IMAGE": args.image, "TEAM_ID": person["tenant_id"],
                 "TEAM_BUCKET_NAME": person["bucket_name"],
                 "SEED_DEFAULT_USER_EMAIL": person["email"],
@@ -116,8 +153,7 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
             state["state"] = "creating_endpoint"
             save(state_path, state)
             try:
-                result = subprocess.run(["bash", str(Path(__file__).parents[1] / "scripts/deploy.sh")],
-                                        env=environment, capture_output=True, text=True, timeout=180)
+                result = deploy_command(["bash", str(Path(__file__).parents[1] / "scripts/deploy.sh")], environment)
                 save(folder / "endpoint-create-command.json", {"returncode": result.returncode,
                      "stdout": result.stdout, "stderr": result.stderr})
                 if result.returncode:
@@ -178,11 +214,15 @@ def main() -> None:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--image", required=True)
     parser.add_argument("--profile", default="sandbox2")
+    parser.add_argument('--name-prefix', default='science-qualification-20260918')
+    parser.add_argument('--source-deployments', type=Path, help='Reuse verified credentials from existing deployment receipts; preserve old instances.')
     parser.add_argument("--only", help="Comma-separated scientist IDs")
     parser.add_argument("--parallel", type=int, choices=[1, 2, 3, 4], default=2)
     parser.add_argument("--wait-seconds", type=int, default=1800)
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
+    if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,49}', args.name_prefix):
+        parser.error('Use a short lowercase endpoint name prefix')
     os.umask(0o077)
     manifest = json.loads(args.manifest.read_text())
     people = manifest["scientists"]
@@ -202,7 +242,9 @@ def main() -> None:
                 parser.error("Missing scientist field: " + key)
     if not args.execute:
         print(json.dumps({"action": "plan", "count": len(people), "project_id": manifest["project_id"],
-                          "image": args.image, "scientists": [person["id"] for person in people]}))
+                          "image": args.image, 'name_prefix': args.name_prefix,
+                          'reuse_source_deployments': str(args.source_deployments) if args.source_deployments else None,
+                          "scientists": [person["id"] for person in people]}))
         return
     args.output.mkdir(mode=0o700, parents=True, exist_ok=True)
     failed = False

@@ -5,6 +5,7 @@ No model submission, arbitrary URL/path access, shared disk artifacts, or browse
 credentials. Coordinates travel server-to-UI, not back through the LLM context.
 """
 import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -34,17 +35,44 @@ def get_result(operation_id):
     base = os.environ.get('SCIENTIFIC_MODELS_API_BASE_URL', '').rstrip('/')
     if not base.startswith('https://'):
         raise ValueError('The viewer requires an operator-configured HTTPS scientific gateway.')
-    request = urllib.request.Request(f'{base}/operations/{operation_id}/result',
-                                     headers={'Authorization': f'Bearer {key}', 'Accept': 'application/json'})
-    try:
+    def fetch(path):
+        request = urllib.request.Request(f'{base}{path}',
+                                         headers={'Authorization': f'Bearer {key}', 'Accept': 'application/json'})
         with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
             raw = response.read(MAX_BYTES + 1)
         if len(raw) > MAX_BYTES:
-            raise ValueError('Result exceeds the 4 MiB inline viewer limit. Use the scientific artifact workflow outside this viewer.')
+            raise ValueError('Result exceeds the 4 MiB viewer limit. Use the scientific artifact workflow outside this viewer.')
+        return raw
+
+    try:
+        result = json.loads(fetch(f'/operations/{operation_id}/result'))
+        if isinstance(result, dict) and isinstance(result.get('operation'), dict):
+            if result['operation'].get('id') != operation_id:
+                raise ValueError('Platform returned a mismatched operation result.')
+            result = result.get('result')
+        if not isinstance(result, dict) or result.get('schema') != 'fs2-serve.nebius.ai/operation-artifact-result/v1':
+            return result
+        artifact = result.get('artifact') or {}
+        if (not isinstance(artifact, dict) or result.get('content_type') != 'application/json'
+                or artifact.get('compression') != 'none'
+                or type(artifact.get('size_bytes')) is not int
+                or not 0 <= artifact['size_bytes'] <= MAX_BYTES
+                or not isinstance(artifact.get('sha256'), str)
+                or not re.fullmatch(r'[a-f0-9]{64}', artifact['sha256'])):
+            raise ValueError('This result artifact is not bounded, uncompressed JSON supported by the viewer.')
+        try:
+            artifact_id = str(uuid.UUID(artifact.get('artifact_id')))
+        except (ValueError, TypeError, AttributeError):
+            raise ValueError('Platform returned an invalid result artifact identity.') from None
+        # Resolve only platform-issued artifact IDs through the configured gateway.
+        # No URL from the payload is followed and credentials never go to object storage.
+        raw = fetch(f'/artifacts/{artifact_id}/content')
+        if len(raw) != artifact['size_bytes'] or hashlib.sha256(raw).hexdigest() != artifact['sha256']:
+            raise ValueError('Result artifact failed size or SHA-256 verification; no coordinates were displayed.')
         return json.loads(raw)
     except urllib.error.HTTPError as error:
         raise ValueError(f'Could not retrieve result (HTTP {error.code}). Check access, completion and retention; no work was submitted.') from None
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
         raise ValueError('Could not read the scientific result. Check the existing operation; no work was submitted.') from None
 
 
@@ -86,7 +114,7 @@ def collect_structures(value):
 
 
 TOOL = {'name': 'visualize_structure',
-        'description': 'Show an interactive protein/molecule viewer in chat: fullscreen, rotation, zoom and representations. For a completed folding/docking operation, pass its operation_id: coordinates are fetched with the configured gateway key without copying them through the LLM. Supports inline PDB/mmCIF/SDF results (not batch artifact references or SMILES-only results). Does not submit compute. Include the returned UI resource marker verbatim in your response.',
+        'description': 'Show an interactive protein/molecule viewer in chat: fullscreen, rotation, zoom and representations. For a completed folding/docking operation, pass its operation_id: coordinates are fetched with the configured gateway key without copying them through the LLM. Supports PDB/mmCIF/SDF inside inline or verified native JSON result artifacts up to 4 MiB (not batch artifact lists or SMILES-only results). Does not submit compute. Include the returned UI resource marker verbatim in your response.',
         'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
         'inputSchema': {'type': 'object', 'additionalProperties': False,
                         'properties': {'operation_id': {'type': 'string', 'format': 'uuid'},

@@ -1,5 +1,10 @@
-"""Save actual browser-created conversations and tool traces without credentials."""
+"""Privately preserve browser conversations, tool traces and real deliverables.
+
+Login credentials are never printed or copied, but raw tool traces can contain
+short-lived signed artifact URLs. Keep the entire output directory private.
+"""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,6 +19,8 @@ def main():
     parser.add_argument("--scientist", required=True)
     parser.add_argument("--conversation", required=True)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--workspace-file", action="append", default=[], help="Download an actual study deliverable for independent verification.")
+    parser.add_argument("--workspace-list", action="append", default=[], help="Record actual directory entries before checking claimed file names.")
     args = parser.parse_args()
     os.umask(0o077)
     person = next(item for item in json.loads(args.manifest.read_text())["scientists"]
@@ -43,6 +50,23 @@ def main():
                 json.dump(value, stream, indent=2)
                 stream.write("\n")
             summary["files"][name] = {"bytes": target.stat().st_size}
+        for relative in args.workspace_file:
+            if Path(relative).is_absolute() or '..' in Path(relative).parts:
+                raise ValueError('Use workspace-relative deliverable paths.')
+            response = client.get('/api/scientific-demos/workspace/file', params={'path': relative})
+            if response.status_code != 200:
+                summary['files'][relative] = {'status': response.status_code, 'missing': True}
+                continue
+            target = args.output / 'workspace' / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(response.content)
+            summary['files'][relative] = {'bytes': len(response.content), 'sha256': hashlib.sha256(response.content).hexdigest()}
+        for index, relative in enumerate(args.workspace_list):
+            response = client.get('/api/scientific-demos/workspace', params={'path': relative})
+            response.raise_for_status()
+            target = args.output / f'workspace-list-{index}.json'
+            target.write_text(json.dumps(response.json(), indent=2) + '\n')
+            summary['files'][relative + '/'] = {'listing': target.name}
         (args.output / "receipt.json").write_text(json.dumps(summary, indent=2) + "\n")
         print(json.dumps(summary))
 

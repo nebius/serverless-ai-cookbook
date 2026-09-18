@@ -1,5 +1,7 @@
 """Offline acceptance of the typed-result bridge and safe rendering inputs."""
 import importlib.util
+import hashlib
+import io
 import json
 from pathlib import Path
 
@@ -73,6 +75,60 @@ def test_missing_key_is_explicit(bridge, monkeypatch):
         bridge.get_result(OPERATION)
 
 
+def mock_artifact_transport(bridge, monkeypatch, artifact_updates=None, raw=None):
+    monkeypatch.setenv('SCIENTIFIC_MODELS_API_KEY', 'fixture-key')
+    monkeypatch.setenv('SCIENTIFIC_MODELS_API_BASE_URL', 'https://gateway.example.invalid/v1')
+    content = json.dumps({'protein': PDB}).encode()
+    artifact = {'artifact_id': OPERATION, 'size_bytes': len(content),
+                'sha256': hashlib.sha256(content).hexdigest(), 'compression': 'none'}
+    artifact.update(artifact_updates or {})
+    envelope = {'schema': 'fs2-serve.nebius.ai/operation-artifact-result/v1',
+                'content_type': 'application/json', 'artifact': artifact}
+    requests = []
+    class Opener:
+        def open(self, request, timeout):
+            assert timeout == 30
+            assert request.get_header('Authorization') == 'Bearer fixture-key'
+            requests.append(request.full_url)
+            if request.full_url.endswith('/result'):
+                return io.BytesIO(json.dumps(envelope).encode())
+            assert request.full_url == f'https://gateway.example.invalid/v1/artifacts/{OPERATION}/content'
+            return io.BytesIO(content if raw is None else raw)
+    monkeypatch.setattr(bridge.urllib.request, 'build_opener', lambda *args: Opener())
+    return requests
+
+
+def test_native_artifact_result_is_verified_before_viewing(bridge, monkeypatch):
+    requests = mock_artifact_transport(bridge, monkeypatch)
+    result = bridge.call_viewer({'operation_id': OPERATION})
+    assert '1 structure(s)' in result['content'][0]['text']
+    assert PDB not in result['content'][0]['text']
+    assert len(requests) == 2
+
+
+@pytest.mark.parametrize('metadata', [
+    {'size_bytes': 4 * 1024 * 1024 + 1}, {'size_bytes': True}, {'compression': 'gzip'},
+    {'sha256': 'not-a-hash'}, {'artifact_id': 'https://outside.example.invalid/private'},
+])
+def test_unsupported_artifact_is_not_downloaded(bridge, monkeypatch, metadata):
+    requests = mock_artifact_transport(bridge, monkeypatch, metadata)
+    with pytest.raises(ValueError):
+        bridge.get_result(OPERATION)
+    assert len(requests) == 1
+
+
+def test_native_artifact_hash_mismatch_is_not_rendered(bridge, monkeypatch):
+    mock_artifact_transport(bridge, monkeypatch, {'sha256': '0' * 64})
+    with pytest.raises(ValueError, match='verification'):
+        bridge.call_viewer({'operation_id': OPERATION})
+
+
+def test_native_artifact_response_cannot_exceed_byte_limit(bridge, monkeypatch):
+    mock_artifact_transport(bridge, monkeypatch, raw=b'X' * (bridge.MAX_BYTES + 1))
+    with pytest.raises(ValueError, match='4 MiB'):
+        bridge.get_result(OPERATION)
+
+
 def test_duplicate_coordinates_and_bound(bridge):
     assert len(bridge.collect_structures({'a': PDB, 'b': PDB})) == 1
     assert len(bridge.collect_structures([PDB + str(i) for i in range(100)])) == bridge.MAX_STRUCTURES
@@ -84,7 +140,8 @@ def test_token_factory_has_official_color_icon_and_all_participants_get_starters
     landing = (ROOT / 'ScientificLanding.tsx').read_text()
     assert "groupIcon:" in config and "iconURL: '/assets/token-factory.svg'" in config
     assert '#E0FF4F' in asset and '#052B42' in asset
-    assert 'https://luma.com/5b82vwsa' in landing
-    assert 'execute commands as root' in landing
+    assert 'https://luma.com/5b82vwsa' not in landing  # General workbench, not the retired event.
+    assert 'Reproduce a published result' in landing
+    assert 'run Python, install packages' in landing
     assert 'Cloud account access is configured separately' in landing
     assert 'useAuth' not in landing  # No special admin-only/event-account branch.

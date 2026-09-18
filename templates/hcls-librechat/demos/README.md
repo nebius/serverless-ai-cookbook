@@ -40,6 +40,19 @@ JSON resolver bound retain explicit download instructions; no new size, context
 or tool-call limits are introduced. Agents group preparation and evaluation into
 coherent scripts and distinguish inference success from analysis completion.
 
+The authenticated workspace download route includes generated `.scientific-runs`
+files after the normal key and workspace-path checks. The structure viewer also
+resolves native uncompressed JSON artifact results using that caller's gateway
+credentials, checking byte count and SHA-256 before rendering. Its existing 4 MiB
+bound is unchanged; batch artifact collections still need explicit preparation.
+
+`/opt/scientific-client/bin/python /opt/bionemo/upload-artifact.py` hashes and
+streams an actual local file, then verifies the finalized immutable artifact
+reference. It never asks the language model to invent a digest or byte count.
+Private resumable receipts bind the bytes, caller, App and idempotency key;
+changed bytes require a different upload identity. This is an upload, not model
+inference. Small inputs accepted inline do not need unnecessary artifact uploads.
+
 `workbench_get_operation` waits up to 15 seconds by default (30 maximum), saving
 the real observed states and returning the latest operation without submitting
 anything. No tight poll loop is necessary. Long-running jobs still resume by ID.
@@ -70,6 +83,12 @@ The helper consumes a private manifest outside Git. Top-level fields are
 `s3_access_key_id` and `s3_secret_access_key`. Pass `--image`, `--manifest`,
 `--output` and `--execute`; `--only scientist-01,scientist-02` starts a subset.
 Protected receipts and browser session state remain in the output directory.
+Candidate images use a distinct `--name-prefix`, a separate output directory,
+and optional `--source-deployments` to reuse the prior scientist's secret after
+checking scientist/tenant/principal/email/bucket/project and the cloud secret's
+project. The old endpoint is retained: Serverless has no in-place image update
+in this CLI, and replacing the instance does not prove Mongo/chat `/data`
+durability. Bucket deliverables and backend Runs are separate persistent systems.
 An interrupted cloud creation is reconciled before retrying, never silently
 duplicated. Setup verifies login and assigned bucket; it is not scientific
 acceptance evidence. The campaign manager owns lifecycle and cleanup.
