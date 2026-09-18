@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "study_id": "experimental-folding-single-sequence-v1",
+  "sources": [{"dataset_id": "rcsb-1ubq", "url": "https://www.rcsb.org/structure/1UBQ", "license": "CC0"}],
+  "cases": [{
+    "case_id": "openfold2-1ubq-A-r1",
+    "persona": "structural-bioinformatician",
+    "model_id": "openfold2",
+    "tool": "infer_openfold2_native",
+    "mode": "native",
+    "arguments": {
+      "input_id": "qualification-1ubq-A-r1",
+      "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+      "selected_models": [1],
+      "relax_prediction": false
+    },
+    "expected": {
+      "evaluator": "protein_structure",
+      "reference_url": "https://files.rcsb.org/download/1UBQ.pdb",
+      "reference_chain": "A",
+      "input_sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+      "thresholds": {"sequence_identity_min": 1.0, "input_coverage_min": 1.0, "finite_coordinates_required": true},
+      "scientific_success": "Report experimental-reference RMSD/lDDT/GDT; no accuracy pass threshold is inferred from platform success."
+    },
+    "provenance": {
+      "dataset_id": "rcsb-1ubq", "pdb_id": "1UBQ", "source_url": "https://www.rcsb.org/structure/1UBQ",
+      "protocol_deviation": "Single-sequence dummy MSA, no templates or relaxation. Dataset overlaps historical training; not a held-out accuracy benchmark or full paper reproduction."
+    },
+    "workload": {"unique_input_id": "rcsb-1ubq-A", "repetition": 1, "seed": null, "priority": "interactive"}
+  }]
+}
