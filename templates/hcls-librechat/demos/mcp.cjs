@@ -7,10 +7,11 @@ const schema = (properties, required = []) => ({ type: 'object', additionalPrope
 const string = { type: 'string' };
 const array = { type: 'array', items: string, minItems: 1, maxItems: 20 };
 const definitions = [
+  ['workbench_list_apps', 'Compact caller-authorized Apps across native and batch models. Filter by query when choosing a model; no parameter schemas or large catalog records are returned. If the user already chose a known App, directly read its get_model_schema instead.', schema({ query: string })],
   ['workbench_track_operation', 'Save a Scientific AI operation in the user’s Runs panel after any model submission. Call this immediately with the returned operation ID; it is idempotent and verifies caller access.', schema({ operation_id: string, model_id: string, label: string }, ['operation_id'])],
   ['workbench_list_operations', 'Discover this caller’s durable model operations automatically, most recent first. Includes scientific batches and inference from chat or API. Follow next_cursor for older runs. Reconnect to existing IDs instead of resubmitting work.', schema({ cursor: string, limit: { type: 'integer', minimum: 1, maximum: 200, default: 50 } })],
   ['workbench_get_operation', 'Refresh one saved Scientific AI operation and return its current state.', schema({ operation_id: string }, ['operation_id'])],
-  ['workbench_get_operation_result', 'Retrieve a terminal result for a completed saved operation. Artifact-backed JSON is downloaded with caller credentials, size/SHA-256 verified and compacted without losing scalar metrics. Treat evidence_guidance as normative: do not infer capabilities from absent fields or mislabel the outer artifact size. Poll status first; do not treat queued or running work as complete.', schema({ operation_id: string }, ['operation_id'])],
+  ['workbench_get_operation_result', 'Retrieve completed output, verify bounded JSON artifact size/SHA-256, save full raw JSON under /workspace/.scientific-runs/OPERATION_ID/result.json when mounted, and return compact metrics plus workspace_file. Analyze that file with execute_command; never copy coordinate arrays through chat. Treat evidence_guidance as normative. Poll status first; queued/running work is not complete.', schema({ operation_id: string }, ['operation_id'])],
   ['workbench_cancel_operation', 'Cancel one accessible Scientific AI operation and keep its terminal cancelled state visible in Runs.', schema({ operation_id: string }, ['operation_id'])],
   ['workbench_workspace', 'Describe the current user or team storage and whether this LibreChat deployment has it mounted for direct file access.', schema({})],
   ['workshop_catalog', 'Discover contract-qualified clinicians, fixed patient/judge, profile IDs and this team’s limits. Sword private clinician is unavailable until its event artifact arrives.', schema({})],
@@ -38,6 +39,7 @@ async function dispatch(name, args) {
   if (!owner) throw service.failure('LibreChat user identity is missing.');
   const request = (method, url, body, id) => service.platform(key, method, `/v1/workshop/${url}`, body, id);
   switch (name) {
+    case 'workbench_list_apps': return service.listApps(key, args.query);
     case 'workbench_track_operation': return service.track(owner, key, args.operation_id, {
       model_id: args.model_id, label: args.label, source: 'agent',
     });

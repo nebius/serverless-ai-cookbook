@@ -22,6 +22,24 @@ cannot erase other operations. Admission errors retain whether work was
 accepted, whether retry is possible, its retry delay and any existing operation
 ID, so the client can distinguish waiting from an unknown submission outcome.
 
+## Compact agent workflows
+
+For a known App, the agent reads only that App's schema. `workbench_list_apps`
+provides a compact authorization-aware discovery list without every model's
+parameter schema; large legacy catalogs remain available on demand. Typed tools
+must be loaded and called with their exact registered names. This avoids wasting
+the unchanged tool budget on duplicate discovery or invented unsuffixed names.
+
+`workbench_get_operation_result` verifies bounded artifact-backed JSON and saves
+the complete original bytes at `/workspace/.scientific-runs/<operation>/result.json`.
+Inline JSON is also retained and compacted for chat. Returned `workspace_file`
+contains path, size and SHA-256. Repeated reads verify the existing file rather
+than overwrite different evidence. Scientific analysis reads the saved file,
+not a truncated coordinate dump. Non-JSON or artifacts over the existing 8 MiB
+JSON resolver bound retain explicit download instructions; no new size, context
+or tool-call limits are introduced. Agents group preparation and evaluation into
+coherent scripts and distinguish inference success from analysis completion.
+
 ## Isolated scientist qualification clients
 
 `deploy-scientist-workbenches.py` uses the existing deployment template to give

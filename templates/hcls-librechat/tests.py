@@ -109,6 +109,8 @@ const result = options(input);
 assert.equal(result['infer_openfold2_native_mcp_bionemo-models'].defer_loading, true);
 assert.equal(result['infer_openfold2_native_mcp_bionemo-models'].describe_intent, true);
 assert.equal(result['get_model_schema_mcp_bionemo-models'], undefined);
+assert.equal(result['list_models_mcp_bionemo-models'].defer_loading, true);
+assert.equal(result['get_operation_result_mcp_bionemo-models'].defer_loading, true);
 assert.equal(result['tavily_search_mcp_tavily'], undefined);
 assert.equal(input.tool_options['infer_openfold2_native_mcp_bionemo-models'].defer_loading, undefined);
 """

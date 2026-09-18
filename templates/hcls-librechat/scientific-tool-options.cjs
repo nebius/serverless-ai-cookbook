@@ -1,8 +1,8 @@
 // Keep lifecycle/discovery tools ready; load each model's typed schema on demand.
 // This changes only LibreChat's context loading, never gateway authorization or calls.
 const core = new Set([
-  'list_models', 'list_scientific_models', 'get_model_schema', 'invoke_model',
-  'get_operation', 'get_operation_result', 'cancel_operation', 'acknowledge_operation',
+  'get_model_schema', 'invoke_model',
+  'cancel_operation', 'acknowledge_operation',
   'submit_scientific_run', 'get_scientific_status', 'cancel_scientific_run',
   'list_scientific_events', 'get_scientific_artifact', 'get_scientific_result',
   'begin_scientific_artifact_upload', 'put_scientific_artifact_bytes',
@@ -16,6 +16,7 @@ module.exports = function scientificToolOptions(agent) {
   // A first request may hold an mcp_all server pin until the catalog is loaded.
   // Predeclare the known model tools as well as any discovered additions.
   const modelTools = [
+    'list_models', 'list_scientific_models', 'get_operation', 'get_operation_result',
     'msa_search_native', 'submit_alphafold3', 'submit_bindcraft', 'submit_boltzgen',
     'submit_esmfold2', 'submit_esmfold2_fast', 'submit_mosaic',
     'submit_openfold3_openbind', 'submit_proteina_complexa', 'submit_protenix_v2',

@@ -88,7 +88,7 @@ test('stdio MCP exposes typed tools and rejects absent identity without inferenc
     { id: 3, method: 'tools/call', params: { name: 'clinical_list_jobs' } } ].map((item) => JSON.stringify({ jsonrpc: '2.0', ...item })).join('\n') + '\n');
   assert.equal(await new Promise((resolve) => child.on('exit', resolve)), 0);
   const messages = stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(messages[1].result.tools.length, 16);
+  assert.equal(messages[1].result.tools.length, 17);
   assert.ok(messages[1].result.tools.every((tool) => tool.inputSchema.additionalProperties === false));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_track_operation'));
   assert.equal(messages[2].result.isError, true);
@@ -141,6 +141,40 @@ test('artifact-backed operation results are verified and compacted for the agent
     assert.ok(resolved.result.evidence_guidance.interpretation_boundaries.some((item) => item.includes('absent')));
     assert.ok(resolved.result.evidence_guidance.interpretation_boundaries.some((item) => item.includes('result JSON artifact size')));
     assert.equal(calls.length, 3);
+    assert.equal(resolved.workspace_file.saved, true);
+    assert.deepEqual(await fs.readFile(resolved.workspace_file.path), payload);
+    assert.equal((await service.operationResult('fixture-key', operationId)).workspace_file.sha256, artifact.sha256);
+  } finally { global.fetch = originalFetch; }
+});
+test('compact discovery filters Apps and does not emit scientific input schemas', async () => {
+  const service = await setup;
+  const originalFetch = global.fetch;
+  global.fetch = async (url) => new Response(JSON.stringify({ data: String(url).endsWith('/v1/models')
+    ? [{ id: 'openfold2', protocols: ['native'], input_schema: { huge: 'x'.repeat(50000) } }]
+    : [{ model_id: 'protenix-v2', display_name: 'Protenix', operations: ['predict'],
+      parameters_schema: { huge: 'x'.repeat(50000) }, mcp_tool_description: 'Protein complex prediction' }] }));
+  try {
+    const all = await service.listApps('fixture-key');
+    assert.equal(all.count, 2);
+    assert.ok(JSON.stringify(all).length < 1000);
+    assert.deepEqual((await service.listApps('fixture-key', 'complex')).data.map((app) => app.model_id), ['protenix-v2']);
+    assert.equal((await service.listApps('fixture-key', 'missing')).count, 0);
+  } finally { global.fetch = originalFetch; }
+});
+test('inline output is compacted, saved losslessly and never overwrites different evidence', async () => {
+  const service = await setup;
+  const id = crypto.randomUUID();
+  const result = { structures: [{ pdb: 'ATOM '.repeat(5000), confidence: 0.75 }] };
+  const originalFetch = global.fetch;
+  global.fetch = async (url) => new Response(JSON.stringify(String(url).endsWith('/result')
+    ? result : { id, status: 'succeeded' }));
+  try {
+    const output = await service.operationResult('fixture-key', id);
+    assert.equal(output.result.structures[0].pdb.type, 'long-string');
+    assert.deepEqual(JSON.parse(await fs.readFile(output.workspace_file.path, 'utf8')), result);
+    result.structures[0].confidence = 0.9;
+    await assert.rejects(service.operationResult('fixture-key', id), /not overwritten/);
+    assert.equal(JSON.parse(await fs.readFile(output.workspace_file.path, 'utf8')).structures[0].confidence, 0.75);
   } finally { global.fetch = originalFetch; }
 });
 test('parallel operation tracking cannot overwrite another run or mix changed keys', async () => {

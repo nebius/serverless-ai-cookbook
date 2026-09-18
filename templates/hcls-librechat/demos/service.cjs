@@ -88,6 +88,39 @@ async function platformBytes(key, resource) {
   return Buffer.from(await response.arrayBuffer());
 }
 
+async function listApps(key, query = '') {
+  if (typeof query !== 'string' || query.length > 200) throw failure('Supply a short App name or capability.');
+  const catalogs = await Promise.all([platform(key, 'GET', '/v1/models'), platform(key, 'GET', '/v1/scientific-models')]);
+  const apps = new Map();
+  for (const catalog of catalogs) for (const item of catalog.data || []) {
+    const id = item.id || item.model_id;
+    if (!id) continue;
+    const previous = apps.get(id) || {};
+    apps.set(id, { ...previous, model_id: id, display_name: item.display_name || previous.display_name || id,
+      ...(item.protocols ? { protocols: item.protocols } : {}),
+      ...(item.operations ? { operations: item.operations } : {}),
+      ...(item.capabilities ? { capabilities: item.capabilities } : {}),
+      ...(item.mcp_tool_name ? { tool_name: item.mcp_tool_name } : {}),
+      ...(item.mcp_tool_description ? { description: item.mcp_tool_description.slice(0, 500) } : {}),
+    });
+  }
+  const data = [...apps.values()].filter((item) => !query || JSON.stringify(item).toLowerCase().includes(query.toLowerCase()));
+  return { data, count: data.length, discovery_only: true,
+    next_step: 'Read get_model_schema for the chosen App only. This list proves authorization, not runtime readiness or scientific validity.' };
+}
+
+async function retainResult(key, operationId, bytes) {
+  if (!(await workspaceInfo(key)).mounted) return { saved: false, reason: 'No mounted workspace; use the Runs download.' };
+  const target = workspacePath(`.scientific-runs/${operationId}/result.json`);
+  await fs.mkdir(path.dirname(target.absolute), { recursive: true, mode: 0o700 });
+  const expected = hash(bytes);
+  try { await fs.writeFile(target.absolute, bytes, { mode: 0o600, flag: 'wx' }); }
+  catch (error) { if (error.code !== 'EEXIST') throw error; }
+  const actual = await fileHash(target.absolute);
+  if (actual !== expected) throw failure('Saved result differs from the verified platform output; existing file was not overwritten.', 409);
+  return { saved: true, path: target.absolute, relative_path: target.normalized, size_bytes: bytes.length, sha256: actual };
+}
+
 function numberSummary(values, kind, shape) {
   const finite = values.filter(Number.isFinite);
   let min; let max; let sum = 0;
@@ -169,7 +202,10 @@ async function operationResult(key, operationId) {
     throw failure('Platform returned a mismatched operation result.', 502);
   }
   const result = resultOperation && typeof resultOperation === 'object' ? resultEnvelope.result : resultEnvelope;
-  if (result?.schema !== 'fs2-serve.nebius.ai/operation-artifact-result/v1') return { operation, result };
+  if (result?.schema !== 'fs2-serve.nebius.ai/operation-artifact-result/v1') {
+    const workspace_file = await retainResult(key, operationId, Buffer.from(JSON.stringify(result)));
+    return { operation, result: summarizeResult(result), workspace_file };
+  }
   const artifact = result.artifact || {};
   if (result.content_type !== 'application/json' || artifact.compression !== 'none'
       || !RUN_ID.test(artifact.artifact_id || '') || !Number.isInteger(artifact.size_bytes)
@@ -183,7 +219,8 @@ async function operationResult(key, operationId) {
   try { parsed = JSON.parse(bytes.toString('utf8')); }
   catch { throw failure('Result artifact was declared as JSON but could not be decoded.', 502); }
   const summary = summarizeResult(parsed);
-  return { operation, result: {
+  const workspace_file = await retainResult(key, operationId, bytes);
+  return { operation, workspace_file, result: {
     schema: 'fs2-serve.nebius.ai/resolved-operation-result/v1', content_type: result.content_type,
     source_artifact: artifact, summary, evidence_guidance: evidenceGuidance(parsed, summary, artifact),
     resolution: 'Downloaded with caller credentials; size and SHA-256 verified; large arrays and strings summarized.',
@@ -442,5 +479,5 @@ async function output(owner, id, filename) {
   try { return await fs.readFile(path.join(directory(owner, id), 'output', filename)); }
   catch (error) { if (error.code === 'ENOENT') throw failure('This report file has not been produced. Check job status.', 409); throw error; }
 }
-module.exports = { platform, operationResult, summarizeResult, clinical, status, list, start, output, track, runs, workspaceInfo, workspaceList,
+module.exports = { platform, listApps, operationResult, summarizeResult, clinical, status, list, start, output, track, runs, workspaceInfo, workspaceList,
   workspacePut, workspaceGet, save, read, failure, publicError, FILES, REPORT_MODEL };
