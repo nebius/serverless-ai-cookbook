@@ -8,35 +8,17 @@ from urllib.parse import parse_qs, urlsplit
 
 TEMPLATE = Path(__file__).parents[1]
 REPOSITORY = TEMPLATE.parents[1]
-IMAGE = "cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/autodock-vina-api:20260909-rest-mcp"
+IMAGE = "cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb23@sha256:f80ba1d50f7bbbd6192f9695a71691bdd37390d3bfc0e6152d9cb0a80ef2f171"
 EXPECTED = {
     "image": [
-        "cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/autodock-vina-api:20260909-rest-mcp"
+        "cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb23@sha256:f80ba1d50f7bbbd6192f9695a71691bdd37390d3bfc0e6152d9cb0a80ef2f171"
     ],
-    "targetPort": [
-        "8000"
-    ],
-    "platform": [
-        "cpu-d3"
-    ],
-    "preset": [
-        "4vcpu-16gb"
-    ],
-    "diskSize": [
-        "100GiB"
-    ],
-    "preemptible": [
-        "false"
-    ],
-    "auth": [
-        "true"
-    ],
-    "volumeMountPath": [
-        "/mnt/hcls"
-    ],
-    "volumeSize": [
-        "32"
-    ]
+    "targetPort": ["8000"],
+    "platform": ["cpu-d3"],
+    "preset": ["4vcpu-16gb"],
+    "diskSize": ["100GiB"],
+    "preemptible": ["false"],
+    "auth": ["true"],
 }
 
 
@@ -53,7 +35,11 @@ def matching_queries(path: Path) -> list[dict[str, list[str]]]:
 
 
 def test_all_catalog_links_match_complete_customer_contract() -> None:
-    paths = [TEMPLATE / "README.md", REPOSITORY / "README.md", REPOSITORY / "templates/README.md"]
+    paths = [
+        TEMPLATE / "README.md",
+        REPOSITORY / "README.md",
+        REPOSITORY / "templates/README.md",
+    ]
     for path in paths:
         queries = matching_queries(path)
         assert queries == [EXPECTED], f"unexpected deploy link in {path}"
@@ -61,7 +47,9 @@ def test_all_catalog_links_match_complete_customer_contract() -> None:
 
 def test_deploy_url_contains_no_secret_value_or_application_auth_token() -> None:
     query = matching_queries(TEMPLATE / "README.md")[0]
-    assert all("AUTH_TOKEN" not in value for values in query.values() for value in values)
+    assert all(
+        "AUTH_TOKEN" not in value for values in query.values() for value in values
+    )
     for value in query.get("env", []):
         if value == "NGC_API_KEY":
             continue

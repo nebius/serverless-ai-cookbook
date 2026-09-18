@@ -1,10 +1,20 @@
+---
+title: AutoDock Vina REST + MCP
+category: life-sciences
+type: endpoint
+runtime: cpu-d3
+frameworks: [autodock-vina, fastapi, mcp]
+keywords: [molecular-docking, virtual-screening, cpu, rest, mcp, agent]
+difficulty: intermediate
+---
+
 # AutoDock Vina REST + MCP
 
 <!-- markdownlint-disable MD013 MD033 -->
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fautodock-vina-api%3A20260909-rest-mcp&amp;targetPort=8000&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb23%40sha256%3Af80ba1d50f7bbbd6192f9695a71691bdd37390d3bfc0e6152d9cb0a80ef2f171&amp;targetPort=8000&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -16,17 +26,6 @@ Run low-cost AutoDock Vina redocking and small docking workloads through REST or
 
 <!-- /factory:intro -->
 
----
-
-title: AutoDock Vina REST + MCP
-category: life-sciences
-type: endpoint
-runtime: cpu-d3
-frameworks: [autodock-vina, fastapi, mcp]
-keywords: [molecular-docking, virtual-screening, cpu, rest, mcp, agent]
-difficulty: intermediate
-
----
 
 ## What you get
 
@@ -34,7 +33,7 @@ difficulty: intermediate
 - A Streamable HTTP MCP server at `/mcp`.
 - Shared REST/MCP queue, run IDs, state, and artifact hashes.
 - A bundled public 1IEP/STI redocking smoke and custom PDBQT inputs.
-- Persistent runs under `/mnt/hcls/autodock-vina/runs/<run-id>`.
+- Runs under `/mnt/hcls/autodock-vina/runs/<run-id>`; persistent only with an attached volume.
 
 This template intentionally uses `cpu-d3`: AutoDock Vina is multithreaded CPU
 software and is distinct from AutoDock-GPU, which implements AutoDock4 scoring.
@@ -45,6 +44,11 @@ commit `8eb40404f4f45608acb3b01427587ac049f27c1f`. No NGC key or model-download
 credential is required.
 
 ## Create the endpoint
+
+The button does not attach storage. Manually attach Object Storage or Shared
+Filesystem read-write at `/mnt/hcls` in the create form for persistent results.
+Without that attachment, `/mnt/hcls` is on ephemeral disk and results can be lost
+when the endpoint is replaced or deleted.
 
 Click **Create Endpoint**, select your project, then:
 
@@ -175,13 +179,7 @@ it succeeds.
 
 A successful run produces ranked `poses.pdbqt`, `scores.csv`, a docking summary,
 input copies, and SHA-256 metadata. Results report Vina version, box, search
-parameters, and energy components in kcal/mol. Qualification on 2026-09-09 used
-the public wrapper image at digest
-`sha256:8feef150844ff626dfd3e9f21878c6d1da5a4cc5ebae2b343dc2319002b92332`.
-Independent REST and MCP 1IEP/STI runs each produced a best Vina affinity of
-`-13.263 kcal/mol`; both result artifacts were hash-verified through REST and all
-artifacts were confirmed in the mounted bucket. Use this as a plumbing sanity
-check, not a universal score.
+parameters, and energy components in kcal/mol. See [validation results](./VALIDATION.md) for the current image and live REST/MCP tests.
 
 Docking scores and poses are research heuristics. They require independent
 chemical preparation, protonation, search-space, and experimental validation.
@@ -199,6 +197,17 @@ docker build --platform linux/amd64 \
 
 ## CLI alternative
 
+The tested image is `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb23@sha256:f80ba1d50f7bbbd6192f9695a71691bdd37390d3bfc0e6152d9cb0a80ef2f171`.
+The qualification used Nebius CLI 0.12.206, which rejects endpoint image references
+longer than 64 characters when creating a VM label. For that CLI, use the short
+alias below and verify its digest with [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane)
+before creating the endpoint. Do not use an alias whose digest differs.
+
+```bash
+export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb23:r0918'
+test "$(crane digest "$IMAGE")" = 'sha256:f80ba1d50f7bbbd6192f9695a71691bdd37390d3bfc0e6152d9cb0a80ef2f171' || exit 1
+```
+
 ```bash
 export NEBIUS_PROJECT_ID='project-...'
 export NEBIUS_SUBNET_ID='vpcsubnet-...'
@@ -208,7 +217,7 @@ export VINA_VOLUME='computefilesystem-<id>:/mnt/hcls:rw'
 nebius ai endpoint create \
   --parent-id "$NEBIUS_PROJECT_ID" \
   --name autodock-vina-rest-mcp \
-  --image cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/autodock-vina-api:20260909-rest-mcp \
+  --image "$IMAGE" \
   --public \
   --platform cpu-d3 \
   --preset 4vcpu-16gb \

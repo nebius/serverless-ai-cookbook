@@ -19,12 +19,7 @@ LABEL org.opencontainers.image.title="Nebius Serverless AutoDock Vina REST and M
       org.opencontainers.image.licenses="Apache-2.0"
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      ca-certificates=20250419~deb12u1 \
-      curl=7.88.1-10+deb12u15 \
-      libgomp1=12.2.0-14+deb12u1 \
-      libgnutls30=3.7.9-2+deb12u7 \
-      libssl3=3.0.20-1~deb12u2 \
-      openssl=3.0.20-1~deb12u2 \
+      ca-certificates curl libgomp1 libgnutls30 libssl3 openssl \
  && rm -rf /var/lib/apt/lists/* \
  && python3 -m venv /opt/hcls \
  && /opt/hcls/bin/pip install --no-cache-dir fastapi==0.136.1 mcp==2.2.0 pydantic==2.12.5 uvicorn==0.52.4 vina==1.2.7 \
