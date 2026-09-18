@@ -62,6 +62,16 @@ def verify_published_image(image):
     return {"reference": reference, "manifest_digest": actual, "readable": True}
 
 
+def require_settled_release(status, failed_revision=None):
+    """Recover an exact failed revision, never overlap an active transaction."""
+    state = status["info"]["status"]
+    if state == "deployed" and failed_revision is None:
+        return
+    if state == "failed" and failed_revision == status["version"]:
+        return
+    raise ValueError("Wait for the active Helm transaction; recovery requires the exact settled failed revision")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("prepare", "apply"))
@@ -69,14 +79,15 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--digest", required=True)
     parser.add_argument("--values-delta", type=Path, help="Reviewed optional retained-configuration reference changes")
+    parser.add_argument("--recover-failed-revision", type=int,
+                        help="Explicit exact settled failed revision to repair; never permits pending transactions")
     args = parser.parse_args()
     os.umask(0o077)
     args.output.mkdir(parents=True, exist_ok=True, mode=0o700)
     old_values = json.loads(run(HELM + ["get", "values", RELEASE, "-o", "json"]))
     before = run(HELM + ["get", "manifest", RELEASE]) + "\n---\n" + run(HELM + ["get", "hooks", RELEASE])
     status = json.loads(run(HELM + ["status", RELEASE, "-o", "json"]))
-    if status["info"]["status"] != "deployed":
-        raise ValueError("Wait for the active Helm transaction or recovery before preparing/applying another release")
+    require_settled_release(status, args.recover_failed_revision)
     if args.action == "prepare":
         save(args.output / "before-values.json", old_values)
         save(args.output / "before-status.json", status)
@@ -101,6 +112,8 @@ def main():
         receipt = json.loads((args.output / "before-status.json").read_text())
         if status["version"] != receipt["version"]:
             raise ValueError("Helm release changed after the prepared plan")
+        if status["info"]["status"] != receipt["info"]["status"]:
+            raise ValueError("Helm release state changed after the prepared plan")
         values = json.loads((args.output / "after-values.json").read_text())
         if values["image"]["digest"] != args.digest:
             raise ValueError("Image digest differs from prepared plan")

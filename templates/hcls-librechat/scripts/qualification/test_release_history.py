@@ -4,7 +4,22 @@ from unittest.mock import patch
 
 import pytest
 
-from release_history import verify_published_image
+from release_history import require_settled_release, verify_published_image
+
+
+@pytest.mark.parametrize("state", ["pending-upgrade", "pending-rollback", "pending-install"])
+def test_recovery_never_overlaps_an_active_transaction(state):
+    with pytest.raises(ValueError, match="active Helm transaction"):
+        require_settled_release({"version": 165, "info": {"status": state}}, 165)
+
+
+def test_failed_revision_recovery_is_exact_and_explicit():
+    failed = {"version": 165, "info": {"status": "failed"}}
+    for revision in (None, 164, 166):
+        with pytest.raises(ValueError):
+            require_settled_release(failed, revision)
+    require_settled_release(failed, 165)
+    require_settled_release({"version": 163, "info": {"status": "deployed"}})
 
 
 def test_checks_exact_repository_and_manifest_bytes():
