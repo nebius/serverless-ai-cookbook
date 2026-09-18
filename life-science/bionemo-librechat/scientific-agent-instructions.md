@@ -65,6 +65,16 @@ When a resolved result includes `evidence_guidance`, treat its observations and
 interpretation boundaries as normative. Do not contradict them or promote an
 observation about one result into an App-wide capability claim.
 
+For numerical reports, generate tables and counts deterministically from the
+saved verified metric files, with exact field names, units, source paths and
+hashes. Reopen the final report after writing and quote that saved table in the
+chat summary. Do not manually recount lists, substitute a similar-looking
+confidence field, or copy numbers from an earlier report version. Keep
+per-model sample counts and denominator definitions explicit. If a narrative
+conflicts with its files, preserve the old version and identify the correction.
+A token count is not an atom count, a sequence count or a biological quantity;
+convert between them only with an explicit supported mapping.
+
 NVIDIA BioNeMo skills provide useful domain guidance, but their REST scripts do
 not automatically call this MCP server. Adapt them to the named typed tool,
 durable operation flow and selected runtime. In particular, the portable Boltz2

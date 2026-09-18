@@ -177,7 +177,8 @@ class MongoClient {
   async close() { process.stdout.write(JSON.stringify(saved)); }
 }
 vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
-  require: (name) => name === 'mongodb' ? { MongoClient, ObjectId: class {} } : require(name),
+  require: (name) => name === 'mongodb' ? { MongoClient, ObjectId: class {} }
+    : name === 'librechat-data-provider' ? { Constants: { mcp_all: 'mcp_all' } } : require(name),
   process: { env: { SCIENTIFIC_AGENT_INSTRUCTIONS_PATH: process.argv[2] },
     stdout: { write() {} }, stderr: process.stderr },
 });
@@ -187,12 +188,31 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
                             check=True, capture_output=True, text=True)
     agents = json.loads(result.stdout)
     assert len(agents) == 6
+    # Tool existence and service tests do not prove the customer agent can see
+    # its schema. Compare the actual seeded general-agent allowlist with the
+    # authoritative MCP definitions so newly added workflow tools cannot be
+    # silently omitted again.
+    definitions = subprocess.run([
+        'node', '-e', 'process.stdout.write(JSON.stringify(require(process.argv[1]).tools.map(t => t.name)))',
+        str(ROOT / 'demos/mcp.cjs'),
+    ], check=True, capture_output=True, text=True)
+    demo_tools = {name + '_mcp_scientific-demos' for name in json.loads(definitions.stdout)}
+    general = next(agent for agent in agents if agent['id'] == 'agent_nebius_scientific_ai')
+    assert demo_tools <= set(general['tools'])
     for agent in agents:
         assert agent["skills_enabled"] is True
         assert instructions.read_text().strip() in agent["instructions"]
         assert set(agent["mcpServerNames"]) == {"bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"}
         assert "tavily_search_mcp_tavily" in agent["tools"]
         assert "workbench_track_operation_mcp_scientific-demos" in agent["tools"]
+
+
+def test_genmol_skill_distinguishes_tokens_from_atom_measurements() -> None:
+    skill = (ROOT.parents[1] / 'life-science/bionemo-librechat/skills/genmol/SKILL.md').read_text()
+    assert 'floored midpoint' in skill
+    assert 'no guaranteed minimum15 heavy atoms' in skill
+    assert '**measurements only**' in skill
+    assert 'batch `bindcraft`/`boltzgen`' not in skill
 
 
 def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp_path) -> None:

@@ -36,7 +36,7 @@ const workbenchTools = [
 const clinicalWorkflowTools = [
   'workshop_catalog', 'workshop_create_runs', 'workshop_list_runs',
   'workshop_get_run', 'workshop_intervene',
-  'clinical_report_from_transcript', 'clinical_get_job',
+  'clinical_report_from_transcript', 'clinical_report_from_workspace', 'clinical_get_job',
   'clinical_read_output', 'clinical_list_jobs', 'clinical_resume_job',
 ].map((name) => `${name}_mcp_scientific-demos`);
 const executionTools = ['execute_command_mcp_environment-execution', 'read_execution_mcp_environment-execution'];

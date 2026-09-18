@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-18 21:29 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-18 22:01 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -31,17 +31,26 @@ response, inference result or hash check does not establish scientific validity.
 |---|---|---|
 | 01 | Public structure prediction and experimental comparison | Parent owns the v19 final replay and independent verification. Do not infer its outcome from this lane's older failed baselines. |
 | 02 | Complex prediction with actual MSA searches | Parent owns final verification of the v19 files. Continuation was required; this is not an untouched one-turn success. |
-| 03 | PD-L1 Proteina-Complexa / BoltzGen design | BoltzGen result and report downloaded and verified. Proteina first failed from an inferred filename instead of published task ID; subsequent valid request exposed the backend's gzip decoding/hash bug. After Helm160, exact corrected receipt/key admitted operation `2e85d8c4-fc67-418e-9d33-a83555c744ca`; generation/filter succeeded, evaluation pending at checkpoint. No duplicate BoltzGen run. |
-| 04 | Mosaic / BindCraft / RFdiffusion → bounded sequence-design/refold funnel | All three original design operations completed. The sequential helper recovered the original BindCraft/RF receipts after a concurrency429 and an incorrectly backgrounded executor were preserved. At most one ProteinMPNN/refold downstream step is underway. Final scientific report still pending. |
-| 05 | DiffDock redocking of public 1A52/3PTB plus MolMIM/GenMol chemistry checks | v22 natural prompt started at21:26. Held-out crystal poses are evaluation references, not inference inputs. Four bounded submissions authorized; actual outputs and report pending. |
-| 06 | Public plant-genome continuation and capability limits | Inputs/provenance staged; browser waits for its API operation to terminate. Generation must not be presented as paper-level variant-effect reproduction. |
+| 03 | PD-L1 Proteina-Complexa / BoltzGen design | Both models completed; v4 Proteina report downloaded and56 metric values/eight sequence hashes independently verified. Eight designs are expected `num_samples=4 × best_of_n.replicas=2`, established by pinned-source review. Original target error, raw-gzip artifact rejection, wrong count interpretation and operator repairs remain failures/interventions. |
+| 04 | Mosaic / BindCraft / RFdiffusion → bounded sequence-design/refold funnel | All five original design/sequence/refold operations completed. Agent's strict sequence alignment of a poly-glycine backbone was scientifically inappropriate; explicit provenance-bound residue mapping is implemented and a v23 read-only report repair is running. Independent76-position C-alpha fit RMSD8.03548 Å shows poor design/refold self-consistency, despite mean pLDDT82.465. |
+| 05 | DiffDock redocking of public 1A52/3PTB plus MolMIM/GenMol chemistry checks | Four original requests terminated. Both docking results exist; agent inverted RDKit atom mapping and materially misreported3PTB accuracy. Verified reusable helper fixes correspondence without ligand fitting. GenMol16/16 valid/unique; mask is not a heavy-atom bound. MolMIM generation exhaustion7/8 remains a search shortfall, not silently retried. v23 read-only report recovery pending. |
+| 06 | Public plant-genome continuation and capability limits | Inputs/provenance staged. Parent diagnosed the earlier API operation as a shared-memory deadlock, not a normal capacity wait; browser identity remains held until known operation terminal. Generation must not be presented as paper-level variant-effect reproduction. |
 | 07 | NHANES PhenoAge and public AltumAge feature-order checks | Actual row-level files and corrected report downloaded. All32 PhenoAge predictions exactly match the declared rounded coefficient version. The agent's alternative coefficients caused its apparent offset. One unsolicited invalid probe after a no-new-inference instruction is preserved as a real agent failure. AltumAge check covers17 predictions but only one matched reordered sample, not population accuracy. |
-| 08 | Full English PriMock57 across three ASR Apps; German MultiMed; evidence-linked report draft | v22 natural prompt started at21:26. Human references and source provenance staged. Four transcriptions plus one draft from an existing transcript authorized; no redundant transcription. Outputs/report/medical factual review pending. |
+| 08 | Full English PriMock57 across three ASR Apps; German MultiMed; evidence-linked report draft | Four actual ASR outputs independently downloaded. Initial WER included human annotation tags as words; corrected policy/results below. Agent replaced full1,366-word transcript with reconstructed278-word clinical input: original draft is rejected. v23 exact-file/hash-lineage repair awaits one explicitly authorized corrected draft, without repeating ASR. |
 | 09 | Six untouched MindEval consultations: two profiles × three clinicians | All six completed. v19 chat transport truncated exported transcripts; v22 repaired export without new inference. Six complete21-message records and six transcript files independently downloaded/hash-verified; every original message appears in its export. Report interpretation required correction. |
 | 10 | Recorded ALOHA video augmentation and LeRobot dataset | Native video failed after GPU snapshot restore; LeRobot separately hit a malformed semantic role and misleading backend error. All failed receipts/report preserved. Parent/dataset lane exclusively owns one exact native diagnostic replay. No valid augmented dataset claimed. |
 
 ## Independently retrieved deliverables
 
+- Scientist03 source-qualified Proteina `outcome-addendum-v4.md`:9,146 bytes,
+  SHA256 `7d7ea0aea8f8b285375d61b51f4fcb1f064414836a82bb59ac96390cf518d75f`.
+  JSON9,452 bytes, SHA256
+  `85ba7b1dcc3c51dcd6e19730c9e0484d85f5d4c3f19e01793b1390bf1a07a71b`.
+  All56 numerical table entries and all8 sequence hashes match actual CSV.
+  The4×2 explanation comes from source54058860d43444c7289873f77d3e50b5b02348cd,
+  `binder_generate.yaml` and `best_of_n_search.py`, not from guessing CSV rows.
+  Filter-stage completion alone is not a per-design pass claim; no binding
+  efficacy is established. Earlier incorrect reports remain intact.
 - Scientist03 recovered BoltzGen `REPORT.md`:5,807 bytes,
   SHA256 `db7718d8bfe0ab6bd154d7b778988d15637a4484c585229e69105bfa7af54e0a`.
   Ranking CSV7,262 bytes and mmCIF142,145 bytes also downloaded. One67-aa
@@ -67,6 +76,34 @@ response, inference result or hash check does not establish scientific validity.
   was removed. Remaining minor prose defect: pooled-axis count says12, while
   saved analysis correctly has10; those axes are explicitly not independent
   replicates. Two profiles cannot justify an efficacy/ranking claim.
+
+## New scientific-analysis and source-lineage failures
+
+- DiffDock: the first analysis used reference-to-prediction RDKit mappings in
+  reverse. Independent exact-graph/stereochemistry, symmetry-aware no-fit RMSD
+  gives1A52 top/best12.92235/6.70404 Å and3PTB1.120181/0.262053 Å. The latter
+  changes the original negative conclusion. The old report is preserved and
+  the corrected installed helper still needs live customer report recovery.
+- GenMol: `[*{10-20}]` is a SAFE-mask token heuristic using a minimum15,
+  not a10–20 heavy-atom contract. Actual heavy-atom counts remain useful
+  descriptive data, not evidence of API noncompliance. All16 are valid/unique.
+- Speech: original human reference tags were incorrectly counted as words.
+  Corrected policy removes annotation tags first, retains uncertain inner
+  words, then applies the same NFC/lowercase/punctuation normalization to
+  reference and hypothesis. English referenceN=1415; unchanged output WERs
+  are18.374558%,22.120141%,24.240283% for English Nemotron, multilingual
+  Nemotron and Parakeet respectively. German remains12% over25 words. One
+  recording/short clip does not establish clinical suitability or a ranking.
+- Clinical: old job `cf4a3826d4e9a936b1e7f21a49ddf4ab` consumed1432 bytes,
+  278 reconstructed words, SHA256
+  `f56118c7eb3784176b8e74bfcfc53f70b6aae6404bd385e1a7bc3b9a55931eea`.
+  Actual English ASR text is6817 bytes/1366 words, SHA256
+  `e511be3353a9cdad1d2d2f10e7000ec7b9f2986e01ed3785f10723d99e3ffbee`.
+  The shortened input is neither equal to nor a substring of the source.
+  All seven original clinical files are independently downloaded; that draft
+  is rejected as a full-recording report, not rescued by its successful status.
+  v23 introduces server-read existing-file input and exact byte/hash provenance;
+  one explicitly authorized corrected draft remains a live acceptance gate.
 
 ## Workbench repairs exercised in this campaign
 
@@ -98,6 +135,12 @@ response, inference result or hash check does not establish scientific validity.
 - v22 source `454da05`, image digest
   `sha256:5afd48bd101860f311a079614125f81a3d36a3dbded382e8641191a8e706ad8a`.
   Fourteen focused service/MCP tests pass; live S3 full-record recovery verified.
+- v23 source `3e1733b`, image digest
+  `sha256:df76112ed4c5770f920036a1325093dea3a0d47394abe4a61801e4c26703ed8f`.
+ 44 native/batch/workflow/receipt,12 structure,8 docking,19 service/Run-display
+  and5 pinned-runtime/tool tests pass. Isolated previews are provisioning;
+  offline tests do not close the live recovery gates above. Initial provider
+  Internal create errors were retained and exact names reconciled before retry.
 - GLM5.3 low-reasoning is used for ongoing previews with the original8,192 output
   budget. Kimi3 exploratory comparison on07 was confounded by explicit versus
   implicit context reserves; do not call it a controlled A/B or a global winner.
