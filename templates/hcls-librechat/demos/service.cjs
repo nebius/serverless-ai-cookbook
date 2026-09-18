@@ -55,6 +55,78 @@ async function platform(key, method, resource, body, idempotencyKey) {
   return result;
 }
 
+async function platformBytes(key, resource) {
+  privateKey(key);
+  if (!/^\/v1\/artifacts\/[a-f0-9-]{36}\/content$/.test(resource)) throw failure('Unsupported platform artifact operation');
+  let response;
+  try {
+    response = await fetch(PLATFORM + resource, { method: 'GET', redirect: 'error', signal: AbortSignal.timeout(45000),
+      headers: { Authorization: `Bearer ${key}` } });
+  } catch { throw failure('Artifact download interrupted. Retry the same result lookup; do not resubmit compute.', 503); }
+  if (!response.ok) throw failure(`Platform artifact returned HTTP ${response.status}`, response.status);
+  return Buffer.from(await response.arrayBuffer());
+}
+
+function numberSummary(values, kind, shape) {
+  const finite = values.filter(Number.isFinite);
+  let min; let max; let sum = 0;
+  for (const value of finite) {
+    min = min === undefined || value < min ? value : min;
+    max = max === undefined || value > max ? value : max;
+    sum += value;
+  }
+  return { type: kind, count: values.length, ...(shape ? { shape } : {}),
+    finite_count: finite.length,
+    ...(finite.length ? { min, max, mean: sum / finite.length } : {}) };
+}
+
+function summarizeResult(value, depth = 0) {
+  if (value === null || ['boolean', 'number'].includes(typeof value)) return value;
+  if (typeof value === 'string') {
+    if (value.length <= 2048) return value;
+    return { type: 'long-string', characters: value.length, sha256: hash(value), preview: value.slice(0, 320) };
+  }
+  if (depth >= 8) return { type: Array.isArray(value) ? 'array' : 'object', omitted_below_depth: depth };
+  if (Array.isArray(value)) {
+    if (value.every((item) => typeof item === 'number')) return numberSummary(value, 'numeric-array');
+    if (value.length && value.every((row) => Array.isArray(row) && row.every((item) => typeof item === 'number'))) {
+      return numberSummary(value.flat(), 'numeric-matrix', [value.length, ...new Set(value.map((row) => row.length))]);
+    }
+    if (value.length > 20) return { type: 'array', count: value.length,
+      first_items: value.slice(0, 5).map((item) => summarizeResult(item, depth + 1)) };
+    return value.map((item) => summarizeResult(item, depth + 1));
+  }
+  if (typeof value === 'object') return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [key, summarizeResult(item, depth + 1)]),
+  );
+  return String(value);
+}
+
+async function operationResult(key, operationId) {
+  if (!RUN_ID.test(operationId || '')) throw failure('Supply a valid operation ID.');
+  const envelope = await platform(key, 'GET', `/v1/operations/${operationId}/result`);
+  if (envelope.operation?.id !== operationId) throw failure('Platform returned a mismatched operation result.', 502);
+  const result = envelope.result;
+  if (result?.schema !== 'fs2-serve.nebius.ai/operation-artifact-result/v1') return envelope;
+  const artifact = result.artifact || {};
+  if (result.content_type !== 'application/json' || artifact.compression !== 'none'
+      || !RUN_ID.test(artifact.artifact_id || '') || !Number.isInteger(artifact.size_bytes)
+      || artifact.size_bytes < 0 || artifact.size_bytes > 8 * 1024 * 1024
+      || !/^[a-f0-9]{64}$/.test(artifact.sha256 || '')) {
+    return { ...envelope, result: { ...result, resolution: 'Download in Runs; this artifact is not bounded JSON.' } };
+  }
+  const bytes = await platformBytes(key, `/v1/artifacts/${artifact.artifact_id}/content`);
+  if (bytes.length !== artifact.size_bytes || hash(bytes) !== artifact.sha256) throw failure('Result artifact failed size or SHA-256 verification.', 502);
+  let parsed;
+  try { parsed = JSON.parse(bytes.toString('utf8')); }
+  catch { throw failure('Result artifact was declared as JSON but could not be decoded.', 502); }
+  return { operation: envelope.operation, result: {
+    schema: 'fs2-serve.nebius.ai/resolved-operation-result/v1', content_type: result.content_type,
+    source_artifact: artifact, summary: summarizeResult(parsed),
+    resolution: 'Downloaded with caller credentials; size and SHA-256 verified; large arrays and strings summarized.',
+  } };
+}
+
 function runFile(owner) {
   return path.join(ROOT, 'workbench', hash(owner), 'runs.json');
 }
@@ -244,5 +316,5 @@ async function output(owner, id, filename) {
   try { return await fs.readFile(path.join(directory(owner, id), 'output', filename)); }
   catch (error) { if (error.code === 'ENOENT') throw failure('This report file has not been produced. Check job status.', 409); throw error; }
 }
-module.exports = { platform, clinical, status, list, start, output, track, runs, workspaceInfo, workspaceList,
+module.exports = { platform, operationResult, summarizeResult, clinical, status, list, start, output, track, runs, workspaceInfo, workspaceList,
   workspacePut, workspaceGet, save, read, failure, FILES, REPORT_MODEL };

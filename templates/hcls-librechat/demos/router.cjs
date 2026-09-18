@@ -41,7 +41,7 @@ router.post('/runs', wrap(async (req, res) => res.status(201).json(await service
   label: req.body?.label, model_id: req.body?.model_id, source: 'panel',
 }))));
 router.get('/runs/:id', wrap(async (req, res) => res.json(await service.track(req.user.id, await key(req), req.params.id, { source: 'panel' }))));
-router.get('/runs/:id/result', wrap(async (req, res) => res.json(await service.platform(await key(req), 'GET', `/v1/operations/${req.params.id}/result`))));
+router.get('/runs/:id/result', wrap(async (req, res) => res.json(await service.operationResult(await key(req), req.params.id))));
 router.post('/runs/:id/cancel', wrap(async (req, res) => res.json(await service.platform(await key(req), 'POST', `/v1/operations/${req.params.id}:cancel`))));
 router.get('/workspace', wrap(async (req, res) => res.json(await service.workspaceList(await key(req), req.query.path || ''))));
 router.post('/workspace', upload.single('file'), wrap(async (req, res) => {

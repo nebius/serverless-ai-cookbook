@@ -25,6 +25,7 @@ const workbenchTools = [
   'workbench_track_operation', 'workbench_list_operations', 'workbench_get_operation',
   'workbench_get_operation_result', 'workbench_cancel_operation', 'workbench_workspace',
 ].map((name) => `${name}_mcp_scientific-demos`);
+const executionTools = ['execute_command_mcp_environment-execution', 'read_execution_mcp_environment-execution'];
 
 const structureTools = [
   ...scientificCatalogTools,
@@ -66,7 +67,7 @@ function agents() {
 
 Guide work across protein structures and complexes, molecular and protein design, genomics and aging, biomedical imaging, speech and clinical documentation, generative media and robotics. Use the model's live schema, qualification and artifact contract before proposing execution.
 
-For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. State limitations and ask before submitting compute. Use the scientific gateway for model operations. Immediately save every returned operation ID with workbench_track_operation so the user can reconnect in Runs; polling must never resubmit compute. Use Workspace for files available to this deployment and platform artifacts for model input/output. Never present scientific model output as clinical advice or experimental validation.`,
+For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. State limitations and ask before submitting compute. Use the scientific gateway for model operations. Immediately save every returned operation ID with workbench_track_operation so the user can reconnect in Runs; polling must never resubmit compute. For a completed operation, prefer workbench_get_operation_result: it resolves bounded JSON result artifacts with caller credentials, verifies their size and SHA-256, and returns a compact metric summary. Do not infer missing output fields from an input schema. Use Workspace for files available to this deployment and platform artifacts for model input/output. Never present scientific model output as clinical advice or experimental validation.`,
       tools: [...allScientificTools, ...workbenchTools],
       mcpServerNames: [scientificModelsServerName, 'scientific-demos', 'tavily'],
       conversation_starters: [
@@ -160,7 +161,8 @@ async function seedAgent({ agents: collection, aclEntries, owner, now, definitio
         instructions: `${definition.instructions}\n\n${gatewayInstructions}`,
         skills_enabled: true,
         artifacts: 'default',
-        tools: [...new Set([...(definition.tools || []), ...workbenchTools, 'tavily_search_mcp_tavily', 'visualize_structure_mcp_structure-viewer'])],
+        tools: [...new Set([...(definition.tools || []), ...workbenchTools, ...executionTools,
+          'tavily_search_mcp_tavily', 'visualize_structure_mcp_structure-viewer'])],
         mcpServerNames: [...new Set([...(definition.mcpServerNames || []), 'scientific-demos', 'structure-viewer', 'environment-execution'])],
         provider,
         model,

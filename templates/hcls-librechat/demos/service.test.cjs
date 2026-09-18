@@ -108,4 +108,34 @@ test('mounted workspace stays inside its root and round-trips files', async () =
   assert.equal(await fs.readFile(downloaded.absolute, 'utf8'), 'workspace fixture');
   await assert.rejects(service.workspaceGet('fixture-key', '../request.json'), /escape/);
 });
+test('artifact-backed operation results are verified and compacted for the agent', async () => {
+  const service = await setup;
+  const operationId = '11111111-1111-4111-8111-111111111111';
+  const artifactId = '22222222-2222-4222-8222-222222222222';
+  const payload = Buffer.from(JSON.stringify({ confidence: 72.5, plddt: [70, 80, 90],
+    predicted_aligned_error: [[0.25, 1.5], [2.5, 0.25]], structure: 'ATOM '.repeat(1000) }));
+  const artifact = { artifact_id: artifactId, compression: 'none', media_type: 'application/octet-stream',
+    size_bytes: payload.length, sha256: crypto.createHash('sha256').update(payload).digest('hex') };
+  const originalFetch = global.fetch;
+  const calls = [];
+  global.fetch = async (url) => {
+    calls.push(String(url));
+    if (String(url).endsWith(`/v1/operations/${operationId}/result`)) return new Response(JSON.stringify({
+      operation: { id: operationId, status: 'succeeded' },
+      result: { schema: 'fs2-serve.nebius.ai/operation-artifact-result/v1', content_type: 'application/json', artifact },
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+    if (String(url).endsWith(`/v1/artifacts/${artifactId}/content`)) return new Response(payload, { status: 200 });
+    return new Response('{}', { status: 404 });
+  };
+  try {
+    const resolved = await service.operationResult('fixture-key', operationId);
+    assert.equal(resolved.result.schema, 'fs2-serve.nebius.ai/resolved-operation-result/v1');
+    assert.equal(resolved.result.summary.confidence, 72.5);
+    assert.deepEqual(resolved.result.summary.plddt, { type: 'numeric-array', count: 3,
+      finite_count: 3, min: 70, max: 90, mean: 80 });
+    assert.deepEqual(resolved.result.summary.predicted_aligned_error.shape, [2, 2]);
+    assert.equal(resolved.result.summary.structure.type, 'long-string');
+    assert.equal(calls.length, 2);
+  } finally { global.fetch = originalFetch; }
+});
 after(async () => { await setup; await fs.rm(root, { recursive: true }); });
