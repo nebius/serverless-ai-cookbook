@@ -16,7 +16,7 @@ configuration outside the conversation.
 
 Call `get_capabilities` before the first submission and again after a reconnect,
 runtime change, or validation error. The returned limits, engine version,
-runtime tag and digest, accepted inputs, and examples win over this skill.
+endpoint image digest, accepted inputs, and examples win over this skill.
 
 The available tools are:
 
@@ -36,7 +36,7 @@ Use exactly one of these modes:
 
 1. **Guided argon smoke:** omit molecular input files and supply bounded controls
    such as `steps`, `gpu_mode`, and `threads`. Use this only to validate the
-   endpoint, NVIDIA runtime, GPU offload, and persistence. It is not a research
+   endpoint, compiled CUDA engine, GPU offload, and persistence. It is not a research
    protocol and its throughput does not predict biomolecular performance.
 2. **Prepared TPR:** supply `tpr_base64`. Prefer this for a reviewed,
    reproducible research setup. Check that the TPR is compatible with the live
@@ -78,7 +78,7 @@ For a successful GPU run, confirm `gpu_selected: true`. Report:
 
 - run ID and terminal state;
 - input mode, steps, timestep, and simulated nanoseconds;
-- GROMACS version plus NVIDIA runtime tag and digest;
+- GROMACS version plus endpoint image digest;
 - wall-clock/`mdrun` time and `ns_per_day` when returned;
 - artifact names, sizes, and SHA-256 hashes;
 - the scientific assumptions and validation still required.

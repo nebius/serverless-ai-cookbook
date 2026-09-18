@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import base64
-import json
 import os
 import re
 import shutil
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -77,7 +77,7 @@ class GromacsAdapter:
     service_id = "gromacs-md"
 
     def __init__(self) -> None:
-        self.binary = os.environ.get("GROMACS_BINARY", "/usr/local/gromacs/avx2_256/bin/gmx")
+        self.binary = os.environ.get("GROMACS_BINARY", "/opt/gromacs/bin/gmx")
         self.version = "unknown"
         self.runtime: dict[str, Any] = {}
 
@@ -86,9 +86,15 @@ class GromacsAdapter:
             raise RuntimeError(f"GROMACS binary not found: {self.binary}")
         completed = subprocess.run([self.binary, "--version"], capture_output=True, text=True, check=True, timeout=60)
         self.version = next((line.split(":", 1)[1].strip() for line in completed.stdout.splitlines() if "GROMACS version" in line), "unknown")
-        metadata_path = os.environ.get("GROMACS_RUNTIME_METADATA")
-        if metadata_path:
-            self.runtime = json.loads(Path(metadata_path).read_text(encoding="utf-8"))
+        self.runtime = {
+            "actual_engine_version": self.version,
+            "source": "GROMACS source release (compiled at image build time)",
+            "gpu_backend": "CUDA",
+        }
+        with tempfile.TemporaryDirectory(prefix="gromacs-startup-") as directory:
+            result = self.run({"steps": 1, "gpu_mode": "gpu", "threads": 1}, Path(directory))
+        if not result.get("gpu_selected"):
+            raise RuntimeError("GROMACS startup probe did not use the GPU")
 
     def health(self) -> dict[str, Any]:
         gpu = self.gpu_available()

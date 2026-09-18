@@ -1,85 +1,61 @@
+---
+title: GROMACS REST + MCP
+category: life-sciences
+type: endpoint
+runtime: gpu-l40s-a
+frameworks: [gromacs, fastapi, mcp]
+keywords: [molecular-dynamics, simulation, cuda, rest, mcp, agent]
+difficulty: intermediate
+---
+
 # GROMACS REST + MCP
 
 <!-- markdownlint-disable MD013 MD033 -->
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fgromacs-md-api%3A20260908-6bd2a84-dynamic&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true&amp;env=NGC_API_KEY&amp;env=GROMACS_VERSION%3Dlatest&amp;env=GROMACS_CPU_BUILD%3Davx2_256&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb21%40sha256%3Ac291e308591382e2114e7a43146b4e4af4e4c47326397f935059c5094d4932ba&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
 <!-- factory:intro -->
 
-Run bounded GROMACS molecular-dynamics workloads on an NVIDIA GPU through REST or MCP. A lean API image pulls the selected official NVIDIA GROMACS runtime at endpoint startup, and persists artifacts to Object Storage or Shared Filesystem.
+Run bounded GROMACS molecular-dynamics workloads on an NVIDIA GPU through REST or MCP. The self-contained image compiles GROMACS 2025.3 with CUDA at build time. Attach Object Storage or Shared Filesystem for persistent artifacts.
 
-**License:** [LGPL-2.1](https://gitlab.com/gromacs/gromacs/-/blob/main/COPYING) · **Runtime:** [`nvcr.io/nvidia/gromacs`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/gromacs)
+**License:** [LGPL-2.1-or-later](https://gitlab.com/gromacs/gromacs/-/blob/v2025.3/COPYING) for GROMACS; Apache-2.0 for the wrapper; FFTW is GPL-2.0-or-later.
 
 <!-- /factory:intro -->
 
----
-
-title: GROMACS REST + MCP
-category: life-sciences
-type: endpoint
-runtime: gpu-l40s-a
-frameworks: [gromacs, fastapi, mcp]
-keywords: [molecular-dynamics, simulation, nvidia-ngc, rest, mcp, agent]
-difficulty: intermediate
-
----
 
 ## What you get
 
 - A bounded asynchronous run API on port 8000 with OpenAPI docs at `/docs`.
 - A Streamable HTTP MCP server at `/mcp` for agent/tool integrations.
 - One shared queue, run ID, state, and artifact store across REST and MCP.
-- Runtime selection with `GROMACS_VERSION`: use `latest` or an explicit official
-  NVIDIA tag without rebuilding this API image.
+- GROMACS 2025.3 compiled with CUDA support at image build time.
 - GPU readiness gated by a real one-step `grompp` + `mdrun -nb gpu` probe.
-- Persistent results under `/mnt/hcls/gromacs-md/runs/<run-id>`.
+- Results under `/mnt/hcls/gromacs-md/runs/<run-id>`; persistent only with an attached volume.
 
-The wrapper image contains the API and pull launcher, not GROMACS. On every fresh
-endpoint boot it authenticates to NGC with `NGC_API_KEY`, resolves the requested
-tag, pulls `nvcr.io/nvidia/gromacs`, and starts only after that runtime passes the
-GPU probe. Restarting an endpoint configured with `latest` lets it adopt a newer
-compatible NVIDIA release without publishing a new wrapper image.
-
-The pre-built wrapper tag in the button resolves to
-`sha256:a0b690e75c3859e65f5299ae97f12f977136d5e6e05058f6355081f5bbfa0671`.
+The image compiles GROMACS 2025.3 from its checksum-verified source release
+on a digest-pinned CUDA base. It includes the engine and corresponding source.
+No NGC account, runtime image pull, or boot-time package installation is needed.
+Change versions by rebuilding and validating a new image.
 
 ## Create the endpoint
+
+The button does not attach storage. Manually attach Object Storage or Shared
+Filesystem read-write at `/mnt/hcls` in the create form for persistent results.
+Without that attachment, `/mnt/hcls` is on ephemeral disk and results can be lost
+when the endpoint is replaced or deleted.
 
 Click **Create Endpoint** above, select your project, and review the pre-filled
 form. Before you create it:
 
-1. In **Environment variables**, paste your NVIDIA NGC API key into
-   `NGC_API_KEY`. No NGC username or password is needed; the launcher supplies
-   NGC's fixed `$oauthtoken` username internally.
-2. Leave `GROMACS_VERSION=latest` to select the newest stable tag that passes the
-   GPU probe, or replace `latest` with an older NVIDIA tag such as `v2025.1`.
-3. Keep `GROMACS_CPU_BUILD=avx2_256` unless you have verified another build on the
-   selected worker CPU.
-4. Keep **Token authentication** enabled and generate/copy the endpoint token.
-   This token protects both REST and MCP. It is not an environment variable and
-   is never placed in the deployment URL.
-5. In the pre-opened volume row, attach either **Object Storage** or **Shared
-   Filesystem** read-write at `/mnt/hcls`.
+1. Keep **Token authentication** enabled and copy the endpoint token. It protects
+   both REST and MCP and is not an application environment variable.
+2. Manually attach Object Storage or Shared Filesystem read-write at `/mnt/hcls`.
 
-The link intentionally contains the empty `NGC_API_KEY` field and every safe
-default, but no credential value. The attached storage resource is also selected
-in the customer's project rather than hard-coded in a public URL.
-
-### Environment variables
-
-| Variable | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `NGC_API_KEY` | yes | empty | Pulls the official NVIDIA runtime from NGC. |
-| `GROMACS_VERSION` | no | `latest` | NVIDIA image tag, or newest stable GPU-compatible tag. |
-| `GROMACS_CPU_BUILD` | no | `avx2_256` | GROMACS CPU dispatch build inside the NVIDIA image. |
-
-`latest` is a selection policy rather than Docker's mutable `:latest` tag: stable
-version tags are tried newest-first, and incompatible GPU/CUDA builds are rejected.
-An explicitly pinned tag is never silently replaced with another version.
+There are no required application environment variables or image-pull secrets.
 
 ## Storage: choose either lane
 
@@ -121,9 +97,7 @@ curl -sS -H "Authorization: Bearer $TOKEN" "$BASE_URL/v1/health/ready" \
   | python3 -m json.tool
 ```
 
-First boot can take several minutes because the wrapper downloads and probes the
-official NVIDIA image. Nebius can show the endpoint as running before the API binds
-port 8000; poll until readiness returns JSON:
+Startup probes the installed CUDA engine. Poll until readiness returns JSON:
 
 ```bash
 until curl -sf -H "Authorization: Bearer $TOKEN" \
@@ -186,17 +160,11 @@ agent or MCP client; never copy credentials into the skill file.
 ## Expected output
 
 A successful run reaches `status: succeeded`, reports `gpu_selected: true`, and
-includes the resolved NVIDIA tag/digest, actual GROMACS version, wall-clock time,
+includes the installed GROMACS version, wall-clock time,
 and `ns_per_day`. Its artifact list includes the TPR, coordinates, energy,
 checkpoint, GROMACS log, command logs, and `result.json`, each with a SHA-256 hash.
 
-Validation on 2026-09-09 used a regular L40S. `latest` selected official NVIDIA
-tag `v2025.1` at digest
-`sha256:d045e411eb3197ab2474b9b6376bc7abf58ca38a978e5f6582498acb32b17316`;
-1,000-step REST and MCP runs both succeeded with GPU offload, and both result
-artifacts were downloaded and hash-verified. The same wrapper has passed
-replacement-worker persistence checks with both Object Storage and Shared
-Filesystem mounted at `/mnt/hcls`.
+See [validation results](./VALIDATION.md) for the tested image and workloads.
 
 The default argon system is a deployment smoke test, not a scientifically validated
 simulation protocol. For research inputs, submit either a prepared TPR as bounded
@@ -215,14 +183,11 @@ docker build --platform linux/amd64 \
 docker push <your-registry>/gromacs-rest-mcp:1
 ```
 
-To exercise a local CUDA host, mount a local output directory and provide your NGC
-key at runtime:
+To exercise a local CUDA host, mount a local output directory:
 
 ```bash
 mkdir -p ./local-output
 docker run --rm --gpus all -p 8000:8000 \
-  -e NGC_API_KEY="$NGC_API_KEY" \
-  -e GROMACS_VERSION=latest \
   -v "$PWD/local-output:/mnt/hcls" \
   <your-registry>/gromacs-rest-mcp:1
 ```
@@ -230,6 +195,17 @@ docker run --rm --gpus all -p 8000:8000 \
 <!-- factory:cli -->
 
 ## CLI alternative
+
+The tested image is `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb21@sha256:c291e308591382e2114e7a43146b4e4af4e4c47326397f935059c5094d4932ba`.
+The qualification used Nebius CLI 0.12.206, which rejects endpoint image references
+longer than 64 characters when creating a VM label. For that CLI, use the short
+alias below and verify its digest with [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane)
+before creating the endpoint. Do not use an alias whose digest differs.
+
+```bash
+export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb21:r0918'
+test "$(crane digest "$IMAGE")" = 'sha256:c291e308591382e2114e7a43146b4e4af4e4c47326397f935059c5094d4932ba' || exit 1
+```
 
 Choose one volume value before creating the endpoint:
 
@@ -248,12 +224,11 @@ Then create the same service from the CLI:
 ```bash
 export NEBIUS_PROJECT_ID='project-...'
 export NEBIUS_SUBNET_ID='vpcsubnet-...'
-export NGC_API_KEY='<your-ngc-api-key>'
 
 nebius ai endpoint create \
   --parent-id "$NEBIUS_PROJECT_ID" \
   --name gromacs-rest-mcp \
-  --image cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/gromacs-md-api:20260908-6bd2a84-dynamic \
+  --image "$IMAGE" \
   --public \
   --platform gpu-l40s-a \
   --preset 1gpu-8vcpu-32gb \
@@ -262,9 +237,6 @@ nebius ai endpoint create \
   --shm-size 16Gi \
   --subnet-id "$NEBIUS_SUBNET_ID" \
   --auth token \
-  --env "NGC_API_KEY=$NGC_API_KEY" \
-  --env 'GROMACS_VERSION=latest' \
-  --env 'GROMACS_CPU_BUILD=avx2_256' \
   --volume "$GROMACS_VOLUME"
 ```
 
@@ -275,9 +247,8 @@ once. Copy it immediately; it cannot be recovered later.
 
 ## Cost and cleanup
 
-The one-click link selects regular L40S capacity because this is a long-running API
-and a replacement worker must pull the runtime again. Switch to preemptible for a
-short disposable test if interruptions are acceptable. The endpoint accrues GPU,
+The one-click link selects regular L40S for an interactive API. Switch to
+preemptible for a short disposable test if interruptions are acceptable. The endpoint accrues GPU,
 boot-disk, and attached-storage charges while provisioned; stop or delete it when
 testing is complete.
 
@@ -285,10 +256,7 @@ testing is complete.
 
 | Symptom | Cause and fix |
 | --- | --- |
-| NGC returns 401/403 | Paste a valid NGC API key into `NGC_API_KEY`; do not enter a username or the endpoint token. |
-| `no stable NVIDIA GROMACS tag passed` | The newest tags are incompatible with the current GPU driver. Use `latest` for automatic fallback, or pin a known-compatible tag. |
-| Endpoint is running but returns 502 | The NVIDIA image is still downloading/probing and port 8000 is not bound yet. Follow endpoint logs and keep polling readiness. |
+| Endpoint is running but returns 502 | Image startup or the CUDA probe is still in progress. Follow endpoint logs and keep polling readiness. |
 | Readiness reports no NVIDIA device | Verify the platform/preset is GPU-backed and that the worker obtained capacity. |
 | Outputs disappear after restart | Attach Object Storage or Shared Filesystem read-write at `/mnt/hcls`; an unmounted path is ephemeral. |
 | REST works but MCP returns 401 | Send the same `Authorization: Bearer <endpoint-token>` header to `/mcp`. |
-| A pinned tag fails immediately | Explicit tags do not fall back. Select `latest` or another official tag compatible with the current Serverless driver. |
