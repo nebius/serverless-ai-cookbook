@@ -188,9 +188,12 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
         assert item["mcpServers"] == ["bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"]
         assert INSTRUCTIONS.read_text().strip() in item["preset"]["promptPrefix"]
         assert item["preset"]["model"] not in {"evo2-40b", "boltz2", "openfold2", "sdxl", "nv-segment-ct"}
-        if item["group"] in {"Dedicated Token Factory", "Public Token Factory"}:
-            assert not item["preset"]["model"].lower().startswith("qwen/")
         assert "agent_id" not in item["preset"]
+    assert any(
+        item["group"] == "Public Token Factory"
+        and item["preset"]["model"] == "Qwen/Qwen3-30B-A3B-Instruct-2507"
+        for item in specs
+    )
     assert config["interface"]["modelSelect"] is False  # curated specs remain selectable
     assert [item["name"] for item in config["endpoints"]["custom"]] == ["Nebius Token Factory"]
     token_configs = {

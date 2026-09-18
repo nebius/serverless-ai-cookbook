@@ -8,7 +8,7 @@ const gatewayInstructions = readFileSync(
 const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/LibreChat';
 const serviceEmail = 'nebius-scientific-ai-agent@localhost.invalid';
 const provider = process.env.SCIENTIFIC_CHAT_PROVIDER || 'Nebius Token Factory';
-const model = process.env.SCIENTIFIC_CHAT_MODEL || 'zai-org/GLM-5.3-Flash';
+const model = process.env.SCIENTIFIC_CHAT_MODEL || 'Qwen/Qwen3-30B-A3B-Instruct-2507';
 
 const scientificModelsServerName = 'bionemo-models';
 const mcpTool = (name) => `${name}_mcp_${scientificModelsServerName}`;

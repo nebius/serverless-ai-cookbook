@@ -75,6 +75,11 @@ contains no credentials or customer data.
    the seeded agent rather than merely configuring their MCP server. R6 also
    exercises the production API's direct result envelope rather than relying
    on the older wrapped fixture shape.
+7. **Catalog presence is not chat readiness.** The previously seeded
+   `zai-org/GLM-5.3-Flash` remained selectable but failed after tool execution
+   with a provider-unavailable response. The default is now
+   `Qwen/Qwen3-30B-A3B-Instruct-2507`, qualified with both a real chat
+   completion and a real function-tool-call response before deployment.
 
 ## Product assessment
 

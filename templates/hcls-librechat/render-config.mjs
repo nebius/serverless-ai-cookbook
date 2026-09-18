@@ -23,6 +23,7 @@ Result reporting: always include the operation ID, exact returned status and any
 // 2026-09-09. This is the conversational-LLM catalog, not the Scientific Apps
 // catalog; Apps are discovered dynamically from the caller's platform key.
 const publicTokenFactoryModels = [
+  ['Qwen/Qwen3-30B-A3B-Instruct-2507', 'Qwen3 30B A3B Instruct'],
   ['zai-org/GLM-5.3-Flash', 'GLM 5.3 Flash'],
   ['deepseek-ai/DeepSeek-V4-Flash-0731', 'DeepSeek V4 Flash'],
   ['moonshotai/Kimi-K3', 'Kimi K3'],
@@ -49,6 +50,7 @@ const dedicatedTokenFactoryModels = [
 // scientific instructions plus tool schemas and causes every user message to
 // be pruned before the request reaches Token Factory.
 const tokenFactoryContext = new Map([
+  ['Qwen/Qwen3-30B-A3B-Instruct-2507', 262144],
   ['zai-org/GLM-5.3-Flash', 1048576],
   ['deepseek-ai/DeepSeek-V4-Flash-0731', 1048576],
   ['moonshotai/Kimi-K3', 1048576],
