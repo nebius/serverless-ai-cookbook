@@ -77,6 +77,7 @@ def reconcile_endpoint(cli: list[str], manifest: dict, state: dict, folder: Path
 def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
     identifier = person["id"]
     chat_model = getattr(args, 'chat_model', 'Qwen/Qwen3-235B-A22B-Instruct-2507')
+    reasoning_effort = getattr(args, 'reasoning_effort', None)
     folder = args.output / identifier
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     with open(folder / "setup.lock", "a") as lock:
@@ -88,12 +89,15 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
             "scientist_id": identifier, "tenant_id": person["tenant_id"],
             "principal_id": person["principal_id"], "bucket_name": person["bucket_name"],
             "email": person["email"], "image": args.image, "chat_model": chat_model,
+            "reasoning_effort": reasoning_effort,
             "project_id": manifest["project_id"], "state": "prepared",
             "endpoint_name": args.name_prefix + "-" + identifier}
         if state.get("endpoint_name", "science-qualification-20260918-" + identifier) != args.name_prefix + "-" + identifier:
             raise RuntimeError('Recorded endpoint name differs; use a separate preview output directory')
         if state.get('chat_model', 'Qwen/Qwen3-235B-A22B-Instruct-2507') != chat_model:
             raise RuntimeError('Recorded chat model differs; use a separate comparison endpoint')
+        if state.get('reasoning_effort') != reasoning_effort:
+            raise RuntimeError('Recorded reasoning effort differs; use a separate comparison endpoint')
         for key, value in {"image": args.image, "bucket_name": person["bucket_name"],
                            "principal_id": person["principal_id"],
                            "project_id": manifest["project_id"]}.items():
@@ -144,6 +148,9 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
                 "SEED_DEFAULT_USER_EMAIL": person["email"],
                 "SCIENTIFIC_DEDICATED_CHAT_ENABLED": "false",
                 "SCIENTIFIC_CHAT_MODEL": chat_model,
+                "SCIENTIFIC_CHAT_REASONING_EFFORT": reasoning_effort or '',
+                "SCIENTIFIC_CONTEXT_AUDIT_PATH": f'/workspace/{identifier}/qualification-context-sizes.jsonl'
+                    if getattr(args, 'context_audit', False) else '',
                 "TOKEN_FACTORY_SECRET_SELECTOR": manifest["token_factory_secret_selector"],
                 "TAVILY_SECRET_SELECTOR": manifest["tavily_secret_selector"],
                 "PLATFORM": manifest.get("platform", "cpu-d3"),
@@ -220,6 +227,9 @@ def main() -> None:
     parser.add_argument("--profile", default="sandbox2")
     parser.add_argument('--chat-model', default='Qwen/Qwen3-235B-A22B-Instruct-2507',
                         help='Verified Token Factory planning model; model/tool budgets are unchanged.')
+    parser.add_argument('--reasoning-effort', choices=['low', 'high', 'max'],
+                        help='Explicit provider-supported planning variant; never changes token budget.')
+    parser.add_argument('--context-audit', action='store_true', help='Record only per-call context sizes in the scientist workspace.')
     parser.add_argument('--name-prefix', default='science-qualification-20260918')
     parser.add_argument('--source-deployments', type=Path, help='Reuse verified credentials from existing deployment receipts; preserve old instances.')
     parser.add_argument("--only", help="Comma-separated scientist IDs")

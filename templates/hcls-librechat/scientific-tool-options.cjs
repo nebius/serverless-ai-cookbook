@@ -10,7 +10,7 @@ const core = new Set([
   'read_scientific_artifact_bytes',
 ]);
 
-module.exports = function scientificToolOptions(agent) {
+module.exports = function scientificToolOptions(agent, loadedTools = []) {
   const suffix = '_mcp_bionemo-models';
   const options = { ...agent.tool_options };
   // A first request may hold an mcp_all server pin until the catalog is loaded.
@@ -31,11 +31,21 @@ module.exports = function scientificToolOptions(agent) {
     const name = rawName + suffix;
     options[name] = { ...options[name], defer_loading: true };
   }
-  for (const name of agent.tools ?? []) {
-    if (name.endsWith(suffix) && !core.has(name.slice(0, -suffix.length)) &&
+  for (const name of [...(agent.tools ?? []), ...loadedTools.map((tool) => tool.name)]) {
+    if (name?.endsWith(suffix) && !core.has(name.slice(0, -suffix.length)) &&
         name !== `mcp_all${suffix}`) {
       options[name] = { ...options[name], defer_loading: true };
     }
   }
-  return options;
+  // The definitions-only loader expands mcp_all after this helper runs. Resolve
+  // newly published names at lookup time too, without maintaining another model
+  // catalog. This affects context loading only, never tool ACLs or validation.
+  return new Proxy(options, { get(target, name, receiver) {
+    const value = Reflect.get(target, name, receiver);
+    if (typeof name === 'string' && name.endsWith(suffix) &&
+        !core.has(name.slice(0, -suffix.length)) && name !== `mcp_all${suffix}`) {
+      return { ...value, defer_loading: true };
+    }
+    return value;
+  } });
 };

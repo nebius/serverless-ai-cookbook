@@ -1,5 +1,6 @@
 const { MongoClient, ObjectId } = require('mongodb');
 const { readFileSync } = require('node:fs');
+const { Constants } = require('librechat-data-provider');
 
 const gatewayInstructions = readFileSync(
   process.env.SCIENTIFIC_AGENT_INSTRUCTIONS_PATH || '/app/scientific-agent-instructions.md', 'utf8',
@@ -9,6 +10,8 @@ const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/LibreChat';
 const serviceEmail = 'nebius-scientific-ai-agent@localhost.invalid';
 const provider = process.env.SCIENTIFIC_CHAT_PROVIDER || 'Nebius Token Factory';
 const model = process.env.SCIENTIFIC_CHAT_MODEL || 'Qwen/Qwen3-235B-A22B-Instruct-2507';
+const reasoningEffort = process.env.SCIENTIFIC_CHAT_REASONING_EFFORT;
+if (reasoningEffort && !['low', 'high', 'max'].includes(reasoningEffort)) throw new Error('Unsupported explicit reasoning effort');
 
 const scientificModelsServerName = 'bionemo-models';
 const mcpTool = (name) => `${name}_mcp_${scientificModelsServerName}`;
@@ -24,6 +27,12 @@ const workbenchTools = [
   'workbench_list_apps',
   'workbench_track_operation', 'workbench_list_operations', 'workbench_get_operation',
   'workbench_get_operation_result', 'workbench_cancel_operation', 'workbench_workspace',
+].map((name) => `${name}_mcp_scientific-demos`);
+const clinicalWorkflowTools = [
+  'workshop_catalog', 'workshop_create_runs', 'workshop_list_runs',
+  'workshop_get_run', 'workshop_intervene',
+  'clinical_report_from_transcript', 'clinical_get_job',
+  'clinical_read_output', 'clinical_list_jobs', 'clinical_resume_job',
 ].map((name) => `${name}_mcp_scientific-demos`);
 const executionTools = ['execute_command_mcp_environment-execution', 'read_execution_mcp_environment-execution'];
 
@@ -68,7 +77,10 @@ function agents() {
 Guide work across protein structures and complexes, molecular and protein design, genomics and aging, biomedical imaging, speech and clinical documentation, generative media and robotics. Use the model's live schema, qualification and artifact contract before proposing execution.
 
 For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. Complete the authorized workflow, including analysis and saved deliverables, not only model invocation. Batch related preparation into one well-formed Python heredoc and analysis into another; avoid a separate tool call for each mkdir, header, chain or JSON key. Reserve tool steps for evaluation. Use the scientific gateway for model operations. Immediately save every returned operation ID with workbench_track_operation so the user can reconnect in Runs; polling must never resubmit compute. For a completed operation, use workbench_get_operation_result: it verifies and saves full JSON into workspace_file, returning compact metrics. Analyze that real file; do not guess output keys or copy large bytes into commands. Do not infer missing output fields from an input schema. Use Workspace for files available to this deployment and platform artifacts for model input/output. Never present scientific model output as clinical advice or experimental validation.`,
-      tools: [...allScientificTools, ...workbenchTools],
+      // Caller authorization remains at the platform. A fixed model-name list
+      // silently hid new Apps (including Cosmos video/LeRobot and speech).
+      // Model-specific schemas remain deferred by scientific-tool-options.
+      tools: [`${Constants.mcp_all}_mcp_${scientificModelsServerName}`, ...workbenchTools, ...clinicalWorkflowTools],
       mcpServerNames: [scientificModelsServerName, 'scientific-demos', 'tavily'],
       conversation_starters: [
         'Show the scientific model catalog grouped by protein structure, docking and design, imaging, genomics, and generative models.',
@@ -166,7 +178,8 @@ async function seedAgent({ agents: collection, aclEntries, owner, now, definitio
         mcpServerNames: [...new Set([...(definition.mcpServerNames || []), 'scientific-demos', 'structure-viewer', 'environment-execution'])],
         provider,
         model,
-        model_parameters: { model, max_tokens: 8192 },
+        model_parameters: { model, max_tokens: 8192,
+          ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}) },
         category: 'life-science',
         is_promoted: true,
         author: owner._id,
