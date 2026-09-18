@@ -43,7 +43,7 @@ def post(client, path, payload, receipt):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("check", "drain", "apply", "verify"))
+    parser.add_argument("action", choices=("check", "drain", "apply", "restore", "verify"))
     parser.add_argument("--candidate", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--models", required=True, nargs="+", help="Exact reviewed canonical model set")
@@ -76,9 +76,10 @@ def main():
                     }, args.output / ("drain-" + name + ".json"))
                 elif value["etag"] != identity(drained(row["spec"])):
                     raise ValueError("Refuse to drain an already promoted App")
-            elif args.action == "apply":
-                if value["etag"] == identity(proposed[name]["spec"]):
-                    print(json.dumps({"name": name, "state": "already_applied"}), flush=True)
+            elif args.action in {"apply", "restore"}:
+                target = row if args.action == "restore" else proposed[name]
+                if value["etag"] == identity(target["spec"]):
+                    print(json.dumps({"name": name, "state": "already_" + args.action}), flush=True)
                     continue
                 observation = kube("-n", namespace, "get", "modeldeployment", name)
                 status = observation.get("status", {})
@@ -88,15 +89,16 @@ def main():
                     or status.get("phase") != "Cold"
                     or any(replicas.get(key) != 0 for key in ("desired", "ready", "available"))):
                     raise ValueError("App has not fully drained the matching observed revision: " + name)
-                proposal = {**proposed[name], "base_etag": value["etag"]}
+                proposal = {"name": name, "namespace": namespace,
+                            "spec": target["spec"], "base_etag": value["etag"]}
                 preview = post(client, "/admin/api/v1/model-deployments:plan-preview", proposal,
-                               args.output / ("preview-" + name + ".json"))
+                               args.output / (args.action + "-preview-" + name + ".json"))
                 if preview["decision"]["disposition"] != ValidationDisposition.ACCEPTED or preview.get("render") is None:
                     raise ValueError("Prepared replacement was not accepted: " + name)
                 post(client, "/admin/api/v1/model-deployments:apply", {
                     "preview_id": preview["preview_id"], "proposed_etag": preview["proposed_etag"],
-                    "proposal": proposal, "idempotency_key": "qualification-20260918-apply-" + name + "-" + preview["proposed_etag"][:12],
-                }, args.output / ("apply-" + name + ".json"))
+                    "proposal": proposal, "idempotency_key": "qualification-20260918-" + args.action + "-" + name + "-" + preview["proposed_etag"][:12],
+                }, args.output / (args.action + "-" + name + ".json"))
             observation = kube("-n", namespace, "get", "modeldeployment", name)
             save(args.output / (args.action + "-observation-" + name + ".json"), observation)
             status = observation.get("status", {})
