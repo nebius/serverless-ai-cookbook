@@ -40,10 +40,12 @@ def main():
     parser.add_argument("--cohort", type=Path, required=True)
     parser.add_argument("--scientists", type=Path, required=True)
     parser.add_argument("--operator-accounting", action="store_true")
+    parser.add_argument("--operator-correlations", action="store_true",
+                        help="Also retain per-attempt existing lifecycle identity evidence, without changing the run.")
     parser.add_argument("--refresh", action="store_true")
     args = parser.parse_args()
     people = {p["id"]: p for p in json.loads(args.scientists.read_text())["scientists"]}
-    with (admin_client() if args.operator_accounting else nullcontext(None)) as admin:
+    with (admin_client() if args.operator_accounting or args.operator_correlations else nullcontext(None)) as admin:
         for receipt_path in sorted(args.cohort.glob("scientist-*/*/receipt.json")):
             receipt = json.loads(receipt_path.read_text())
             folder = receipt_path.parent
@@ -66,6 +68,24 @@ def main():
                 response = admin.get("/admin/api/v1/scientific-runs/" + operation["id"])
                 response.raise_for_status()
                 save(folder / "operator-accounting.json", response.json())
+            if admin and args.operator_correlations and (
+                args.refresh or not (folder / "operator-runtime-correlations.json").exists()
+            ):
+                detail = json.loads((folder / "operator-accounting.json").read_text())["data"]
+                attempts = [attempt for stage in detail["stages"] for attempt in stage["attempts"]]
+                evidence = []
+                for attempt in attempts:
+                    response = admin.get("/admin/api/v1/telemetry/workloads/" + attempt["id"])
+                    if response.status_code == 404:
+                        evidence.append({"attempt_id": attempt["id"], "state": "unavailable"})
+                        continue
+                    response.raise_for_status()
+                    fact = response.json()["data"]
+                    evidence.append({"attempt_id": attempt["id"], "state": "available",
+                                     "subject": fact["subject"], "correlations": fact["correlations"],
+                                     "rollup": fact["rollup"]})
+                save(folder / "operator-runtime-correlations.json", {"operation_id": operation["id"],
+                                                                       "attempts": evidence})
             print(json.dumps({"case_id": receipt["case_id"], "operation_id": operation["id"],
                               "captured": str(events_path)}), flush=True)
 
