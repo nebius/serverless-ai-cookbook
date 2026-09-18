@@ -84,3 +84,40 @@ platform availability incident. Helm render comparisons include hooks and
 No readiness verdict or paper-reproduction claim follows from these canaries.
 Experimental-reference accuracy, service reliability, complete user deliverables,
 capacity waits and testing limitations are reported separately.
+
+## Checkpoint at approximately 21:26 UTC
+
+- GenMol/ProteinMPNN public repaired cohort is **216/216 semantically verified**.
+  This verifies requested molecular/sequence outputs, not experimental efficacy.
+- CT candidate v2 completed **54/54** isolated H100 cases (nine public scans,
+  three prompt modes, twice). Evo2 v2 completed **96/96** original cases plus
+  two serialized concurrency calls; 260 production-timing health checks passed.
+  Exact-runtime public promotion is in progress, not yet customer-qualified.
+- Public control plane Helm160 includes exact LeRobot manifest roles, canonical
+  artifact-manifest discovery and compressed-byte verification. The corrected
+  Proteina request has passed admission and is evaluating its generated designs.
+- Workbench v19 scientist01 completed its requested structure report in one
+  natural turn. Independent Gemmi/NumPy analysis confirms scientist02's poor
+  barnase–barstar result (global CA RMSD15.949Å); a follow-up was required to
+  finish its deliverables. Neither study reproduces a paper benchmark.
+- v22 client preserves complete MindEval records in content-addressed workspace
+  files. Scientists05/08 are now testing chemistry and full-recording medical
+  documentation in real browser sessions. Scientist06's previous complex study
+  is allowed to finish before its identity is handed to the genomics workbench.
+
+| ID | Additional observation | Classification and current action |
+| --- | --- | --- |
+| Q29 | A valid owned Proteina gzip artifact failed its internal size/hash check although the public stored bytes matched. | Internal HTTP reader transparently decompressed `Content-Encoding: gzip`. Source e2d2e1ff8 uses raw stored bytes, tested for gzip and plain content; deployed160. Keep the original failed admission. |
+| Q30 | LeRobot manifest roles were undiscoverable and malformed owned manifests surfaced as misleading404s. | Public discovery now exposes exact source-kind entry names/types and the canonical manifest schema; actionable owned-input errors are422/MCP-32602. No ownership information is disclosed for unknown artifacts. Deployed160; complete LeRobot transformation still blocked by Q31. |
+| Q31 | Recorded Cosmos MP4 succeeds with fresh loading but fails after existing GPU snapshot restore at VAE upsampling with CUDA `operation not supported`. | Matched identical-input, same-H100 comparison isolates the restore path. Existing checkpoint must not be treated as qualified. Retain actual restored-worker stderr, use a tested fresh-load fallback, and requalify any replacement snapshot. Fix/promotion in progress. |
+| Q32 | Cosmos requested64 video frames but the actual output contains65; response metadata claimed64. | Pinned upstream temporal grid rounds upward. Exact frame handling and independent media verification are required before LeRobot action/frame alignment can pass. Original output retained. |
+| Q33 | Restored model worker stderr lived only in a checkpoint-directory file, lost when its Pod was removed. | Outer serving-wrapper log bridge is under test; derive path from the actual checkpoint directory, forward only new lines and preserve source traceback without replaying donor logs. |
+| Q34 | Workbench Runs temporarily returned503; an MCP call returned500 without a recovered durable admission. Outer access middleware also manufactures `No response returned` on client disconnect. | Narrow pure-ASGI access logger20c167d6b passes87 focused tests; rollout pending. This proven middleware defect does not establish the cause of every historical500/503. Earlier MolMIM inner200/SSE with zero bytes and incomplete stream remains a failure, not success. |
+| Q35 | Root resumed three evaluator cases with system Python lacking NumPy after model work had succeeded. | Harness/operator error, not model failure. Original failures retained; same-operation receipts rescored in the pinned evaluator environment, no duplicate GPU submissions. Pre-admission dependency checks and pinned requirements now prevent this class of mistake. Resume-inclusive elapsed time is workflow latency, not pure inference time. |
+| Q36 | MindEval report omitted full transcripts; one narrative invented an unsupported significance threshold. Aging report used slightly different formula coefficients and initially attributed the resulting offset to the runtime. | v22 losslessly exports full records outside context. Independent checks match all48 judgment cells and32 PhenoAge rows to their declared source/coefficients; retain original narratives and corrections. Scientific interpretation remains a separate gate from valid API outputs. |
+
+Deployment-tool note: client-side `kubectl apply` duplicates a large renderer
+bundle in its last-applied annotation and exceeds Kubernetes' annotation limit.
+The attempted map creation did not change Helm or App runtime references. Use
+server-side apply for these exact immutable maps; retain this failed preparation
+alongside the subsequent rollout rather than presenting it as a clean first try.
