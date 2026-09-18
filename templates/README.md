@@ -10,6 +10,30 @@ Templates are quick-start configurations to help you serve models and run jobs i
 
 ## Endpoints
 
+### 🧬 Protein Structure Prediction
+
+<table width="960" border="1" cellpadding="8" cellspacing="0" style="table-layout:fixed;width:960px;min-width:960px;border-collapse:collapse;">
+<colgroup>
+  <col width="220">
+  <col width="160">
+  <col width="580">
+</colgroup>
+<thead>
+<tr>
+  <th width="220" align="left">Template</th>
+  <th width="160" align="center">Deploy</th>
+  <th width="580" align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td width="220" valign="middle">🧬&nbsp;<a href="endpoint-bioir-boltz2/README.md"><strong>BioIR: Boltz-2</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb26%40sha256%3A98cd41bcc0a6eed1dcd106a59cc74c58a35e711138ad4ad06d482271da914668&amp;targetPort=8888&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;command=%2Fusr%2Flocal%2Fbin%2Fbioir-notebook&amp;env=JUPYTER_PASSWORD%3Dbionemo-demo"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">A password-protected L40S notebook with BioIR 0.1.0 baked in. <strong>Change JUPYTER_PASSWORD before creating the endpoint.</strong> Model assets download on first prediction.</td>
+</tr>
+</tbody>
+</table>
+
 ### 🎨 Text-to-Image
 
 <table width="960" border="1" cellpadding="8" cellspacing="0" style="table-layout:fixed;width:960px;min-width:960px;border-collapse:collapse;">

@@ -1,0 +1,76 @@
+{
+  "date": "2026-09-18",
+  "image": "cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb26@sha256:98cd41bcc0a6eed1dcd106a59cc74c58a35e711138ad4ad06d482271da914668",
+  "platform": "gpu-l40s-a",
+  "preset": "1gpu-8vcpu-32gb",
+  "driver": "580.173.02",
+  "bionemo_ir": "0.1.0",
+  "torch": "2.11.0+cu130",
+  "cuda": "13.0",
+  "local": {
+    "pytest_passed": 7,
+    "ruff": "passed",
+    "shell_syntax": "passed",
+    "pip_check": "passed",
+    "non_root_cache_write": "passed",
+    "jupyter_anonymous_access": "denied",
+    "jupyter_wrong_password": "denied",
+    "jupyter_correct_password": "notebook accessible"
+  },
+  "notebook": {
+    "status": "passed",
+    "all_cells_executed": true,
+    "cold_execution_seconds": 165.91,
+    "model_inference_time_seconds": 6.062489388000017,
+    "cif_bytes": 78821,
+    "score_keys": [
+      "iptm",
+      "max_pae",
+      "pae",
+      "plddt",
+      "ptm"
+    ]
+  },
+  "http": {
+    "anonymous_status": 401,
+    "authenticated_health_status": 200,
+    "ready_status": 200,
+    "fold_status": 200,
+    "cold_load_seconds": 157.68,
+    "smoke": {
+      "request_id": "bf4704ffbb214dbb87f5d577036a0320",
+      "model_inference_time_seconds": 2.842962832000012,
+      "total_time_seconds": 2.983462302000021,
+      "cif_bytes": 78821
+    },
+    "independent_structure_check": {
+      "models": 1,
+      "chains": 1,
+      "residues": 95,
+      "atoms": 787,
+      "sequence_matches_request": true,
+      "finite_coordinates": true,
+      "cif_sha256": "e97eaa49488bf7e147cb78a4ea856c5611783be524464ee4718a86193852ccc9",
+      "cif_bytes": 78821,
+      "model_inference_time_seconds": 2.8849232669999765,
+      "total_time_seconds": 3.0279626849999772,
+      "score_keys": [
+        "iptm",
+        "max_pae",
+        "pae",
+        "plddt",
+        "ptm"
+      ]
+    }
+  },
+  "observed_asset_revisions": {
+    "boltz-community/boltz-1": "7c1d83b779e4c65ecc37dfdf0c6b2788076f31e1",
+    "boltz-community/boltz-2": "6fdef46d763fee7fbb83ca5501ccceff43b85607"
+  },
+  "limits": [
+    "Deployment and structural-consistency smoke only, not scientific accuracy validation.",
+    "Console form browser access blocked by Cloudflare HTTP 403.",
+    "Endpoint CLI used short alias cb26:r0918b verified against the image digest; notebook job used the digest directly.",
+    "Public upstream model assets are downloaded separately from the pinned image."
+  ]
+}
