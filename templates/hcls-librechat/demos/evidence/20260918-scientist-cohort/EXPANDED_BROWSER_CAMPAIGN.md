@@ -182,6 +182,26 @@ failures or establish two clean final-release cohorts.
 
 ## Release pins and limitations
 
+### 23:12 UTC — matched timing independently verified; canonical steps published
+
+Independent downloaded-byte/reference/receipt checks confirm the same four
+inputs, model revision, Pod and GPU identities across the v25/v26 experiment.
+Execution wall121.7745s→63.6795s is a47.707% measured reduction. Model-reported
+generation totals11.6089s→11.5980s and service admission-to-completion totals
+17.9138s→17.8425s barely changed. All64-base outputs, GC, reference-suffix
+identity, report values and hashes verify. This is one paired cohort, not a
+statistical guarantee or whole-conversation improvement. Both conversations
+needed continuation and repaired malformed plans. Protected evidence:
+`browser-evidence/scientist-05-polling-v25-v26-independent-verification.json`.
+
+The canonical typed-step candidate is source
+`b3736e65435b2a7434f8185e61c2e1435927d76d`, image
+`cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0918-v27-b3736e6`, digest
+`sha256:ab24b961691040286dcbde5ffb329c2b37f0ca85d5680ebe11afa606af4c0e00`.
+73 focused tests plus9 batch-client tests pass;05/07 previews are provisioning.
+Fresh natural browser completion is still required. No changed budgets, limits,
+model settings or automatic retry of ambiguous admissions.
+
 ### 23:06 UTC — live typed launch and matched timing replicate
 
 v26 `0fbe1f8`, digest
