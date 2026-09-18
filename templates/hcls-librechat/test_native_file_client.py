@@ -65,3 +65,31 @@ def test_flat_operation_receipt_is_recovered_without_resubmitting(tmp_path, monk
     recovered = asyncio.run(client.run(args))
     assert recovered['operation_id'] == 'saved-operation'
     assert recovered['state'] == 'failed'
+
+
+def test_explicit_non_admission_is_safe_to_retry():
+    error = {'isError': True, 'content': [{'type': 'text', 'text': json.dumps({'error': {
+        'type': 'admission_limit_reached', 'code': 'admission_limit_reached',
+        'message': 'retry shortly', 'retryable': True, 'durable_admission': False,
+        'request_id': 'request-1', 'idempotency_key': 'acceptance-key',
+        'retry_after_seconds': 2,
+    }})}]}
+    assert client.explicit_rejection(error) == {
+        'type': 'admission_limit_reached', 'code': 'admission_limit_reached',
+        'message': 'retry shortly', 'request_id': 'request-1',
+        'idempotency_key': 'acceptance-key', 'retryable': True,
+        'retry_after_seconds': 2, 'durable_admission': False,
+    }
+    error['content'][0]['text'] = json.dumps({'error': {'durable_admission': True}})
+    assert client.explicit_rejection(error) is None
+
+
+def test_result_artifact_is_hash_verified_and_decoded():
+    data = b'{"answer":42}'
+    envelope = {'schema': 'fs2-serve.nebius.ai/operation-artifact-result/v1',
+        'content_type': 'application/json', 'artifact': {'artifact_id': 'artifact-1',
+        'compression': 'none', 'size_bytes': len(data),
+        'sha256': client.hashlib.sha256(data).hexdigest()}}
+    assert client.parse_result_artifact(envelope, data) == {'answer': 42}
+    with pytest.raises(ValueError, match='SHA-256'):
+        client.parse_result_artifact(envelope, b'{"answer":43}')

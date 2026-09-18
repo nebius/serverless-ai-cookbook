@@ -105,12 +105,11 @@ const providerModels = [
 ].filter(({ endpoint }) => dedicatedChatEnabled || endpoint !== 'Nebius Token Factory Dedicated');
 
 const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => models.map(([model, label], index) => {
-  const isDefault = endpoint === (dedicatedChatEnabled ? 'Nebius Token Factory Dedicated' : 'Nebius Token Factory') && index === 0;
   return {
-    name: isDefault ? 'nebius-scientific-ai-agent' : `science-${endpoint}-${model}`.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase(),
+    name: `science-${endpoint}-${model}`.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase(),
     label, group, groupIcon: endpoint === 'anthropic' ? 'anthropic' : endpoint === 'openAI' ? 'openAI' : '/assets/token-factory.svg',
     iconURL: endpoint === 'anthropic' || endpoint === 'openAI' ? endpoint : '/assets/token-factory.svg',
-    default: isDefault, showOnLanding: false, showIconInHeader: true,
+    default: false, showOnLanding: false, showIconInHeader: true,
     description: endpoint === 'Nebius Token Factory Dedicated'
       ? 'Dedicated event capacity · scientific tools and web research'
       : endpoint === 'Nebius Token Factory'
@@ -124,6 +123,12 @@ const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => model
 }));
 
 const sharedGatewayKey = Boolean(process.env.SCIENTIFIC_MODELS_API_KEY);
+modelSpecs.push({ name: 'nebius-scientific-ai-agent', label: 'Nebius Scientific AI Agent',
+  group: 'Scientific workspace', groupIcon: '/assets/token-factory.svg',
+  iconURL: '/assets/token-factory.svg', showOnLanding: false, showIconInHeader: true,
+  default: true, skills: true,
+  mcpServers: ['bionemo-models', 'scientific-demos', 'tavily', 'structure-viewer', 'environment-execution'],
+  preset: { endpoint: 'agents', agent_id: 'agent_nebius_scientific_ai' } });
 modelSpecs.push(...[
   ['clinical-report', 'Clinical Report Draft', 'agent_clinical_report'],
   ['mindeval-workshop', 'MindEval Workshop', 'agent_mindeval_workshop'],

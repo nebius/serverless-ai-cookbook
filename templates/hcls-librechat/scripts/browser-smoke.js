@@ -13,11 +13,12 @@ async (page) => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     const select = async (group, label) => {
       await page.getByTestId('model-selector-button').click();
-      check((await page.getByRole('option').allTextContents()).join('|') === 'Nebius Token Factory|OpenAI|Claude', 'Unexpected raw endpoint/tutorial group');
+      const groups = await page.getByRole('option').allTextContents();
+      check(['Scientific workspace', 'Public Token Factory', 'OpenAI', 'Claude', 'Clinical demos'].every((name) => groups.includes(name)), 'Expected scientific and provider groups are missing');
       await page.getByRole('option', { name: group, exact: true }).click();
       await page.getByRole('menuitem').filter({ hasText: label }).click();
     };
-    await select('Nebius Token Factory', 'Qwen 3 30B');
+    await select('Public Token Factory', 'Qwen 3 30B');
     const chosenModel = await page.getByTestId('model-selector-button').innerText();
     const prompts = [];
     for (const card of await page.locator('[data-workflow]').all()) {
@@ -53,12 +54,12 @@ async (page) => {
       check(!(await dialog.innerText()).includes('Current key: never expires'), 'Missing key displayed as configured');
       await page.getByRole('button', { name: 'Close', exact: true }).click();
     }
-    await select('Nebius Token Factory', 'Qwen 3 30B');
+    await select('Scientific workspace', 'Nebius Scientific AI Agent');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile horizontal overflow');
     await page.getByTestId('model-selector-button').click();
-    await page.getByRole('option', { name: 'Nebius Token Factory', exact: true }).waitFor();
+    await page.getByRole('option', { name: 'Public Token Factory', exact: true }).waitFor();
     await page.screenshot({ path: 'output/playwright/after-mobile-selector.png' });
     await page.keyboard.press('Escape');
     await page.locator('[data-workflow="wildcard"]').click();

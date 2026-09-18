@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import time
+from urllib.parse import quote
 
 import httpx2
 from jsonschema import Draft202012Validator
@@ -38,6 +39,37 @@ def unpack(response):
     return json.loads(texts[0])
 
 
+def explicit_rejection(response):
+    """Return a bounded error only when the gateway proves no admission occurred."""
+    data = response if isinstance(response, dict) else response.model_dump(mode='json', by_alias=True)
+    if not data.get('isError'):
+        return None
+    texts = [c.get('text', '') for c in data.get('content', []) if c.get('type') == 'text']
+    if len(texts) != 1:
+        return None
+    try:
+        error = json.loads(texts[0]).get('error', {})
+    except (TypeError, ValueError, AttributeError):
+        return None
+    if error.get('durable_admission') is not False:
+        return None
+    allowed = ('type', 'code', 'message', 'request_id', 'idempotency_key',
+               'retryable', 'retry_after_seconds', 'durable_admission')
+    return {key: error[key] for key in allowed if key in error}
+
+
+def parse_result_artifact(envelope, data):
+    if envelope.get('schema') != 'fs2-serve.nebius.ai/operation-artifact-result/v1':
+        return envelope
+    artifact = envelope.get('artifact', {})
+    if (envelope.get('content_type') != 'application/json'
+            or artifact.get('compression') != 'none'
+            or len(data) != artifact.get('size_bytes')
+            or hashlib.sha256(data).hexdigest() != artifact.get('sha256')):
+        raise ValueError('Result artifact format, size or SHA-256 mismatch.')
+    return json.loads(data)
+
+
 async def run(args):
     endpoint = os.environ['SCIENTIFIC_MODELS_MCP_URL']
     key = os.environ['SCIENTIFIC_MODELS_API_KEY']
@@ -57,18 +89,30 @@ async def run(args):
         raise ValueError('Output directory belongs to different inputs, caller, model or idempotency key.')
     if record['state'] in ('submitting', 'admission_unknown'):
         submission = args.output_dir / 'submission.json'
-        accepted = unpack(json.loads(submission.read_text())) if submission.exists() else {}
-        operation = accepted['operation'] if isinstance(accepted.get('operation'), dict) else accepted
-        if (operation.get('id') and operation.get('status')
-                and operation.get('model_id') == args.model
-                and operation.get('idempotency_key') == args.idempotency_key):
-            record.update(operation_id=operation['id'], state=operation['status'])
+        saved_submission = json.loads(submission.read_text()) if submission.exists() else {}
+        rejection = explicit_rejection(saved_submission)
+        if rejection:
+            record.update(state='prepared', last_rejection=rejection)
             save(path, record)
+            accepted = {}
         else:
-            raise RuntimeError('Previous admission is unknown. Inspect receipt; do not resubmit.')
-    if record['state'] == 'succeeded' and not (args.output_dir / 'result.json').is_file():
-        record['state'] = 'result_pending'
-        save(path, record)
+            accepted = unpack(saved_submission) if submission.exists() else {}
+        if not rejection:
+            operation = accepted['operation'] if isinstance(accepted.get('operation'), dict) else accepted
+            if (operation.get('id') and operation.get('status')
+                    and operation.get('model_id') == args.model
+                    and operation.get('idempotency_key') == args.idempotency_key):
+                record.update(operation_id=operation['id'], state=operation['status'])
+                save(path, record)
+            else:
+                raise RuntimeError('Previous admission is unknown. Inspect receipt; do not resubmit.')
+    if record['state'] == 'succeeded':
+        result_path = args.output_dir / 'result.json'
+        saved_result = json.loads(result_path.read_text()) if result_path.is_file() else {}
+        if (not result_path.is_file()
+                or saved_result.get('schema') == 'fs2-serve.nebius.ai/operation-artifact-result/v1'):
+            record['state'] = 'result_pending'
+            save(path, record)
     if record['state'] in ('succeeded', 'failed', 'cancelled', 'expired', 'preempted'):
         return record
     async with httpx2.AsyncClient(headers={'Authorization': 'Bearer ' + key}, timeout=120, trust_env=False) as http:
@@ -90,7 +134,12 @@ async def run(args):
                     operation = accepted['operation'] if isinstance(accepted.get('operation'), dict) else accepted
                     record.update(operation_id=operation['id'], state=operation['status'])
                 except Exception:
-                    record['state'] = 'admission_unknown'
+                    response = json.loads((args.output_dir / 'submission.json').read_text()) if (args.output_dir / 'submission.json').exists() else {}
+                    rejection = explicit_rejection(response)
+                    if rejection:
+                        record.update(state='rejected', last_rejection=rejection)
+                    else:
+                        record['state'] = 'admission_unknown'
                     save(path, record)
                     raise
                 save(path, record)
@@ -106,7 +155,17 @@ async def run(args):
                     result = await call('get_operation_result', {'operation_id': record['operation_id']}, 'result-envelope.json')
                     if result['operation']['id'] != record['operation_id']:
                         raise RuntimeError('Result operation identity mismatch.')
-                    save(args.output_dir / 'result.json', result['result'])
+                    value = result['result']
+                    if value.get('schema') == 'fs2-serve.nebius.ai/operation-artifact-result/v1':
+                        save(args.output_dir / 'result-artifact.json', value)
+                        artifact_id = value.get('artifact', {}).get('artifact_id')
+                        if not isinstance(artifact_id, str):
+                            raise ValueError('Result artifact identifier is missing.')
+                        origin = endpoint.removesuffix('/mcp').removesuffix('/mcp/')
+                        downloaded = await http.get(origin + '/v1/artifacts/' + quote(artifact_id, safe='') + '/content')
+                        downloaded.raise_for_status()
+                        value = parse_result_artifact(value, downloaded.content)
+                    save(args.output_dir / 'result.json', value)
                     record.update(state='succeeded', result_path=str(args.output_dir / 'result.json'))
                     save(path, record)
                     return record

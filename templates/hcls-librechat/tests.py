@@ -45,7 +45,7 @@ def test_personal_installation_can_use_public_chat_without_event_capacity(tmp_pa
     config, _ = render_config(tmp_path, SCIENTIFIC_DEDICATED_CHAT_ENABLED="false")
     defaults = [item for item in config["modelSpecs"]["list"] if item["default"]]
     assert len(defaults) == 1
-    assert defaults[0]["preset"]["endpoint"] == "Nebius Token Factory"
+    assert defaults[0]["preset"] == {"endpoint": "agents", "agent_id": "agent_nebius_scientific_ai"}
     assert not any("Dedicated" in item["group"] for item in config["modelSpecs"]["list"])
     assert not any("Dedicated" in item["name"] for item in config["endpoints"]["custom"])
     assert "Nebius Token Factory Dedicated" not in config["endpoints"]["agents"]["allowedProviders"]
@@ -168,7 +168,7 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
     config, _ = render_config(tmp_path)
     specs = config["modelSpecs"]["list"]
     assert {item["group"] for item in specs} == {
-        "Public Token Factory", "OpenAI", "Claude", "Clinical demos"}
+        "Scientific workspace", "Public Token Factory", "OpenAI", "Claude", "Clinical demos"}
     assert len([item for item in specs if item["group"] == "Dedicated Token Factory"]) == 0
     assert len([item for item in specs if item["group"] == "Public Token Factory"]) > 2
     assert len([item for item in specs if item["default"]]) == 1
@@ -178,6 +178,11 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
             assert item["preset"]["endpoint"] == "agents"
             assert item["preset"]["agent_id"] in {"agent_clinical_report", "agent_mindeval_workshop"}
             assert item["mcpServers"] == ["scientific-demos"]
+            continue
+        if item["group"] == "Scientific workspace":
+            assert item["preset"] == {"endpoint": "agents", "agent_id": "agent_nebius_scientific_ai"}
+            assert item["default"] is True
+            assert item["mcpServers"] == ["bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"]
             continue
         assert item["skills"] is True
         assert item["mcpServers"] == ["bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"]
@@ -218,7 +223,7 @@ def test_default_model_and_visible_workbench(tmp_path) -> None:
     config, _ = render_config(tmp_path)
     brand_client = (ROOT / "brand-client.mjs").read_text(encoding="utf-8")
     default = next(item for item in config["modelSpecs"]["list"] if item["default"])
-    assert default["preset"]["model"] == "zai-org/GLM-5.3-Flash"
+    assert default["preset"] == {"endpoint": "agents", "agent_id": "agent_nebius_scientific_ai"}
     assert "nebius-scientific-workbench" in brand_client
     for title in (
         "Reproduce a published result", "Predict and compare structures", "Design and rank candidates",
@@ -230,8 +235,8 @@ def test_default_model_and_visible_workbench(tmp_path) -> None:
 def test_team_bucket_context_is_injected(tmp_path) -> None:
     config, _ = render_config(tmp_path, TEAM_ID="stockholm-team-01",
                               TEAM_BUCKET_NAME="stockholm-hackathon-team-01")
-    default = next(item for item in config["modelSpecs"]["list"] if item["default"])
-    prompt = default["preset"]["promptPrefix"]
+    public = next(item for item in config["modelSpecs"]["list"] if item["group"] == "Public Token Factory")
+    prompt = public["preset"]["promptPrefix"]
     assert "stockholm-team-01's dedicated scientific workspace" in prompt
     assert "stockholm-hackathon-team-01 is mounted read-write at /workspace" in prompt
     custom = config["endpoints"]["custom"]
