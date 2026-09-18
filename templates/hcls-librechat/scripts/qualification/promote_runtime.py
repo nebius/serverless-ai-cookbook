@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 from pathlib import Path
 
@@ -57,6 +58,10 @@ def main():
         or any(r["name"] != r["spec"]["modelRef"] for r in proposed.values())):
         raise ValueError("Promotion must match the explicit canonical App/model set exactly")
     args.output.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # A rollback can restore the very same spec/ETag. A later promotion is a
+    # different lifecycle action, not a retry of that old drain. Keep retries
+    # stable inside one evidence directory, but distinct across transactions.
+    transaction = hashlib.sha256(str(args.output.resolve()).encode()).hexdigest()[:12]
     with admin_client() as client:
         current = {}
         for row in original:
@@ -72,7 +77,7 @@ def main():
             if args.action == "drain":
                 if value["etag"] == identity(row["spec"]):
                     post(client, f"/admin/api/v1/model-deployments/{name}:drain", {
-                        "base_etag": value["etag"], "idempotency_key": "qualification-20260918-drain-" + name + "-" + value["etag"][:12],
+                        "base_etag": value["etag"], "idempotency_key": "qualification-20260918-" + transaction + "-drain-" + name + "-" + value["etag"][:12],
                     }, args.output / ("drain-" + name + ".json"))
                 elif value["etag"] != identity(drained(row["spec"])):
                     raise ValueError("Refuse to drain an already promoted App")
@@ -97,7 +102,7 @@ def main():
                     raise ValueError("Prepared replacement was not accepted: " + name)
                 post(client, "/admin/api/v1/model-deployments:apply", {
                     "preview_id": preview["preview_id"], "proposed_etag": preview["proposed_etag"],
-                    "proposal": proposal, "idempotency_key": "qualification-20260918-" + args.action + "-" + name + "-" + preview["proposed_etag"][:12],
+                    "proposal": proposal, "idempotency_key": "qualification-20260918-" + transaction + "-" + args.action + "-" + name + "-" + preview["proposed_etag"][:12],
                 }, args.output / (args.action + "-" + name + ".json"))
             observation = kube("-n", namespace, "get", "modeldeployment", name)
             save(args.output / (args.action + "-observation-" + name + ".json"), observation)
