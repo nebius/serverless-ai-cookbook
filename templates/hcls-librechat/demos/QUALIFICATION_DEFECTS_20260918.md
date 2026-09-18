@@ -157,6 +157,41 @@ alongside the subsequent rollout rather than presenting it as a clean first try.
 | Q42 | GPU-observer DaemonSet counted stopped preemptible nodes as rollout targets because it tolerated every NoSchedule taint;164 upgrade timed out and165 rollback is pending. | Platform preemption/release-lifecycle defect. Source4992432d3 narrows default toleration to dedicated GPU workloads, preserving configurable explicit pool keys. Live recovery will set the same exact list; no timeout/limit increase or readiness bypass. Not yet deployed at this checkpoint. |
 | Q43 | Fresh Cosmos V4 fully warmed checkpoint copied42GiB but exceeded existing600s CRIU capture limit; prior r7 restore remains CUDA-incompatible for this input. | Snapshot path unqualified. Failed capture is unusable and original checkpoint untouched. Isolated bounded logging/storage optimization is underway; fresh loading succeeds, but snapshot acceleration is not claimed. |
 
+## Checkpoint at approximately 22:59 UTC
+
+- Helm166 deployed with the narrowed GPU-observer toleration. Helm167 then
+  deployed only the reviewed CXR runtime maps; its owner configuration was
+  applied through the existing drain/ETag workflow. Initial public CXR replay
+  now records the actual Pod, node and GPU UUID. Full replay remains in progress.
+- OpenFold3's isolated repaired image completed three independent public
+  complexes/seeds in38.8–45.0s with unchanged resources. This repairs execution,
+  not prediction quality: whole-complex CA RMSD remains14.4–18.9Å. Helm168 is
+  deploying its exact execution map together with the preemption repair below.
+- Qwen's separate repaired chat/JSON/forced-tool replay passed60/60. Resumed
+  MolMIM testing still records structured bounded generation exhaustion where
+  the requested constrained yield cannot be met; those are not successful
+  molecular-design outcomes and must remain visible to the scientist.
+- Cosmos V4 public native inference completed in15.655s; total wait was about
+  464s including newly provisioned preemptible capacity and runtime startup.
+  Output was independently decoded and hash-verified. Full LeRobot replay is
+  running; metadata preservation alone will not establish motion fidelity.
+- Cosmos's new quiet-logging snapshot captured in153.73s within the unchanged
+  600s limit. Strict same-GPU restore used30.40s CRIU plus5.61s CUDA; donor
+  output hashes matched, and unseen cases passed. This is a warm-cache isolated
+  result, not yet cross-node or public snapshot qualification. The original
+  failed verbose capture and old incompatible checkpoint are preserved.
+- Fresh v24 scientist02 and07 studies remain incomplete:02 completed two
+  Boltz2 requests but failed Protenix file preparation;07 created unnecessary
+  uploads and failed an append on the mounted bucket before any model call.
+  v26 adds a typed existing-runner workflow interface and is being built.
+  v25 scientist05's16 deterministic docking comparisons were correct, but its
+  report still misidentified an extremum. No blanket workbench pass is claimed.
+
+| ID | Additional observation | Classification and current action |
+| --- | --- | --- |
+| Q44 | ESMFold2 operation405cc84b was scheduled on a preemptible node that shut down before the container started. An explicit DeletionByTaintManager disruption was classified as a nonretryable model error; the caller waited1331s. | Capacity loss is not a model failure, but misclassification is a software defect. Sourceb60bdf3f5/cb12da775 recognizes exact disruption evidence without hiding OOM, execution timeout or explicit application errors.169 tests pass; deployment168 and live replay pending. Original failed operation remains immutable. |
+| Q45 | All four advertised Proteina ligand/AME variant cases failed although protein-target workflows had passed. Ligand generation/filter succeeded before evaluation failed; AME generation failed immediately. | Broader advertised-mode defects. Retained tracebacks show a Biotite text-mode input error for ligand evaluation and missing ligand features in AME. Separate Task Deck ticket owns pinned-source diagnosis, fixes and original-payload replay; no capacity excuse or silent feature removal. |
+
 Cosmos fresh runtime now independently verifies exact frame count, dimensions
 and differing requested FPS. The suspected25→24FPS output issue was disproven
 by a real fresh test; no speculative repair was applied. LeRobot still requires
