@@ -241,7 +241,7 @@ Pass `--token <value>` to set your own, or `--token-secret <secret-version-id>` 
 
 | Variant | Change | Platform / preset | Notes |
 | --- | --- | --- | --- |
-| **Cosmos3-Edge** (4B) | `nvidia/Cosmos3-Edge` | `gpu-rtx6000-a` / `1gpu-24vcpu-218gb` (uk-south2) or `gpu-l40s-a` / `1gpu-16vcpu-64gb` | Same flags, validated with this template's requests. 4.7 GiB of weights, 131k context, ready in ~7 min. Edge **reasons by default** (emits `<think>…</think>` even without the instruction) and spends ~2× Nano's prompt tokens per video — give it `max_tokens ≥ 512` or ask for "only the letter/JSON" when you want a short answer. |
+| **Cosmos3-Edge** (4B) | `nvidia/Cosmos3-Edge` | `gpu-h100-sxm` / `1gpu-16vcpu-200gb` (validated) or `gpu-l40s-a` / `1gpu-16vcpu-64gb`; NVIDIA also recommends RTX Pro 6000 (`gpu-rtx6000-a` / `1gpu-24vcpu-218gb` where offered) | Same flags, validated with this template's requests on H100. 4.7 GiB of weights, 131k context, ready in ~7 min. Edge **reasons by default** (emits `<think>…</think>` even without the instruction) and spends ~2× Nano's prompt tokens per video — give it `max_tokens ≥ 512` or ask for "only the letter/JSON" when you want a short answer. |
 | **Cosmos3-Super** (64B) | `nvidia/Cosmos3-Super` and `--tensor-parallel-size 8` | `gpu-h200-sxm` / `8gpu-128vcpu-1600gb` | Highest quality; Nebius offers 1- and 8-GPU presets, so Super runs TP=8. Not validated in this template. |
 
 <!-- /factory:cli -->
