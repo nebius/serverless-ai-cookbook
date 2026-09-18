@@ -43,7 +43,7 @@ function privateKey(key) {
   if (!key || /\s/.test(key)) throw failure('Configure your Scientific AI API key in demo settings.', 401);
   return key;
 }
-async function platform(key, method, resource, body, idempotencyKey) {
+async function platform(key, method, resource, body, idempotencyKey, timeoutMs = 45000) {
   privateKey(key);
   const allowed = resource === '/v1/models' || resource === '/v1/scientific-models' || resource === '/v1/storage'
     || resource === '/v1/storage/credentials'
@@ -53,7 +53,7 @@ async function platform(key, method, resource, body, idempotencyKey) {
   if (!allowed || !['GET', 'POST'].includes(method)) throw failure('Unsupported platform operation');
   let response;
   try {
-    response = await fetch(PLATFORM + resource, { method, redirect: 'error', signal: AbortSignal.timeout(45000),
+    response = await fetch(PLATFORM + resource, { method, redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json',
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
@@ -269,15 +269,30 @@ function runEntry(operation, previous = {}, metadata = {}) {
     updated_at: new Date().toISOString(), operation,
   };
 }
-async function track(owner, key, operationId, metadata = {}) {
+async function track(owner, key, operationId, metadata = {}, timeoutMs = 45000) {
   if (!RUN_ID.test(operationId || '')) throw failure('Supply a valid operation ID.');
-  const current = await platform(key, 'GET', `/v1/operations/${operationId}`);
+  const current = await platform(key, 'GET', `/v1/operations/${operationId}`, undefined, undefined, timeoutMs);
   const operation = current.operation && typeof current.operation === 'object' ? current.operation : current;
   if (operation.id !== operationId) throw failure('Platform returned a mismatched operation.', 502);
   const existing = await optionalRead(path.join(runDirectory(owner, key), operationId + '.json'), {});
   const entry = runEntry(operation, existing, metadata);
   await saveRun(owner, key, entry);
   return { ...entry, ...(current.batch ? { batch: current.batch } : {}) };
+}
+async function waitOperation(owner, key, operationId, waitSeconds = 15) {
+  if (!Number.isInteger(waitSeconds) || waitSeconds < 0 || waitSeconds > 30) throw failure('wait_seconds must be between 0 and 30.');
+  const deadline = Date.now() + waitSeconds * 1000;
+  const observations = [];
+  let latest;
+  do {
+    latest = await track(owner, key, operationId, { source: 'agent' }, waitSeconds ? Math.max(1, deadline - Date.now()) : 45000);
+    if (observations.at(-1)?.status !== latest.status) observations.push({ status: latest.status, observed_at: latest.updated_at });
+    if (TERMINAL_STATES.has(latest.status) || Date.now() >= deadline) break;
+    await new Promise((resolve) => setTimeout(resolve, Math.min(3000, deadline - Date.now())));
+  } while (Date.now() <= deadline);
+  return { ...latest, observations, terminal: TERMINAL_STATES.has(latest.status),
+    next_step: TERMINAL_STATES.has(latest.status) ? 'Inspect the terminal state before retrieving output.'
+      : 'Still accepted, not complete. Reconnect through Runs or use another bounded wait; do not resubmit or tight-loop polls.' };
 }
 async function runs(owner, key, { cursor, limit = 50 } = {}) {
   if (!Number.isInteger(limit) || limit < 1 || limit > 200
@@ -479,5 +494,5 @@ async function output(owner, id, filename) {
   try { return await fs.readFile(path.join(directory(owner, id), 'output', filename)); }
   catch (error) { if (error.code === 'ENOENT') throw failure('This report file has not been produced. Check job status.', 409); throw error; }
 }
-module.exports = { platform, listApps, operationResult, summarizeResult, clinical, status, list, start, output, track, runs, workspaceInfo, workspaceList,
+module.exports = { platform, listApps, operationResult, summarizeResult, clinical, status, list, start, output, track, waitOperation, runs, workspaceInfo, workspaceList,
   workspacePut, workspaceGet, save, read, failure, publicError, FILES, REPORT_MODEL };

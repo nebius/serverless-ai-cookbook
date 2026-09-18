@@ -218,6 +218,28 @@ test('caller history discovers untracked operations and follows the platform pag
     await assert.rejects(service.runs('new-scientist', 'caller-key', { cursor: '../bad' }), /Invalid/);
   } finally { global.fetch = originalFetch; }
 });
+test('bounded operation wait preserves terminal and intermediate status without submission', async () => {
+  const service = await setup;
+  const id = crypto.randomUUID();
+  const originalFetch = global.fetch;
+  const calls = [];
+  let state = 'queued';
+  global.fetch = async (url, options) => {
+    calls.push(options.method);
+    return new Response(JSON.stringify({ id, status: state, model_id: 'test' }));
+  };
+  try {
+    const pending = await service.waitOperation('waiting-user', 'fixture-key', id, 0);
+    assert.equal(pending.terminal, false);
+    assert.equal(pending.observations[0].status, 'queued');
+    state = 'preempted';
+    const done = await service.waitOperation('waiting-user', 'fixture-key', id, 15);
+    assert.equal(done.terminal, true);
+    assert.equal(done.status, 'preempted');
+    assert.deepEqual(calls, ['GET', 'GET']);
+    await assert.rejects(service.waitOperation('waiting-user', 'fixture-key', id, 31), /between 0 and 30/);
+  } finally { global.fetch = originalFetch; }
+});
 test('admission errors retain retry and accepted-work facts for the panel and agent', async () => {
   const service = await setup;
   const originalFetch = global.fetch;

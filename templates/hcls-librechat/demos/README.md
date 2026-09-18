@@ -40,6 +40,20 @@ JSON resolver bound retain explicit download instructions; no new size, context
 or tool-call limits are introduced. Agents group preparation and evaluation into
 coherent scripts and distinguish inference success from analysis completion.
 
+`workbench_get_operation` waits up to 15 seconds by default (30 maximum), saving
+the real observed states and returning the latest operation without submitting
+anything. No tight poll loop is necessary. Long-running jobs still resume by ID.
+
+The installed `/opt/bionemo/structure-analysis.py` runs with
+`/opt/scientific-client/bin/python`. It accepts PDB/mmCIF predictions or raw
+platform JSON, explicit chain mappings, and a reference coordinate file. It
+saves sequence-matched residue mappings, coverage, independently fitted per-chain
+and jointly fitted global C-alpha RMSD, mapped-residue heavy-atom contact recovery,
+separate model confidence and reproducible methods. Biological assembly selection
+remains explicit. Its interface C-alpha fit is not CAPRI all-backbone iRMSD or
+DockQ; these measures do not validate biological function. NumPy 2.2.6 and
+Biopython 1.85 are pinned in the image; metrics record installed versions.
+
 ## Isolated scientist qualification clients
 
 `deploy-scientist-workbenches.py` uses the existing deployment template to give
