@@ -1,0 +1,145 @@
+{
+  "health": {
+    "ready": true,
+    "engine": "NVIDIA Parabricks DeepVariant",
+    "engine_version": "4.7.1-1",
+    "gpu_count_required": 1,
+    "gpus": [
+      "NVIDIA H100 80GB HBM3"
+    ],
+    "input_root_readable": true,
+    "runtime": {
+      "actual_engine_version": "4.7.1-1",
+      "source": "NVIDIA Parabricks base image (installed at image build time)",
+      "base_image": "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/cookbook-parabricks-base@sha256:a748d86cbb850641a1e0afae6de2e7422f1375e4a0cce08a5c2cead9fa302237"
+    }
+  },
+  "rest": {
+    "run_id": "8347a13b0b8049adaf4b668bce1632ad",
+    "result": {
+      "engine": "NVIDIA Parabricks DeepVariant",
+      "engine_version": "4.7.1-1",
+      "runtime": {
+        "actual_engine_version": "4.7.1-1",
+        "source": "NVIDIA Parabricks base image (installed at image build time)",
+        "base_image": "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/cookbook-parabricks-base@sha256:a748d86cbb850641a1e0afae6de2e7422f1375e4a0cce08a5c2cead9fa302237"
+      },
+      "sample_id": "NA12878-smoke",
+      "mode": "shortread",
+      "use_wes_model": false,
+      "intervals": [
+        "chr20:10000000-10010000"
+      ],
+      "gpu_count": 1,
+      "gpus": [
+        "NVIDIA H100 80GB HBM3"
+      ],
+      "variant_records": 78,
+      "inputs": [
+        {
+          "role": "reference",
+          "filename": "ucsc.hg19.chr20.unittest.fasta",
+          "sha256": "b532f011328adfbc7cf92e37923d6035f251b78ff52e1d570dfa10697cca7fe5",
+          "bytes": 64286038
+        },
+        {
+          "role": "reference_index",
+          "filename": "ucsc.hg19.chr20.unittest.fasta.fai",
+          "sha256": "3cc62926bafa8f397679927070c40e970a414bb21fdb92c46dfb497a7a955032",
+          "bytes": 23
+        },
+        {
+          "role": "reads",
+          "filename": "NA12878_S1.chr20.10_10p1mb.bam",
+          "sha256": "0b82858821bd8817df03b35f90cdfcb2bae53af5ab46e61b8bcff1ad9ba49643",
+          "bytes": 3925783
+        },
+        {
+          "role": "reads_index",
+          "filename": "NA12878_S1.chr20.10_10p1mb.bam.bai",
+          "sha256": "5ce54eede47a7ae2440a877f812fc6c7f101e67d4e84d8d279778aa6165b4d67",
+          "bytes": 5472
+        }
+      ],
+      "guided_bam_header_normalized": true,
+      "output_vcf": "output/NA12878-smoke.deepvariant.vcf.gz",
+      "research_only": true,
+      "clinical_use": false,
+      "wall_clock_seconds": 13.029938,
+      "image_revision": "unknown"
+    },
+    "artifact": {
+      "bytes": 1633,
+      "sha256": "d28c6b1153a3da1758c2dcaa188210def4266a62708b801fd49ef5a6af222473"
+    }
+  },
+  "mcp": {
+    "server": "Nebius HCLS parabricks-deepvariant",
+    "protocol_version": "2025-11-25",
+    "tools": [
+      "cancel_run",
+      "get_capabilities",
+      "get_run",
+      "list_run_artifacts",
+      "list_runs",
+      "submit_run"
+    ],
+    "run_id": "65b53b5afc6547a3abdbc082b57ccf51",
+    "result": {
+      "engine": "NVIDIA Parabricks DeepVariant",
+      "engine_version": "4.7.1-1",
+      "runtime": {
+        "actual_engine_version": "4.7.1-1",
+        "source": "NVIDIA Parabricks base image (installed at image build time)",
+        "base_image": "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/cookbook-parabricks-base@sha256:a748d86cbb850641a1e0afae6de2e7422f1375e4a0cce08a5c2cead9fa302237"
+      },
+      "sample_id": "NA12878-smoke",
+      "mode": "shortread",
+      "use_wes_model": false,
+      "intervals": [
+        "chr20:10000000-10010000"
+      ],
+      "gpu_count": 1,
+      "gpus": [
+        "NVIDIA H100 80GB HBM3"
+      ],
+      "variant_records": 78,
+      "inputs": [
+        {
+          "role": "reference",
+          "filename": "ucsc.hg19.chr20.unittest.fasta",
+          "sha256": "b532f011328adfbc7cf92e37923d6035f251b78ff52e1d570dfa10697cca7fe5",
+          "bytes": 64286038
+        },
+        {
+          "role": "reference_index",
+          "filename": "ucsc.hg19.chr20.unittest.fasta.fai",
+          "sha256": "3cc62926bafa8f397679927070c40e970a414bb21fdb92c46dfb497a7a955032",
+          "bytes": 23
+        },
+        {
+          "role": "reads",
+          "filename": "NA12878_S1.chr20.10_10p1mb.bam",
+          "sha256": "0b82858821bd8817df03b35f90cdfcb2bae53af5ab46e61b8bcff1ad9ba49643",
+          "bytes": 3925783
+        },
+        {
+          "role": "reads_index",
+          "filename": "NA12878_S1.chr20.10_10p1mb.bam.bai",
+          "sha256": "5ce54eede47a7ae2440a877f812fc6c7f101e67d4e84d8d279778aa6165b4d67",
+          "bytes": 5472
+        }
+      ],
+      "guided_bam_header_normalized": true,
+      "output_vcf": "output/NA12878-smoke.deepvariant.vcf.gz",
+      "research_only": true,
+      "clinical_use": false,
+      "wall_clock_seconds": 12.182252,
+      "image_revision": "unknown"
+    },
+    "artifact_verified_through_rest": {
+      "bytes": 1633,
+      "sha256": "d5c7da43d309c3289a8dd7a134cb73a0d844f58115f89481bb0c2a3e6961686d"
+    }
+  }
+}

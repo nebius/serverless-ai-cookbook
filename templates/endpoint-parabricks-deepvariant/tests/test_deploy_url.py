@@ -1,0 +1,44 @@
+from __future__ import annotations
+
+import html
+import re
+from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
+
+
+TEMPLATE = Path(__file__).parents[1]
+REPOSITORY = TEMPLATE.parents[1]
+IMAGE = "registry.example.org/your-team/parabricks-rest-mcp:4.7.1-1"
+EXPECTED = {
+    "image": ["registry.example.org/your-team/parabricks-rest-mcp:4.7.1-1"],
+    "targetPort": ["8000"],
+    "platform": ["gpu-h100-sxm"],
+    "preset": ["1gpu-16vcpu-200gb"],
+    "diskSize": ["500GiB"],
+    "preemptible": ["false"],
+    "auth": ["true"],
+    "env": ["PARABRICKS_GPU_COUNT=1"],
+}
+
+
+def matching_queries(path: Path) -> list[dict[str, list[str]]]:
+    links = re.findall(
+        r"(https://console\.nebius\.com/serverless/endpoint/create\?[^)\"\s]+)",
+        path.read_text(encoding="utf-8"),
+    )
+    queries = [
+        parse_qs(urlsplit(html.unescape(link)).query, keep_blank_values=True)
+        for link in links
+    ]
+    return [query for query in queries if query.get("image") == [IMAGE]]
+
+
+def test_all_catalog_links_match_complete_customer_contract() -> None:
+    paths = [
+        TEMPLATE / "README.md",
+        REPOSITORY / "README.md",
+        REPOSITORY / "templates/README.md",
+    ]
+    for path in paths:
+        queries = matching_queries(path)
+        assert queries == [EXPECTED], f"unexpected deploy link in {path}"
