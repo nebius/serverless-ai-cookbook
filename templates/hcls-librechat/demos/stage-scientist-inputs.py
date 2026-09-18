@@ -21,6 +21,10 @@ def main():
     parser.add_argument('--cases', type=Path, required=True)
     parser.add_argument('--case-id', action='append', required=True)
     parser.add_argument('--include-input-data', action='store_true')
+    parser.add_argument('--include-reference-files', action='store_true',
+                        help='Stage frozen provenance files and explicit reference transcripts for independent analysis, not model input.')
+    parser.add_argument('--reference-root', action='append', type=Path, default=[],
+                        help='Additional explicit root for provenance files referenced by the frozen manifest; checksums are still required to match.')
     parser.add_argument('--extra-file', action='append', type=Path, default=[],
                         help='Supplementary public source or reference file, copied under supplementary/.')
     parser.add_argument('--output', type=Path, required=True)
@@ -92,6 +96,31 @@ def main():
                 target = prefix + '/' + case['case_id'] + '.json'
                 put(target, json.dumps(case['arguments'], indent=2).encode(), 'application/json')
                 study['input_data_file'] = '/workspace/' + target
+            if args.include_reference_files:
+                study['reference_files'] = []
+                provenance = case.get('provenance') or {}
+                for entry in provenance.get('sources', []) + provenance.get('files', []):
+                    if not entry.get('path'):
+                        continue
+                    relative = Path(entry['path'])
+                    if relative.is_absolute() or '..' in relative.parts:
+                        raise ValueError('Frozen reference must remain relative to the dataset manifest')
+                    reference = next((root / relative for root in [args.cases.parent, *args.reference_root]
+                                      if (root / relative).is_file()), args.cases.parent / relative)
+                    content = reference.read_bytes()
+                    if entry.get('sha256') and hashlib.sha256(content).hexdigest() != entry['sha256']:
+                        raise ValueError('Frozen reference digest differs: ' + str(relative))
+                    target = prefix + '/' + relative.as_posix()
+                    if target not in staged:
+                        put(target, content, 'application/octet-stream')
+                        staged.add(target)
+                    study['reference_files'].append({**entry, 'workspace_file': '/workspace/' + target})
+                reference_text = (case.get('expected') or {}).get('reference_text')
+                if isinstance(reference_text, str):
+                    target = prefix + '/references/' + case['case_id'] + '.reference.txt'
+                    put(target, reference_text.encode(), 'text/plain')
+                    study['reference_files'].append({'workspace_file': '/workspace/' + target,
+                        'purpose': 'Frozen dataset reference transcript; preserve the documented alignment limitations.'})
             receipt['studies'].append(study)
         for source in args.extra_file:
             if not source.is_file():
