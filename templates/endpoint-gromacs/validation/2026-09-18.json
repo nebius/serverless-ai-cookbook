@@ -1,0 +1,35 @@
+{
+  "health": {
+    "ready": true,
+    "engine": "GROMACS",
+    "engine_version": "2025.3",
+    "nvidia_device_detected": true,
+    "runtime": {
+      "actual_engine_version": "2025.3",
+      "source": "GROMACS source release (compiled at image build time)",
+      "gpu_backend": "CUDA"
+    }
+  },
+  "rest": {
+    "run_id": "679d3c6129f2418896d38ae512652d03",
+    "status": "succeeded",
+    "ns_per_day": 3238.523,
+    "artifact": {
+      "name": "result.json",
+      "bytes": 1819,
+      "sha256": "a8f6b62645c6552cab0de05d5dcd4ee1975548b278a44c2dd31e300b571f3afd"
+    }
+  },
+  "mcp": {
+    "server": "Nebius HCLS gromacs-md",
+    "protocol_version": "2025-11-25",
+    "run_id": "368eb02b2cca4fc894d2a916da738408",
+    "status": "succeeded",
+    "ns_per_day": 3151.637,
+    "artifact_verified_through_rest": {
+      "name": "result.json",
+      "bytes": 1721,
+      "sha256": "add3d923eee9712bc395330fbf9f659392f4a77560a57e8f3eef18f836bb97dc"
+    }
+  }
+}
