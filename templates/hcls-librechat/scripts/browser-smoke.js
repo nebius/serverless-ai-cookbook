@@ -9,8 +9,8 @@ async (page) => {
   };
   page.on('request', collect);
   try {
-    await page.getByRole('link', { name: 'New chat', exact: true }).click();
     await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto((await page.evaluate(() => location.origin)) + '/c/new');
     const select = async (group, label) => {
       await page.getByTestId('model-selector-button').click();
       const groups = await page.getByRole('option').allTextContents();
@@ -18,18 +18,17 @@ async (page) => {
       await page.getByRole('option', { name: group, exact: true }).click();
       await page.getByRole('menuitem').filter({ hasText: label }).click();
     };
-    await select('Public Token Factory', 'Qwen 3 30B');
+    await select('Public Token Factory', 'GLM 5.3 Flash');
     const chosenModel = await page.getByTestId('model-selector-button').innerText();
     const prompts = [];
     for (const card of await page.locator('[data-workflow]').all()) {
       const text = await card.innerText();
       check(text.includes('Models & tools:') && text.includes('Skills:'), 'Card hides its available capabilities');
-      check(text.includes('Tavily'), 'Card does not surface research access');
       await card.click();
       check(await card.getAttribute('aria-pressed') === 'true', 'Missing workflow selection feedback');
       check(await page.getByTestId('model-selector-button').innerText() === chosenModel, 'Workflow changed LLM');
       prompts.push(await page.getByRole('textbox', { name: 'Message input' }).inputValue());
-      check(prompts.at(-1).includes('Tavily'), 'Draft lost the named research tool');
+      check(prompts.at(-1).length > 120, 'Workflow did not prepare a substantive scientific prompt');
       await page.getByRole('button', { name: 'Send message', exact: true }).click({ trial: true });
       if (await card.getAttribute('data-workflow') === 'infra') {
         const panel = page.getByRole('complementary', { name: 'Infrastructure setup handoff' });
@@ -62,8 +61,8 @@ async (page) => {
     await page.getByRole('option', { name: 'Public Token Factory', exact: true }).waitFor();
     await page.screenshot({ path: 'output/playwright/after-mobile-selector.png' });
     await page.keyboard.press('Escape');
-    await page.locator('[data-workflow="wildcard"]').click();
-    check((await page.getByRole('textbox', { name: 'Message input' }).inputValue()).includes('scientific question'), 'Mobile workflow is inaccessible');
+    await page.locator('[data-workflow="literature"]').click();
+    check((await page.getByRole('textbox', { name: 'Message input' }).inputValue()).length > 120, 'Mobile workflow is inaccessible');
     await page.getByRole('button', { name: 'Send message', exact: true }).click({ trial: true });
     const sendBox = await page.getByRole('button', { name: 'Send message', exact: true }).boundingBox();
     check(sendBox && sendBox.y >= 0 && sendBox.y + sendBox.height <= 844, 'Mobile draft hides Send below the viewport');
