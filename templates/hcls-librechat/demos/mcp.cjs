@@ -18,7 +18,7 @@ const definitions = [
   ['workshop_create_runs', 'Start durable MindEval consultations for profile × clinician choices. A round is a patient/clinician pair. Preserve the idempotency key across retries and save returned run IDs. Hidden profiles and scoring stay in the backend.', schema({ profile_ids: array, clinician_models: { ...array, maxItems: 8 }, patient_model: string,
     idempotency_key: string, max_turns: { type: 'integer', minimum: 2, maximum: 30, default: 10 } }, ['profile_ids', 'clinician_models', 'patient_model', 'idempotency_key'])],
   ['workshop_list_runs', 'List this authenticated team’s saved consultations; reconnect without resubmitting work.', schema({})],
-  ['workshop_get_run', 'Read one durable consultation transcript, current state, timings and five-axis judgment. Scores are research evaluations, not clinical validation.', schema({ run_id: string }, ['run_id'])],
+  ['workshop_get_run', 'Read one durable consultation status and five-axis judgment. Save its complete transcript, config and raw judgment as a hash-verified workspace_file; use that actual JSON with execute_command for exports and analysis, never reconstruct middle turns from chat. Scores are research evaluations, not clinical validation.', schema({ run_id: string }, ['run_id'])],
   ['workshop_intervene', 'Explicitly pause, nudge, take over, say a human turn, resume model control or abort a consultation. Interventions are recorded and excluded from untouched benchmark comparisons.', schema({ run_id: string, action: { type: 'string', enum: ['pause', 'nudge', 'takeover', 'say', 'resume', 'abort'] }, role: { type: 'string', enum: ['patient', 'clinician'], default: 'clinician' }, text: string }, ['run_id', 'action'])],
   ['clinical_report_from_transcript', 'Generate an evidence-linked German Arztbrief or English report draft from an available transcript. Source transcript, uncertainties, withheld facts and follow-up questions are retained. Physician review required. For audio/large files, upload in /demos?tab=clinical; never send base64. Choose a fresh idempotency key once, then poll the returned job.', schema({ transcript: { type: 'string', minLength: 1, maxLength: 100000 }, language: { type: 'string', enum: ['en', 'de'] }, idempotency_key: string }, ['transcript', 'language', 'idempotency_key'])],
   ['clinical_get_job', 'Read the status of a saved report job and its authenticated download location. An incomplete draft is not a completed report.', schema({ job_id: string }, ['job_id'])],
@@ -50,7 +50,14 @@ async function dispatch(name, args) {
     case 'workbench_workspace': return service.workspaceInfo(key);
     case 'workshop_catalog': return request('GET', 'catalog');
     case 'workshop_list_runs': return { data: (await request('GET', 'runs')).data.map((run) => compact(run)) };
-    case 'workshop_get_run': return compact(await request('GET', `runs/${args.run_id}`), true);
+    case 'workshop_get_run': {
+      const { run, workspace_file } = await service.workshopRun(key, args.run_id);
+      return { ...compact(run), workspace_file, transcript: {
+        messages: run.state.transcript?.length || 0,
+        content_location: workspace_file.saved ? workspace_file.path : `/api/scientific-demos/workshop/runs/${run.id}`,
+        note: 'Full transcript and raw judgment are retained outside chat context; read the saved JSON rather than reconstructing them from summaries.',
+      } };
+    }
     case 'workshop_create_runs': {
       const { idempotency_key, ...body } = args;
       const result = await request('POST', 'runs', { ...body, mode: 'canonical', max_turns: args.max_turns || 10 }, idempotency_key);

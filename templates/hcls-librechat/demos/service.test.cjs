@@ -254,4 +254,39 @@ test('admission errors retain retry and accepted-work facts for the panel and ag
     });
   } finally { global.fetch = originalFetch; }
 });
+test('consultation export preserves every turn and immutable versions without model submissions', async () => {
+  const service = await setup;
+  const id = crypto.randomUUID();
+  const originalFetch = global.fetch;
+  const run = { id, status: 'running', state: { transcript: Array.from({ length: 21 }, (_, i) => ({
+    role: i % 2 ? 'patient' : 'clinician', content: `Exact turn ${i}: ` + 'long synthetic text '.repeat(500),
+  })), judgment: null } };
+  const calls = [];
+  global.fetch = async (url, options) => {
+    calls.push({ method: options.method, url });
+    return new Response(JSON.stringify(run));
+  };
+  try {
+    const first = await service.workshopRun('caller-key', id);
+    const bytes = await fs.readFile(first.workspace_file.path);
+    assert.equal(first.workspace_file.sha256, crypto.createHash('sha256').update(bytes).digest('hex'));
+    assert.deepEqual(JSON.parse(bytes), run);
+    assert.equal((await service.workshopRun('caller-key', id)).workspace_file.path, first.workspace_file.path);
+    run.status = 'completed';
+    run.state.judgment = { overall_score: 4.25, judgment: { evidence: 'final real field' } };
+    const final = await service.workshopRun('caller-key', id);
+    assert.notEqual(final.workspace_file.path, first.workspace_file.path);
+    assert.equal(JSON.parse(await fs.readFile(first.workspace_file.path)).status, 'running');
+    assert.deepEqual(JSON.parse(await fs.readFile(final.workspace_file.path)), run);
+    assert.ok(calls.every((call) => call.method === 'GET' && call.url.endsWith(`/v1/workshop/runs/${id}`)));
+    process.env.LIBRECHAT_USER_ID = 'export-fixture-user';
+    process.env.SCIENTIFIC_MODELS_API_KEY = 'caller-key';
+    const mcp = require('./mcp.cjs');
+    const toolResult = await mcp.dispatch('workshop_get_run', { run_id: id });
+    assert.equal(toolResult.transcript.messages, 21);
+    assert.equal(toolResult.workspace_file.sha256, final.workspace_file.sha256);
+    assert.ok(JSON.stringify(toolResult).length < 5000);
+    assert.equal(JSON.stringify(toolResult).includes('long synthetic text'), false);
+  } finally { global.fetch = originalFetch; }
+});
 after(async () => { await setup; await fs.rm(root, { recursive: true }); });

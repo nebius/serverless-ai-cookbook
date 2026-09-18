@@ -110,8 +110,12 @@ async function listApps(key, query = '') {
 }
 
 async function retainResult(key, operationId, bytes) {
-  if (!(await workspaceInfo(key)).mounted) return { saved: false, reason: 'No mounted workspace; use the Runs download.' };
-  const target = workspacePath(`.scientific-runs/${operationId}/result.json`);
+  return retainWorkspaceBytes(key, `.scientific-runs/${operationId}/result.json`, bytes);
+}
+
+async function retainWorkspaceBytes(key, relativePath, bytes) {
+  if (!(await workspaceInfo(key)).mounted) return { saved: false, reason: 'No mounted workspace; use the authenticated panel download.' };
+  const target = workspacePath(relativePath);
   await fs.mkdir(path.dirname(target.absolute), { recursive: true, mode: 0o700 });
   const expected = hash(bytes);
   try { await fs.writeFile(target.absolute, bytes, { mode: 0o600, flag: 'wx' }); }
@@ -119,6 +123,18 @@ async function retainResult(key, operationId, bytes) {
   const actual = await fileHash(target.absolute);
   if (actual !== expected) throw failure('Saved result differs from the verified platform output; existing file was not overwritten.', 409);
   return { saved: true, path: target.absolute, relative_path: target.normalized, size_bytes: bytes.length, sha256: actual };
+}
+
+async function workshopRun(key, runId) {
+  if (!RUN_ID.test(runId || '')) throw failure('Invalid consultation identity');
+  const run = await platform(key, 'GET', `/v1/workshop/runs/${runId}`);
+  if (run.id !== runId) throw failure('Consultation identity mismatch', 409);
+  const bytes = Buffer.from(JSON.stringify(run));
+  // An in-progress consultation changes. Keep content-addressed versions rather
+  // than overwriting prior turns, judgments or interventions on Object Storage.
+  const workspace_file = await retainWorkspaceBytes(key,
+    `.scientific-workshops/${runId}/${hash(bytes)}.json`, bytes);
+  return { run, workspace_file };
 }
 
 function numberSummary(values, kind, shape) {
@@ -494,5 +510,5 @@ async function output(owner, id, filename) {
   try { return await fs.readFile(path.join(directory(owner, id), 'output', filename)); }
   catch (error) { if (error.code === 'ENOENT') throw failure('This report file has not been produced. Check job status.', 409); throw error; }
 }
-module.exports = { platform, listApps, operationResult, summarizeResult, clinical, status, list, start, output, track, waitOperation, runs, workspaceInfo, workspaceList,
+module.exports = { platform, listApps, operationResult, workshopRun, summarizeResult, clinical, status, list, start, output, track, waitOperation, runs, workspaceInfo, workspaceList,
   workspacePut, workspaceGet, save, read, failure, publicError, FILES, REPORT_MODEL };
