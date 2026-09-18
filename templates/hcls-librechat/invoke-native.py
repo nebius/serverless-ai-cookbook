@@ -131,6 +131,10 @@ async def run(args):
         # No admission, upload, or rediscovery is needed to read a saved error.
         # An absent receipt is not permission to reconstruct it by resubmission.
         raise RuntimeError('Read-only recovery has no known operation. Inspect the saved receipt and validation-error.json; no new inference was submitted.')
+    # Session setup/submission consume the observation allowance too. An in-
+    # flight network request still has its existing timeout; do not extend the
+    # workflow's observation deadline by starting a new wait after setup.
+    deadline = time.monotonic() + args.wait_seconds
     async with httpx2.AsyncClient(headers={'Authorization': 'Bearer ' + key}, timeout=120, trust_env=False) as http:
         async with Client(streamable_http_client(endpoint, http_client=http)) as client:
             async def call(name, arguments, filename):
@@ -160,7 +164,6 @@ async def run(args):
                     raise
                 save(path, record)
 
-            deadline = time.monotonic() + args.wait_seconds
             while True:
                 operation = await call('get_operation', {'operation_id': record['operation_id']}, 'operation.json')
                 # Only mark succeeded after the result bytes have been saved.
@@ -187,7 +190,7 @@ async def run(args):
                     return record
                 if state in ('failed', 'cancelled', 'expired', 'preempted') or time.monotonic() >= deadline:
                     return record
-                await asyncio.sleep(2)
+                await asyncio.sleep(min(2, max(0, deadline - time.monotonic())))
 
 
 def main():

@@ -5,8 +5,11 @@ Stdio only. Detached workers keep running when the MCP connection closes;
 receipts and output live on disk and can be polled from a new connection.
 """
 import json
+import fcntl
+import hashlib
 import os
 from pathlib import Path
+import shlex
 import signal
 import subprocess
 import sys
@@ -113,7 +116,66 @@ def execute(args):
     return read_job({'job_id': directory.name, 'wait_seconds': wait})
 
 
+def run_scientific_workflow(args):
+    """Typed launch of the existing durable client, not a new model transport."""
+    workspace = Path(WORKSPACE).resolve()
+    def local_path(name):
+        value = args.get(name)
+        if not isinstance(value, str) or not value:
+            raise ValueError(name + ' must be a workspace-relative path.')
+        path = (workspace / value).resolve()
+        if not path.is_relative_to(workspace):
+            raise ValueError(name + ' must be inside the mounted workspace.')
+        return path
+    plan_path, output = local_path('plan_file'), local_path('output_directory')
+    if not plan_path.is_file():
+        raise ValueError('plan_file does not exist: ' + str(plan_path))
+    resume = args.get('resume', False)
+    if not isinstance(resume, bool):
+        raise ValueError('resume must be a boolean.')
+    python = os.environ.get('SCIENTIFIC_CLIENT_PYTHON', '/opt/scientific-client/bin/python')
+    runner = os.environ.get('SCIENTIFIC_WORKFLOW_RUNNER', '/opt/bionemo/scientific-workflow.py')
+    command = [python, runner, '--plan', str(plan_path), '--output', str(output), '--wait-seconds', '0']
+    plan_bytes = plan_path.read_bytes()
+    identity = hashlib.sha256(plan_bytes + b'\0' + str(output).encode()).hexdigest()
+    index_dir = ROOT / 'workflow-index'
+    index_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    index = index_dir / (identity + '.json')
+    with (index_dir / (identity + '.lock')).open('w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        previous = json.loads(index.read_text()) if index.exists() else {}
+        if previous.get('job_id'):
+            current = read_job({'job_id': previous['job_id']})
+            if current['status'] in ('starting', 'running', 'completed') or not resume:
+                return {**current, 'workflow_identity': identity, 'reused_existing_job': True,
+                        'resume_required': current['status'] not in ('starting', 'running', 'completed')}
+        checked = subprocess.run(command + ['--validate-only'], capture_output=True, text=True, timeout=60)
+        if checked.returncode:
+            raise ValueError('Workflow file preflight failed before admission. ' + checked.stderr[-3000:])
+        preflight = json.loads(checked.stdout)
+        # Preserve the exact plan bytes used for the preflight and eventual job.
+        if identity != hashlib.sha256(plan_path.read_bytes() + b'\0' + str(output).encode()).hexdigest():
+            raise ValueError('Plan changed during preflight; no workflow was started.')
+        frozen_plan = index_dir / (identity + '.plan.json')
+        frozen_plan.write_bytes(plan_bytes)
+        command[command.index('--plan') + 1] = str(frozen_plan)
+        started = execute({'command': shlex.join(command), 'cwd': str(workspace),
+                           'timeout_seconds': 0, 'wait_seconds': 1})
+        save(index, {'job_id': started['job_id'], 'plan_file': str(plan_path),
+                     'output_directory': str(output), 'previous_job_id': previous.get('job_id')})
+        return {**started, 'workflow_identity': identity, 'preflight_steps': preflight['steps'],
+                'preflight_files': len(preflight['files']), 'reused_existing_job': False,
+                'guidance': 'Poll this execution job; model operations and exact receipts remain in the workflow output. Completion still requires scientific analysis.'}
+
+
 TOOLS = [
+    {'name': 'run_scientific_workflow',
+     'description': 'Preferred launch for prepared scientific studies: give an existing workspace-relative scientific-workflow/v1 JSON plan file and output directory, not shell flags. Validates every input/source/parameter file before any upload or inference, then uses the existing native/batch clients sequentially under unchanged caller policy. Native input files may contain full inline arrays outside chat context. Saves one execution job; repeated calls return that existing job. Poll read_execution. Use resume=true only after inspecting an interrupted job; original model receipts/idempotency keys are preserved and ambiguous admissions are never silently retried. File preflight is not proof of scientific validity.',
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
+     'inputSchema': {'type': 'object', 'additionalProperties': False,
+        'required': ['plan_file', 'output_directory'], 'properties': {
+            'plan_file': {'type': 'string'}, 'output_directory': {'type': 'string'},
+            'resume': {'type': 'boolean', 'default': False}}}},
     {'name': 'execute_command',
      'description': 'Execute Bash as root in this application container. Install packages with apt-get/pip/npm, run Python, download internet resources, read/write any container path and mounted storage. /workspace is the team Object Storage bucket mount and the durable location for team files; use byte copies, not chmod/copystat. This is real execution, not a code suggestion. For long work save job_id and use read_execution; do not submit again. Returns 4000 output bytes by default with a full log file pointer; compute summaries locally instead of dumping source/data. timeout_seconds=0 disables the deadline. Root applies to the container and its mounts, not the cloud host. Never print credentials.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': True, 'openWorldHint': True},
@@ -148,7 +210,8 @@ def main():
                 result = {'tools': TOOLS}
             elif method == 'tools/call':
                 params = request['params']
-                handler = {'execute_command': execute, 'read_execution': read_job}[params['name']]
+                handler = {'execute_command': execute, 'read_execution': read_job,
+                           'run_scientific_workflow': run_scientific_workflow}[params['name']]
                 try:
                     value = handler(params.get('arguments', {}))
                     result = {'content': [{'type': 'text', 'text': json.dumps(value)}],

@@ -38,6 +38,14 @@ OPTIONAL = {'compression', 'service_class', 'source_artifact'}
 NATIVE_REQUIRED = {'model', 'input', 'output', 'idempotency_key'}
 TERMINAL_FAILURES = {'failed', 'cancelled', 'expired', 'preempted'}
 CONCURRENCY_CODES = {'concurrency_exceeded', 'admission_limit_reached'}
+MAX_READ_RECONNECTS = 3
+
+
+def transport_disconnect(error):
+    """Only retry read-only observation after a recognizable transport failure."""
+    if isinstance(error, BaseExceptionGroup):
+        return bool(error.exceptions) and all(transport_disconnect(item) for item in error.exceptions)
+    return isinstance(error, (httpx2.TransportError, ConnectionError, TimeoutError))
 
 
 def prepare(plan):
@@ -66,6 +74,39 @@ def prepare(plan):
             raise ValueError('Different steps must not share a receipt directory.')
         outputs.add(output)
     return plan
+
+
+def validate_files(plan):
+    """Catch misspelled source paths/invalid JSON before any step is admitted.
+
+    Model fields remain validated by the existing live-schema clients. This is
+    file preflight, not a fabricated model-capability or scientific-quality gate.
+    """
+    prepare(plan)
+    files = []
+    for step in plan['steps']:
+        for field in ('source', 'parameters', 'input', 'source_artifact'):
+            if field not in step:
+                continue
+            path = Path(step[field])
+            if not path.is_file():
+                raise ValueError(f"Step {step['id']} {field} is not an existing file: {path}")
+            digest = hashlib.sha256()
+            size = 0
+            with path.open('rb') as source:
+                while chunk := source.read(1024 * 1024):
+                    digest.update(chunk)
+                    size += len(chunk)
+            if field != 'source':
+                try:
+                    value = json.loads(path.read_bytes())
+                except ValueError as error:
+                    raise ValueError(f"Step {step['id']} {field} is not valid JSON: {path}") from error
+                if not isinstance(value, dict):
+                    raise ValueError(f"Step {step['id']} {field} must contain a JSON object: {path}")
+            files.append({'step': step['id'], 'field': field, 'path': str(path),
+                          'size_bytes': size, 'sha256': digest.hexdigest()})
+    return {'schema': 'scientific-workflow-file-preflight/v1', 'steps': len(plan['steps']), 'files': files}
 
 
 async def run_native_step(arguments, execute):
@@ -130,13 +171,24 @@ async def run(plan, output, wait_seconds=1800, poll_seconds=10, run_step=None, c
         step_id = step['id']
         if step_id in receipt['completed_steps']:
             continue
+        reconnects = 0
+        recover_only = False
         while True:
+            started = clock()
+            remaining = deadline - started
+            if remaining <= 0:
+                receipt.update(state='observation_expired', current_step=step_id)
+                save(receipt_path, receipt)
+                return receipt
             native_step = step.get('kind') == 'native'
             if native_step:
                 arguments = {'model': step['model'], 'input': Path(step['input']),
                              'output_dir': Path(step['output']),
                              'idempotency_key': step['idempotency_key'],
-                             'wait_seconds': 0, 'recover_only': False}
+                             # Keep short native observations in one session;
+                             # never hold it through an unbounded batch wait.
+                             'wait_seconds': min(poll_seconds, remaining, 30),
+                             'recover_only': recover_only}
             else:
                 arguments = {**{'compression': 'none', 'service_class': 'customer-batch'},
                              **{key: value for key, value in step.items() if key not in {'id', 'kind'}},
@@ -178,11 +230,32 @@ async def run(plan, output, wait_seconds=1800, poll_seconds=10, run_step=None, c
                     save(receipt_path, receipt)
                     print(json.dumps({'workflow_state': state, 'step': step_id,
                                       'completed_steps': receipt['completed_steps']}), flush=True)
-                    if clock() >= deadline:
+                    remaining = deadline - clock()
+                    if remaining <= 0:
                         return receipt
-                    await sleep(max(poll_seconds, min(float(leaf.error.get('retry_after_seconds') or poll_seconds), 60)))
+                    await sleep(min(remaining, max(poll_seconds,
+                        min(float(leaf.error.get('retry_after_seconds') or poll_seconds), 60))))
                     continue
                 known = load(step_output / 'receipt.json') or {}
+                if (native_step and transport_disconnect(error) and known.get('operation_id')
+                        and known.get('state') not in TERMINAL_FAILURES | {'submitting', 'admission_unknown'}
+                        and reconnects < MAX_READ_RECONNECTS):
+                    reconnects += 1
+                    recover_only = True
+                    event = {'step': step_id, 'operation_id': known['operation_id'],
+                             'error_type': type(leaf).__name__, 'recovery': 'read_only',
+                             'attempt': reconnects}
+                    receipt.setdefault('observation_errors', []).append(event)
+                    receipt['step_states'][step_id] = {'state': 'observation_interrupted',
+                        'operation_id': known['operation_id']}
+                    receipt.update(state='observation_interrupted', current_step=step_id)
+                    save(receipt_path, receipt)
+                    print(json.dumps(event), flush=True)
+                    remaining = deadline - clock()
+                    if remaining <= 0:
+                        return receipt
+                    await sleep(min(poll_seconds, remaining))
+                    continue
                 state = 'admission_unknown' if known.get('state') in {'submitting', 'admission_unknown'} else 'failed'
                 receipt['step_states'][step_id] = {key: known[key] for key in
                     ('state', 'operation_id', 'last_rejection') if key in known}
@@ -198,10 +271,17 @@ async def run(plan, output, wait_seconds=1800, poll_seconds=10, run_step=None, c
                 receipt['completed_steps'].append(step_id)
                 save(receipt_path, receipt)
                 break
-            if clock() >= deadline:
+            observed_at = clock()
+            if observed_at >= deadline:
                 return receipt
             delay = receipt['step_states'][step_id].get('error', {}).get('retry_after_seconds') or poll_seconds
-            await sleep(max(poll_seconds, min(float(delay), 60)))
+            delay = max(poll_seconds, min(float(delay), 60))
+            # Native.run already waited/polled within this same session. Do not
+            # add another full sleep merely because its bounded wait elapsed.
+            if native_step and state != 'waiting_admission':
+                delay = max(0, delay - (observed_at - started))
+            if delay:
+                await sleep(min(delay, deadline - observed_at))
     receipt.update(state='completed', current_step=None)
     save(receipt_path, receipt)
     return receipt
@@ -214,12 +294,20 @@ def main():
     parser.add_argument('--wait-seconds', type=float, default=1800,
                         help='Observation duration; 0 waits until terminal. Resume the same plan/output.')
     parser.add_argument('--poll-seconds', type=float, default=10)
+    parser.add_argument('--validate-only', action='store_true',
+                        help='Read and hash every referenced source/input/parameter file; no uploads or inference.')
     args = parser.parse_args()
     if args.wait_seconds < 0 or args.poll_seconds < 1:
         parser.error('wait-seconds must be nonnegative and poll-seconds at least 1.')
+    plan = json.loads(args.plan.read_text())
+    preflight = validate_files(plan)
+    if args.validate_only:
+        print(json.dumps(preflight))
+        return
     with receipt_lock(args.output):
+        save(args.output / 'file-preflight.json', preflight)
         save(args.output / 'caller-policy.json', asyncio.run(caller_policy()))
-        result = asyncio.run(run(json.loads(args.plan.read_text()), args.output,
+        result = asyncio.run(run(plan, args.output,
                                  args.wait_seconds, args.poll_seconds))
     print(json.dumps({'state': result['state'], 'completed_steps': result['completed_steps'],
                       'resume': str(args.output)}))

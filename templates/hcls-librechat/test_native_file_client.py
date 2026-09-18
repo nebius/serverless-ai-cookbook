@@ -124,3 +124,51 @@ def test_read_only_recovery_never_submits_to_recreate_missing_error(tmp_path, mo
     receipt = client.load_receipt(args.output_dir / 'receipt.json')
     assert receipt['state'] == 'prepared'
     assert 'operation_id' not in receipt
+
+
+def test_large_file_native_arrays_use_one_session_no_uploads(tmp_path, monkeypatch):
+    """Transport-only fixture, not biological model qualification."""
+    monkeypatch.setenv('SCIENTIFIC_MODELS_MCP_URL', 'https://example.invalid/mcp')
+    monkeypatch.setenv('SCIENTIFIC_MODELS_API_KEY', 'synthetic-key')
+    payload = {'cpg_sites': [f'fixture-{n}' for n in range(20318)],
+               'samples': [{'sample_id': str(n), 'beta_values': [0.5] * 20318} for n in range(16)],
+               'missing_values': 'error'}
+    source = tmp_path / 'input.json'
+    source.write_text(json.dumps(payload))
+    assert source.stat().st_size > 1_000_000
+    args = types.SimpleNamespace(input=source, output_dir=tmp_path / 'run',
+        model='altumage', idempotency_key='file-backed-fixture', wait_seconds=30)
+    calls, sessions = [], []
+    schema = {'type': 'object', 'required': ['cpg_sites', 'samples'], 'properties': {
+        'cpg_sites': {'type': 'array', 'minItems': 20318, 'maxItems': 20318},
+        'samples': {'type': 'array', 'minItems': 1, 'maxItems': 128}}}
+    class Response:
+        def __init__(self, value): self.value = value
+        def model_dump(self, **kwargs): return {'structuredContent': self.value}
+    class MCP:
+        async def __aenter__(self):
+            sessions.append(self)
+            return self
+        async def __aexit__(self, *args): pass
+        async def call_tool(self, name, arguments):
+            calls.append((name, arguments))
+            if name == 'get_model_schema':
+                return Response({'contracts': [{'protocol': 'native', 'tool_name': 'infer_altumage_native', 'input_schema': schema}]})
+            if name == 'infer_altumage_native':
+                assert arguments == {**payload, 'idempotency_key': args.idempotency_key, 'wait_seconds': 0}
+                return Response({'id': 'original', 'status': 'running'})
+            if name == 'get_operation':
+                count = sum(n == name for n, _ in calls)
+                return Response({'id': 'original', 'status': 'running' if count == 1 else 'succeeded', 'result_available': count > 1})
+            if name == 'get_operation_result':
+                return Response({'operation': {'id': 'original'}, 'result': {'fixture': True}})
+            pytest.fail('No artifact upload or other tool is needed for valid file-backed arrays: ' + name)
+    monkeypatch.setattr(client, 'Client', lambda *args: MCP())
+    monkeypatch.setattr(client, 'streamable_http_client', lambda *args, **kwargs: None)
+    async def sleep(delay): pass
+    monkeypatch.setattr(client.asyncio, 'sleep', sleep)
+    result = asyncio.run(client.run(args))
+    assert result['state'] == 'succeeded' and len(sessions) == 1
+    assert [name for name, _ in calls] == ['get_model_schema', 'infer_altumage_native',
+        'get_operation', 'get_operation', 'get_operation_result']
+    assert json.loads((args.output_dir / 'result.json').read_text()) == {'fixture': True}

@@ -18,6 +18,34 @@ samples, each with exactly 20318 beta values (nulls only with
 `missing_values: "reference_median"`). This is a large payload — send it as
 real uploaded/requested data, never hand-typed. Do not shorten the CpG list.
 
+Use the installed native file client for a real dataset. Prepare one JSON file
+with `cpg_sites`, `samples` (each `sample_id` and `beta_values`) and the explicit
+`missing_values` policy, then run:
+
+```bash
+/opt/scientific-client/bin/python /opt/bionemo/invoke-native.py \
+  --model altumage --input /workspace/study/input.json \
+  --output-dir /workspace/study/run --idempotency-key STABLE_STUDY_KEY
+```
+
+The helper reads the complete arrays directly from disk, validates the live
+schema and sends them outside chat context. The native contract accepts those
+arrays inline **in the file-backed API request**, not just artifact references.
+Do not create an upload per CpG/sample merely because the dataset is large;
+ordinary bounded inputs can use this single request within the existing server
+size limit. For larger requests use the existing artifact helper and the exact
+advertised fields. Reuse already finalized uploads and original receipt keys.
+Never print a 20,318-element array into chat.
+
+For multiple independent cohorts or feature-order checks use the installed
+`scientific-workflow.py` native steps to queue these input files sequentially.
+Prefer the typed `run_scientific_workflow` tool with that saved plan file and a
+workspace-relative output directory: it preflights paths and returns one
+existing execution job to poll, without constructing a shell command.
+Permute CpG labels and their beta columns together; do not silently reorder only
+one side. Preserve missing-value policy and source hashes, and distinguish a
+feature-order invariance check from validation of biological age accuracy.
+
 ## phenoage (typed tool `infer_phenoage_native`, clinical)
 
 Clinical aging from blood biomarkers: `samples` 1–512, each with `sample_id`

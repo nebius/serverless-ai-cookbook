@@ -182,6 +182,54 @@ failures or establish two clean final-release cohorts.
 
 ## Release pins and limitations
 
+### 22:49 UTC — typed analysis verified, report interpretation still imperfect
+
+v25 source `64857f9e58f4ac92ce75767468f516644f4600b5`, image
+`lc:r0918-v25-64857f9`, digest
+`sha256:f5790fc21e4a4b6bd9ea9330634be6bf588c1b33e84e12cb7854a7b20b1572c0`
+ran a fresh-context, analysis-only scientist05 conversation
+`a22a3907-a3de-5d6e-8723-61acdb2b51f1`. All four typed docking tools were
+used naturally, and all16 downloaded pose metrics and mappings match the
+independent helper exactly. Reference/result hashes agree; the original
+incorrect v24 report remains byte-identical. GenMol counts now agree with the
+independent check and durations are correctly labelled service intervals.
+This is **not a clean final-report pass**: prose reverses which1A52 pose is
+farthest, misstates the mask as an approximate bounded token range, and one
+manually copied table number differs at an immaterial2e-10Å. The report hash
+is `ed97818e44c2e475a0614fa1cbf51afb1a7ec0bd861c1d2471677c513bec8172`.
+Private verification: `browser-evidence/scientist-05-v25-independent-verification.json`.
+
+Parent's fresh07 v24 study spent its turn preparing34 unnecessary AltumAge
+feature/value uploads and did not yet admit inference. The reported workspace
+permission failure was specifically `open(..., 'a')` after a whole-file write,
+not a failed direct-write receipt helper. The native schema accepts complete
+arrays, and the packaged native file client already reads/sends them outside
+LLM context. Reusable instructions/aging guidance now explicitly distinguish
+file-backed API arrays from chat-inline bytes and require complete-file writes
+instead of append on the S3 mount. Original uploads, partial report and failed
+journey remain evidence; a fresh unchanged study is still required.
+
+The next candidate keeps short native observations in one MCP session, bounded
+by30 seconds and the remaining workflow observation deadline; it removes the
+second full outer sleep. A recognizable transport disconnect can reconnect
+read-only at most three times only when the original operation ID is persisted.
+Ambiguous admissions, application failures and hash mismatches still stop. No
+model concurrency, request size, context or output-token limit changed. Tests
+cover a20,318-feature×16-row file transport with no artifact uploads, exact
+receipt recovery, no next admission after deadline and no duplicate wait.
+Live same-workload timing comparison remains pending; no speedup claimed yet.
+
+The candidate also adds the seeded typed `run_scientific_workflow` entry point
+on the existing execution MCP. It checks every source/input/parameter file
+before any model admission, freezes the prepared plan, delegates to the existing
+native/batch workflow runner, and returns the original execution job on repeats.
+Interrupted jobs need explicit resume; this does not add a second transport or
+make fixture values into capability limits.71 focused tests pass, including
+actual stdio job reuse, missing-source rejection before launch, every-agent tool
+seeding and the native/receipt regressions. Root retains fresh02/07 baseline
+failures (malformed CLI path and unnecessary uploads); typed-tool live
+acceptance remains pending.
+
 - v21 source `17a6a82`, image digest
   `sha256:74b85a24379e3f14e99ed97f0b3d78438fdd4b579f3a2e1d8464eafd96342029`.
   Forty-two focused Python tests and pinned-runtime patch/tool-token checks pass.

@@ -205,6 +205,7 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
         assert set(agent["mcpServerNames"]) == {"bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"}
         assert "tavily_search_mcp_tavily" in agent["tools"]
         assert "workbench_track_operation_mcp_scientific-demos" in agent["tools"]
+        assert "run_scientific_workflow_mcp_environment-execution" in agent["tools"]
 
 
 def test_genmol_skill_distinguishes_tokens_from_atom_measurements() -> None:

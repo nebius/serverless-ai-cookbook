@@ -40,7 +40,8 @@ const clinicalWorkflowTools = [
   'clinical_report_from_transcript', 'clinical_report_from_workspace', 'clinical_get_job',
   'clinical_read_output', 'clinical_list_jobs', 'clinical_resume_job',
 ].map((name) => `${name}_mcp_scientific-demos`);
-const executionTools = ['execute_command_mcp_environment-execution', 'read_execution_mcp_environment-execution'];
+const executionTools = ['execute_command_mcp_environment-execution', 'read_execution_mcp_environment-execution',
+  'run_scientific_workflow_mcp_environment-execution'];
 
 const structureTools = [
   ...scientificCatalogTools,
