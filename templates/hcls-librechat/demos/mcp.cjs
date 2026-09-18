@@ -21,8 +21,9 @@ const definitions = [
   ['workshop_get_run', 'Read one durable consultation status and five-axis judgment. Save its complete transcript, config and raw judgment as a hash-verified workspace_file; use that actual JSON with execute_command for exports and analysis, never reconstruct middle turns from chat. Scores are research evaluations, not clinical validation.', schema({ run_id: string }, ['run_id'])],
   ['workshop_intervene', 'Explicitly pause, nudge, take over, say a human turn, resume model control or abort a consultation. Interventions are recorded and excluded from untouched benchmark comparisons.', schema({ run_id: string, action: { type: 'string', enum: ['pause', 'nudge', 'takeover', 'say', 'resume', 'abort'] }, role: { type: 'string', enum: ['patient', 'clinician'], default: 'clinician' }, text: string }, ['run_id', 'action'])],
   ['clinical_report_from_transcript', 'Generate an evidence-linked German Arztbrief or English report draft from an available transcript. Source transcript, uncertainties, withheld facts and follow-up questions are retained. Physician review required. For audio/large files, upload in /demos?tab=clinical; never send base64. Choose a fresh idempotency key once, then poll the returned job.', schema({ transcript: { type: 'string', minLength: 1, maxLength: 100000 }, language: { type: 'string', enum: ['en', 'de'] }, idempotency_key: string }, ['transcript', 'language', 'idempotency_key'])],
+  ['clinical_report_from_workspace', 'Generate a reviewable clinical draft from an existing full transcript .txt or ASR .json file in the authenticated workspace. The server reads the exact bytes directly and records source size/SHA-256; do not paste, shorten or reconstruct the transcript through model arguments. Prefer this for completed ASR results. Supply a workspace-relative path (without /workspace/), language and one idempotency key; poll the returned existing job. Does not transcribe audio again. Not clinically validated.', schema({ workspace_path: string, language: { type: 'string', enum: ['en', 'de'] }, idempotency_key: string }, ['workspace_path', 'language', 'idempotency_key'])],
   ['clinical_get_job', 'Read the status of a saved report job and its authenticated download location. An incomplete draft is not a completed report.', schema({ job_id: string }, ['job_id'])],
-  ['clinical_read_output', 'Read one saved draft, source transcript or review file after checking job status. Keep uncertainty and clinician-review requirements visible; do not invent absent output.', schema({ job_id: string, filename: { type: 'string', enum: service.FILES } }, ['job_id', 'filename'])],
+  ['clinical_read_output', 'Read one saved draft, source transcript or review file after checking job status, and retain the exact bytes as a hash-verified workspace_file. Use that path for downloads and analysis instead of guessing private job folders or reconstructing text from chat. Keep uncertainty and clinician-review requirements visible.', schema({ job_id: string, filename: { type: 'string', enum: service.FILES } }, ['job_id', 'filename'])],
   ['clinical_list_jobs', 'List this LibreChat user’s report jobs and resume their UI after reconnecting.', schema({})],
   ['clinical_resume_job', 'Explicitly resume the same interrupted or incomplete report job and its cached stages, using the original platform key. Does not create a new transcription operation.', schema({ job_id: string }, ['job_id'])],
 ];
@@ -71,12 +72,16 @@ async function dispatch(name, args) {
       if (typeof args.transcript !== 'string' || args.transcript.length > 100000) throw service.failure('Use the file upload panel for long transcripts.');
       return service.clinical(owner, key, { kind: 'transcript', language: args.language, idempotency_key: args.idempotency_key,
         filename: 'transcript.txt', bytes: Buffer.from(args.transcript) });
+    case 'clinical_report_from_workspace':
+      return service.clinicalFromWorkspace(owner, key, args.workspace_path, args.language, args.idempotency_key);
     case 'clinical_get_job': return service.status(owner, args.job_id);
     case 'clinical_read_output': {
-      const bytes = await service.output(owner, args.job_id, args.filename);
+      const { bytes, workspace_file } = await service.clinicalOutput(owner, key, args.job_id, args.filename);
       if (bytes.length > 100000) return { job_id: args.job_id, file: args.filename, requires_download: true,
-        url: `/demos?tab=clinical&job=${args.job_id}`, message: 'Full output exceeds the chat tool budget. Download it in the report panel; no content was silently truncated.' };
-      return { job_id: args.job_id, file: args.filename, content: bytes.toString('utf8'), clinical_validation: false };
+        workspace_file, url: `/demos?tab=clinical&job=${args.job_id}`,
+        message: 'Full output exceeds the chat tool budget. Read the verified workspace file or download it in the report panel; no content was silently truncated.' };
+      return { job_id: args.job_id, file: args.filename, workspace_file,
+        content: bytes.toString('utf8'), clinical_validation: false };
     }
     case 'clinical_list_jobs': return { data: await service.list(owner) };
     case 'clinical_resume_job': return service.start(owner, key, args.job_id);

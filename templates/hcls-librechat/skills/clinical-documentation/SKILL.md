@@ -74,10 +74,22 @@ or change deployment settings. There is no new access policy in this skill.
 ## MCP-only client
 
 In the Scientific AI LibreChat deployment, prefer the `scientific-demos`
-bridge when present. `clinical_report_from_transcript` starts the same helper
-with a per-user platform key held by the server. Save its job ID and use
+bridge when present. For an existing full transcript, use
+`clinical_report_from_workspace` with the exact workspace-relative `.txt` path
+or original ASR `.json` file. The server reads the bytes and records their size
+and SHA-256 in `input_provenance`; verify these against the saved input before
+claiming full-recording coverage. Do not shorten, reconstruct or hand-copy a
+long transcript into tool arguments. `clinical_report_from_transcript` remains
+for actual user-supplied short text, not model-generated summaries of ASR.
+Both start the same helper with a per-user platform key held by the server. Save its job ID and use
 `clinical_get_job`/`clinical_read_output` to retrieve the draft, transcript,
-review queue and questions. For audio or large files use the authenticated
+review queue and questions. Each `clinical_read_output` retains the original
+bytes as a hash-verified `workspace_file`; read or copy that exact path instead
+of guessing private job directories or reconstructing files from chat excerpts.
+Keep even empty review/question outputs and check completeness independently.
+An earlier report made from substituted or shortened input fails full-source
+coverage; preserve it and label any explicitly authorized corrected replay.
+For audio or large files use the authenticated
 `/demos?tab=clinical` upload panel; an attachment label alone is not transferred
 to this tool. After an interrupted job use `clinical_resume_job`, not a new
 submission. Missing clinical tools require reconnecting the scientific-demos

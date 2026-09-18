@@ -22,6 +22,8 @@ def main():
     parser.add_argument("--workspace-file", action="append", default=[], help="Download an actual study deliverable for independent verification.")
     parser.add_argument("--workspace-list", action="append", default=[], help="Record actual directory entries before checking claimed file names.")
     parser.add_argument('--runs', action='store_true', help='Capture current caller-scoped Runs and workshop statuses read-only.')
+    parser.add_argument('--clinical-job', action='append', default=[],
+                        help='Download original report-job files through the authenticated panel, without rerunning the job.')
     args = parser.parse_args()
     os.umask(0o077)
     person = next(item for item in json.loads(args.manifest.read_text())["scientists"]
@@ -67,6 +69,21 @@ def main():
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(response.content)
             summary['files'][relative] = {'bytes': len(response.content), 'sha256': hashlib.sha256(response.content).hexdigest()}
+        for job_id in args.clinical_job:
+            if len(job_id) != 32 or any(character not in '0123456789abcdef' for character in job_id):
+                raise ValueError('Use the exact returned clinical job ID.')
+            for filename in ('report.md', 'transcript.txt', 'follow-up.md', 'review.md',
+                             'document.json', 'review.json', 'run.json'):
+                relative = f'clinical/{job_id}/{filename}'
+                response = client.get(f'/api/scientific-demos/clinical/{job_id}/files/{filename}')
+                if response.status_code != 200:
+                    summary['files'][relative] = {'status': response.status_code, 'missing': True}
+                    continue
+                target = args.output / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(response.content)
+                summary['files'][relative] = {'bytes': len(response.content),
+                    'sha256': hashlib.sha256(response.content).hexdigest()}
         for index, relative in enumerate(args.workspace_list):
             response = client.get('/api/scientific-demos/workspace', params={'path': relative})
             response.raise_for_status()

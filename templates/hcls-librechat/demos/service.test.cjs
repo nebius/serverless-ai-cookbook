@@ -88,9 +88,10 @@ test('stdio MCP exposes typed tools and rejects absent identity without inferenc
     { id: 3, method: 'tools/call', params: { name: 'clinical_list_jobs' } } ].map((item) => JSON.stringify({ jsonrpc: '2.0', ...item })).join('\n') + '\n');
   assert.equal(await new Promise((resolve) => child.on('exit', resolve)), 0);
   const messages = stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(messages[1].result.tools.length, 17);
+  assert.equal(messages[1].result.tools.length, 18);
   assert.ok(messages[1].result.tools.every((tool) => tool.inputSchema.additionalProperties === false));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_track_operation'));
+  assert.ok(messages[1].result.tools.some((tool) => tool.name === 'clinical_report_from_workspace'));
   assert.equal(messages[2].result.isError, true);
 });
 test('mounted workspace stays inside its root and round-trips files', async () => {
@@ -288,5 +289,60 @@ test('consultation export preserves every turn and immutable versions without mo
     assert.ok(JSON.stringify(toolResult).length < 5000);
     assert.equal(JSON.stringify(toolResult).includes('long synthetic text'), false);
   } finally { global.fetch = originalFetch; }
+});
+test('clinical output retains exact files and versions without exposing private job paths', async () => {
+  const service = await setup;
+  const owner = 'export-fixture-user';
+  const id = crypto.randomUUID().replaceAll('-', '');
+  const source = path.join(root, crypto.createHash('sha256').update(owner).digest('hex'), id, 'output');
+  await fs.mkdir(source, { recursive: true });
+  const original = Buffer.from('Synthetic report with exact evidence.\n');
+  await fs.writeFile(path.join(source, 'report.md'), original);
+  const retained = await service.clinicalOutput(owner, 'caller-key', id, 'report.md');
+  assert.deepEqual(await fs.readFile(retained.workspace_file.path), original);
+  assert.equal(retained.workspace_file.sha256, crypto.createHash('sha256').update(original).digest('hex'));
+  assert.ok(retained.workspace_file.path.startsWith(process.env.SCIENTIFIC_WORKSPACE));
+  assert.equal((await service.clinicalOutput(owner, 'caller-key', id, 'report.md')).workspace_file.path, retained.workspace_file.path);
+  const updated = Buffer.from('Explicitly revised synthetic report.\n');
+  await fs.writeFile(path.join(source, 'report.md'), updated);
+  const revised = await service.clinicalOutput(owner, 'caller-key', id, 'report.md');
+  assert.notEqual(revised.workspace_file.path, retained.workspace_file.path);
+  assert.deepEqual(await fs.readFile(retained.workspace_file.path), original);
+  await assert.rejects(service.clinicalOutput('another-user', 'caller-key', id, 'report.md'), /not been produced/);
+  await assert.rejects(service.clinicalOutput(owner, 'caller-key', id, 'request.json'), /Unknown report/);
+  process.env.LIBRECHAT_USER_ID = owner;
+  process.env.SCIENTIFIC_MODELS_API_KEY = 'caller-key';
+  const mcp = require('./mcp.cjs');
+  const value = await mcp.dispatch('clinical_read_output', { job_id: id, filename: 'report.md' });
+  assert.equal(value.content, updated.toString());
+  assert.equal(value.workspace_file.sha256, revised.workspace_file.sha256);
+  const large = Buffer.from('Synthetic transcript.\n'.repeat(6000));
+  await fs.writeFile(path.join(source, 'transcript.txt'), large);
+  const bounded = await mcp.dispatch('clinical_read_output', { job_id: id, filename: 'transcript.txt' });
+  assert.equal(bounded.content, undefined);
+  assert.equal(bounded.requires_download, true);
+  assert.deepEqual(await fs.readFile(bounded.workspace_file.path), large);
+  assert.ok(JSON.stringify(bounded).length < 2000);
+});
+test('workspace clinical input captures full bytes and exposes immutable source lineage', async () => {
+  const service = await setup;
+  const relative = 'full-source/asr-result.json';
+  const file = path.join(process.env.SCIENTIFIC_WORKSPACE, relative);
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  const bytes = Buffer.from(JSON.stringify({ text: 'Complete synthetic source with a final sentinel. '.repeat(5000),
+    duration_seconds: 457.92, source: 'test-fixture' }));
+  await fs.writeFile(file, bytes);
+  const job = await service.clinicalFromWorkspace('user-a', 'test-platform-key', relative, 'en', 'full-workspace-fixture');
+  await complete(service, job.id);
+  const done = await service.status('user-a', job.id);
+  assert.deepEqual(done.input_provenance, { kind: 'transcript',
+    sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+    size_bytes: bytes.length, workspace_file: relative });
+  const captured = path.join(root, crypto.createHash('sha256').update('user-a').digest('hex'), job.id, 'input.json');
+  assert.deepEqual(await fs.readFile(captured), bytes);
+  assert.equal((await service.clinicalFromWorkspace('user-a', 'test-platform-key', relative, 'en', 'full-workspace-fixture')).id, job.id);
+  await fs.writeFile(file, Buffer.from('{"text":"different input"}'));
+  await assert.rejects(service.clinicalFromWorkspace('user-a', 'test-platform-key', relative, 'en', 'full-workspace-fixture'), /different input/);
+  await assert.rejects(service.clinicalFromWorkspace('user-a', 'test-platform-key', '../outside.txt', 'en', 'bad-path-fixture'), /path/);
 });
 after(async () => { await setup; await fs.rm(root, { recursive: true }); });

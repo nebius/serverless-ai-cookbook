@@ -436,8 +436,11 @@ async function status(owner, id) {
   for (const name of FILES) {
     try { await fs.access(path.join(dir, 'output', name)); available.push(name); } catch { /* not produced */ }
   }
+  const request = await read(path.join(dir, 'request.json')).catch(() => ({}));
   return { id, status: receipt.status, created_at: receipt.created_at, finished_at: receipt.finished_at,
     error: receipt.error, files: available, model: REPORT_MODEL,
+    input_provenance: { kind: request.kind, sha256: request.input_sha256,
+      size_bytes: request.input_size_bytes, workspace_file: request.source_workspace },
     url: `/demos?tab=clinical&job=${id}`, clinical_validation: false };
 }
 async function list(owner) {
@@ -485,7 +488,8 @@ async function clinical(owner, key, input) {
   if (!size || size > 512 * 1024 * 1024 || (!input.local_path && !Buffer.isBuffer(input.bytes))) throw failure('Upload a nonempty file, at most 512 MiB.');
   const id = hash(input.idempotency_key).slice(0, 32);
   const dir = directory(owner, id);
-  const signature = hash(JSON.stringify([input.local_path ? await fileHash(input.local_path) : hash(input.bytes), input.kind, input.language]));
+  const inputDigest = input.local_path ? await fileHash(input.local_path) : hash(input.bytes);
+  const signature = hash(JSON.stringify([inputDigest, input.kind, input.language]));
   await fs.mkdir(path.dirname(dir), { recursive: true, mode: 0o700 });
   try { await fs.mkdir(dir, { mode: 0o700 }); }
   catch (error) {
@@ -498,17 +502,34 @@ async function clinical(owner, key, input) {
   const source = `input${ext}`;
   if (input.local_path) await fs.copyFile(input.local_path, path.join(dir, source));
   else await fs.writeFile(path.join(dir, source), input.bytes, { mode: 0o600 });
+  if (await fileHash(path.join(dir, source)) !== inputDigest) throw failure('Transcript changed during input capture; no report was started.', 409);
   await fs.chmod(path.join(dir, source), 0o600);
   await save(path.join(dir, 'request.json'), { source, kind: input.kind, language: input.language,
     signature, key_hash: hash(key), created_at: new Date().toISOString(), platform: PLATFORM,
+    input_sha256: inputDigest, input_size_bytes: size, source_workspace: input.source_workspace,
     report_model: REPORT_MODEL, report_provider: REPORT_PROVIDER });
   await save(path.join(dir, 'status.json'), { id, status: 'prepared', created_at: new Date().toISOString() });
   return start(owner, key, id);
+}
+async function clinicalFromWorkspace(owner, key, relativePath, language, idempotencyKey) {
+  const file = await workspaceGet(key, relativePath);
+  if (!['.txt', '.json'].includes(path.extname(file.normalized).toLowerCase())) {
+    throw failure('Choose an existing transcript .txt or ASR .json workspace file.');
+  }
+  return clinical(owner, key, { kind: 'transcript', language, idempotency_key: idempotencyKey,
+    filename: path.basename(file.normalized), local_path: file.absolute,
+    source_workspace: file.normalized });
 }
 async function output(owner, id, filename) {
   if (!FILES.includes(filename)) throw failure('Unknown report file', 404);
   try { return await fs.readFile(path.join(directory(owner, id), 'output', filename)); }
   catch (error) { if (error.code === 'ENOENT') throw failure('This report file has not been produced. Check job status.', 409); throw error; }
 }
-module.exports = { platform, listApps, operationResult, workshopRun, summarizeResult, clinical, status, list, start, output, track, waitOperation, runs, workspaceInfo, workspaceList,
+async function clinicalOutput(owner, key, id, filename) {
+  const bytes = await output(owner, id, filename);
+  const workspace_file = await retainWorkspaceBytes(key,
+    `.scientific-clinical/${id}/${hash(bytes)}/${filename}`, bytes);
+  return { bytes, workspace_file };
+}
+module.exports = { platform, listApps, operationResult, workshopRun, summarizeResult, clinical, clinicalFromWorkspace, status, list, start, output, clinicalOutput, track, waitOperation, runs, workspaceInfo, workspaceList,
   workspacePut, workspaceGet, save, read, failure, publicError, FILES, REPORT_MODEL };
