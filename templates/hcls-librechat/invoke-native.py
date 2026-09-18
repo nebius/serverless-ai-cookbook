@@ -6,7 +6,6 @@ directory resumes the saved operation; ambiguous admission is never retried.
 """
 import argparse
 import asyncio
-import fcntl
 import hashlib
 import json
 import os
@@ -18,13 +17,7 @@ import httpx2
 from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
-
-
-def save(path, data):
-    temp = path.with_suffix('.tmp')
-    temp.write_text(json.dumps(data, indent=2) + '\n')
-    temp.chmod(0o600)
-    temp.replace(path)
+from scientific_receipts import load as load_receipt, receipt_lock, save
 
 
 def unpack(response):
@@ -84,7 +77,9 @@ async def run(args):
                 'idempotency_key': args.idempotency_key}
     args.output_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     path = args.output_dir / 'receipt.json'
-    record = json.loads(path.read_text()) if path.exists() else {'identity': identity, 'state': 'prepared'}
+    record = load_receipt(path)
+    if record is None:
+        record = {'identity': identity, 'state': 'prepared'}
     if record['identity'] != identity:
         raise ValueError('Output directory belongs to different inputs, caller, model or idempotency key.')
     if record['state'] in ('submitting', 'admission_unknown'):
@@ -186,8 +181,7 @@ def main():
         parser.error('Use an 8–200 character idempotency key and a nonnegative wait.')
     try:
         args.output_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with (args.output_dir / 'client.lock').open('w') as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with receipt_lock(args.output_dir):
             record = asyncio.run(run(args))
         print(json.dumps({k: record[k] for k in ('state', 'operation_id', 'result_path') if k in record}))
         if record['state'] in ('failed', 'cancelled', 'expired', 'preempted'):

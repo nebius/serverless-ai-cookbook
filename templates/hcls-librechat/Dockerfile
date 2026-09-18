@@ -38,6 +38,7 @@ COPY templates/hcls-librechat/tavily-mcp.mjs /opt/bionemo/tavily-mcp.mjs
 COPY templates/hcls-librechat/structure-mcp.py /opt/bionemo/structure-mcp.py
 COPY templates/hcls-librechat/execution-mcp.py /opt/bionemo/execution-mcp.py
 COPY templates/hcls-librechat/invoke-native.py /opt/bionemo/invoke-native.py
+COPY templates/hcls-librechat/scientific_receipts.py /opt/bionemo/scientific_receipts.py
 COPY templates/hcls-librechat/upload-artifact.py /opt/bionemo/upload-artifact.py
 COPY templates/hcls-librechat/scripts/scientific-batch-acceptance.py /opt/bionemo/invoke-scientific-batch.py
 COPY templates/hcls-librechat/structure-analysis.py /opt/bionemo/structure-analysis.py

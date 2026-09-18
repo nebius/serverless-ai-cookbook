@@ -35,12 +35,19 @@ def test_job_continues_after_mcp_disconnect_and_output_is_paged(tmp_path):
         'command': "sleep 0.3; python3 -c \"print('x' * 40000, end='')\"", 'wait_seconds': 0})
     _, result = call(tmp_path, 'read_execution', {'job_id': started['job_id'], 'wait_seconds': 3})
     assert result['status'] == 'completed'
-    assert len(result['output']) == 12000
+    assert len(result['output']) == 4000
+    assert result['output_size_bytes'] == 40000
+    assert result['returned_bytes'] == 4000
+    assert 'retained at output_path' in result['output_guidance']
     assert result['more_output'] is True
     _, rest = call(tmp_path, 'read_execution', {'job_id': started['job_id'],
         'offset': result['next_offset'], 'max_bytes': 32000})
-    assert len(rest['output']) == 28000
-    assert rest['more_output'] is False
+    assert len(rest['output']) == 32000
+    assert rest['more_output'] is True
+    _, final = call(tmp_path, 'read_execution', {'job_id': started['job_id'],
+        'offset': rest['next_offset']})
+    assert len(final['output']) == 4000
+    assert final['more_output'] is False
 
 
 def test_command_deadline(tmp_path):
@@ -48,4 +55,3 @@ def test_command_deadline(tmp_path):
         'command': 'sleep 30', 'timeout_seconds': 1, 'wait_seconds': 3})
     assert envelope['isError'] is True
     assert result['status'] == 'timed_out'
-

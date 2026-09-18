@@ -25,9 +25,13 @@ def main():
                         help='Supplementary public source or reference file, copied under supplementary/.')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--index-name', default='study-sources.json')
+    parser.add_argument('--input-directory', default='study-inputs',
+                        help='Workspace-relative directory below the selected scientist, for versioned input sets.')
     args = parser.parse_args()
     if Path(args.index_name).name != args.index_name or not args.index_name.endswith('.json'):
         parser.error('Use a plain JSON filename for the source index.')
+    if Path(args.input_directory).is_absolute() or '..' in Path(args.input_directory).parts:
+        parser.error('Use a relative input directory without parent traversal.')
     os.umask(0o077)
     person = next(p for p in json.loads(args.manifest.read_text())['scientists'] if p['id'] == args.scientist)
     deployment = json.loads((args.workbenches / args.scientist / 'deployment.json').read_text())
@@ -38,7 +42,7 @@ def main():
     selected = {case['case_id']: case for case in data['cases'] if case['case_id'] in args.case_id}
     if set(selected) != set(args.case_id):
         raise ValueError('A requested frozen case is missing')
-    prefix = f'{args.scientist}/study-inputs'
+    prefix = f'{args.scientist}/{args.input_directory}'
     receipt = {'scientist_id': args.scientist, 'source_manifest': str(args.cases), 'files': [], 'studies': []}
     with httpx.Client(base_url=deployment['url'], timeout=120) as client:
         login = client.post('/api/auth/login', json={'email': person['email'], 'password': person['password']})

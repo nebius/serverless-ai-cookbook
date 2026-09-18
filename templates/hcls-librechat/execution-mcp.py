@@ -61,7 +61,7 @@ def read_job(args):
         raise ValueError('Unknown execution job ID.')
     offset = bounded_number(args, 'offset', 0, 2**63 - 1)
     wait = bounded_number(args, 'wait_seconds', 0, 10)
-    limit = bounded_number(args, 'max_bytes', 12000, 32000)
+    limit = bounded_number(args, 'max_bytes', 4000, 32000)
     deadline = time.monotonic() + wait
     while True:
         path = directory / 'status.json'
@@ -84,8 +84,13 @@ def read_job(args):
         with output.open('rb') as stream:
             stream.seek(offset)
             data = stream.read(limit)
+    total_bytes = output.stat().st_size if output.exists() else 0
     status.update(output=data.decode('utf-8', errors='replace'), next_offset=offset + len(data),
+                  output_size_bytes=total_bytes, returned_bytes=len(data),
                   output_path=str(output), more_output=output.exists() and output.stat().st_size > offset + len(data))
+    if status['more_output']:
+        status['output_guidance'] = ('Full output is retained at output_path. Analyze that file locally and print concise metrics; '
+                                     'read another chunk only when its text is needed. Never paste whole datasets or helper source into chat.')
     return status
 
 
@@ -110,7 +115,7 @@ def execute(args):
 
 TOOLS = [
     {'name': 'execute_command',
-     'description': 'Execute Bash as root in this application container. Install packages with apt-get/pip/npm, run Python, download internet resources, read/write any container path and mounted storage. /workspace is the team Object Storage bucket mount and the durable location for team files. This is real execution, not a code suggestion. For long work save job_id and use read_execution; do not submit again. Output is capped; redirect datasets/results to files. timeout_seconds=0 disables the deadline. Root applies to the container and its mounts, not the cloud host. Never print credentials.',
+     'description': 'Execute Bash as root in this application container. Install packages with apt-get/pip/npm, run Python, download internet resources, read/write any container path and mounted storage. /workspace is the team Object Storage bucket mount and the durable location for team files; use byte copies, not chmod/copystat. This is real execution, not a code suggestion. For long work save job_id and use read_execution; do not submit again. Returns 4000 output bytes by default with a full log file pointer; compute summaries locally instead of dumping source/data. timeout_seconds=0 disables the deadline. Root applies to the container and its mounts, not the cloud host. Never print credentials.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': True, 'openWorldHint': True},
      'inputSchema': {'type': 'object', 'additionalProperties': False, 'required': ['command'],
         'properties': {'command': {'type': 'string'}, 'cwd': {'type': 'string'},

@@ -13,6 +13,8 @@ The selected chat LLM reasons about the user's task and calls scientific tools. 
 
 ${teamContext}
 
+Storage and context: /workspace is an object-storage mount, not a full POSIX disk. Use byte copies (shutil.copyfile or read_bytes/write_bytes), not copy2/copystat/chmod. The packaged file clients maintain resumable receipts there. Read their --help for arguments; do not dump implementation source or raw datasets into chat. Keep full inputs/results/logs in files and print only the fields needed for the next decision. Read a chosen App schema once per unchanged contract; do not repeat discovery during polling. A long-running job can remain in Runs between turns; preserve its operation ID rather than consuming the context with repeated status calls.
+
 ${gatewayInstructions}
 
 Run continuity: immediately call workbench_track_operation for every submitted operation ID, including failures, then poll that same ID. Never resubmit because a poll or chat response timed out. Use workbench_get_operation_result for verified raw files plus compact metrics. Analyze its workspace_file.path, never move full coordinates through chat. Combine related preparation and analysis into coherent Python heredocs instead of many tiny execution calls. Complete the requested scientific deliverable, not only its model invocation. Direct the user to Apps, Runs and Workspace at /demos.

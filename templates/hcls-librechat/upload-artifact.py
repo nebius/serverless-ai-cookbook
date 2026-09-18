@@ -7,7 +7,6 @@ file identity, caller and idempotency key. This helper does not run inference.
 """
 import argparse
 import asyncio
-import fcntl
 import hashlib
 import json
 import os
@@ -16,13 +15,7 @@ from pathlib import Path
 import httpx2
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
-
-
-def save(path, value):
-    temporary = path.with_suffix('.tmp')
-    temporary.write_text(json.dumps(value, indent=2) + '\n')
-    temporary.chmod(0o600)
-    temporary.replace(path)
+from scientific_receipts import load as load_receipt, receipt_lock, save
 
 
 def file_identity(path):
@@ -59,7 +52,9 @@ async def transfer(client, object_http, args, endpoint, key):
                 'endpoint': endpoint, 'caller_fingerprint': hashlib.sha256(key.encode()).hexdigest(),
                 'idempotency_key': args.idempotency_key}
     receipt = args.output_dir / 'receipt.json'
-    record = json.loads(receipt.read_text()) if receipt.exists() else {'identity': identity, 'state': 'prepared'}
+    record = load_receipt(receipt)
+    if record is None:
+        record = {'identity': identity, 'state': 'prepared'}
     if record['identity'] != identity:
         raise ValueError('File bytes, caller or upload identity changed. Use a new output directory and idempotency key.')
     if record['state'] == 'finalized':
@@ -131,8 +126,7 @@ def main():
     os.umask(0o077)
     args.output_dir.mkdir(parents=True, exist_ok=True)
     try:
-        with (args.output_dir / 'client.lock').open('w') as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with receipt_lock(args.output_dir):
             result = asyncio.run(run(args))
         print(json.dumps({'state': result['state'], 'operation_id': result['operation_id'],
                           'artifact': result['artifact'], 'artifact_file': str(args.output_dir / 'artifact.json')}))

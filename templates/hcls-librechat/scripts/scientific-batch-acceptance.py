@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import sys
 import time
 from urllib.parse import quote, urlparse
 from uuid import uuid4
@@ -19,6 +20,11 @@ import httpx2
 from jsonschema import Draft202012Validator
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
+
+# The same source is installed beside scientific_receipts.py in the image.
+if Path(__file__).parent.name == 'scripts':
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+from scientific_receipts import load as load_receipt, receipt_lock, save
 
 
 TERMINAL = {"failed", "cancelled", "expired", "preempted"}
@@ -38,14 +44,6 @@ def canonical(value: object) -> bytes:
 
 def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
-
-
-def save(path: Path, value: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(value, indent=2) + "\n")
-    temporary.chmod(0o600)
-    temporary.replace(path)
 
 
 def check(response):
@@ -128,8 +126,9 @@ async def run(args) -> None:
                 "caller_fingerprint": digest(key.encode()), "idempotency_key": args.idempotency_key}
     args.output.mkdir(parents=True, exist_ok=True, mode=0o700)
     receipt_path = args.output / "receipt.json"
-    receipt = json.loads(receipt_path.read_text()) if receipt_path.exists() else {
-        "identity": identity, "state": "prepared", "manifest_id": "scientist-cohort-" + str(uuid4())}
+    receipt = load_receipt(receipt_path)
+    if receipt is None:
+        receipt = {"identity": identity, "state": "prepared", "manifest_id": "scientist-cohort-" + str(uuid4())}
     if receipt["identity"] != identity:
         raise ValueError("Output directory belongs to a different request.")
     save(receipt_path, receipt)
@@ -241,7 +240,8 @@ def main() -> None:
     parser.add_argument("--wait-seconds", type=float, default=1800)
     parser.add_argument("--poll-seconds", type=float, default=10)
     args = parser.parse_args()
-    asyncio.run(run(args))
+    with receipt_lock(args.output):
+        asyncio.run(run(args))
 
 
 if __name__ == "__main__":
