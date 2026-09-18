@@ -2,6 +2,7 @@
 """Render or apply a reviewed campaign control-plane release over live values."""
 import argparse
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -45,6 +46,22 @@ def merged_values(original, delta):
     return result
 
 
+def verify_published_image(image):
+    """Check the exact retained repository, not just a digest in a sibling repo."""
+    reference = image["repository"] + "@" + image["digest"]
+    result = subprocess.run(
+        ["skopeo", "inspect", "--raw", "--authfile", str(Path.home() / ".docker/config.json"),
+         "docker://" + reference], capture_output=True, check=False,
+    )
+    # Do not include registry stderr: an authentication helper may emit secrets.
+    if result.returncode:
+        raise ValueError("Exact prepared repository/digest is not readable: " + reference)
+    actual = "sha256:" + hashlib.sha256(result.stdout).hexdigest()
+    if actual != image["digest"]:
+        raise ValueError("Published manifest bytes do not match the prepared digest")
+    return {"reference": reference, "manifest_digest": actual, "readable": True}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("prepare", "apply"))
@@ -69,6 +86,7 @@ def main():
             after_values = merged_values(after_values, json.loads(args.values_delta.read_text()))
         if after_values["image"]["digest"] != args.digest:
             raise ValueError("Values delta must not change the requested immutable image")
+        save(args.output / "published-image.json", verify_published_image(after_values["image"]))
         save(args.output / "after-values.json", after_values)
         after = run(HELM + ["template", RELEASE, str(args.chart), "--is-upgrade", "-f", str(args.output / "after-values.json")])
         textfile(args.output / "rendered-manifest.yaml", after)
@@ -86,6 +104,7 @@ def main():
         values = json.loads((args.output / "after-values.json").read_text())
         if values["image"]["digest"] != args.digest:
             raise ValueError("Image digest differs from prepared plan")
+        save(args.output / "published-image-before-apply.json", verify_published_image(values["image"]))
         print(run(HELM + ["upgrade", RELEASE, str(args.chart), "-f", str(args.output / "after-values.json"),
                          "--atomic", "--wait", "--timeout", "10m"]), flush=True)
         save(args.output / "after-status.json", json.loads(run(HELM + ["status", RELEASE, "-o", "json"])))
