@@ -1,0 +1,128 @@
+{
+  "health": {
+    "ready": true,
+    "engine": "AutoDock Vina",
+    "engine_version": "1.2.7",
+    "accelerator": "CPU"
+  },
+  "rest": {
+    "run_id": "8295bb802c8643e4be9e249d2d0c7e90",
+    "result": {
+      "engine": "AutoDock Vina",
+      "engine_version": "1.2.7",
+      "scoring_semantics": "vina",
+      "center": [
+        15.19,
+        53.903,
+        16.917
+      ],
+      "size": [
+        20.0,
+        20.0,
+        20.0
+      ],
+      "exhaustiveness": 8,
+      "n_poses": 9,
+      "seed": 17,
+      "scores": [
+        {
+          "rank": 1,
+          "total_kcal_per_mol": -13.263,
+          "inter_kcal_per_mol": -18.691,
+          "intra_kcal_per_mol": -0.397,
+          "torsions_kcal_per_mol": 5.428,
+          "intra_best_pose_kcal_per_mol": -0.397
+        },
+        {
+          "rank": 2,
+          "total_kcal_per_mol": -11.323,
+          "inter_kcal_per_mol": -15.397,
+          "intra_kcal_per_mol": -0.956,
+          "torsions_kcal_per_mol": 4.634,
+          "intra_best_pose_kcal_per_mol": -0.397
+        },
+        {
+          "rank": 3,
+          "total_kcal_per_mol": -11.141,
+          "inter_kcal_per_mol": -15.927,
+          "intra_kcal_per_mol": -0.169,
+          "torsions_kcal_per_mol": 4.559,
+          "intra_best_pose_kcal_per_mol": -0.397
+        }
+      ],
+      "best_affinity_kcal_per_mol": -13.263,
+      "research_only": true,
+      "wall_clock_seconds": 32.816776,
+      "image_revision": "unknown"
+    },
+    "artifact": {
+      "bytes": 1062,
+      "sha256": "34ca1de1a5b423d89c514bd186336e5063f210591cb5d9428b9ffd8338c8201c"
+    }
+  },
+  "mcp": {
+    "server": "Nebius HCLS autodock-vina",
+    "protocol_version": "2025-11-25",
+    "tools": [
+      "cancel_run",
+      "get_capabilities",
+      "get_run",
+      "list_run_artifacts",
+      "list_runs",
+      "submit_run"
+    ],
+    "run_id": "08797d2d02a84759bf0410f46d84f767",
+    "result": {
+      "engine": "AutoDock Vina",
+      "engine_version": "1.2.7",
+      "scoring_semantics": "vina",
+      "center": [
+        15.19,
+        53.903,
+        16.917
+      ],
+      "size": [
+        20.0,
+        20.0,
+        20.0
+      ],
+      "exhaustiveness": 8,
+      "n_poses": 9,
+      "seed": 17,
+      "scores": [
+        {
+          "rank": 1,
+          "total_kcal_per_mol": -13.263,
+          "inter_kcal_per_mol": -18.691,
+          "intra_kcal_per_mol": -0.397,
+          "torsions_kcal_per_mol": 5.428,
+          "intra_best_pose_kcal_per_mol": -0.397
+        },
+        {
+          "rank": 2,
+          "total_kcal_per_mol": -11.323,
+          "inter_kcal_per_mol": -15.397,
+          "intra_kcal_per_mol": -0.956,
+          "torsions_kcal_per_mol": 4.634,
+          "intra_best_pose_kcal_per_mol": -0.397
+        },
+        {
+          "rank": 3,
+          "total_kcal_per_mol": -11.141,
+          "inter_kcal_per_mol": -15.927,
+          "intra_kcal_per_mol": -0.169,
+          "torsions_kcal_per_mol": 4.559,
+          "intra_best_pose_kcal_per_mol": -0.397
+        }
+      ],
+      "best_affinity_kcal_per_mol": -13.263,
+      "research_only": true,
+      "wall_clock_seconds": 32.487668,
+      "image_revision": "unknown"
+    },
+    "artifact_verified_through_rest": {
+      "bytes": 1062,
+      "sha256": "0dbebe81d6e4ad0b71cf80438ca4e7a5b427c3aa20f9d9370a758e9912bcefdf"
+    }
+  }
+}

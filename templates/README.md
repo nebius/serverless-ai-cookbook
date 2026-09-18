@@ -217,6 +217,30 @@ Templates are quick-start configurations to help you serve models and run jobs i
 </tbody>
 </table>
 
+### 🧪 Molecular Docking
+
+<table width="960" border="1" cellpadding="8" cellspacing="0" style="table-layout:fixed;width:960px;min-width:960px;border-collapse:collapse;">
+<colgroup>
+  <col width="220">
+  <col width="160">
+  <col width="580">
+</colgroup>
+<thead>
+<tr>
+  <th width="220" align="left">Template</th>
+  <th width="160" align="center">Deploy</th>
+  <th width="580" align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td width="220" valign="middle">🧪&nbsp;<a href="endpoint-autodock-vina/README.md"><strong>AutoDock Vina REST + MCP</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb23%40sha256%3Af80ba1d50f7bbbd6192f9695a71691bdd37390d3bfc0e6152d9cb0a80ef2f171&amp;targetPort=8000&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Run low-cost AutoDock Vina CPU redocking through REST or MCP with explicit boxes, bounded PDBQT inputs, and optional persistent storage.</td>
+</tr>
+</tbody>
+</table>
+
 ## Jobs
 
 ### 🏋️ Fine-tuning
