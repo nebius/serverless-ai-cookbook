@@ -1,23 +1,4 @@
-# NVIDIA Parabricks DeepVariant REST + MCP
-
-<!-- markdownlint-disable MD013 MD033 -->
-
-<!-- factory:deploy -->
-
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fparabricks-deepvariant-api%3A20260908-dynamic-v3&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=false&amp;auth=true&amp;env=NGC_API_KEY&amp;env=PARABRICKS_VERSION%3Dlatest&amp;env=PARABRICKS_GPU_COUNT%3D1&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
-
-<!-- /factory:deploy -->
-
-<!-- factory:intro -->
-
-Run bounded NVIDIA Parabricks DeepVariant workflows through REST or MCP. A lean API image pulls the selected official Parabricks runtime at endpoint startup and persists inputs and results to Object Storage or Shared Filesystem.
-
-**Product:** [NVIDIA Parabricks](https://docs.nvidia.com/clara/parabricks/latest/) · **Runtime:** [`nvcr.io/nvidia/clara/clara-parabricks`](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/clara/containers/clara-parabricks)
-
-<!-- /factory:intro -->
-
 ---
-
 title: NVIDIA Parabricks DeepVariant REST + MCP
 category: life-sciences
 type: endpoint
@@ -25,51 +6,75 @@ runtime: gpu-h100-sxm
 frameworks: [parabricks, deepvariant, fastapi, mcp]
 keywords: [genomics, variant-calling, nvidia-ngc, rest, mcp, agent]
 difficulty: advanced
-
 ---
+
+# NVIDIA Parabricks DeepVariant REST + MCP
+
+**Use public, nonclinical research fixtures only. Do not upload protected health
+information (PHI), patient data, or clinical genomes to this public token-authenticated
+endpoint. Token authentication alone does not make it suitable for clinical data.**
+
+<!-- markdownlint-disable MD013 MD033 -->
+
+**Build first:** this template includes NVIDIA-licensed software. Follow
+[Build the wrapper](#build-the-wrapper) to publish the image in your own registry.
+The button contains an example image name: replace it with your built image's
+digest and configure that registry's pull credentials before creating the endpoint.
+No public redistributable wrapper image is assumed.
+
+<!-- factory:deploy -->
+
+<a href="https://console.nebius.com/serverless/endpoint/create?image=registry.example.org%2Fyour-team%2Fparabricks-rest-mcp%3A4.7.1-1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=false&amp;auth=true&amp;env=PARABRICKS_GPU_COUNT%3D1"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+
+<!-- /factory:deploy -->
+
+<!-- factory:intro -->
+
+Run bounded NVIDIA Parabricks DeepVariant workflows through REST or MCP. The wrapper is built directly on the digest-pinned NVIDIA Parabricks 4.7.1-1 image and executes its tools in place. Attach Object Storage or Shared Filesystem for persistent inputs and results.
+
+**Product:** [NVIDIA Parabricks](https://docs.nvidia.com/clara/parabricks/latest/) · **Runtime:** [`nvcr.io/nvidia/clara/clara-parabricks`](https://catalog.ngc.nvidia.com/orgs/nvidia/teams/clara/containers/clara-parabricks)
+
+<!-- /factory:intro -->
+
 
 ## What you get
 
 - A bounded asynchronous DeepVariant API on port 8000 with `/docs`.
 - A Streamable HTTP MCP server at `/mcp` for agent/tool integrations.
 - Shared REST/MCP queue, run IDs, state, and authenticated artifacts.
-- `PARABRICKS_VERSION=latest` or an exact official NVIDIA runtime tag.
+- NVIDIA Parabricks 4.7.1-1 pinned at image build time.
 - A real startup probe for `pbrun`, version, and GPU visibility.
-- Persistent runs under `/mnt/hcls/parabricks-deepvariant/runs/<run-id>`.
+- Runs under `/mnt/hcls/parabricks-deepvariant/runs/<run-id>`; persistent only with an attached volume.
 - Mounted private inputs under `/mnt/hcls/parabricks-deepvariant/fixtures`.
 
-The wrapper does not repackage Parabricks. On fresh startup it uses
-`NGC_API_KEY` to pull the chosen official image, records its digest, prepares the
-GPU runtime, and starts the API only after its readiness checks pass. Restarting
-an endpoint configured with `latest` lets it select a newer compatible stable
-release without rebuilding the wrapper.
+The Dockerfile uses `FROM nvcr.io/nvidia/clara/clara-parabricks:4.7.1-1`
+with the tested platform digest. It retains NVIDIA's runtime and license notices,
+adds the Apache-2.0 cookbook API, and runs `pbrun` directly. There is no boot-time
+image extraction or `chroot`. Rebuild and validate the image to change versions.
 
-The wrapper tag in the button resolves to
-`sha256:e76f3185a68c99bf979cecfc7be476e1debfe60c842814cbb104a00157eb19d0`.
+NVIDIA's [Parabricks license terms](https://docs.nvidia.com/clara/parabricks/about-parabricks/end-user-license-agreements)
+apply to the runtime. Build and store the derived image in a registry you control.
 
 ## Create the endpoint
 
+The button does not attach storage. Manually attach Object Storage or Shared
+Filesystem read-write at `/mnt/hcls` in the create form for persistent results.
+Without that attachment, `/mnt/hcls` is on ephemeral disk and results can be lost
+when the endpoint is replaced or deleted.
+
 Click **Create Endpoint**, select your project, and review the form:
 
-1. Paste your NVIDIA NGC API key into `NGC_API_KEY`; the launcher supplies the
-   fixed `$oauthtoken` username.
-2. Leave `PARABRICKS_VERSION=latest` or enter an exact tag such as `4.7.1-1`.
-3. Keep `PARABRICKS_GPU_COUNT=1` for the one-H100 default. Match this value if
-   you deliberately select another supported GPU count.
-4. Keep **Token authentication** enabled and copy its generated token. One token
-   protects both REST and MCP; it is not an application environment variable.
-5. Attach Object Storage or Shared Filesystem read-write at `/mnt/hcls`.
+1. Select the image built using the instructions below. For an image hosted on
+   `nvcr.io`, enter `$oauthtoken` as the **registry username** and your NGC key as
+   the **registry password**. For a derived image in another private registry,
+   use that registry's credentials. Never put the NGC key in an environment variable.
+2. Keep `PARABRICKS_GPU_COUNT=1` for the one-H100 default.
+3. Keep **Token authentication** enabled and copy the generated token for REST
+   and MCP.
+4. Manually attach Object Storage or Shared Filesystem read-write at `/mnt/hcls`.
 
-### Environment variables
-
-| Variable | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `NGC_API_KEY` | yes | empty | Pulls the official NVIDIA runtime. |
-| `PARABRICKS_VERSION` | no | `latest` | Exact tag or newest compatible stable tag. |
-| `PARABRICKS_GPU_COUNT` | no | `1` | Required visible GPU count for readiness and `pbrun`. |
-
-The URL includes every application variable without embedding a secret. Pinned
-tags never silently fall back.
+The only prefilled application variable is `PARABRICKS_GPU_COUNT=1`; the source
+code and image use the same default. The engine version is fixed in the image.
 
 ## Input and storage
 
@@ -202,11 +207,8 @@ remain in the MCP client configuration, never in the skill.
 
 The bounded chr20 smoke should reach `succeeded`, report 78 variant records, and
 produce an indexed compressed VCF, logs, input hashes, provenance, and artifact
-hashes. Qualification was repeated on 2026-09-09 using regular H100; `latest` selected
-Parabricks `4.7.1-1` at digest
-`sha256:a748d86cbb850641a1e0afae6de2e7422f1375e4a0cce08a5c2cead9fa302237`.
-Independent REST and MCP chr20 runs each produced 78 variants in about 12 seconds;
-their artifacts were verified through REST and in the mounted bucket.
+hashes. See [validation results](./VALIDATION.md) for the rebuilt image's H100 REST/MCP
+qualification. Both runs produced 78 variants; this rerun did not attach a bucket.
 
 The one-H100 shape is sized for the bounded demonstration. Production genomics
 throughput and disk needs depend on genome, coverage, caller mode, and input
@@ -215,28 +217,50 @@ Variant calls are research outputs, not diagnostic conclusions.
 
 ## Build the wrapper
 
+Authenticate Docker to NGC before building. Supply the NGC key over stdin; it
+is used only to pull the base image, not copied into the image or application.
+Publish the result to your own registry and use its digest in the create form.
+
+```bash
+read -rs -p 'NGC API key: ' NGC_API_KEY; echo
+printf '%s' "$NGC_API_KEY" | docker login nvcr.io -u '$oauthtoken' --password-stdin
+unset NGC_API_KEY
+```
+
 ```bash
 cd templates/endpoint-parabricks-deepvariant
+export PARABRICKS_IMAGE='registry.example.org/your-team/parabricks-rest-mcp:4.7.1-1'
+# Authenticate to your destination registry using that registry's credentials.
 docker build --platform linux/amd64 \
   --build-arg HCLS_IMAGE_REVISION="$(git rev-parse HEAD)" \
-  -t <your-registry>/parabricks-rest-mcp:1 .
+  -t "$PARABRICKS_IMAGE" .
+docker push "$PARABRICKS_IMAGE"
+docker image inspect "$PARABRICKS_IMAGE" --format '{{index .RepoDigests 0}}'
 ```
 
 <!-- factory:cli -->
 
 ## CLI alternative
 
+Set `PARABRICKS_IMAGE` to your published image reference. CLI 0.12.206 rejected
+references longer than 64 characters in a VM label; for that version, use a short
+versioned alias and verify it resolves to your recorded build digest before deployment.
+
+```bash
+export PARABRICKS_IMAGE='registry.example.org/your-team/parabricks-rest-mcp:4.7.1-1'
+```
+
 ```bash
 export NEBIUS_PROJECT_ID='project-...'
 export NEBIUS_SUBNET_ID='vpcsubnet-...'
-export NGC_API_KEY='<your-ngc-api-key>'
+export REGISTRY_SECRET='<MysteryBox selector with REGISTRY_USERNAME and REGISTRY_PASSWORD>'
 export PARABRICKS_VOLUME='computefilesystem-<id>:/mnt/hcls:rw'
 # Or: s3://<bucket>:/mnt/hcls:rw:<aws-profile>@<secret-selector>
 
 nebius ai endpoint create \
   --parent-id "$NEBIUS_PROJECT_ID" \
   --name parabricks-deepvariant-rest-mcp \
-  --image cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/parabricks-deepvariant-api:20260908-dynamic-v3 \
+  --image "$PARABRICKS_IMAGE" \
   --public \
   --platform gpu-h100-sxm \
   --preset 1gpu-16vcpu-200gb \
@@ -244,8 +268,7 @@ nebius ai endpoint create \
   --disk-size 500Gi \
   --subnet-id "$NEBIUS_SUBNET_ID" \
   --auth token \
-  --env "NGC_API_KEY=$NGC_API_KEY" \
-  --env 'PARABRICKS_VERSION=latest' \
+  --registry-secret "$REGISTRY_SECRET" \
   --env 'PARABRICKS_GPU_COUNT=1' \
   --volume "$PARABRICKS_VOLUME"
 ```
@@ -262,7 +285,7 @@ interruptible test, and stop or delete the endpoint when it is no longer needed.
 
 | Symptom | Cause and fix |
 | --- | --- |
-| NGC returns 401/403 | Supply `NGC_API_KEY`, not the endpoint bearer token. |
+| Registry returns 401/403 | Configure credentials for the registry hosting the selected image; an NGC key only authenticates to NGC. |
 | Endpoint returns 502 during first boot | The large runtime is still downloading/preparing; poll readiness and inspect logs. |
 | Readiness reports too few GPUs | Match `PARABRICKS_GPU_COUNT` to the selected preset. |
 | Mounted input is rejected | Use a safe basename below the documented fixture directory. |

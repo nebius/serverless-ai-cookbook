@@ -47,8 +47,8 @@ Parabricks process.
 
 Check that the expected compressed VCF and index are nonempty, retain the input
 hashes, and verify downloaded artifact SHA-256 values. Report run ID, terminal
-state, sample, reference, mode, intervals, Parabricks version, NVIDIA runtime
-tag/digest, GPU count/type, wall time, variant-record count, output paths, and
+state, sample, reference, mode, intervals, Parabricks version, base and endpoint
+image digests, GPU count/type, wall time, variant-record count, output paths, and
 hashes. A successful process or nonempty VCF does not establish clinical or
 scientific validity. Describe outputs as research variant calls requiring
 independent validation, never as diagnoses.

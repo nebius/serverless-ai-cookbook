@@ -16,11 +16,10 @@ from pathlib import Path
 from typing import Any
 
 from hcls_api import create_app
-from hcls_api.oci_runtime import run_in_runtime
 
 
-GPU_COUNT = max(1, min(int(os.environ.get("PARABRICKS_GPU_COUNT", "2")), 8))
-INPUT_ROOT = Path(os.environ.get("HCLS_PARABRICKS_INPUT_ROOT", "/data/hcls/parabricks/fixtures")).resolve()
+GPU_COUNT = max(1, min(int(os.environ.get("PARABRICKS_GPU_COUNT", "1")), 8))
+INPUT_ROOT = Path(os.environ.get("HCLS_PARABRICKS_INPUT_ROOT", "/mnt/hcls/parabricks-deepvariant/fixtures")).resolve()
 MAX_INPUT_BYTES = max(1, min(int(os.environ.get("HCLS_MAX_INPUT_GIB", "100")), 1000)) * 1024**3
 MAX_INTERVALS = 32
 GOOGLE_CHR20_BAM_SHA256 = "0b82858821bd8817df03b35f90cdfcb2bae53af5ab46e61b8bcff1ad9ba49643"
@@ -117,13 +116,21 @@ def gpu_names() -> list[str]:
     return [line.strip() for line in completed.stdout.splitlines() if line.strip()] if completed.returncode == 0 else []
 
 
+def run_command(
+    *, command: str, args: list[str], cwd: Path, timeout: int,
+) -> subprocess.CompletedProcess[str]:
+    """Run the tools delivered in the NVIDIA base image directly."""
+    return subprocess.run(
+        [command, *args], cwd=cwd, timeout=timeout,
+        capture_output=True, text=True, check=False,
+    )
+
+
 def normalize_google_chr20_bam(
     reads: Path,
     work_dir: Path,
     *,
-    rootfs: Path,
     samtools: str,
-    image_environment: dict[str, str],
 ) -> tuple[Path, Path]:
     """Remove empty non-chr20 dictionary entries from Google's bounded demo BAM.
 
@@ -135,12 +142,10 @@ def normalize_google_chr20_bam(
     filtered_sam = work_dir / "google-chr20.filtered.sam"
     normalized_bam = work_dir / "google-chr20.parabricks.bam"
     normalized_bai = work_dir / "google-chr20.parabricks.bam.bai"
-    view = run_in_runtime(
-        rootfs=rootfs,
-        guest_command=samtools,
+    view = run_command(
+        command=samtools,
         args=["view", "-h", str(reads)],
         cwd=work_dir,
-        image_environment=image_environment,
         timeout=120,
     )
     with filtered_sam.open("x", encoding="utf-8") as output:
@@ -151,23 +156,19 @@ def normalize_google_chr20_bam(
     if view.returncode != 0:
         filtered_sam.unlink(missing_ok=True)
         raise RuntimeError(f"samtools could not read the guided BAM: {view.stderr[-500:]}")
-    converted = run_in_runtime(
-        rootfs=rootfs,
-        guest_command=samtools,
+    converted = run_command(
+        command=samtools,
         args=["view", "-b", "-o", str(normalized_bam), str(filtered_sam)],
         cwd=work_dir,
-        image_environment=image_environment,
         timeout=120,
     )
     filtered_sam.unlink(missing_ok=True)
     if converted.returncode != 0:
         raise RuntimeError(f"samtools could not normalize the guided BAM: {converted.stderr[-500:]}")
-    indexed = run_in_runtime(
-        rootfs=rootfs,
-        guest_command=samtools,
+    indexed = run_command(
+        command=samtools,
         args=["index", str(normalized_bam), str(normalized_bai)],
         cwd=work_dir,
-        image_environment=image_environment,
         timeout=120,
     )
     if indexed.returncode != 0:
@@ -179,26 +180,28 @@ class ParabricksAdapter:
     service_id = "parabricks-deepvariant"
 
     def __init__(self) -> None:
-        self.rootfs = Path("/")
         self.pbrun = ""
         self.samtools = ""
-        self.image_environment: dict[str, str] = {}
         self.runtime: dict[str, Any] = {}
         self.timeout_seconds = max(300, min(int(os.environ.get("HCLS_ENGINE_TIMEOUT_SECONDS", "14400")), 86400))
 
     def load(self) -> None:
-        spec_path = os.environ.get("PARABRICKS_RUNTIME_SPEC")
-        metadata_path = os.environ.get("PARABRICKS_RUNTIME_METADATA")
-        if not spec_path or not metadata_path:
-            raise RuntimeError("Parabricks runtime selection is unavailable")
-        spec = json.loads(Path(spec_path).read_text(encoding="utf-8"))
-        self.runtime = json.loads(Path(metadata_path).read_text(encoding="utf-8"))
-        self.rootfs = Path(spec["rootfs"])
-        self.pbrun = str(spec["guest_command"])
-        self.samtools = str(spec["guest_samtools"])
-        self.image_environment = dict(spec["image_environment"])
-        if not self.pbrun.startswith("/") or not self.samtools.startswith("/"):
-            raise RuntimeError("Parabricks runtime command is invalid")
+        self.pbrun = shutil.which("pbrun") or ""
+        self.samtools = shutil.which("samtools") or ""
+        if not self.pbrun or not self.samtools:
+            raise RuntimeError("The image must contain pbrun and samtools")
+        probe = subprocess.run(
+            [self.pbrun, "--version"], capture_output=True, text=True,
+            timeout=120, check=True,
+        )
+        match = re.search(r"pbrun:\s*([0-9][0-9.]*-[0-9]+)", probe.stdout + probe.stderr)
+        if not match:
+            raise RuntimeError("Parabricks did not report its version")
+        self.runtime = {
+            "actual_engine_version": match.group(1),
+            "source": "NVIDIA Parabricks base image (installed at image build time)",
+            "base_image": os.environ.get("PARABRICKS_BASE_IMAGE", "unknown"),
+        }
         INPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
     def health(self) -> dict[str, Any]:
@@ -318,9 +321,7 @@ class ParabricksAdapter:
             inputs["reads"], inputs["reads_index"] = normalize_google_chr20_bam(
                 inputs["reads"],
                 input_dir,
-                rootfs=self.rootfs,
                 samtools=self.samtools,
-                image_environment=self.image_environment,
             )
 
         out_variants = output_dir / f"{sample_id}.deepvariant.vcf.gz"
@@ -345,12 +346,10 @@ class ParabricksAdapter:
         for interval in intervals:
             command.extend(["-L", interval])
         log_path = work_dir / "parabricks.log"
-        completed = run_in_runtime(
-            rootfs=self.rootfs,
-            guest_command=self.pbrun,
+        completed = run_command(
+            command=self.pbrun,
             args=command[1:],
             cwd=work_dir,
-            image_environment=self.image_environment,
             timeout=self.timeout_seconds,
         )
         log_path.write_text(

@@ -235,8 +235,8 @@ Templates are quick-start configurations to help you serve models and run jobs i
 <tbody>
 <tr>
   <td width="220" valign="middle">🧬&nbsp;<a href="endpoint-parabricks-deepvariant/README.md"><strong>Parabricks DeepVariant REST + MCP</strong></a></td>
-  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fparabricks-deepvariant-api%3A20260908-dynamic-v3&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=false&amp;auth=true&amp;env=NGC_API_KEY&amp;env=PARABRICKS_VERSION%3Dlatest&amp;env=PARABRICKS_GPU_COUNT%3D1&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">Run bounded NVIDIA Parabricks DeepVariant workflows through REST or MCP with selectable official runtime and persistent genomic inputs and outputs.</td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=registry.example.org%2Fyour-team%2Fparabricks-rest-mcp%3A4.7.1-1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=false&amp;auth=true&amp;env=PARABRICKS_GPU_COUNT%3D1"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Build the NVIDIA-licensed wrapper in your own registry first, then run bounded DeepVariant workflows through REST or MCP. Storage attachment is manual.</td>
 </tr>
 </tbody>
 </table>
