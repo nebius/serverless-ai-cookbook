@@ -78,6 +78,7 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
     identifier = person["id"]
     chat_model = getattr(args, 'chat_model', 'Qwen/Qwen3-235B-A22B-Instruct-2507')
     reasoning_effort = getattr(args, 'reasoning_effort', None)
+    context_tokens = getattr(args, 'context_tokens', None)
     folder = args.output / identifier
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     with open(folder / "setup.lock", "a") as lock:
@@ -90,6 +91,7 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
             "principal_id": person["principal_id"], "bucket_name": person["bucket_name"],
             "email": person["email"], "image": args.image, "chat_model": chat_model,
             "reasoning_effort": reasoning_effort,
+            "context_tokens": context_tokens,
             "project_id": manifest["project_id"], "state": "prepared",
             "endpoint_name": args.name_prefix + "-" + identifier}
         if state.get("endpoint_name", "science-qualification-20260918-" + identifier) != args.name_prefix + "-" + identifier:
@@ -98,6 +100,8 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
             raise RuntimeError('Recorded chat model differs; use a separate comparison endpoint')
         if state.get('reasoning_effort') != reasoning_effort:
             raise RuntimeError('Recorded reasoning effort differs; use a separate comparison endpoint')
+        if state.get('context_tokens') != context_tokens:
+            raise RuntimeError('Recorded context ceiling differs; use a separate comparison endpoint')
         for key, value in {"image": args.image, "bucket_name": person["bucket_name"],
                            "principal_id": person["principal_id"],
                            "project_id": manifest["project_id"]}.items():
@@ -149,6 +153,7 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
                 "SCIENTIFIC_DEDICATED_CHAT_ENABLED": "false",
                 "SCIENTIFIC_CHAT_MODEL": chat_model,
                 "SCIENTIFIC_CHAT_REASONING_EFFORT": reasoning_effort or '',
+                "SCIENTIFIC_CHAT_MAX_CONTEXT_TOKENS": str(context_tokens) if context_tokens else '',
                 "SCIENTIFIC_CONTEXT_AUDIT_PATH": f'/workspace/{identifier}/qualification-context-sizes.jsonl'
                     if getattr(args, 'context_audit', False) else '',
                 "TOKEN_FACTORY_SECRET_SELECTOR": manifest["token_factory_secret_selector"],
@@ -229,6 +234,8 @@ def main() -> None:
                         help='Verified Token Factory planning model; model/tool budgets are unchanged.')
     parser.add_argument('--reasoning-effort', choices=['low', 'high', 'max'],
                         help='Explicit provider-supported planning variant; never changes token budget.')
+    parser.add_argument('--context-tokens', type=int,
+                        help='Explicit context ceiling for a controlled comparison, e.g. the existing GLM131072 ceiling.')
     parser.add_argument('--context-audit', action='store_true', help='Record only per-call context sizes in the scientist workspace.')
     parser.add_argument('--name-prefix', default='science-qualification-20260918')
     parser.add_argument('--source-deployments', type=Path, help='Reuse verified credentials from existing deployment receipts; preserve old instances.')
@@ -237,6 +244,8 @@ def main() -> None:
     parser.add_argument("--wait-seconds", type=int, default=1800)
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
+    if args.context_tokens is not None and args.context_tokens < 1024:
+        parser.error('context-tokens must be at least1024')
     if not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,49}', args.name_prefix):
         parser.error('Use a short lowercase endpoint name prefix')
     os.umask(0o077)

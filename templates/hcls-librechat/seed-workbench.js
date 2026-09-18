@@ -12,6 +12,11 @@ const provider = process.env.SCIENTIFIC_CHAT_PROVIDER || 'Nebius Token Factory';
 const model = process.env.SCIENTIFIC_CHAT_MODEL || 'Qwen/Qwen3-235B-A22B-Instruct-2507';
 const reasoningEffort = process.env.SCIENTIFIC_CHAT_REASONING_EFFORT;
 if (reasoningEffort && !['low', 'high', 'max'].includes(reasoningEffort)) throw new Error('Unsupported explicit reasoning effort');
+const contextTokens = process.env.SCIENTIFIC_CHAT_MAX_CONTEXT_TOKENS
+  ? Number(process.env.SCIENTIFIC_CHAT_MAX_CONTEXT_TOKENS) : undefined;
+if (contextTokens !== undefined && (!Number.isInteger(contextTokens) || contextTokens < 1024)) {
+  throw new Error('Explicit context ceiling must be an integer of at least 1024 tokens');
+}
 
 const scientificModelsServerName = 'bionemo-models';
 const mcpTool = (name) => `${name}_mcp_${scientificModelsServerName}`;
@@ -179,6 +184,7 @@ async function seedAgent({ agents: collection, aclEntries, owner, now, definitio
         provider,
         model,
         model_parameters: { model, max_tokens: 8192,
+          ...(contextTokens ? { maxContextTokens: contextTokens } : {}),
           ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}) },
         category: 'life-science',
         is_promoted: true,
