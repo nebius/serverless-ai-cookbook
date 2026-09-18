@@ -10,6 +10,13 @@ import type { WorkshopRun as Run } from './scientific-comparison';
 type Job = { id: string; status: string; created_at: string; error?: string; files: string[] };
 type Catalog = { catalog: { judge_model: string; data: { id: string; clinician_eligible: boolean; patient_eligible: boolean }[] };
   profiles: { data: { id: string; profile_id?: string; name?: string }[] }; limits: { profiles: number; workers_per_team: number } };
+type AppRow = { id: string; native?: { display_name?: string; enabled?: boolean; capabilities?: string[]; protocols?: string[];
+  execution_mode?: string; gpu_class?: string; gpu_count?: number; license?: string; qualification?: { state?: string } };
+  scientific?: { display_name?: string; operations?: string[]; service_classes?: string[]; mcp_tool_name?: string;
+    mcp_tool_description?: string; runtime?: { state?: string } } };
+type RunRow = { id: string; model_id?: string; protocol?: string; status?: string; label?: string; source?: string;
+  first_seen_at: string; refresh_error?: string; operation?: Record<string, unknown> };
+type WorkspaceEntry = { name: string; path: string; kind: 'directory' | 'file'; size_bytes?: number; updated_at: string };
 const BASE = '/api/scientific-demos';
 const field = 'rounded-lg border border-border-medium bg-surface-primary p-2 text-text-primary';
 const errorText = (error: Error) => {
@@ -23,7 +30,98 @@ function download(name: string, data: BlobPart, type = 'application/json') {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+const workbenchTabs = [['apps', 'Apps'], ['runs', 'Runs'], ['workspace', 'Workspace'],
+  ['clinical', 'Clinical Report'], ['mindeval', 'MindEval']] as const;
+function WorkbenchHeader({ tab, choose }: { tab: string; choose: (tab: string) => void }) {
+  return <><header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div><p className="text-xs text-text-secondary">NEBIUS SCIENTIFIC AI</p><h1 className="text-2xl font-semibold">Scientific AI Workbench</h1></div>
+    <Link to="/c/new" className="underline">Back to chat</Link>
+  </header><nav aria-label="Workbench selection" className="mb-5 flex flex-wrap gap-2">
+    {workbenchTabs.map(([id, label]) => <Button key={id} variant={tab === id ? 'default' : 'outline'} onClick={() => choose(id)}>{label}</Button>)}
+  </nav></>;
+}
+
+function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => void }) {
+  const cache = useQueryClient();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [operationId, setOperationId] = useState('');
+  const [selectedRun, setSelectedRun] = useState('');
+  const [runResult, setRunResult] = useState('');
+  const [workspacePath, setWorkspacePath] = useState('');
+  const [workspaceFile, setWorkspaceFile] = useState<File | null>(null);
+  const [workspaceName, setWorkspaceName] = useState('');
+  const [copied, setCopied] = useState('');
+  const settings = useQuery(['scientific-demos', 'settings'], () => request.get<{ configured: boolean }>(`${BASE}/settings`));
+  const enabled = settings.data?.configured === true;
+  const apps = useQuery(['scientific-demos', 'apps'], () => request.get<{ data: AppRow[] }>(`${BASE}/apps`), { enabled: enabled && tab === 'apps', retry: false });
+  const runs = useQuery(['scientific-demos', 'runs'], () => request.get<{ data: RunRow[] }>(`${BASE}/runs`), { enabled: enabled && tab === 'runs', retry: false, refetchInterval: tab === 'runs' ? 5000 : false });
+  const workspace = useQuery(['scientific-demos', 'workspace', workspacePath], () => request.get<{ info: Record<string, unknown>; prefix: string; data: WorkspaceEntry[] }>(`${BASE}/workspace?path=${encodeURIComponent(workspacePath)}`), { enabled: enabled && tab === 'workspace', retry: false });
+  async function act(work: () => Promise<void>) {
+    setBusy(true); setError('');
+    try { await work(); await cache.invalidateQueries(['scientific-demos']); }
+    catch (problem) { setError(errorText(problem as Error)); }
+    finally { setBusy(false); }
+  }
+  const sessionError = [settings.error, apps.error, runs.error, workspace.error].find(Boolean);
+  return <main className="mx-auto h-full w-full max-w-6xl overflow-y-auto p-4 text-text-primary sm:p-8">
+    <WorkbenchHeader tab={tab} choose={choose} />
+    <details open={!enabled} className="mb-5 rounded-xl border border-border-medium p-4">
+      <summary>Platform connection · {enabled ? 'key configured for your account' : 'your API key is required'}</summary>
+      <p className="my-2 text-sm text-text-secondary">Use your ordinary Scientific AI key. It controls which Apps and runs this account can access.</p>
+      <form onSubmit={(event) => { event.preventDefault(); void act(async () => {
+        await request.put(`${BASE}/settings`, { api_key: apiKey }); setApiKey('');
+        await request.post('/api/mcp/scientific-demos/reinitialize').catch(() => undefined);
+      }); }} className="flex gap-2"><Input aria-label="Scientific AI API key" type="password" autoComplete="off" value={apiKey} onChange={(event) => setApiKey(event.target.value)} /><Button type="submit" disabled={busy || !apiKey}>Save key</Button></form>
+    </details>
+    {Boolean(error || sessionError) && <p role="alert" className="mb-4 rounded border border-border-medium p-3">{error || errorText(sessionError as Error)}</p>}
+    {tab === 'apps' && <section>
+      <h2 className="text-xl font-semibold">Apps you can use</h2><p className="my-2 text-sm text-text-secondary">Live, caller-scoped discovery. Scaled-to-zero Apps remain listed when your key may start them.</p>
+      <div className="grid gap-3 md:grid-cols-2">{(apps.data?.data || []).map((app) => {
+        const title = app.scientific?.display_name || app.native?.display_name || app.id;
+        const operations = app.scientific?.operations || app.native?.capabilities || [];
+        const ready = app.native?.enabled !== false;
+        return <article key={app.id} className="rounded-xl border border-border-medium p-4">
+          <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{title}</h3><code className="text-xs text-text-secondary">{app.id}</code></div><span className="rounded-full border border-border-light px-2 py-1 text-xs">{ready ? 'Available' : 'Disabled'}</span></div>
+          <p className="mt-3 text-sm">{app.scientific?.mcp_tool_description || 'Inspect the live schema before submitting data.'}</p>
+          <p className="mt-2 text-xs text-text-secondary">{operations.length ? operations.join(' · ') : 'Native inference'}{app.native?.gpu_class ? ` · ${app.native.gpu_count || 1}× ${app.native.gpu_class}` : ''}</p>
+          <div className="mt-3 flex gap-2"><Button size="sm" variant="outline" onClick={async () => {
+            const prompt = `I want to use the Scientific AI App ${app.id}. Discover its live schema, explain the required input and evaluation limits, and do not submit compute until I confirm.`;
+            await navigator.clipboard.writeText(prompt); setCopied(app.id);
+          }}>{copied === app.id ? 'Prompt copied' : 'Copy chat prompt'}</Button></div>
+        </article>;
+      })}</div>
+      {enabled && !apps.isLoading && !(apps.data?.data.length) && <p role="status">This key currently has no authorized Apps.</p>}
+    </section>}
+    {tab === 'runs' && <section>
+      <h2 className="text-xl font-semibold">Runs</h2><p className="my-2 text-sm text-text-secondary">Durable operations saved by the agent or added here. A reconnect refreshes the original ID; it never silently resubmits compute.</p>
+      <form className="mb-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); void act(async () => {
+        const value = await request.post<RunRow>(`${BASE}/runs`, { operation_id: operationId }); setSelectedRun(value.id); setOperationId('');
+      }); }}><Input aria-label="Operation ID" placeholder="operation UUID" value={operationId} onChange={(event) => setOperationId(event.target.value)} /><Button type="submit" disabled={!enabled || !operationId || busy}>Add run</Button></form>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>App / run</th><th>Status</th><th>Source</th><th>Started</th><th>Actions</th></tr></thead><tbody>{(runs.data?.data || []).map((run) => <tr key={run.id} className="border-t border-border-light"><td className="max-w-sm py-3"><strong>{run.model_id || 'Unknown App'}</strong><br /><code className="text-xs">{run.id}</code>{run.refresh_error && <p className="text-xs">Refresh: {run.refresh_error}</p>}</td><td>{run.status || 'unknown'}</td><td>{run.source}</td><td>{new Date(run.first_seen_at).toLocaleString()}</td><td><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => void act(async () => { const value = await request.get(`${BASE}/runs/${run.id}/result`); setSelectedRun(run.id); setRunResult(JSON.stringify(value, null, 2)); })}>Result</Button>{!['succeeded', 'failed', 'cancelled', 'completed'].includes(run.status || '') && <Button size="sm" variant="outline" onClick={() => void act(async () => { await request.post(`${BASE}/runs/${run.id}/cancel`); })}>Cancel</Button>}</div></td></tr>)}</tbody></table></div>
+      {selectedRun && runResult && <section className="mt-4 rounded-xl border border-border-medium p-4"><h3 className="font-semibold">Result · {selectedRun}</h3><pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs">{runResult}</pre></section>}
+    </section>}
+    {tab === 'workspace' && <section>
+      <h2 className="text-xl font-semibold">Workspace</h2><p className="my-2 text-sm text-text-secondary">Files in the bucket mounted for this deployment. Model inputs should be uploaded as immutable platform artifacts before a run.</p>
+      {workspace.data && <p className="mb-3 text-xs">Bucket: <strong>{String(workspace.data.info.team_bucket_name || workspace.data.info.bucket_name || 'configured by platform')}</strong> · {String(workspace.data.info.mode || 'mounted')} storage</p>}
+      <form className="mb-4 grid gap-2 rounded-xl border border-border-medium p-4 sm:grid-cols-[1fr_1fr_auto]" onSubmit={(event) => { event.preventDefault(); void act(async () => {
+        if (!workspaceFile) return; const data = new FormData(); data.append('file', workspaceFile); data.append('path', workspaceName || workspaceFile.name); await request.postMultiPart(`${BASE}/workspace`, data); setWorkspaceFile(null); setWorkspaceName('');
+      }); }}><input type="file" onChange={(event) => { const file = event.target.files?.[0] || null; setWorkspaceFile(file); if (file) setWorkspaceName([workspacePath, file.name].filter(Boolean).join('/')); }} /><Input aria-label="Workspace object path" value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} /><Button type="submit" disabled={!workspaceFile || busy}>Upload</Button></form>
+      <div className="mb-3 flex items-center gap-2"><Button size="sm" variant="outline" disabled={!workspacePath} onClick={() => setWorkspacePath(workspacePath.split('/').slice(0, -1).join('/'))}>Up</Button><code className="text-xs">/{workspacePath}</code></div>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>Name</th><th>Kind</th><th>Size</th><th>Updated</th></tr></thead><tbody>{(workspace.data?.data || []).map((entry) => <tr key={entry.path} className="border-t border-border-light"><td className="py-3">{entry.kind === 'directory' ? <button className="underline" onClick={() => setWorkspacePath(entry.path)}>{entry.name}/</button> : <a className="underline" href={`${BASE}/workspace/file?path=${encodeURIComponent(entry.path)}`}>{entry.name}</a>}</td><td>{entry.kind}</td><td>{entry.size_bytes?.toLocaleString() || '—'}</td><td>{new Date(entry.updated_at).toLocaleString()}</td></tr>)}</tbody></table></div>
+    </section>}
+  </main>;
+}
+
 export default function Demos() {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') || 'apps';
+  if (['apps', 'runs', 'workspace'].includes(tab)) return <CoreWorkbench tab={tab} choose={(next) => setParams({ tab: next })} />;
+  return <ClinicalAndMindEval />;
+}
+
+function ClinicalAndMindEval() {
   const [params, setParams] = useSearchParams();
   const clinical = params.get('tab') !== 'mindeval';
   const cache = useQueryClient();
@@ -67,14 +165,7 @@ export default function Demos() {
   const toggle = (list: string[], value: string) => list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
   const sessionError = [settings.error, catalog.error, runs.error, jobs.error].find(Boolean);
   return <main className="mx-auto h-full w-full max-w-6xl overflow-y-auto p-4 text-text-primary sm:p-8">
-    <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-      <div><p className="text-xs text-text-secondary">NEBIUS SCIENTIFIC AI</p><h1 className="text-2xl font-semibold">Clinical AI demos</h1></div>
-      <Link to="/c/new" className="underline">Back to chat</Link>
-    </header>
-    <nav aria-label="Demo selection" className="mb-5 flex flex-wrap gap-2">
-      <Button variant={clinical ? 'default' : 'outline'} onClick={() => setParams({ tab: 'clinical' })}>Clinical Report Draft</Button>
-      <Button variant={!clinical ? 'default' : 'outline'} onClick={() => setParams({ tab: 'mindeval' })}>MindEval Workshop</Button>
-    </nav>
+    <WorkbenchHeader tab={clinical ? 'clinical' : 'mindeval'} choose={(tab) => setParams({ tab })} />
     <details open={!enabled} className="mb-5 rounded-xl border border-border-medium p-4">
       <summary>Platform connection · {enabled ? 'key configured for your account' : 'your API key is required'}</summary>
       <p className="my-2 text-sm text-text-secondary">Use your ordinary Scientific AI key, not a Token Factory or admin key. This connection is shared with the scientific-demos MCP tools. Provider credentials stay on the server.</p>

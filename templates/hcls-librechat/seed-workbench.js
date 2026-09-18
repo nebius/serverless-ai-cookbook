@@ -7,7 +7,8 @@ const gatewayInstructions = readFileSync(
 
 const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/LibreChat';
 const serviceEmail = 'nebius-scientific-ai-agent@localhost.invalid';
-const model = 'dedicated/LongevityHack2026/GLM-5.3-Flash-FP8-6f1F49';
+const provider = process.env.SCIENTIFIC_CHAT_PROVIDER || 'Nebius Token Factory';
+const model = process.env.SCIENTIFIC_CHAT_MODEL || 'zai-org/GLM-5.3-Flash';
 
 const scientificModelsServerName = 'bionemo-models';
 const mcpTool = (name) => `${name}_mcp_${scientificModelsServerName}`;
@@ -20,6 +21,10 @@ const scientificCatalogTools = [
   'begin_scientific_artifact_upload', 'put_scientific_artifact_bytes',
   'finalize_scientific_artifact_upload',
 ].map(mcpTool);
+const workbenchTools = [
+  'workbench_track_operation', 'workbench_list_operations', 'workbench_get_operation',
+  'workbench_get_operation_result', 'workbench_cancel_operation', 'workbench_workspace',
+].map((name) => `${name}_mcp_scientific-demos`);
 
 const structureTools = [
   ...scientificCatalogTools,
@@ -57,13 +62,13 @@ function agents() {
       id: 'agent_nebius_scientific_ai',
       name: 'Nebius Scientific AI Agent',
       description: 'The Nebius Scientific AI workbench for model discovery, scientific workflows, and reproducible comparisons.',
-      instructions: `You are Nebius Scientific AI Agent. You are the primary scientific workbench, not a tutorial. Start by asking about the user’s scientific goal, data, constraints, and evaluation target. Inspect the live scientific model catalog before stating which services are available.
+      instructions: `You are Nebius Scientific AI Agent. You are the primary scientific workbench, not a tutorial. Start by asking about the user’s scientific goal, data, constraints, and evaluation target. Inspect the caller-scoped live scientific model catalog before stating which services are available; never repeat a historical static model list as availability.
 
-Present the catalog in these guided areas: Protein Folding & Structure; Molecular Docking & Design; Biomedical Imaging; Genomics & Biological Age; and Generative Media. Audio Transcription is an integration tutorial with no connected model. The scientific gateway currently exposes models including AltumAge, Boltz2, Cosmos3 Nano, DiffDock, Evo2-40B, GenMol, MolMIM, MSA Search PDB70, chest X-ray reasoning, CT segmentation, OpenFold2, OpenFold3, PhenoAge, ProteinMPNN, Qwen3-8B, and SDXL. Verify this list live because availability can change.
+Guide work across protein structures and complexes, molecular and protein design, genomics and aging, biomedical imaging, speech and clinical documentation, generative media and robotics. Use the model's live schema, qualification and artifact contract before proposing execution.
 
-For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. State limitations and ask before submitting compute. Use the scientific gateway for model operations, and preserve operation IDs for reproducibility. Never present scientific model output as clinical advice or experimental validation.`,
-      tools: allScientificTools,
-      mcpServerNames: [scientificModelsServerName, 'tavily'],
+For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. State limitations and ask before submitting compute. Use the scientific gateway for model operations. Immediately save every returned operation ID with workbench_track_operation so the user can reconnect in Runs; polling must never resubmit compute. Use Workspace for files available to this deployment and platform artifacts for model input/output. Never present scientific model output as clinical advice or experimental validation.`,
+      tools: [...allScientificTools, ...workbenchTools],
+      mcpServerNames: [scientificModelsServerName, 'scientific-demos', 'tavily'],
       conversation_starters: [
         'Show the scientific model catalog grouped by protein structure, docking and design, imaging, genomics, and generative models.',
         'Help me choose a model and a reproducible benchmark for my scientific task.',
@@ -131,13 +136,13 @@ For evaluations, specify cohort definition, train/test separation, protected dat
     },
     {
       id: 'agent_audio_transcription_tutorial',
-      name: 'Audio Transcription · Tutorial',
-      description: 'Readiness criteria for a future real-time audio-to-text service.',
-      instructions: `You are the Nebius Scientific AI Agent Audio Transcription tutorial. First inspect the live scientific model catalog. If it contains no audio transcription model, say so plainly: do not claim that you can receive or transcribe audio. This is a complete integration and benchmark brief, not a functioning transcription service.
+      name: 'Speech & Clinical Documentation',
+      description: 'Long-form and streaming transcription with reviewable medical report drafts.',
+      instructions: `You are the Nebius Scientific AI Agent Speech & Clinical Documentation guide. First inspect the live scientific model catalog and its exact audio limits. Offer only speech operations actually authorized for this caller. The Clinical Report panel can turn an English or German recording or transcript into a source-linked draft; it is not clinically validated and requires clinician review.
 
-When explaining a future production integration, use these targets: sustained real-time factor at most 0.3, partial updates in 300–800 ms, final text in under one second after a pause, 200–500 ms streamed PCM/Opus chunks, revisable interim hypotheses, VAD finalization, stable session context, and 30+ minute sessions. Explain replay testing with domain vocabulary, accents, noise, interruptions, parallel users, WER, p50/p95 latency, RTF, GPU memory, and revision quality.`,
-      tools: ['list_models', 'list_scientific_models'].map(mcpTool),
-      mcpServerNames: [scientificModelsServerName, 'tavily'],
+For acceptance, use complete representative recordings and reference transcripts where licensing permits. Measure WER or MER, terminology accuracy, diarization if supported, real-time factor, partial/final latency, failures and long-session behavior. Preserve transcript evidence and unanswered questions. Do not diagnose or silently repair uncertain source speech.`,
+      tools: [...['list_models', 'list_scientific_models', 'get_model_schema'].map(mcpTool), ...workbenchTools],
+      mcpServerNames: [scientificModelsServerName, 'scientific-demos', 'tavily'],
       conversation_starters: [
         'Show the real-time transcription requirements and how a connected model would be evaluated.',
         'Which live scientific models currently support audio transcription?',
@@ -155,9 +160,9 @@ async function seedAgent({ agents: collection, aclEntries, owner, now, definitio
         instructions: `${definition.instructions}\n\n${gatewayInstructions}`,
         skills_enabled: true,
         artifacts: 'default',
-        tools: [...new Set([...(definition.tools || []), 'tavily_search_mcp_tavily', 'visualize_structure_mcp_structure-viewer'])],
-        mcpServerNames: [...new Set([...(definition.mcpServerNames || []), 'structure-viewer', 'environment-execution'])],
-        provider: 'Nebius Token Factory Dedicated',
+        tools: [...new Set([...(definition.tools || []), ...workbenchTools, 'tavily_search_mcp_tavily', 'visualize_structure_mcp_structure-viewer'])],
+        mcpServerNames: [...new Set([...(definition.mcpServerNames || []), 'scientific-demos', 'structure-viewer', 'environment-execution'])],
+        provider,
         model,
         model_parameters: { model, max_tokens: 8192 },
         category: 'life-science',

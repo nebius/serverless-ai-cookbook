@@ -7,6 +7,12 @@ const schema = (properties, required = []) => ({ type: 'object', additionalPrope
 const string = { type: 'string' };
 const array = { type: 'array', items: string, minItems: 1, maxItems: 20 };
 const definitions = [
+  ['workbench_track_operation', 'Save a Scientific AI operation in the user’s Runs panel after any model submission. Call this immediately with the returned operation ID; it is idempotent and verifies caller access.', schema({ operation_id: string, model_id: string, label: string }, ['operation_id'])],
+  ['workbench_list_operations', 'List and refresh the durable model operations saved in this user’s Runs panel. Reconnect to these IDs instead of resubmitting work.', schema({})],
+  ['workbench_get_operation', 'Refresh one saved Scientific AI operation and return its current state.', schema({ operation_id: string }, ['operation_id'])],
+  ['workbench_get_operation_result', 'Retrieve the terminal result for a completed saved operation. Poll status first; do not treat queued or running work as complete.', schema({ operation_id: string }, ['operation_id'])],
+  ['workbench_cancel_operation', 'Cancel one accessible Scientific AI operation and keep its terminal cancelled state visible in Runs.', schema({ operation_id: string }, ['operation_id'])],
+  ['workbench_workspace', 'Describe the current user or team storage and whether this LibreChat deployment has it mounted for direct file access.', schema({})],
   ['workshop_catalog', 'Discover contract-qualified clinicians, fixed patient/judge, profile IDs and this team’s limits. Sword private clinician is unavailable until its event artifact arrives.', schema({})],
   ['workshop_create_runs', 'Start durable MindEval consultations for profile × clinician choices. A round is a patient/clinician pair. Preserve the idempotency key across retries and save returned run IDs. Hidden profiles and scoring stay in the backend.', schema({ profile_ids: array, clinician_models: { ...array, maxItems: 8 }, patient_model: string,
     idempotency_key: string, max_turns: { type: 'integer', minimum: 2, maximum: 30, default: 10 } }, ['profile_ids', 'clinician_models', 'patient_model', 'idempotency_key'])],
@@ -32,6 +38,14 @@ async function dispatch(name, args) {
   if (!owner) throw service.failure('LibreChat user identity is missing.');
   const request = (method, url, body, id) => service.platform(key, method, `/v1/workshop/${url}`, body, id);
   switch (name) {
+    case 'workbench_track_operation': return service.track(owner, key, args.operation_id, {
+      model_id: args.model_id, label: args.label, source: 'agent',
+    });
+    case 'workbench_list_operations': return service.runs(owner, key);
+    case 'workbench_get_operation': return service.track(owner, key, args.operation_id, { source: 'agent' });
+    case 'workbench_get_operation_result': return service.platform(key, 'GET', `/v1/operations/${args.operation_id}/result`);
+    case 'workbench_cancel_operation': return service.platform(key, 'POST', `/v1/operations/${args.operation_id}:cancel`);
+    case 'workbench_workspace': return service.workspaceInfo(key);
     case 'workshop_catalog': return request('GET', 'catalog');
     case 'workshop_list_runs': return { data: (await request('GET', 'runs')).data.map((run) => compact(run)) };
     case 'workshop_get_run': return compact(await request('GET', `runs/${args.run_id}`), true);

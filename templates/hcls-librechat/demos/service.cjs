@@ -9,6 +9,8 @@ const PLATFORM = (process.env.SCIENTIFIC_MODELS_API_BASE_URL || 'https://89.169.
 const REPORT_MODEL = 'Qwen/Qwen3-235B-A22B-Instruct-2507';
 const REPORT_PROVIDER = 'https://api.tokenfactory.nebius.com/v1';
 const FILES = ['report.md', 'transcript.txt', 'follow-up.md', 'review.md', 'document.json', 'review.json', 'run.json'];
+const WORKSPACE = process.env.SCIENTIFIC_WORKSPACE || '/workspace';
+const RUN_ID = /^[a-f0-9-]{36}$/i;
 const hash = (text) => crypto.createHash('sha256').update(text).digest('hex');
 const failure = (message, status = 400) => Object.assign(new Error(message), { status });
 async function fileHash(filename) {
@@ -33,8 +35,11 @@ function privateKey(key) {
 }
 async function platform(key, method, resource, body, idempotencyKey) {
   privateKey(key);
-  const allowed = resource === '/v1/models' || /^\/v1\/workshop\/(catalog|runs(?:\/[a-f0-9-]{36}(?:\/(?:interventions|report|events))?)?)$/.test(resource);
-  if (!allowed || !['GET', 'POST'].includes(method)) throw failure('Unsupported workshop operation');
+  const allowed = resource === '/v1/models' || resource === '/v1/scientific-models' || resource === '/v1/storage'
+    || resource === '/v1/storage/credentials'
+    || /^\/v1\/operations\/[a-f0-9-]{36}(?::cancel|\/(?:events|result))?$/.test(resource)
+    || /^\/v1\/workshop\/(catalog|runs(?:\/[a-f0-9-]{36}(?:\/(?:interventions|report|events))?)?)$/.test(resource);
+  if (!allowed || !['GET', 'POST'].includes(method)) throw failure('Unsupported platform operation');
   let response;
   try {
     response = await fetch(PLATFORM + resource, { method, redirect: 'error', signal: AbortSignal.timeout(45000),
@@ -48,6 +53,100 @@ async function platform(key, method, resource, body, idempotencyKey) {
     throw failure(detail || `Platform returned HTTP ${response.status}`, response.status);
   }
   return result;
+}
+
+function runFile(owner) {
+  return path.join(ROOT, 'workbench', hash(owner), 'runs.json');
+}
+async function tracked(owner) {
+  return read(runFile(owner)).catch(() => ({ data: [] }));
+}
+async function track(owner, key, operationId, metadata = {}) {
+  if (!RUN_ID.test(operationId || '')) throw failure('Supply a valid operation ID.');
+  const current = await platform(key, 'GET', `/v1/operations/${operationId}`);
+  const existing = await tracked(owner);
+  const entry = {
+    id: operationId,
+    model_id: current.model_id || current.operation?.model_id || metadata.model_id,
+    protocol: current.protocol || current.operation?.protocol,
+    status: current.status || current.operation?.status,
+    source: metadata.source || 'workbench',
+    label: typeof metadata.label === 'string' ? metadata.label.slice(0, 160) : undefined,
+    first_seen_at: existing.data.find((item) => item.id === operationId)?.first_seen_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  const data = [entry, ...existing.data.filter((item) => item.id !== operationId)].slice(0, 200);
+  await fs.mkdir(path.dirname(runFile(owner)), { recursive: true, mode: 0o700 });
+  await save(runFile(owner), { data });
+  return { ...entry, operation: current };
+}
+async function runs(owner, key) {
+  const existing = await tracked(owner);
+  const refreshed = await Promise.all(existing.data.map(async (item) => {
+    try {
+      const value = await platform(key, 'GET', `/v1/operations/${item.id}`);
+      return { ...item, model_id: value.model_id || value.operation?.model_id || item.model_id,
+        protocol: value.protocol || value.operation?.protocol || item.protocol,
+        status: value.status || value.operation?.status || item.status,
+        updated_at: new Date().toISOString(), operation: value };
+    } catch (error) {
+      return { ...item, refresh_error: error.message, refresh_status: error.status || 500 };
+    }
+  }));
+  if (refreshed.length) await save(runFile(owner), { data: refreshed.map(({ operation, ...item }) => item) });
+  return { data: refreshed };
+}
+
+function workspacePath(relative = '') {
+  if (typeof relative !== 'string' || relative.length > 1024 || relative.includes('\0')) throw failure('Invalid workspace path.');
+  const normalized = relative.replace(/^\/+/, '');
+  if (normalized.split('/').some((part) => part === '..')) throw failure('Workspace paths cannot escape the bucket.');
+  const absolute = path.resolve(WORKSPACE, normalized);
+  if (absolute !== path.resolve(WORKSPACE) && !absolute.startsWith(path.resolve(WORKSPACE) + path.sep)) throw failure('Invalid workspace path.');
+  return { normalized, absolute };
+}
+async function workspaceInfo(key) {
+  let mounted = false;
+  try { mounted = (await fs.stat(WORKSPACE)).isDirectory(); } catch { /* no endpoint mount */ }
+  if (mounted) return { state: 'ready', mode: 'deployment', mounted: true, mount_path: WORKSPACE,
+    team_id: process.env.TEAM_ID, team_bucket_name: process.env.TEAM_BUCKET_NAME };
+  const storage = await platform(key, 'GET', '/v1/storage').catch((error) => ({ state: 'unavailable', error: error.message }));
+  return { ...storage, mounted: false };
+}
+async function workspaceList(key, relative = '') {
+  const info = await workspaceInfo(key);
+  if (!info.mounted) throw failure('This deployment has no mounted workspace. Use the platform bucket credentials from your account until the shared-workbench S3 bridge is enabled.', 503);
+  const target = workspacePath(relative);
+  let entries;
+  try { entries = await fs.readdir(target.absolute, { withFileTypes: true }); }
+  catch (error) { if (error.code === 'ENOENT') throw failure('Workspace folder not found.', 404); throw error; }
+  const data = await Promise.all(entries.slice(0, 500).map(async (entry) => {
+    const stat = await fs.stat(path.join(target.absolute, entry.name));
+    return { name: entry.name, path: [target.normalized, entry.name].filter(Boolean).join('/'),
+      kind: entry.isDirectory() ? 'directory' : 'file', size_bytes: entry.isFile() ? stat.size : undefined,
+      updated_at: stat.mtime.toISOString() };
+  }));
+  return { info, prefix: target.normalized, data: data.sort((a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name)) };
+}
+async function workspacePut(key, relative, localPath) {
+  const info = await workspaceInfo(key);
+  if (!info.mounted) throw failure('This deployment has no mounted workspace.', 503);
+  const target = workspacePath(relative);
+  if (!target.normalized) throw failure('Choose a file name.');
+  await fs.mkdir(path.dirname(target.absolute), { recursive: true, mode: 0o700 });
+  const temporary = `${target.absolute}.${crypto.randomUUID()}.upload`;
+  await fs.copyFile(localPath, temporary);
+  await fs.rename(temporary, target.absolute);
+  const stat = await fs.stat(target.absolute);
+  return { path: target.normalized, size_bytes: stat.size, updated_at: stat.mtime.toISOString() };
+}
+async function workspaceGet(key, relative) {
+  const info = await workspaceInfo(key);
+  if (!info.mounted) throw failure('This deployment has no mounted workspace.', 503);
+  const target = workspacePath(relative);
+  const stat = await fs.stat(target.absolute).catch((error) => { if (error.code === 'ENOENT') throw failure('Workspace file not found.', 404); throw error; });
+  if (!stat.isFile()) throw failure('Workspace path is not a file.');
+  return { ...target, size_bytes: stat.size };
 }
 async function status(owner, id) {
   const dir = directory(owner, id);
@@ -140,4 +239,5 @@ async function output(owner, id, filename) {
   try { return await fs.readFile(path.join(directory(owner, id), 'output', filename)); }
   catch (error) { if (error.code === 'ENOENT') throw failure('This report file has not been produced. Check job status.', 409); throw error; }
 }
-module.exports = { platform, clinical, status, list, start, output, save, read, failure, FILES, REPORT_MODEL };
+module.exports = { platform, clinical, status, list, start, output, track, runs, workspaceInfo, workspaceList,
+  workspacePut, workspaceGet, save, read, failure, FILES, REPORT_MODEL };

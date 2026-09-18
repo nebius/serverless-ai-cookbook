@@ -1,22 +1,19 @@
 # Nebius Scientific AI Agent
 
-A scientific workspace built on pinned LibreChat. Dedicated GLM 5.3 is the
-event default; dedicated Nemotron and tested public Nebius Token Factory models
-remain selectable. Participants can also bring their own OpenAI or Anthropic
-API key. The same scientific gateway, research skills and Tavily search stay
-attached when you change models. Evo2, Boltz2, DiffDock and other scientific
-models are tools, not chat-provider choices.
+A scientific workspace built on pinned LibreChat. Public Nebius Token Factory
+is the default conversational provider; old event-dedicated deployments are
+opt-in. Users can also bring OpenAI or Anthropic credentials. The existing
+`agent_nebius_scientific_ai` agent is enhanced, not replaced: scientific Apps,
+research skills, Tavily, structure viewing, execution, durable run tracking and
+workspace discovery stay attached when the chat LLM changes.
 
-Six event-focused cards prepare editable prompts for the
-[Stockholm Longevity × AI Hackathon](https://luma.com/5b82vwsa): Nebius
-infrastructure preparation, aging/biomarkers, target/drug exploration,
-communication/trust/policy, healthspan/clinical translation, and wildcard ideas.
-Every signed-in participant sees the same starters. Clicking a card does not
-switch the LLM, send a message, or submit compute.
-Each card names models/tools and installed skills, and prepares a concrete
-research, model-discovery or demo workflow. AltumAge and Clinical PhenoAge are
-highlighted as the event models; other tracks introduce folding, docking,
-genomics, molecule/protein design, imaging and Tavily research.
+Six general research cards prepare editable prompts for literature-backed
+reproduction, structures, molecular/protein design, genomics/aging, clinical
+speech/imaging, and robotics data augmentation. Clicking a card does not switch
+the LLM, send a message, or submit compute. `/demos` is the workbench surface:
+Apps is caller-scoped live discovery, Runs reconnects durable operation IDs,
+Workspace browses a deployment-mounted bucket, and the existing Clinical Report
+and MindEval panels remain available.
 
 The image contains no model or MCP credential. One non-admin gateway key is used
 for both the model API and MCP service. Store it in MysteryBox under the payload
@@ -36,7 +33,7 @@ export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/nebius-scientifi
 ```
 
 The script creates a public CPU D3 endpoint on port `3080`; LibreChat keeps its
-own email/password sign-in page reachable. Event deployments mount each team's
+own email/password sign-in page reachable. Dedicated deployments mount a user or team's
 read-write Object Storage bucket at `/workspace`. Provision secrets separately; never
 put real keys in commands, Git, image layers or chat prompts.
 
@@ -72,10 +69,10 @@ The personal login option disables open registration. Setting
 picker and makes a public Token Factory model the default.
 
 After first login, configure the same personal Scientific AI key in
-`/demos?tab=clinical` (encrypted per-user credential store). This is separate
+`/demos?tab=apps` (encrypted per-user credential store). This is separate
 from the server-managed key used by the legacy workbench. The bucket is available
 to the workspace/file tools; the clinical panel's file picker selects **browser-local
-files**, not server-mounted paths. Do not describe that picker as a bucket browser.
+files**, not server-mounted paths. The separate Workspace tab is the bucket browser.
 Use the panel for recorded-audio uploads; live microphone capture is not qualified.
 
 Validate the real mount with object readback and a write visible through S3,
@@ -91,12 +88,14 @@ its image to work around this limitation.
 
 ## What is configured
 
-- **Chat models:** Dedicated GLM 5.3 Flash is the default, with dedicated
-  Nemotron and the tested public Token Factory allowlist available. The public
+- **Chat models:** GLM 5.3 Flash on public Token Factory is the default. Old
+  dedicated event deployments appear only when explicitly enabled. The public
   allowlist is intersected with authenticated discovery at startup
-  (configured-list fallback). Qwen models are excluded for this event. OpenAI
+  (configured-list fallback). OpenAI
   and Claude remain optional and require a participant-supplied provider key.
-- **Scientific models:** available only through the gateway tools. Model-specific
+- **Scientific Apps:** available only through the gateway tools. The Apps page
+  merges `/v1/models` and `/v1/scientific-models` for the current caller; it has
+  no static availability list. Model-specific
   schemas load on demand with `tool_search`; discovery and durable operation tools
   stay ready. Gateway authorization, validation and execution are unchanged.
 - **Branding:** application title, logo, welcome copy, and theme use Nebius
@@ -104,8 +103,16 @@ its image to work around this limitation.
   Factory mark, bundled locally, for its group, models and selected-chat icon.
   The footer pairs NVIDIA's green symbol/black wordmark with Nebius, using
   balanced sizing and a light NVIDIA backing that works in dark mode.
-- **Workflows:** six goal-oriented prompts; saved tutorial agents remain for legacy
-  conversations but are hidden from the primary picker.
+- **Runs:** six typed workbench tools save, refresh, inspect, retrieve and cancel
+  accessible operation IDs. The main agent is instructed to save every returned
+  ID immediately. Runs survive chat reconnection and never imply automatic
+  resubmission.
+- **Workspace:** dedicated deployments browse, upload and download the bucket
+  mounted at `/workspace`; paths are bounded to the mount and uploads are
+  atomic. A shared deployment without a mount reports its caller-owned platform
+  storage but does not expose credentials or pretend it can browse it.
+- **Workflows:** six goal-oriented prompts; saved tutorial agents keep stable IDs
+  for existing conversations and now use the same workbench tracking tools.
 - **Structure viewer:** `visualize_structure` reads completed operation results
   with the configured gateway key and sends real PDB/mmCIF/SDF coordinates into
   a sandboxed in-chat 3Dmol viewer. Spin, drag, zoom, fullscreen, reset, structure
@@ -125,7 +132,9 @@ its image to work around this limitation.
   hashes retained in the image. The upstream repository requires access; its
   source files are fetched into an ignored build directory, not this public Git
   repository. Participants can use the installed guidance without repo access.
-- **Limitations:** no compatible attachment-to-gateway upload bridge or GROMACS
+- **Limitations:** a deployment without a mounted bucket does not yet have an S3
+  file browser. The generic LibreChat attachment picker is not a scientific
+  artifact upload bridge, and there is no GROMACS
   server. The viewer does not download scientific-batch artifact references or
   invent coordinates for sequences/SMILES. Inline inputs and finalized artifacts
   remain usable. Do not promise arbitrary attachment submission or fabricated
@@ -150,8 +159,10 @@ docker run --rm --entrypoint /app/node_modules/.bin/tsc \
   scientific-client-check --noEmit -p /app/client/tsconfig.json
 ```
 
-Verify login, all six cards, chat-model switching, provider-key setup, scientific
-discovery, one small run, literature search, mobile/dark layout and console errors.
+Verify login, all six cards, Apps discovery for the signed-in key, operation
+tracking and reconnect, workspace read/write/download, chat-model switching,
+provider-key setup, scientific discovery, one semantic run, literature search,
+mobile/dark layout and console errors.
 OpenAI/Claude inference requires valid credentials: testing setup UI alone is not
 an inference acceptance test. Browser CLI checks are in `scripts/browser-smoke.js`
 and `scripts/viewer-browser-smoke.js`; the latter requires an existing chat

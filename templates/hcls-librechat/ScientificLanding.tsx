@@ -8,46 +8,46 @@ import { useRequiresKey } from '~/hooks';
 
 const workflows = [
   {
-    id: 'infra', title: 'Build the compute plan for your demo', icon: Server, tag: 'AI infrastructure',
-    description: 'Turn your model idea into a GPU, batch-job or inference-endpoint plan using the installed Nebius skills.',
-    tools: 'Tavily · hosted model catalog · Nebius setup guidance',
-    skills: 'Cloud basics · capacity & quotas · Serverless jobs & endpoints',
-    prompt: 'Help me tackle the AI infrastructure challenge at the Stockholm Longevity × AI Hackathon. Introduce your installed Nebius skills for cloud setup, capacity, compute and Serverless jobs/endpoints, plus Tavily for official-documentation research. Ask which workload I want to build. Once I choose, load nebius-cloud-basics and the one task-specific skill needed; do not load the whole skill pack or fetch the full model catalog. Use a focused Tavily search if current details are needed. Produce one concrete configuration with a small benchmark and a cost-estimation method. If a hosted scientific model is relevant, inspect that model’s schema. Use nebius-infrastructure-prep when I need a local MCP setup handoff: https://github.com/nebius/mcp-server/blob/main/AGENT_SETUP.md, with SAFE_MODE=true. The skills are installed here; executing cloud commands needs my own connected environment. Do not ask for credentials or create cloud resources.',
+    id: 'literature', title: 'Reproduce a published result', icon: BookOpen, tag: 'Research & evidence',
+    description: 'Find an open paper and dataset, then build a bounded, provenance-rich reproduction plan.',
+    tools: 'Tavily · live Apps · workspace · durable runs',
+    skills: 'Literature research · scientific gateway · evaluation',
+    prompt: 'Help me reproduce a published scientific result using public data and the Scientific AI Apps available to my key. Ask for my field or suggest one realistic paper. Search primary sources, verify the paper, code, dataset, license and reported metric, then inspect the live App catalog and exact schemas. Build a bounded reproduction with fixed inputs, preprocessing, seeds, metrics and artifact provenance. Do not claim reproduction from a smoke test. Ask before submitting compute, save every operation in the Runs panel, and compare the terminal result with the paper.',
   },
   {
-    id: 'biology', title: 'Try the event’s two aging models', icon: Dna, tag: 'Longevity biology × AI',
-    description: 'Added for this event: AltumAge for DNA methylation and Clinical PhenoAge for blood biomarkers.',
-    tools: 'AltumAge · Clinical PhenoAge · Tavily',
-    skills: 'aging-models · scientific-gateway',
-    prompt: 'Show me how this agent can help with the longevity-biology challenge using the two hosted aging models: AltumAge for DNA methylation and Clinical PhenoAge for blood biomarkers. Load aging-models and scientific-gateway; discover my live model access and get_model_schema for both models. Use Tavily to find primary research and explain what each model estimates and which data it needs. Offer two concrete starting demos: a small, clearly labeled synthetic PhenoAge example, or preparation of a correctly ordered AltumAge methylation dataset. Explain why these models use different inputs and are not interchangeable aging clocks. Ask which scientific question and demo I want to explore. After I choose, show the exact inputs and obtain my go-ahead before inference. For AltumAge, verify the 20,318-CpG input requirement and the available transfer path before promising a run. End with an evaluation idea and an artifact I could show at the hackathon. Predictions are research outputs, not clinical assessments.',
+    id: 'structure', title: 'Predict and compare structures', icon: Atom, tag: 'Proteins & complexes',
+    description: 'Use the authorized folding and complex Apps, inspect confidence, and compare against public PDB references.',
+    tools: 'Boltz · OpenFold · ESMFold · Protenix · 3D viewer',
+    skills: 'Structure prediction · MSA · scientific batch',
+    prompt: 'Set up a reproducible protein or complex structure study. Discover my live Apps instead of assuming a model is deployed. Ask for the biological question and reference structure, inspect each selected App schema, keep sequence/MSA/template treatment matched, and define RMSD, DockQ or confidence metrics as appropriate. Ask before compute, track every operation in Runs, retrieve terminal artifacts, and use the structure viewer. Distinguish prediction confidence from experimental evidence.',
   },
   {
-    id: 'molecules', title: 'Explore a longevity target in 3D', icon: Atom, tag: 'Longevity biology × AI',
-    description: 'Research a target, plan a folding or docking experiment, and inspect real protein structures and ligand poses in chat.',
-    tools: 'Tavily · OpenFold2 · DiffDock · interactive 3D viewer',
-    skills: 'openfold2 · diffdock · drug-discovery-pipeline',
-    prompt: 'Help me build a target-exploration demo for the longevity-biology challenge. Introduce the tools I have here: Tavily for cited research, OpenFold2 for protein folding, DiffDock for ligand poses and visualize_structure for an interactive 3D result. Load the relevant openfold2, diffdock and drug-discovery-pipeline skills. Ask for a target or longevity question, or offer a small example if I am new to this. Research the target with Tavily, discover model access and inspect live schemas. Propose one bounded folding or docking run with its actual required inputs; explain how I can rotate, zoom and inspect the returned structure in chat. Offer Boltz2 or the hosted protein-design models only when their live contracts fit the task. Ask before inference and do not promise file-upload or batch-viewer capabilities that are unavailable. Explain that a predicted structure or docking score is a research hypothesis, not evidence of binding or efficacy.',
+    id: 'design', title: 'Design and rank candidates', icon: FlaskConical, tag: 'Molecules & proteins',
+    description: 'Build a traceable design funnel across docking, sequence design, binders, or molecule generation.',
+    tools: 'DiffDock · RFdiffusion · ProteinMPNN · BindCraft · GenMol',
+    skills: 'Molecular design · binder design · artifact pipelines',
+    prompt: 'Help me design and rank molecular or protein candidates. Start from a live authorized catalog and ask about the target, public reference data and experimental decision. Inspect schemas before chaining Apps. Define fixed preparation, candidate counts, filters, ranking metrics, failure handling and a held-out or experimental validation plan. Ask before compute, upload large inputs as artifacts, track operation IDs, and keep generated hypotheses separate from measured binding or function.',
   },
   {
-    id: 'trust', title: 'Fact-check a longevity claim', icon: BookOpen, tag: 'Communication, trust & policy',
-    description: 'Use Tavily and the aging-model skills to turn a claim about biological age into a cited, understandable evidence brief.',
-    tools: 'Tavily web search · AltumAge & PhenoAge model schemas',
-    skills: 'tavily-research · aging-models',
-    prompt: 'Help me build a communication, trust or policy demo that shows what this agent can actually do. Use tavily-research for Tavily web search and aging-models to explain the hosted AltumAge and Clinical PhenoAge models. Ask for an audience and a longevity claim; offer “Does a lower predicted biological age prove better health?” as a starting example. Search primary sources with Tavily, inspect relevant live model schemas, and build a short evidence table with citations, study population, result and limitations. Show the distinction between a model output, an association and a validated health outcome. Produce an accessible fact-check or interactive-demo outline using those real capabilities. Verify current official sources if a policy question arises. No inference is needed for the evidence brief.',
+    id: 'genomics', title: 'Analyze sequences and aging clocks', icon: Dna, tag: 'Genomics & aging',
+    description: 'Evaluate DNA sequence models or biological-age clocks on public, consented, non-identifying data.',
+    tools: 'Evo2 · AltumAge · PhenoAge · Tavily',
+    skills: 'Genomics · aging models · cohort evaluation',
+    prompt: 'Plan a genomics or biological-age analysis using only public, synthetic or appropriately governed data. Discover the live Apps and exact modality of Evo2, AltumAge and PhenoAge; they are not interchangeable. Find the original paper and public evaluation data, define train/test separation, missing-data rules, confounders, subgroup analysis and confidence intervals. Ask before inference, preserve operation IDs and provenance, and do not turn research outputs into clinical assessments.',
   },
   {
-    id: 'clinical', title: 'Prototype a healthspan research assistant', icon: ScanLine, tag: 'Healthspan & clinical translation',
-    description: 'Explore biomarker and imaging workflows with PhenoAge, chest-X-ray reasoning and CT segmentation model contracts.',
-    tools: 'Clinical PhenoAge · NV-Reason-CXR · NV-Segment-CT · Tavily',
-    skills: 'aging-models · imaging-models',
-    prompt: 'Help me build a healthspan and clinical-translation research demo using capabilities available through this agent. Introduce Clinical PhenoAge for biomarker-based age estimates, NV-Reason-CXR-3B for chest-X-ray research and NV-Segment-CT for CT segmentation. Load aging-models and imaging-models, discover my live model access, inspect the relevant schemas and check readiness before offering execution. Ask whether I want a synthetic biomarker demo or an imaging-workflow design. Use Tavily to find primary research and a suitable public example dataset. Propose concrete input preparation, model output, human review and evaluation; distinguish what runs here from steps awaiting a compatible image/file transfer path or runtime. Ask before inference. Use public, synthetic or appropriately de-identified data only. This is a research prototype without EHR access or clinical validation.',
+    id: 'clinical', title: 'Work with speech and medical data', icon: ScanLine, tag: 'Clinical research',
+    description: 'Transcribe recordings, draft reviewable reports, or evaluate research-only imaging Apps.',
+    tools: 'Nemotron Speech · report drafts · imaging Apps',
+    skills: 'Clinical documentation · speech · imaging evaluation',
+    prompt: 'Help with a clinical-research workflow. Ask whether I need speech transcription, a source-linked report draft, or evaluation of an imaging App. Use only public, synthetic or properly de-identified data. Discover the live contract and validate the complete file path, not a tiny substitute. For documents, preserve evidence links, uncertainties and unanswered questions and require clinician review. For imaging, define a held-out reference, calibration and subgroup checks. Do not diagnose, triage or claim clinical validation.',
   },
   {
-    id: 'wildcard', title: 'Combine models for your own idea', icon: FlaskConical, tag: 'Open / wildcard',
-    description: 'Discover the hosted genomics, molecule and protein-design models, then connect them to your own longevity question.',
-    tools: 'Evo2 · GenMol · ProteinMPNN · RFdiffusion · Tavily',
-    skills: 'evo2 · genmol · protein-binder-design · scientific-batch',
-    prompt: 'Help me turn my own scientific question into a wildcard AI × longevity demo. Start with a short tour of what I can use here: Tavily for research; AltumAge and Clinical PhenoAge for aging; Evo2 for DNA-sequence generation; GenMol for molecules; ProteinMPNN for protein sequences; and scientific-batch models such as ESMFold2, Protenix v2, RFdiffusion, BindCraft and BoltzGen for structure and design. Explain the interactive viewer for supported real structure results. Discover my live catalog and load the relevant installed skills, such as evo2, genmol, protein-binder-design or scientific-batch. Ask about my expertise and idea, then suggest two small workflows using named tools with a concrete input and output at each step. Verify schemas, access, runtime readiness and artifact compatibility before chaining models. Use Tavily for related work and propose an evaluation and Sunday demo artifact. Ask before submitting inference or batch jobs. Use the installed Nebius infrastructure skills if my idea needs a deployment plan.',
+    id: 'robotics', title: 'Augment robotics data', icon: Server, tag: 'Physical AI',
+    description: 'Transform videos or bounded LeRobot datasets while preserving episodes, schema, and provenance.',
+    tools: 'Cosmos · LeRobot workflow · workspace',
+    skills: 'Generative media · robotics datasets · acceptance testing',
+    prompt: 'Help me augment a robotics dataset with the authorized Cosmos workflow. Ask whether the input is an MP4 or LeRobot dataset, inspect the exact live schema and supported transformation dimensions, and validate the complete input/output contract. Keep episode identity, timestamps, actions, observations, schema and provenance intact. Use a bounded public LeRobot dataset first, track durable operations, inspect terminal artifacts, and state fidelity limitations before scaling.',
   },
 ];
 
@@ -57,14 +57,12 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
   const { requiresKey } = useRequiresKey();
   const methods = useChatFormContext();
   const [selected, setSelected] = useState<string | null>(null);
-  const [copyStatus, setCopyStatus] = useState('');
   const spec = startupConfig?.modelSpecs?.list?.find((item) => item.name === conversation?.spec);
   const modelLabel = spec?.label || conversation?.model || 'your selected LLM';
 
   const chooseWorkflow = (workflow: (typeof workflows)[number]) => {
     methods.setValue('text', workflow.prompt, { shouldDirty: true });
     setSelected(workflow.id);
-    setCopyStatus('');
     requestAnimationFrame(() => {
       const input = document.querySelector<HTMLTextAreaElement>('[data-testid="text-input"]');
       input?.focus();
@@ -82,17 +80,18 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
           <img src="/assets/logo.svg" alt="Nebius" width="92" height="24" className="nebius-wordmark" />
           <span className="border-l border-border-medium pl-3 text-xs font-medium tracking-wide text-text-secondary">SCIENTIFIC WORKSPACE</span>
         </div>
-        <a href="https://luma.com/5b82vwsa" target="_blank" rel="noreferrer" className="mb-3 inline-block text-xs font-medium text-text-secondary underline underline-offset-4">Stockholm Longevity × AI Hackathon · 11–13 September 2026</a>
-        <h2 className="text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">Build something for healthier lives.</h2>
+        <p className="mb-3 text-xs font-medium text-text-secondary">Models, data, literature and reproducible runs in one workspace</p>
+        <h2 className="text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">Turn a scientific question into traceable work.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
           Search with Tavily, explore hosted scientific models, inspect structures in 3D,
-          run Python, install packages, and work with files using the root terminal. Use the installed Nebius skills to plan your compute.
+          run Python, install packages, work with your bucket, and reconnect to durable model runs.
         </p>
       </header>
 
-      <nav aria-label="Clinical AI demos" className="mb-5 grid gap-3 sm:grid-cols-2">
-        <Link to="/demos?tab=clinical" className="rounded-xl border border-border-medium bg-surface-secondary p-4 hover:bg-surface-hover"><strong>Clinical Report Draft</strong><p className="mt-1 text-sm text-text-secondary">Transcript or recording → source-linked Arztbrief or English report draft.</p></Link>
-        <Link to="/demos?tab=mindeval" className="rounded-xl border border-border-medium bg-surface-secondary p-4 hover:bg-surface-hover"><strong>MindEval Workshop</strong><p className="mt-1 text-sm text-text-secondary">Simulate a consultation, intervene, score and compare clinicians.</p></Link>
+      <nav aria-label="Scientific workbench" className="mb-5 grid gap-3 sm:grid-cols-3">
+        <Link to="/demos?tab=apps" className="rounded-xl border border-border-medium bg-surface-secondary p-4 hover:bg-surface-hover"><strong>Apps</strong><p className="mt-1 text-sm text-text-secondary">See exactly which models your key can use.</p></Link>
+        <Link to="/demos?tab=runs" className="rounded-xl border border-border-medium bg-surface-secondary p-4 hover:bg-surface-hover"><strong>Runs</strong><p className="mt-1 text-sm text-text-secondary">Reconnect to durable work without resubmitting it.</p></Link>
+        <Link to="/demos?tab=workspace" className="rounded-xl border border-border-medium bg-surface-secondary p-4 hover:bg-surface-hover"><strong>Workspace</strong><p className="mt-1 text-sm text-text-secondary">Browse and upload files in your mounted bucket.</p></Link>
       </nav>
 
       {requiresKey && (
@@ -133,22 +132,11 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
           );
         })}
       </div>
-      {selected === 'infra' && (
-        <aside aria-label="Infrastructure setup handoff" className="mt-4 rounded-xl border border-border-medium bg-surface-secondary p-4 text-sm text-text-primary">
-          <h4 className="font-semibold">Ten Nebius infrastructure skills are installed.</h4>
-          <p className="mt-2 text-xs leading-5 text-text-secondary">Use them here for cloud setup, capacity, compute, Serverless jobs and endpoints, data and secrets, recipes, and troubleshooting. Your cloud account is not connected to this chat. The root terminal can prepare files, install tools and validate your plan here; cloud changes require your account connection.</p>
-          <p className="my-3 select-all break-words text-xs">Fetch and follow the installation guide: https://github.com/nebius/mcp-server/blob/main/AGENT_SETUP.md</p>
-          <div className="flex flex-wrap items-center gap-3 text-xs">
-            <Button type="button" variant="outline" size="sm" onClick={async () => {
-              try {
-                await navigator.clipboard.writeText('Fetch and follow the installation guide: https://github.com/nebius/mcp-server/blob/main/AGENT_SETUP.md');
-                setCopyStatus('Setup prompt copied. Paste it into your local coding agent.');
-              } catch { setCopyStatus('Copy is unavailable. Select and copy the setup prompt above.'); }
-            }}>Copy MCP setup prompt</Button>
-            <a href="https://github.com/nebius/mcp-server/blob/main/AGENT_SETUP.md" target="_blank" rel="noreferrer" className="underline underline-offset-4">Official setup guide</a>
-            <a href="https://github.com/nebius/skills" target="_blank" rel="noreferrer" className="underline underline-offset-4">Nebius skills source</a>
-          </div>
-          <p role="status" className="mt-2 text-xs text-text-secondary">{copyStatus}</p>
+      {selected === 'literature' && (
+        <aside aria-label="Reproducibility guidance" className="mt-4 rounded-xl border border-border-medium bg-surface-secondary p-4 text-sm text-text-primary">
+          <h4 className="font-semibold">Research and execution stay connected.</h4>
+          <p className="mt-2 text-xs leading-5 text-text-secondary">Use primary sources to define the target result, save public data in Workspace, and keep every submitted operation in Runs. A successful API response alone is not a reproduced result.</p>
+          <Link to="/demos?tab=apps" className="mt-3 inline-block underline underline-offset-4">Open the live App catalog</Link>
         </aside>
       )}
       <p className="mt-4 text-xs leading-5 text-text-secondary">Research prototypes, not clinical advice. The agent can execute commands as root in this environment and use its mounted files. Cloud account access is configured separately.</p>

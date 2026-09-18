@@ -159,16 +159,17 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     for agent in agents:
         assert agent["skills_enabled"] is True
         assert instructions.read_text().strip() in agent["instructions"]
-        assert set(agent["mcpServerNames"]) == {"bionemo-models", "tavily", "structure-viewer", "environment-execution"}
+        assert set(agent["mcpServerNames"]) == {"bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"}
         assert "tavily_search_mcp_tavily" in agent["tools"]
+        assert "workbench_track_operation_mcp_scientific-demos" in agent["tools"]
 
 
 def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp_path) -> None:
     config, _ = render_config(tmp_path)
     specs = config["modelSpecs"]["list"]
     assert {item["group"] for item in specs} == {
-        "Dedicated Token Factory", "Public Token Factory", "OpenAI", "Claude", "Clinical demos"}
-    assert len([item for item in specs if item["group"] == "Dedicated Token Factory"]) == 2
+        "Public Token Factory", "OpenAI", "Claude", "Clinical demos"}
+    assert len([item for item in specs if item["group"] == "Dedicated Token Factory"]) == 0
     assert len([item for item in specs if item["group"] == "Public Token Factory"]) > 2
     assert len([item for item in specs if item["default"]]) == 1
     assert len({item["name"] for item in specs}) == len(specs)
@@ -179,15 +180,14 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
             assert item["mcpServers"] == ["scientific-demos"]
             continue
         assert item["skills"] is True
-        assert item["mcpServers"] == ["bionemo-models", "tavily", "structure-viewer", "environment-execution"]
+        assert item["mcpServers"] == ["bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"]
         assert INSTRUCTIONS.read_text().strip() in item["preset"]["promptPrefix"]
         assert item["preset"]["model"] not in {"evo2-40b", "boltz2", "openfold2", "sdxl", "nv-segment-ct"}
         if item["group"] in {"Dedicated Token Factory", "Public Token Factory"}:
             assert not item["preset"]["model"].lower().startswith("qwen/")
         assert "agent_id" not in item["preset"]
     assert config["interface"]["modelSelect"] is False  # curated specs remain selectable
-    assert [item["name"] for item in config["endpoints"]["custom"]] == [
-        "Nebius Token Factory Dedicated", "Nebius Token Factory"]
+    assert [item["name"] for item in config["endpoints"]["custom"]] == ["Nebius Token Factory"]
     token_configs = {
         endpoint["name"]: endpoint["tokenConfig"]
         for endpoint in config["endpoints"]["custom"]
@@ -198,8 +198,6 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
         endpoint = item["preset"]["endpoint"]
         model = item["preset"]["model"]
         assert token_configs[endpoint][model]["context"] >= 65536
-    dedicated_nemotron = "dedicated/LongevityHack2026/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4-prQAQn"
-    assert token_configs["Nebius Token Factory Dedicated"][dedicated_nemotron]["context"] == 1048576
 
 
 def test_model_grouped_tutorials_are_seeded() -> None:
@@ -220,11 +218,11 @@ def test_default_model_and_visible_workbench(tmp_path) -> None:
     config, _ = render_config(tmp_path)
     brand_client = (ROOT / "brand-client.mjs").read_text(encoding="utf-8")
     default = next(item for item in config["modelSpecs"]["list"] if item["default"])
-    assert default["preset"]["model"] == "dedicated/LongevityHack2026/GLM-5.3-Flash-FP8-6f1F49"
+    assert default["preset"]["model"] == "zai-org/GLM-5.3-Flash"
     assert "nebius-scientific-workbench" in brand_client
     for title in (
-        "Build the compute plan for your demo", "Try the event’s two aging models", "Explore a longevity target in 3D",
-        "Fact-check a longevity claim", "Prototype a healthspan research assistant", "Combine models for your own idea",
+        "Reproduce a published result", "Predict and compare structures", "Design and rank candidates",
+        "Analyze sequences and aging clocks", "Work with speech and medical data", "Augment robotics data",
     ):
         assert title in (ROOT / "ScientificLanding.tsx").read_text(encoding="utf-8")
 
@@ -234,11 +232,11 @@ def test_team_bucket_context_is_injected(tmp_path) -> None:
                               TEAM_BUCKET_NAME="stockholm-hackathon-team-01")
     default = next(item for item in config["modelSpecs"]["list"] if item["default"])
     prompt = default["preset"]["promptPrefix"]
-    assert "stockholm-team-01's isolated event workspace" in prompt
+    assert "stockholm-team-01's dedicated scientific workspace" in prompt
     assert "stockholm-hackathon-team-01 is mounted read-write at /workspace" in prompt
     custom = config["endpoints"]["custom"]
-    assert custom[0]["baseURL"] == "https://api.tokenfactory.us-central1.nebius.com/v1"
-    assert custom[1]["baseURL"] == "https://api.tokenfactory.nebius.com/v1"
+    assert len(custom) == 1
+    assert custom[0]["baseURL"] == "https://api.tokenfactory.nebius.com/v1"
 
 
 def test_client_branding_is_baked_into_the_wrapper() -> None:

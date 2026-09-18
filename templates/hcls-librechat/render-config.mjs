@@ -5,8 +5,8 @@ if (!outputPath) throw new Error('Expected the output config path');
 const instructionsPath = process.env.SCIENTIFIC_AGENT_INSTRUCTIONS_PATH || '/app/scientific-agent-instructions.md';
 const gatewayInstructions = (await readFile(instructionsPath, 'utf8')).trim();
 const teamContext = process.env.TEAM_ID && process.env.TEAM_BUCKET_NAME
-  ? `This is ${process.env.TEAM_ID}'s isolated event workspace. The Object Storage bucket ${process.env.TEAM_BUCKET_NAME} is mounted read-write at /workspace. Use /workspace for durable team files and verify important writes before reporting them complete.`
-  : 'Use /workspace for durable team files when the deployment provides its Object Storage mount.';
+  ? `This is ${process.env.TEAM_ID}'s dedicated scientific workspace. Object Storage bucket ${process.env.TEAM_BUCKET_NAME} is mounted read-write at /workspace. Use /workspace for durable files and verify important writes before reporting them complete.`
+  : 'Check workbench_workspace before promising direct file access. Shared deployments may expose caller-owned storage without mounting it into the container.';
 const instructions = `You are Nebius Scientific AI Agent, a scientific research assistant. Help the user move from a question to a clear plan and a bounded experiment. Respond directly to the current request; do not recite all tutorials or ask a fixed questionnaire. For a tutorial, explain the goal, required input, expected output and one useful next step. A tutorial card prepares a prompt; compute requires the user to choose a run. Preserve authorization already given for that run.
 
 The selected chat LLM reasons about the user's task and calls scientific tools. Scientific models such as Evo2, Boltz2 and DiffDock are tools, never replacements for the conversational LLM. Model-specific tools are loaded on demand: use tool_search to find a named tool when it is not yet visible. Read get_model_schema for the chosen model before preparing inputs. Do not dump the entire catalog for a question about one known model. Use Tavily for current literature and cite its sources. Preserve the user's chosen chat model throughout a workflow.
@@ -15,11 +15,13 @@ ${teamContext}
 
 ${gatewayInstructions}
 
+Run continuity: immediately call workbench_track_operation for every submitted operation ID, including failures, then poll that same ID. Never resubmit because a poll or chat response timed out. Direct the user to Apps, Runs and Workspace at /demos.
+
 Result reporting: always include the operation ID, exact returned status and any error code. Quote numerical confidence and timing only from explicit result fields, with the field name and units. Do not invent aggregate confidence, residue counts, fold quality or inferred timing. If a quantity needs calculation and no calculator/file tool is connected, omit it or state it is uncomputed. High pLDDT is local model confidence, not proof of structural correctness, reliability, function or experimental validation. Keep the final result concise: outcome, supported measurements, limitations, and one useful next step.`;
 
 // Public chat models observed in authenticated Token Factory discovery on
-// 2026-09-09. Models that failed the bounded tool-call probe and Qwen models
-// excluded for this event are omitted.
+// 2026-09-09. This is the conversational-LLM catalog, not the Scientific Apps
+// catalog; Apps are discovered dynamically from the caller's platform key.
 const publicTokenFactoryModels = [
   ['zai-org/GLM-5.3-Flash', 'GLM 5.3 Flash'],
   ['deepseek-ai/DeepSeek-V4-Flash-0731', 'DeepSeek V4 Flash'],
@@ -88,7 +90,7 @@ if (process.env.NEBIUS_API_KEY && process.env.NEBIUS_API_KEY !== 'user_provided'
 }
 
 // Personal installations need not depend on retired event-only endpoints.
-const dedicatedChatEnabled = process.env.SCIENTIFIC_DEDICATED_CHAT_ENABLED !== 'false';
+const dedicatedChatEnabled = process.env.SCIENTIFIC_DEDICATED_CHAT_ENABLED === 'true';
 const providerModels = [
   { endpoint: 'Nebius Token Factory Dedicated', group: 'Dedicated Token Factory', models: dedicatedTokenFactoryModels },
   { endpoint: 'Nebius Token Factory', group: 'Public Token Factory', models: availablePublicTokenModels },
@@ -114,7 +116,7 @@ const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => model
       : endpoint === 'Nebius Token Factory'
         ? 'Public Token Factory · scientific tools and web research'
         : 'Scientific tools · connect your provider key',
-    mcpServers: ['bionemo-models', 'tavily', 'structure-viewer', 'environment-execution'], skills: true, artifacts: true,
+    mcpServers: ['bionemo-models', 'scientific-demos', 'tavily', 'structure-viewer', 'environment-execution'], skills: true, artifacts: true,
     preset: { endpoint, model, modelLabel: label, promptPrefix: instructions,
       ...(endpoint === 'openAI' ? { useResponsesApi: true } : {}),
     },
@@ -172,7 +174,7 @@ const config = {
   modelSpecs: { prioritize: true, enforce: false, list: modelSpecs },
   mcpServers: {
     'scientific-demos': {
-      title: 'Clinical reports and MindEval', description: 'Durable clinical drafts and controlled workshop experiments.',
+      title: 'Scientific workbench', description: 'Durable run tracking, workspace status, clinical drafts and controlled workshop experiments.',
       type: 'stdio', command: 'node', args: ['/opt/hcls-librechat/demos/mcp.cjs'],
       startup: false, timeout: 60000,
       env: { LIBRECHAT_USER_ID: '{{LIBRECHAT_USER_ID}}',

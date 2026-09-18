@@ -12,6 +12,10 @@ const setup = (async () => {
   process.env.NEBIUS_API_KEY = 'fixture-provider-not-real';
   process.env.SCIENTIFIC_CLINICAL_PYTHON = process.execPath;
   process.env.SCIENTIFIC_CLINICAL_SCRIPT = path.join(__dirname, 'worker-fixture.cjs');
+  process.env.SCIENTIFIC_WORKSPACE = path.join(root, 'workspace');
+  process.env.TEAM_ID = 'fixture-team';
+  process.env.TEAM_BUCKET_NAME = 'fixture-bucket';
+  await fs.mkdir(process.env.SCIENTIFIC_WORKSPACE);
   return require('./service.cjs');
 })();
 const input = (id) => ({ filename: 'consultation.txt', bytes: Buffer.from('Synthetic consultation only.'),
@@ -84,8 +88,22 @@ test('stdio MCP exposes typed tools and rejects absent identity without inferenc
     { id: 3, method: 'tools/call', params: { name: 'clinical_list_jobs' } } ].map((item) => JSON.stringify({ jsonrpc: '2.0', ...item })).join('\n') + '\n');
   assert.equal(await new Promise((resolve) => child.on('exit', resolve)), 0);
   const messages = stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(messages[1].result.tools.length, 10);
+  assert.equal(messages[1].result.tools.length, 16);
   assert.ok(messages[1].result.tools.every((tool) => tool.inputSchema.additionalProperties === false));
+  assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_track_operation'));
   assert.equal(messages[2].result.isError, true);
+});
+test('mounted workspace stays inside its root and round-trips files', async () => {
+  const service = await setup;
+  const source = path.join(root, 'source.txt');
+  await fs.writeFile(source, 'workspace fixture');
+  const receipt = await service.workspacePut('fixture-key', 'papers/result.txt', source);
+  assert.equal(receipt.path, 'papers/result.txt');
+  const listing = await service.workspaceList('fixture-key', 'papers');
+  assert.equal(listing.info.team_bucket_name, 'fixture-bucket');
+  assert.deepEqual(listing.data.map((item) => item.name), ['result.txt']);
+  const downloaded = await service.workspaceGet('fixture-key', 'papers/result.txt');
+  assert.equal(await fs.readFile(downloaded.absolute, 'utf8'), 'workspace fixture');
+  await assert.rejects(service.workspaceGet('fixture-key', '../request.json'), /escape/);
 });
 after(async () => { await setup; await fs.rm(root, { recursive: true }); });

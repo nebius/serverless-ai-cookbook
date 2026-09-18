@@ -25,6 +25,36 @@ router.put('/settings', wrap(async (req, res) => {
   if (saved instanceof Error) throw service.failure('Could not save the key.', 503);
   res.json({ configured: true });
 }));
+router.get('/apps', wrap(async (req, res) => {
+  const credential = await key(req);
+  const [models, scientific] = await Promise.all([
+    service.platform(credential, 'GET', '/v1/models'),
+    service.platform(credential, 'GET', '/v1/scientific-models'),
+  ]);
+  const native = new Map((models.data || []).map((item) => [item.id || item.model_id, item]));
+  const batches = new Map((scientific.data || []).map((item) => [item.model_id || item.id, item]));
+  const ids = [...new Set([...native.keys(), ...batches.keys()])].sort();
+  res.json({ data: ids.map((id) => ({ id, native: native.get(id), scientific: batches.get(id) })) });
+}));
+router.get('/runs', wrap(async (req, res) => res.json(await service.runs(req.user.id, await key(req)))));
+router.post('/runs', wrap(async (req, res) => res.status(201).json(await service.track(req.user.id, await key(req), req.body?.operation_id, {
+  label: req.body?.label, model_id: req.body?.model_id, source: 'panel',
+}))));
+router.get('/runs/:id', wrap(async (req, res) => res.json(await service.track(req.user.id, await key(req), req.params.id, { source: 'panel' }))));
+router.get('/runs/:id/result', wrap(async (req, res) => res.json(await service.platform(await key(req), 'GET', `/v1/operations/${req.params.id}/result`))));
+router.post('/runs/:id/cancel', wrap(async (req, res) => res.json(await service.platform(await key(req), 'POST', `/v1/operations/${req.params.id}:cancel`))));
+router.get('/workspace', wrap(async (req, res) => res.json(await service.workspaceList(await key(req), req.query.path || ''))));
+router.post('/workspace', upload.single('file'), wrap(async (req, res) => {
+  if (!req.file) throw service.failure('Attach one file.');
+  try {
+    const name = req.body.path || req.file.originalname;
+    res.status(201).json(await service.workspacePut(await key(req), name, req.file.path));
+  } finally { await fs.unlink(req.file.path).catch(() => {}); }
+}));
+router.get('/workspace/file', wrap(async (req, res) => {
+  const value = await service.workspaceGet(await key(req), req.query.path || '');
+  res.download(value.absolute, value.normalized);
+}));
 router.get('/clinical', wrap(async (req, res) => res.json({ data: await service.list(req.user.id) })));
 router.post('/clinical', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) throw service.failure('Attach an audio or transcript file.');
