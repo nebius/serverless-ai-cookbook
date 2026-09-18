@@ -19,3 +19,14 @@ test('visible answers, provider errors and actual media are unchanged', () => {
     assert.equal(response.content, content);
   }
 });
+test('earlier progress does not hide an interrupted tool or reasoning turn', () => {
+  const response = { text: 'I will get started.', content: [
+    { type: 'text', text: 'I will get started.' },
+    { type: 'tool_call', tool_call: { name: 'catalog' } },
+    { type: 'think', think: 'retained only' },
+  ] };
+  assert.equal(mark(response), true);
+  assert.match(response.content.at(-1).error, /incomplete/);
+  assert.equal(mark({ content: [...response.content.slice(0, -1),
+    { type: 'text', text: 'The operation is still running; its ID is recorded in Runs.' }] }), false);
+});

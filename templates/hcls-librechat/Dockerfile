@@ -27,6 +27,7 @@ COPY --from=scientific-client /app/client/dist /app/client/dist
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
 COPY templates/hcls-librechat/scientific-tool-options.cjs /opt/hcls-librechat/scientific-tool-options.cjs
 COPY templates/hcls-librechat/scientific-completion.cjs /opt/hcls-librechat/scientific-completion.cjs
+COPY templates/hcls-librechat/scientific-workflow.py /opt/bionemo/scientific-workflow.py
 COPY templates/hcls-librechat/scientific-context-audit.cjs /opt/hcls-librechat/scientific-context-audit.cjs
 COPY templates/hcls-librechat/scientific-token-count.cjs /opt/hcls-librechat/scientific-token-count.cjs
 COPY templates/hcls-librechat/patch-server.mjs /opt/hcls-librechat/patch-server.mjs

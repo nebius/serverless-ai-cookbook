@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--workspace-file", action="append", default=[], help="Download an actual study deliverable for independent verification.")
     parser.add_argument("--workspace-list", action="append", default=[], help="Record actual directory entries before checking claimed file names.")
+    parser.add_argument('--runs', action='store_true', help='Capture current caller-scoped Runs and workshop statuses read-only.')
     args = parser.parse_args()
     os.umask(0o077)
     person = next(item for item in json.loads(args.manifest.read_text())["scientists"]
@@ -33,11 +34,15 @@ def main():
         client.headers["authorization"] = "Bearer " + response.json()["token"]
         summary = {"scientist_id": args.scientist, "conversation_id": args.conversation,
                    "endpoint_id": deployment["endpoint_id"], "image": deployment["image"], "files": {}}
-        for name, path in {
+        endpoints = {
             "messages": "/api/messages/" + args.conversation,
             "tool-calls": "/api/agents/tools/calls?conversationId=" + args.conversation,
             "chat-status": "/api/agents/chat/status/" + args.conversation,
-        }.items():
+        }
+        if args.runs:
+            endpoints.update({'runs': '/api/scientific-demos/runs',
+                              'workshop-runs': '/api/scientific-demos/workshop/runs'})
+        for name, path in endpoints.items():
             response = client.get(path)
             response.raise_for_status()
             try:

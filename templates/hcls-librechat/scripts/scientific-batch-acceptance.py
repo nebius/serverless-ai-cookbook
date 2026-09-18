@@ -48,6 +48,12 @@ def digest(data: bytes) -> str:
 
 def check(response):
     if not response.is_success:
+        try:
+            error = response.json().get("error", {})
+        except (ValueError, AttributeError):
+            error = {}
+        if isinstance(error, dict) and error.get("durable_admission") is False:
+            raise ExplicitRejection(error)
         raise RuntimeError(f"Platform returned HTTP {response.status_code}; inspect the saved evidence.")
     return response
 
@@ -115,7 +121,7 @@ async def download(http, reference: dict, target: Path) -> dict:
             "size_bytes": len(data), "sha256": digest(data)}
 
 
-async def run(args) -> None:
+async def run(args) -> dict:
     endpoint = os.environ["SCIENTIFIC_MODELS_MCP_URL"]
     key = os.environ["SCIENTIFIC_MODELS_API_KEY"]
     origin = endpoint.removesuffix("/mcp").removesuffix("/mcp/")
@@ -131,6 +137,8 @@ async def run(args) -> None:
         receipt = {"identity": identity, "state": "prepared", "manifest_id": "scientist-cohort-" + str(uuid4())}
     if receipt["identity"] != identity:
         raise ValueError("Output directory belongs to a different request.")
+    if receipt.get("state") == "verified":
+        return receipt
     save(receipt_path, receipt)
     headers = {"authorization": "Bearer " + key}
     async with httpx2.AsyncClient(base_url=origin, headers=headers, timeout=180,
@@ -214,11 +222,11 @@ async def run(args) -> None:
                         save(receipt_path, receipt)
                         print(json.dumps({"model": args.model, "operation_id": receipt["operation_id"],
                                           "state": "verified", "artifacts": len(artifacts)}))
-                        return
+                        return receipt
                     if time.monotonic() >= deadline:
                         print(json.dumps({"model": args.model, "operation_id": receipt["operation_id"],
                                           "state": receipt["state"], "resume": str(args.output)}))
-                        return
+                        return receipt
                     await asyncio.sleep(args.poll_seconds)
 
 

@@ -48,6 +48,10 @@ const auditAnchor = 'const usageBreakdown = agentContext.getTokenBudgetBreakdown
 if (!graphSource.includes(auditAnchor)) throw new Error('Unsupported pinned context diagnostics');
 graphSource = graphSource.replace(auditAnchor,
   `require('/opt/hcls-librechat/scientific-context-audit.cjs')(agentContext);\n\t\t\t\t${auditAnchor}`);
+const responseAuditAnchor = 'const responseMessage = result.messages?.[0];';
+if (!graphSource.includes(responseAuditAnchor)) throw new Error('Unsupported pinned provider diagnostics');
+graphSource = graphSource.replace(responseAuditAnchor,
+  `${responseAuditAnchor}\n\t\t\trequire('/opt/hcls-librechat/scientific-context-audit.cjs').response(responseMessage, agentContext);`);
 await writeFile(graphPath, graphSource);
 
 const apiPath = '/app/packages/api/dist/index.cjs';
