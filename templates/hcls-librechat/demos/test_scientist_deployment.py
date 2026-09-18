@@ -63,3 +63,21 @@ def test_candidate_records_verified_reuse_before_creating_distinct_endpoint(tmp_
     state = json.loads((args.output / person['id'] / 'deployment.json').read_text())
     assert state['secret_id'] == 'secret-existing'
     assert state['endpoint_name'] == 'qualification-v13-scientist-01'
+
+
+def test_comparison_model_is_pinned_and_not_silently_replaced(tmp_path, monkeypatch):
+    manifest, person, args, _, _ = fixture(tmp_path)
+    args.chat_model = 'provider/verified-candidate'
+    monkeypatch.setattr(module, 'cloud', lambda *args, **kwargs: {
+        'metadata': {'id': 'secret-existing', 'parent_id': manifest['project_id']}})
+    def command(command, environment):
+        assert environment['SCIENTIFIC_CHAT_MODEL'] == args.chat_model
+        raise RuntimeError('fixture-stopped-before-cloud')
+    monkeypatch.setattr(module, 'deploy_command', command)
+    with pytest.raises(RuntimeError, match='fixture-stopped'):
+        module.deploy(manifest, person, args)
+    state_path = args.output / person['id'] / 'deployment.json'
+    assert json.loads(state_path.read_text())['chat_model'] == args.chat_model
+    args.chat_model = 'provider/different-candidate'
+    with pytest.raises(RuntimeError, match='Recorded chat model differs'):
+        module.deploy(manifest, person, args)

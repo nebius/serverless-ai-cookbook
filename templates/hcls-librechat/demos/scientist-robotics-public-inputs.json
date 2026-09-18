@@ -1,0 +1,13 @@
+{
+  "cases": [{
+    "case_id": "robotics-public-transport-fixture",
+    "model_id": "cosmos3-lerobot-augmentation",
+    "provenance": {
+      "source": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+      "purpose": "Bounded public format and augmentation fixture; not a physical robot benchmark",
+      "lerobot_bundle_sha256": "4d9124ea799a88a76bbe30f9641a2a0d3fcf88f13a0885b4472d2f2eef070c85",
+      "video_sha256": "9880133da0e4da3411e38a38069686b187a7bbb1893513f7d0b523accf5ddce4",
+      "limitations": "LeRobot fixture imagery/actions are public model-generated examples, not measured robot telemetry. Episode/frame state identifiers are synthetic, cameras are not calibrated and physical alignment is not verified. See the supplied source-provenance.json."
+    }
+  }]
+}

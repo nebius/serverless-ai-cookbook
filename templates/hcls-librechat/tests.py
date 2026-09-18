@@ -11,15 +11,44 @@ ROOT = Path(__file__).parent
 INSTRUCTIONS = ROOT.parents[1] / "life-science/bionemo-librechat/scientific-agent-instructions.md"
 
 
-def render_config(tmp_path, **overrides):
+def render_config(tmp_path, catalog=None, **overrides):
     env = {key: value for key, value in os.environ.items()
            if key not in {"SCIENTIFIC_MODELS_API_KEY", "NEBIUS_API_KEY"}}
     env.update(SCIENTIFIC_AGENT_INSTRUCTIONS_PATH=str(INSTRUCTIONS),
-               SCIENTIFIC_DISCOVER_CHAT_MODELS="false", **overrides)
+               SCIENTIFIC_DISCOVER_CHAT_MODELS="false")
+    env.update(overrides)
     output = tmp_path / "librechat.yaml"
-    result = subprocess.run(["node", str(ROOT / "render-config.mjs"), str(output)],
+    command = ["node", str(ROOT / "render-config.mjs"), str(output)]
+    if catalog is not None:
+        env.update(NEBIUS_API_KEY='synthetic-provider-test-key', SCIENTIFIC_DISCOVER_CHAT_MODELS='true')
+        code = 'globalThis.fetch = async () => ({ok: true, json: async () => (' + json.dumps(catalog) + ')});' \
+            + 'process.argv[2] = process.argv[1]; await import(' + json.dumps((ROOT / 'render-config.mjs').as_uri()) + ');'
+        command = ['node', '--input-type=module', '-e', code, str(output)]
+    result = subprocess.run(command,
                             env=env, check=True, capture_output=True, text=True)
     return json.loads(output.read_text()), output.read_text() + result.stdout
+
+
+def test_explicit_chat_model_is_admitted_only_after_live_catalog_verification(tmp_path):
+    model = 'provider/new-planning-model'
+    config, _ = render_config(tmp_path, catalog={'data': [{'id': model}]}, SCIENTIFIC_CHAT_MODEL=model)
+    provider = next(item for item in config['endpoints']['custom'] if item['name'] == 'Nebius Token Factory')
+    assert model in provider['models']['default']
+    assert provider['models']['default'] == [model]
+    assert config['endpoints']['agents']['recursionLimit'] == 30
+    assert config['endpoints']['agents']['maxRecursionLimit'] == 50
+
+
+@pytest.mark.parametrize('catalog', [None, {'data': [{'id': 'Qwen/Qwen3-235B-A22B-Instruct-2507'}]}])
+def test_unverified_explicit_chat_model_never_silently_falls_back(tmp_path, catalog):
+    with pytest.raises(subprocess.CalledProcessError):
+        render_config(tmp_path, catalog=catalog, SCIENTIFIC_CHAT_MODEL='provider/unavailable-model')
+
+
+def test_previously_curated_model_is_not_accepted_when_live_catalog_removes_it(tmp_path):
+    with pytest.raises(subprocess.CalledProcessError):
+        render_config(tmp_path, catalog={'data': [{'id': 'provider/new-model'}]},
+                      SCIENTIFIC_CHAT_MODEL='Qwen/Qwen3-235B-A22B-Instruct-2507')
 
 
 def test_no_credentials_are_baked_into_the_image_context() -> None:

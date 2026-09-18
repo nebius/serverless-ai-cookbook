@@ -6,6 +6,7 @@ import { Button, Input } from '@librechat/client';
 import { request } from 'librechat-data-provider';
 import { compareBatch, comparisonCsv } from './scientific-comparison';
 import type { WorkshopRun as Run } from './scientific-comparison';
+import { runDisplay } from './scientific-run-display';
 
 type Job = { id: string; status: string; created_at: string; error?: string; files: string[] };
 type Catalog = { catalog: { judge_model: string; data: { id: string; clinician_eligible: boolean; patient_eligible: boolean }[] };
@@ -16,7 +17,7 @@ type AppRow = { id: string; native?: { display_name?: string; enabled?: boolean;
     mcp_tool_description?: string; runtime?: { state?: string } } };
 type RunRow = { id: string; model_id?: string; protocol?: string; status?: string; label?: string; source?: string;
   first_seen_at: string; accepted_at?: string; started_at?: string; completed_at?: string; refresh_error?: string;
-  operation?: { error_code?: string; error_detail?: string; result_available?: boolean; accepted_at?: string;
+  operation?: { protocol?: string; error_code?: string; error_detail?: string; result_available?: boolean; accepted_at?: string;
     activation_started_at?: string; ready_at?: string; started_at?: string; completed_at?: string;
     cold_start_seconds?: number; attempt?: number; max_attempts?: number } };
 type RunPage = { data: RunRow[]; next_cursor?: string; history_available?: boolean; history_notice?: string };
@@ -113,20 +114,20 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
       {enabled && !apps.isLoading && !(apps.data?.data.length) && <p role="status">This key currently has no authorized Apps.</p>}
     </section>}
     {tab === 'runs' && <section>
-      <h2 className="text-xl font-semibold">Runs</h2><p className="my-2 text-sm text-text-secondary">Your model operations from chat and API appear automatically. Reconnect to follow the same run while it waits for capacity or executes.</p>
+      <h2 className="text-xl font-semibold">Runs</h2><p className="my-2 text-sm text-text-secondary">Your model operations and input uploads from chat and API appear automatically. Reconnect to follow their actual status without submitting duplicate work.</p>
       {runs.data?.history_notice && <p role="status" className="my-3 rounded border border-border-medium p-3 text-sm">{runs.data.history_notice}</p>}
       <form className="mb-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); void act(async () => {
         const value = await request.post<RunRow>(`${BASE}/runs`, { operation_id: operationId }); setSelectedRun(value.id); setOperationId('');
       }); }}><Input aria-label="Operation ID" placeholder="operation UUID" value={operationId} onChange={(event) => setOperationId(event.target.value)} /><Button type="submit" disabled={!enabled || !operationId || busy}>Add run</Button></form>
       <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>App / run</th><th>Status</th><th>Elapsed</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>{(runs.data?.data || []).map((run) => {
-        const terminal = ['succeeded', 'failed', 'cancelled', 'completed', 'preempted', 'expired'].includes(run.status || '');
-        return <tr key={run.id} className="border-t border-border-light"><td className="max-w-sm py-3 pr-3"><strong>{run.model_id || 'Unknown App'}</strong>{run.label && <p className="text-xs">{run.label}</p>}<code className="text-xs">{run.id}</code>{run.refresh_error && <p className="text-xs">Refresh: {run.refresh_error}</p>}</td>
-          <td className="pr-3">{run.status || 'unknown'}{run.status === 'queued' && <p className="text-xs text-text-secondary">Accepted; execution has not started</p>}{run.operation?.error_code && <p className="max-w-xs text-xs">{run.operation.error_code}: {run.operation.error_detail || 'See details'}</p>}{(run.operation?.attempt || 0) > 1 && <p className="text-xs">Attempt {run.operation?.attempt} / {run.operation?.max_attempts || '—'}</p>}</td>
-          <td className="pr-3">{elapsed(run.accepted_at, run.completed_at, !terminal)}<p className="text-xs text-text-secondary">Wait {elapsed(run.accepted_at, run.started_at, !terminal && !run.started_at)}</p>{run.operation?.cold_start_seconds !== undefined && run.operation.cold_start_seconds !== null && <p className="text-xs text-text-secondary">Activation {run.operation.cold_start_seconds.toFixed(1)}s</p>}</td>
+        const display = runDisplay(run);
+        return <tr key={run.id} className="border-t border-border-light"><td className="max-w-sm py-3 pr-3"><strong>{run.model_id || 'Unknown App'}</strong>{display.upload && <p className="text-xs">Input upload · no GPU inference</p>}{run.label && <p className="text-xs">{run.label}</p>}<code className="text-xs">{run.id}</code>{run.refresh_error && <p className="text-xs">Refresh: {run.refresh_error}</p>}</td>
+          <td className="pr-3">{display.status}{display.description && <p className="text-xs text-text-secondary">{display.description}</p>}{run.operation?.error_code && <p className="max-w-xs text-xs">{run.operation.error_code}: {run.operation.error_detail || 'See details'}</p>}{(run.operation?.attempt || 0) > 1 && <p className="text-xs">Attempt {run.operation?.attempt} / {run.operation?.max_attempts || '—'}</p>}</td>
+          <td className="pr-3">{elapsed(run.accepted_at, run.completed_at, !display.terminal)}{display.showComputeTiming && <><p className="text-xs text-text-secondary">Wait {elapsed(run.accepted_at, run.started_at, !display.terminal && !run.started_at)}</p>{run.operation?.cold_start_seconds !== undefined && run.operation.cold_start_seconds !== null && <p className="text-xs text-text-secondary">Activation {run.operation.cold_start_seconds.toFixed(1)}s</p>}</>}</td>
           <td className="pr-3">{run.accepted_at ? new Date(run.accepted_at).toLocaleString() : 'Unknown'}</td><td><div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { const value = await request.get(`${BASE}/runs/${run.id}`); setSelectedRun(run.id); setRunResult(JSON.stringify(value, null, 2)); })}>Details</Button>
-            {['succeeded', 'completed'].includes(run.status || '') && <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { const value = await request.get(`${BASE}/runs/${run.id}/result`); setSelectedRun(run.id); setRunResult(JSON.stringify(value, null, 2)); })}>Result</Button>}
-            {!terminal && <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { await request.post(`${BASE}/runs/${run.id}/cancel`); })}>Cancel</Button>}
+            {display.showResult && <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { const value = await request.get(`${BASE}/runs/${run.id}/result`); setSelectedRun(run.id); setRunResult(JSON.stringify(value, null, 2)); })}>Result</Button>}
+            {!display.terminal && <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { await request.post(`${BASE}/runs/${run.id}/cancel`); })}>{display.upload ? 'Cancel upload' : 'Cancel'}</Button>}
           </div></td></tr>;
       })}</tbody></table></div>
       {enabled && !runs.isLoading && !runs.error && !(runs.data?.data.length) && <p role="status" className="my-4">No runs on this page yet.</p>}

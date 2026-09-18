@@ -76,6 +76,7 @@ def reconcile_endpoint(cli: list[str], manifest: dict, state: dict, folder: Path
 
 def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
     identifier = person["id"]
+    chat_model = getattr(args, 'chat_model', 'Qwen/Qwen3-235B-A22B-Instruct-2507')
     folder = args.output / identifier
     folder.mkdir(mode=0o700, parents=True, exist_ok=True)
     with open(folder / "setup.lock", "a") as lock:
@@ -86,11 +87,13 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
         state = json.loads(state_path.read_text()) if state_path.exists() else {
             "scientist_id": identifier, "tenant_id": person["tenant_id"],
             "principal_id": person["principal_id"], "bucket_name": person["bucket_name"],
-            "email": person["email"], "image": args.image,
+            "email": person["email"], "image": args.image, "chat_model": chat_model,
             "project_id": manifest["project_id"], "state": "prepared",
             "endpoint_name": args.name_prefix + "-" + identifier}
         if state.get("endpoint_name", "science-qualification-20260918-" + identifier) != args.name_prefix + "-" + identifier:
             raise RuntimeError('Recorded endpoint name differs; use a separate preview output directory')
+        if state.get('chat_model', 'Qwen/Qwen3-235B-A22B-Instruct-2507') != chat_model:
+            raise RuntimeError('Recorded chat model differs; use a separate comparison endpoint')
         for key, value in {"image": args.image, "bucket_name": person["bucket_name"],
                            "principal_id": person["principal_id"],
                            "project_id": manifest["project_id"]}.items():
@@ -140,6 +143,7 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
                 "TEAM_BUCKET_NAME": person["bucket_name"],
                 "SEED_DEFAULT_USER_EMAIL": person["email"],
                 "SCIENTIFIC_DEDICATED_CHAT_ENABLED": "false",
+                "SCIENTIFIC_CHAT_MODEL": chat_model,
                 "TOKEN_FACTORY_SECRET_SELECTOR": manifest["token_factory_secret_selector"],
                 "TAVILY_SECRET_SELECTOR": manifest["tavily_secret_selector"],
                 "PLATFORM": manifest.get("platform", "cpu-d3"),
@@ -214,6 +218,8 @@ def main() -> None:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--image", required=True)
     parser.add_argument("--profile", default="sandbox2")
+    parser.add_argument('--chat-model', default='Qwen/Qwen3-235B-A22B-Instruct-2507',
+                        help='Verified Token Factory planning model; model/tool budgets are unchanged.')
     parser.add_argument('--name-prefix', default='science-qualification-20260918')
     parser.add_argument('--source-deployments', type=Path, help='Reuse verified credentials from existing deployment receipts; preserve old instances.')
     parser.add_argument("--only", help="Comma-separated scientist IDs")

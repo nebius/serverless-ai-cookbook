@@ -76,6 +76,8 @@ const makeTokenConfig = (models) => Object.fromEntries(models.map(([id]) => [id,
 }]));
 
 let availablePublicTokenModels = publicTokenFactoryModels;
+let discoveredPublicTokenIds = null;
+const configuredChatModel = process.env.SCIENTIFIC_CHAT_MODEL;
 if (process.env.NEBIUS_API_KEY && process.env.NEBIUS_API_KEY !== 'user_provided'
     && process.env.SCIENTIFIC_DISCOVER_CHAT_MODELS !== 'false') {
   try {
@@ -86,10 +88,26 @@ if (process.env.NEBIUS_API_KEY && process.env.NEBIUS_API_KEY !== 'user_provided'
     if (!response.ok) throw new Error('Model discovery unavailable');
     const catalog = await response.json();
     const ids = new Set(catalog.data.map((item) => item.id));
+    discoveredPublicTokenIds = ids;
     const available = publicTokenFactoryModels.filter(([id]) => ids.has(id));
-    if (available.length) availablePublicTokenModels = available;
+    availablePublicTokenModels = available;
   } catch {
     process.stderr.write('Chat model discovery unavailable; using the configured chat catalog.\n');
+  }
+}
+
+// A positively discovered, explicitly configured planning model need not have
+// existed when the curated display-name list was written. Preserve validation:
+// never silently replace the selected model or admit an unknown fallback.
+if (configuredChatModel) {
+  if (discoveredPublicTokenIds && !discoveredPublicTokenIds.has(configuredChatModel)) {
+    throw new Error(`Configured chat model ${configuredChatModel} is absent from the authenticated Token Factory catalog`);
+  }
+  if (!availablePublicTokenModels.some(([id]) => id === configuredChatModel)) {
+    if (!discoveredPublicTokenIds?.has(configuredChatModel)) {
+      throw new Error('The configured chat model is not in the curated catalog and live discovery could not verify it');
+    }
+    availablePublicTokenModels = [...availablePublicTokenModels, [configuredChatModel, configuredChatModel]];
   }
 }
 

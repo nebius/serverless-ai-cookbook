@@ -8,6 +8,7 @@ COPY templates/hcls-librechat/patch-client.mjs /tmp/patch-client.mjs
 RUN node /tmp/patch-client.mjs
 COPY templates/hcls-librechat/demos/Demos.tsx /app/client/src/components/ScientificDemos.tsx
 COPY templates/hcls-librechat/demos/comparison.ts /app/client/src/components/scientific-comparison.ts
+COPY templates/hcls-librechat/demos/run-display.ts /app/client/src/components/scientific-run-display.ts
 COPY templates/hcls-librechat/demos/patch.mjs /tmp/patch-demos.mjs
 RUN node /tmp/patch-demos.mjs client
 WORKDIR /app/client
