@@ -4,7 +4,29 @@ from unittest.mock import patch
 
 import pytest
 
-from release_history import replace_scientific_execution_map, require_settled_release, verify_published_image
+from release_history import replace_scientific_execution_map, require_settled_release, resource_changes, verify_published_image
+import json
+
+
+def test_only_reviewed_execution_map_can_replace_immutable_resource():
+    def configmap(value):
+        return {"immutable": True, "metadata": {"labels": {
+            "app.kubernetes.io/component": "scientific-execution-map"}},
+            "data": {"map.json": json.dumps(value)}}
+    old = {("ConfigMap", "map-old"): configmap({"models": []})}
+    replacement = {"models": [{"id": "new"}]}
+    new = {("ConfigMap", "map-new"): configmap(replacement)}
+    changes = resource_changes(old, new, replacement)
+    assert changes == {"ConfigMap/map-old": ["<removed>"], "ConfigMap/map-new": ["<added>"]}
+    with pytest.raises(ValueError):
+        resource_changes(old, new)
+    with pytest.raises(ValueError, match="differs"):
+        resource_changes(old, new, {"models": []})
+    with pytest.raises(ValueError):
+        resource_changes(old, {**new, ("Service", "unexpected"): {}}, replacement)
+    new[("ConfigMap", "map-new")]["immutable"] = False
+    with pytest.raises(ValueError, match="not the immutable"):
+        resource_changes(old, new, replacement)
 
 
 def test_execution_map_replacement_does_not_retain_obsolete_baselines_or_revert_serving_maps():

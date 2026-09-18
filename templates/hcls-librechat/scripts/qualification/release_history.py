@@ -81,6 +81,29 @@ def require_settled_release(status, failed_revision=None):
     raise ValueError("Wait for the active Helm transaction; recovery requires the exact settled failed revision")
 
 
+def resource_changes(old, new, replacement_map=None):
+    """Allow only the reviewed content-addressed execution-map replacement."""
+    removed, added = old.keys() - new.keys(), new.keys() - old.keys()
+    if removed or added:
+        if replacement_map is None or len(removed) != 1 or len(added) != 1:
+            raise ValueError("Unexpected resource addition/removal in prepared release")
+        for key, document in ((next(iter(removed)), old[next(iter(removed))]),
+                              (next(iter(added)), new[next(iter(added))])):
+            if (key[0] != "ConfigMap" or document.get("immutable") is not True
+                    or document["metadata"].get("labels", {}).get("app.kubernetes.io/component")
+                    != "scientific-execution-map"):
+                raise ValueError("Resource replacement is not the immutable scientific execution map")
+        candidate = new[next(iter(added))]
+        data = candidate.get("data", {})
+        if len(data) != 1 or json.loads(next(iter(data.values()))) != replacement_map:
+            raise ValueError("Rendered execution map differs from reviewed replacement")
+    changes = {kind + "/" + name: differences(old[kind, name], new[kind, name])
+               for kind, name in old.keys() & new.keys()}
+    changes.update({kind + "/" + name: ["<removed>"] for kind, name in removed})
+    changes.update({kind + "/" + name: ["<added>"] for kind, name in added})
+    return {key: value for key, value in changes.items() if value}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("prepare", "apply"))
@@ -115,10 +138,8 @@ def main():
         after = run(HELM + ["template", RELEASE, str(args.chart), "--is-upgrade", "-f", str(args.output / "after-values.json")])
         textfile(args.output / "rendered-manifest.yaml", after)
         old, new = resources(before), resources(after)
-        if old.keys() != new.keys():
-            raise ValueError("Unexpected resource addition/removal in image-only release")
-        changes = {kind + "/" + name: differences(old[kind, name], new[kind, name]) for kind, name in old}
-        changes = {k: v for k, v in changes.items() if v}
+        replacement = after_values["scientificBatch"]["executionMap"] if args.scientific_execution_map else None
+        changes = resource_changes(old, new, replacement)
         save(args.output / "changed-paths.json", changes)
         print(json.dumps({"previous_revision": status["version"], "changes": changes}, indent=2))
     else:
