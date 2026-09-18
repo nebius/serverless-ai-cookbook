@@ -18,6 +18,58 @@ import uuid
 
 ROOT = Path(os.environ.get('SCIENTIFIC_EXECUTION_DIR', '/data/hcls-execution'))
 WORKSPACE = os.environ.get('SCIENTIFIC_WORKSPACE', '/workspace')
+TEXT = {'type': 'string', 'minLength': 1}
+STEP_COMMON = {'kind': TEXT, 'id': TEXT, 'model': TEXT, 'idempotency_key': TEXT,
+               'receipt_directory': {**TEXT, 'description': 'Optional existing workspace receipt directory for explicit recovery; otherwise output_directory/steps/id.'}}
+NATIVE_STEP_SCHEMA = {'type': 'object', 'additionalProperties': False,
+    'required': ['kind', 'id', 'model', 'input_file', 'idempotency_key'],
+    'properties': {**STEP_COMMON, 'kind': {'const': 'native'},
+        'input_file': {**TEXT, 'description': 'Existing workspace-relative JSON FILE PATH containing model fields, never an inline object or array.'}}}
+BATCH_REQUIRED = ['kind', 'id', 'model', 'tool', 'operation', 'source_file', 'parameters_file',
+                  'media_type', 'entry_name', 'semantic_type', 'idempotency_key', 'display_name']
+BATCH_OPTIONAL = ['compression', 'service_class', 'source_artifact_file']
+BATCH_STEP_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': BATCH_REQUIRED,
+    'properties': {**STEP_COMMON, **{name: TEXT for name in BATCH_REQUIRED + BATCH_OPTIONAL},
+        'kind': {'const': 'batch'},
+        'source_file': {**TEXT, 'description': 'Existing workspace-relative source bundle or input file.'},
+        'parameters_file': {**TEXT, 'description': 'Existing workspace-relative JSON parameter file using the selected live model contract.'},
+        'source_artifact_file': {**TEXT, 'description': 'Optional finalized artifact-reference JSON file matching the exact source bytes.'}}}
+
+
+def workspace_path(value, name):
+    if not isinstance(value, str) or not value:
+        raise ValueError(name + ' must be a workspace file/directory path string, not inline JSON.')
+    workspace = Path(WORKSPACE).resolve()
+    path = (workspace / value).resolve()
+    if not path.is_relative_to(workspace):
+        raise ValueError(name + ' must be inside the mounted workspace.')
+    return path
+
+
+def canonical_steps(steps, output):
+    """Translate advertised typed file fields into the existing runner schema."""
+    if not isinstance(steps, list) or not steps:
+        raise ValueError('steps must be a nonempty list of typed native/batch steps.')
+    plan = {'schema': 'scientific-workflow/v1', 'steps': []}
+    for step in steps:
+        kind = step.get('kind') if isinstance(step, dict) else None
+        schema = NATIVE_STEP_SCHEMA if kind == 'native' else BATCH_STEP_SCHEMA if kind == 'batch' else None
+        if schema is None:
+            raise ValueError('Every step must specify kind=native or kind=batch.')
+        if set(schema['required']) - step.keys() or step.keys() - schema['properties'].keys():
+            raise ValueError('Step fields differ from the advertised ' + kind + ' schema.')
+        if any(not isinstance(value, str) or not value for value in step.values()):
+            raise ValueError('Step fields must be nonempty strings; input_file/parameters_file are paths, not inline JSON.')
+        converted = {name: value for name, value in step.items()
+                     if name not in {'input_file', 'source_file', 'parameters_file', 'source_artifact_file', 'receipt_directory'}}
+        for external, internal in (('input_file', 'input'), ('source_file', 'source'),
+                                   ('parameters_file', 'parameters'), ('source_artifact_file', 'source_artifact')):
+            if external in step:
+                converted[internal] = str(workspace_path(step[external], external))
+        converted['output'] = str(workspace_path(step['receipt_directory'], 'receipt_directory')
+                                  if 'receipt_directory' in step else output / 'steps' / step['id'])
+        plan['steps'].append(converted)
+    return plan
 
 
 def save(path, value):
@@ -119,27 +171,27 @@ def execute(args):
 def run_scientific_workflow(args):
     """Typed launch of the existing durable client, not a new model transport."""
     workspace = Path(WORKSPACE).resolve()
-    def local_path(name):
-        value = args.get(name)
-        if not isinstance(value, str) or not value:
-            raise ValueError(name + ' must be a workspace-relative path.')
-        path = (workspace / value).resolve()
-        if not path.is_relative_to(workspace):
-            raise ValueError(name + ' must be inside the mounted workspace.')
-        return path
-    plan_path, output = local_path('plan_file'), local_path('output_directory')
-    if not plan_path.is_file():
-        raise ValueError('plan_file does not exist: ' + str(plan_path))
+    output = workspace_path(args.get('output_directory'), 'output_directory')
+    if ('steps' in args) == ('plan_file' in args):
+        raise ValueError('Supply typed steps OR an existing plan_file, not both.')
+    index_dir = ROOT / 'workflow-index'
+    index_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if 'steps' in args:
+        plan_bytes = (json.dumps(canonical_steps(args['steps'], output), sort_keys=True, indent=2) + '\n').encode()
+        plan_path = index_dir / (hashlib.sha256(plan_bytes).hexdigest() + '.prepared.json')
+        plan_path.write_bytes(plan_bytes)
+    else:
+        plan_path = workspace_path(args.get('plan_file'), 'plan_file')
+        if not plan_path.is_file():
+            raise ValueError('plan_file does not exist: ' + str(plan_path))
+        plan_bytes = plan_path.read_bytes()
     resume = args.get('resume', False)
     if not isinstance(resume, bool):
         raise ValueError('resume must be a boolean.')
     python = os.environ.get('SCIENTIFIC_CLIENT_PYTHON', '/opt/scientific-client/bin/python')
     runner = os.environ.get('SCIENTIFIC_WORKFLOW_RUNNER', '/opt/bionemo/scientific-workflow.py')
     command = [python, runner, '--plan', str(plan_path), '--output', str(output), '--wait-seconds', '0']
-    plan_bytes = plan_path.read_bytes()
     identity = hashlib.sha256(plan_bytes + b'\0' + str(output).encode()).hexdigest()
-    index_dir = ROOT / 'workflow-index'
-    index_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     index = index_dir / (identity + '.json')
     with (index_dir / (identity + '.lock')).open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -160,7 +212,7 @@ def run_scientific_workflow(args):
         frozen_plan.write_bytes(plan_bytes)
         command[command.index('--plan') + 1] = str(frozen_plan)
         started = execute({'command': shlex.join(command), 'cwd': str(workspace),
-                           'timeout_seconds': 0, 'wait_seconds': 1})
+                           'timeout_seconds': 0, 'wait_seconds': 10})
         save(index, {'job_id': started['job_id'], 'plan_file': str(plan_path),
                      'output_directory': str(output), 'previous_job_id': previous.get('job_id')})
         return {**started, 'workflow_identity': identity, 'preflight_steps': preflight['steps'],
@@ -170,11 +222,13 @@ def run_scientific_workflow(args):
 
 TOOLS = [
     {'name': 'run_scientific_workflow',
-     'description': 'Preferred launch for prepared scientific studies: give an existing workspace-relative scientific-workflow/v1 JSON plan file and output directory, not shell flags. Validates every input/source/parameter file before any upload or inference, then uses the existing native/batch clients sequentially under unchanged caller policy. Native input files may contain full inline arrays outside chat context. Saves one execution job; repeated calls return that existing job. Poll read_execution. Use resume=true only after inspecting an interrupted job; original model receipts/idempotency keys are preserved and ambiguous admissions are never silently retried. File preflight is not proof of scientific validity.',
+     'description': 'Preferred launch for a prepared scientific study: supply typed steps with input_file (native) or source_file plus parameters_file (batch), all real workspace paths, and output_directory. The tool constructs the canonical plan; do not invent a plan wrapper or put JSON data into path fields. Existing plan_file mode remains for recovery. Validates every source/input/parameter file before any admission and uses existing clients sequentially under unchanged caller policy. Native JSON input files can contain large arrays outside chat. Returns one saved execution job after up to10 seconds; poll read_execution, never launch again. Repeated calls reuse the job; resume=true is only for inspected interruptions, preserving original operation IDs/keys. Preflight is not scientific validation.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
      'inputSchema': {'type': 'object', 'additionalProperties': False,
-        'required': ['plan_file', 'output_directory'], 'properties': {
+        'required': ['output_directory'], 'oneOf': [{'required': ['steps'], 'not': {'required': ['plan_file']}},
+                                                   {'required': ['plan_file'], 'not': {'required': ['steps']}}], 'properties': {
             'plan_file': {'type': 'string'}, 'output_directory': {'type': 'string'},
+            'steps': {'type': 'array', 'minItems': 1, 'items': {'oneOf': [NATIVE_STEP_SCHEMA, BATCH_STEP_SCHEMA]}},
             'resume': {'type': 'boolean', 'default': False}}}},
     {'name': 'execute_command',
      'description': 'Execute Bash as root in this application container. Install packages with apt-get/pip/npm, run Python, download internet resources, read/write any container path and mounted storage. /workspace is the team Object Storage bucket mount and the durable location for team files; use byte copies, not chmod/copystat. This is real execution, not a code suggestion. For long work save job_id and use read_execution; do not submit again. Returns 4000 output bytes by default with a full log file pointer; compute summaries locally instead of dumping source/data. timeout_seconds=0 disables the deadline. Root applies to the container and its mounts, not the cloud host. Never print credentials.',

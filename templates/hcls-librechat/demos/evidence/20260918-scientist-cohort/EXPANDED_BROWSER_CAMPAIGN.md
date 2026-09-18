@@ -182,6 +182,29 @@ failures or establish two clean final-release cohorts.
 
 ## Release pins and limitations
 
+### 23:06 UTC — live typed launch and matched timing replicate
+
+v26 `0fbe1f8`, digest
+`sha256:50c3576dd6a227289c044566340464358d1f1465b46cc59f51ee76076b67f2b0`,
+is live in isolated05/07 previews; both32-App catalogs and correct S3 mounts
+were verified. Parent owns07.05 ran identical four frozen Evo2 inputs through
+v25 and v26, sequentially with unchanged key/model settings. Both completed
+all four model operations. Recorded execution-job intervals are121.7745s and
+63.679s respectively; exact file/revision comparison is being independently
+checked before attributing a speedup. Both natural conversations made the same
+plan-shape error and required one read-only continuation to finish analysis.
+The second used the typed launcher naturally; its successful model execution
+is not a clean one-turn customer-report pass.
+
+The next candidate exposes the **actual typed native/batch step fields** on
+that same launcher: input_file for native, source_file/parameters_file plus
+published contract roles for batch. It builds the canonical runner plan itself;
+the existing plan-file mode remains for recovery. No additional transport or
+scientific algorithm. A model-facing file-path error now names the exact step
+and field instead of leaking a generic Python TypeError. Observation uses the
+existing10-second execution wait ceiling; no limit was increased. Same-prompt
+live studies remain required after deployment, not inferred from unit tests.
+
 ### 22:49 UTC — typed analysis verified, report interpretation still imperfect
 
 v25 source `64857f9e58f4ac92ce75767468f516644f4600b5`, image

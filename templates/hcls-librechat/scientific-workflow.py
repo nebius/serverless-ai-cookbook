@@ -67,8 +67,8 @@ def prepare(plan):
         for field in ('source', 'parameters', 'input', 'output', 'source_artifact'):
             if field not in step:
                 continue
-            if not Path(step[field]).is_absolute():
-                raise ValueError('Step paths must be absolute.')
+            if not isinstance(step[field], str) or not Path(step[field]).is_absolute():
+                raise ValueError(f"Step {identifier} {field} must be an absolute file/directory path string, not inline JSON.")
         output = str(Path(step['output']).resolve())
         if output in outputs:
             raise ValueError('Different steps must not share a receipt directory.')

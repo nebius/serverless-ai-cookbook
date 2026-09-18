@@ -39,9 +39,11 @@ Never print a 20,318-element array into chat.
 
 For multiple independent cohorts or feature-order checks use the installed
 `scientific-workflow.py` native steps to queue these input files sequentially.
-Prefer the typed `run_scientific_workflow` tool with that saved plan file and a
-workspace-relative output directory: it preflights paths and returns one
-existing execution job to poll, without constructing a shell command.
+Prefer the typed `run_scientific_workflow` tool with its native `steps`, each
+containing `kind`, `id`, `model`, `input_file` and `idempotency_key`, plus a
+workspace-relative output directory. It constructs the canonical plan,
+preflights paths and returns one execution job to poll. An existing plan-file
+mode remains for recovery; do not hand-write a plan for a new ordinary study.
 Permute CpG labels and their beta columns together; do not silently reorder only
 one side. Preserve missing-value policy and source hashes, and distinguish a
 feature-order invariance check from validation of biological age accuracy.

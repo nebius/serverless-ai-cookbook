@@ -106,3 +106,48 @@ def test_typed_workflow_interruption_requires_explicit_resume(tmp_path, monkeypa
     monkeypatch.setattr(execution.subprocess,'run',lambda *a,**k:pytest.fail('No implicit retry/preflight'))
     result=execution.run_scientific_workflow({'plan_file':'plan.json','output_directory':'flow'})
     assert result['job_id']=='original' and result['resume_required'] is True
+
+
+def test_advertised_step_schema_and_canonical_paths(tmp_path, monkeypatch):
+    from jsonschema import Draft202012Validator, ValidationError
+    spec = importlib.util.spec_from_file_location('execution_test', SCRIPT)
+    execution = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(execution)
+    monkeypatch.setattr(execution, 'WORKSPACE', str(tmp_path))
+    steps = [
+        {'kind':'native','id':'fold','model':'openfold2','input_file':'inputs/fold.json',
+         'idempotency_key':'original-fold-key'},
+        {'kind':'batch','id':'complex','model':'protenix','tool':'submit_protenix',
+         'operation':'predict','source_file':'inputs/complex.tar.gz',
+         'parameters_file':'inputs/parameters.json','media_type':'application/x-tar',
+         'compression':'gzip','entry_name':'input','semantic_type':'fixture/v1',
+         'idempotency_key':'original-complex-key','display_name':'Actual prepared complex'}]
+    schema = next(t['inputSchema'] for t in execution.TOOLS if t['name']=='run_scientific_workflow')
+    arguments = {'steps':steps,'output_directory':'study'}
+    Draft202012Validator(schema).validate(arguments)
+    plan = execution.canonical_steps(steps,tmp_path/'study')
+    assert plan['steps'][0]['input']==str(tmp_path/'inputs/fold.json')
+    assert plan['steps'][0]['output']==str(tmp_path/'study/steps/fold')
+    assert plan['steps'][1]['source']==str(tmp_path/'inputs/complex.tar.gz')
+    assert plan['steps'][1]['parameters']==str(tmp_path/'inputs/parameters.json')
+    assert 'input_file' not in plan['steps'][0]
+    assert plan['steps'][1]['idempotency_key']=='original-complex-key'
+    steps[0]['input_file']={'sequence':'not a file'}
+    with pytest.raises(ValidationError): Draft202012Validator(schema).validate(arguments)
+    with pytest.raises(ValueError,match='paths, not inline JSON'):
+        execution.canonical_steps(steps,tmp_path/'study')
+
+
+def test_direct_typed_steps_launch_without_agent_written_plan(tmp_path,monkeypatch):
+    runner=tmp_path/'fixture-runner.py'
+    runner.write_text('import sys,json\np=json.load(open(sys.argv[sys.argv.index("--plan")+1]))\nassert p["steps"][0]["input"].endswith("real input.json")\nprint(json.dumps({"steps":1,"files":[{}]}) if "--validate-only" in sys.argv else "fixture complete")\n')
+    (tmp_path/'real input.json').write_text('{"sequence":"fixture"}')
+    monkeypatch.setenv('SCIENTIFIC_CLIENT_PYTHON',sys.executable)
+    monkeypatch.setenv('SCIENTIFIC_WORKFLOW_RUNNER',str(runner))
+    args={'output_directory':'study','steps':[{'kind':'native','id':'one','model':'fixture',
+        'input_file':'real input.json','idempotency_key':'original-study-key'}]}
+    _,first=call(tmp_path,'run_scientific_workflow',args)
+    _,second=call(tmp_path,'run_scientific_workflow',args)
+    assert first['status']=='completed' and first['job_id']==second['job_id']
+    assert second['reused_existing_job'] is True
+    assert len(list((tmp_path/'jobs/workflow-index').glob('*.plan.json')))==1
