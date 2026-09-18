@@ -4,7 +4,20 @@ from unittest.mock import patch
 
 import pytest
 
-from release_history import require_settled_release, verify_published_image
+from release_history import replace_scientific_execution_map, require_settled_release, verify_published_image
+
+
+def test_execution_map_replacement_does_not_retain_obsolete_baselines_or_revert_serving_maps():
+    old = {"scientificBatch": {"workers": 16, "executionMap": {"models": [{"id": "old"}],
+            "qualification_baselines": {"old": "old"}}},
+           "catalog": {"leanRoutes": {"configMapName": "current-cxr-and-cosmos"}}}
+    replacement = {"models": [{"id": "new"}], "qualification_baselines": {"retained-siblings": "new"}}
+    result = replace_scientific_execution_map(old, replacement)
+    assert result["scientificBatch"]["executionMap"] == replacement
+    assert "old" not in result["scientificBatch"]["executionMap"]["qualification_baselines"]
+    assert result["scientificBatch"]["workers"] == 16
+    assert result["catalog"] == old["catalog"]
+    assert "old" in old["scientificBatch"]["executionMap"]["qualification_baselines"]
 
 
 @pytest.mark.parametrize("state", ["pending-upgrade", "pending-rollback", "pending-install"])

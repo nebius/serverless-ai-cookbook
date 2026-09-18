@@ -46,6 +46,15 @@ def merged_values(original, delta):
     return result
 
 
+def replace_scientific_execution_map(values, execution_map):
+    """Replace the reviewed complete map; recursive merge retains old baselines."""
+    if not isinstance(execution_map, dict) or not isinstance(execution_map.get("models"), list):
+        raise ValueError("Expected one complete scientific execution-map document")
+    result = copy.deepcopy(values)
+    result["scientificBatch"]["executionMap"] = copy.deepcopy(execution_map)
+    return result
+
+
 def verify_published_image(image):
     """Check the exact retained repository, not just a digest in a sibling repo."""
     reference = image["repository"] + "@" + image["digest"]
@@ -81,6 +90,8 @@ def main():
     parser.add_argument("--values-delta", type=Path, help="Reviewed optional retained-configuration reference changes")
     parser.add_argument("--recover-failed-revision", type=int,
                         help="Explicit exact settled failed revision to repair; never permits pending transactions")
+    parser.add_argument("--scientific-execution-map", type=Path,
+                        help="Reviewed complete scientific execution map; replaces that exact subtree without deep merge")
     args = parser.parse_args()
     os.umask(0o077)
     args.output.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -95,6 +106,8 @@ def main():
         after_values = {**old_values, "image": {**old_values["image"], "digest": args.digest}}
         if args.values_delta:
             after_values = merged_values(after_values, json.loads(args.values_delta.read_text()))
+        if args.scientific_execution_map:
+            after_values = replace_scientific_execution_map(after_values, json.loads(args.scientific_execution_map.read_text()))
         if after_values["image"]["digest"] != args.digest:
             raise ValueError("Values delta must not change the requested immutable image")
         save(args.output / "published-image.json", verify_published_image(after_values["image"]))
