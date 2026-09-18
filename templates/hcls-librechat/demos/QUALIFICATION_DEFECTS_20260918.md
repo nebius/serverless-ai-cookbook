@@ -121,3 +121,43 @@ bundle in its last-applied annotation and exceeds Kubernetes' annotation limit.
 The attempted map creation did not change Helm or App runtime references. Use
 server-side apply for these exact immutable maps; retain this failed preparation
 alongside the subsequent rollout rather than presenting it as a clean first try.
+
+## Checkpoint at approximately 22:27 UTC
+
+- CT and Evo2 successor runtimes were promoted after Helm163 and passed **27/27
+  and 32/32** public cases respectively. The earlier161 attempt failed on an
+  incorrectly prefixed evidence digest and rolled back162; actual Registry
+  startup validation now covers this contract. No failed deployment is hidden.
+- ProteinMPNN additionally passed **48/48** multichain cases (three public
+  crystal complexes; all, first, second and reversed chain selection; two seeds;
+  two omission policies), with192 sequences. Per-chain boundaries, not just
+  concatenated sequence length, are verified. No affinity/efficacy claim.
+- Scientist03 completed Proteina and BoltzGen with independently verified
+  artifact/metric provenance. Scientist04's RFdiffusion→ProteinMPNN→OpenFold2
+  chain completed but had8.03548Å mapped self-consistency RMSD despite82.465
+  mean pLDDT; its corrected report and contradictory original chat are retained.
+- Scientist06 completed12 chloroplast continuation requests with exact pinned
+  prefixes/seeds/output checks. Model elapsed34.309s, accepted-to-completed
+  sum107.253s, whole workflow390.58s: inter-step overhead is not GPU time.
+- Voice coverage passed11 native/streaming cases and seven ASR proxy checks.
+  Sortformer full-consultation DER19.68%/18.20%; these are measured quality
+  limits, not merely service success. Voice receipts live in the linked task.
+- Two H100 preemptibles stopped during live work. Capacity loss is not a model
+  failure. Original observer totals included registered stopped GPUs; additive
+  ready/schedulable counts now distinguish usable capacity without rewriting
+  old measurements. Requests/recovery during this event remain under observation.
+
+| ID | Additional observation | Classification and current action |
+| --- | --- | --- |
+| Q37 | Medical agent sent a278-word summary instead of the full1366-word transcript; the next file-input tool existed but was not seeded into the agent's allowlist. | Workbench source-fidelity/integration defects. v24 allows the actual typed file tool; one new job consumed the exact6817-byte ASR transcript, independently hash-verified. Original summary and tool-schema errors remain failed evidence. |
+| Q38 | Automated clinical review normalized ASR “dire light” into a drug name without explicit support, despite instructions; an unclear citation also omitted a supported stool-test fact. | Medical-document quality limitation. Extend existing one-shot citation relocation to unclear and re-review, without auto-acceptance. Drug normalization remains unresolved; clinician checking is required. Full transcript transport does not establish clinical safety. |
+| Q39 | Chemistry agent repeatedly reversed RDKit atom mappings, disabled chirality, described wall time as GPU time and misrepresented GenMol SAFE mask token semantics. | Scientific analysis/reporting defects. Strict tested docking helper establishes exact unfitted graph/stereo-aware comparisons; a typed workspace analysis surface is being added because merely documenting the helper did not change fresh agent behavior. Original incorrect analyses retained. |
+| Q40 | OpenFold3 complex job hung after a multiprocessing feeder failed to allocate shared memory; GPU remained occupied until public cancellation. | Confirmed runtime defect, not capacity. Pinned inference config inherited ten training-style data workers with64MiB /dev/shm. Source84a466792 uses inline loading and no worker prefetch/persistence; thin exact-image candidate is under real H100 testing with unchanged resource bounds. Production replay/promotion pending. |
+| Q41 | CP164 migration initially could not pull its digest from the retained repository: image was published to a sibling repository by operator error. | Deployment/operator defect. Exact repository was repaired; release preflight cfcd66c now reads and hashes that exact published manifest before Helm mutation. Migration/gateways subsequently became healthy, but164 still failed for Q42. |
+| Q42 | GPU-observer DaemonSet counted stopped preemptible nodes as rollout targets because it tolerated every NoSchedule taint;164 upgrade timed out and165 rollback is pending. | Platform preemption/release-lifecycle defect. Source4992432d3 narrows default toleration to dedicated GPU workloads, preserving configurable explicit pool keys. Live recovery will set the same exact list; no timeout/limit increase or readiness bypass. Not yet deployed at this checkpoint. |
+| Q43 | Fresh Cosmos V4 fully warmed checkpoint copied42GiB but exceeded existing600s CRIU capture limit; prior r7 restore remains CUDA-incompatible for this input. | Snapshot path unqualified. Failed capture is unusable and original checkpoint untouched. Isolated bounded logging/storage optimization is underway; fresh loading succeeds, but snapshot acceleration is not claimed. |
+
+Cosmos fresh runtime now independently verifies exact frame count, dimensions
+and differing requested FPS. The suspected25→24FPS output issue was disproven
+by a real fresh test; no speculative repair was applied. LeRobot still requires
+the final public action-aligned transfer test after runtime promotion.
