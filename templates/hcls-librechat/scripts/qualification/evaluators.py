@@ -776,7 +776,7 @@ def evaluate(case: dict, result: Any, base: Path = Path(".")) -> dict:
                 alignment_sha256=sha256(alignment.encode()), can_support_downstream_comparison=valid and len(set(aligned)) > 1)
         elif kind == "protein_sequence_design":
             data = unwrap(result)
-            rows = [(header, sequence.replace("/", "")) for header, sequence in fasta_records(data["mfasta"]) if not header.startswith("input ")]
+            rows = [(header, sequence) for header, sequence in fasta_records(data["mfasta"]) if not header.startswith("input ")]
             native = expected["input_sequence"]
             input_chains = [{"chain_id": "A", "sequence": native, "incomplete_backbone_positions_1based": []}]
             if isinstance(case.get("arguments", {}).get("input_pdb"), str):
@@ -791,8 +791,13 @@ def evaluate(case: dict, result: Any, base: Path = Path(".")) -> dict:
             incomplete.update(unresolved)
             designable = set(range(len(native))) - incomplete
             measured = []
-            for header, sequence in rows:
+            for header, chain_sequence in rows:
+                chain_parts = chain_sequence.split("/")
+                sequence = "".join(chain_parts)
                 measured.append({"header": header, "sequence": sequence, "length": len(sequence),
+                    "chain_lengths_match": [len(part) for part in chain_parts] == [len(chain["sequence"]) for chain in input_chains],
+                    "chains": [{"chain_id": chain["chain_id"], "sequence": part}
+                               for chain, part in zip(input_chains, chain_parts)],
                     "sequence_recovery": sum(index < len(sequence) and native[index] == sequence[index]
                                              for index in designable) / len(designable) if designable else None,
                     "sequence_recovery_basis": "resolved N/CA/C/O backbone positions only; fixed/missing positions excluded",
@@ -803,7 +808,7 @@ def evaluate(case: dict, result: Any, base: Path = Path(".")) -> dict:
                                                                   for index in incomplete),
                     "omitted_residues_absent": not ({letter for index, letter in enumerate(sequence) if index in designable}
                                                     & set(expected.get("omit_AAs", [])))})
-            valid = len(measured) == expected["num_sequences"] and all(m["length"] == len(native) and
+            valid = len(measured) == expected["num_sequences"] and all(m["length"] == len(native) and m["chain_lengths_match"] and
                     m["valid_alphabet"] and m["omitted_residues_absent"] and m["unresolved_input_positions_preserved"]
                     and m["nondesignable_native_positions_preserved"] for m in measured)
             coverage = data.get("backbone_coverage", {})

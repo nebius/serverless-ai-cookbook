@@ -281,6 +281,12 @@ class AdditionalEvaluatorTest(unittest.TestCase):
         measured = evaluate(case, response)
         self.assertTrue(measured["service_semantic_pass"], measured)
         self.assertEqual(measured["unresolved_input_positions_1based"], [7])
+        self.assertEqual(measured["sequences"][0]["chains"], [
+            {"chain_id": "A", "sequence": "AGSV"}, {"chain_id": "B", "sequence": "AGXS"}])
+        for invalid_chains in ("AGSVAGXS", "AGS/VAGXS", "AGSV/AGX/S"):
+            response["mfasta"] = ">sample1\n" + invalid_chains + "\n"
+            self.assertFalse(evaluate(case, response)["service_semantic_pass"])
+        response["mfasta"] = ">sample1\nAGSV/AGXS\n"
         response["backbone_coverage"]["chains"][0]["chain_id"] = "A"
         self.assertFalse(evaluate(case, response)["service_semantic_pass"])
 
