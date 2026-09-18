@@ -44,6 +44,51 @@ Never delete an existing endpoint without preserving `/data` and `/app/uploads`:
 the self-contained image runs its own MongoDB. Shared gateway credentials do not
 establish tenant isolation; multi-user acceptance needs separate customer keys.
 
+### Personal instance with an existing tenant bucket
+
+The same deployment script supports a separate personal instance without changing
+or migrating an existing endpoint. In addition to the variables above:
+
+```bash
+export NEBIUS_PROFILE='<authorized CLI profile>'
+export ENDPOINT_NAME='<unique personal endpoint name>'
+export SCIENTIFIC_DEDICATED_CHAT_ENABLED=false
+export TEAM_ID='<tenant name>'
+export TEAM_BUCKET_NAME='<existing bucket discovered from GET /v1/storage>'
+export S3_CREDENTIAL_SECRET_SELECTOR='<secret with S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY>'
+export SEED_DEFAULT_USER_EMAIL='<personal login email>'
+export USER_PASSWORD_SECRET_SELECTOR='<secret with SEED_DEFAULT_USER_PASSWORD>'
+export SSH_PUBLIC_KEY_FILE='<operator public key file>'
+```
+
+For the S3 mount, the CLI also needs a `default` AWS **configuration** profile
+with `region` and `endpoint_url`, even when credentials come from MysteryBox.
+`AWS_CONFIG_FILE` can point to a task-local configuration file; no credential
+belongs in that file. The script mounts the bucket read-write at `/workspace`
+using the existing user's S3 credentials. Mongo, encrypted plugin credentials
+and clinical job working directories remain on the endpoint disk, not S3/FUSE.
+The personal login option disables open registration. Setting
+`SCIENTIFIC_DEDICATED_CHAT_ENABLED=false` removes event-only deployments from the
+picker and makes a public Token Factory model the default.
+
+After first login, configure the same personal Scientific AI key in
+`/demos?tab=clinical` (encrypted per-user credential store). This is separate
+from the server-managed key used by the legacy workbench. The bucket is available
+to the workspace/file tools; the clinical panel's file picker selects **browser-local
+files**, not server-mounted paths. Do not describe that picker as a bucket browser.
+Use the panel for recorded-audio uploads; live microphone capture is not qualified.
+
+Validate the real mount with object readback and a write visible through S3,
+then test complete EN/DE recordings through the public client and download all
+report/review artifacts. Health checks alone are not workflow acceptance.
+
+The installed Serverless CLI `0.12.206` may copy the complete image reference into
+a Compute label. A 131-character digest reference failed creation with the
+64-character label limit on 2026-09-18. If this occurs, publish a **new, short,
+unique tag**, verify its registry digest equals the tested image, and record both
+in the deployment receipt. Do not move an existing deployment's tag or replace
+its image to work around this limitation.
+
 ## What is configured
 
 - **Chat models:** Dedicated GLM 5.3 Flash is the default, with dedicated
