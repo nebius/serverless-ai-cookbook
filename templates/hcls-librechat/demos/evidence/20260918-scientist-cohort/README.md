@@ -14,7 +14,7 @@ contains no credentials or customer data.
 
 ## Release under test
 
-- Workbench source: through commit `1e366e7` on
+- Workbench source: through commit `029d8f3` on
   `agent/scientific-ai-workbench-v2-20260918`.
 - R3 exercised the complete clinical and MindEval workers. R4 corrected the
   authenticated Workspace download path. R5 introduced artifact-backed JSON
@@ -25,6 +25,11 @@ contains no credentials or customer data.
   typed scientific tools.
 - All native and batch submissions used stable idempotency keys. Artifact-backed
   results were downloaded and checked against advertised SHA-256 and byte size.
+- R11 browser acceptance used the existing Scientific AI agent and the real
+  OpenFold operation. It returned the exact confidence, pTM and inference-time
+  values in 23.2 seconds without new compute or a provider error, and kept
+  absent fields as bounded observations rather than unsupported-capability
+  claims.
 
 ## Cohort
 
