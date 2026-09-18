@@ -8,7 +8,7 @@ const string = { type: 'string' };
 const array = { type: 'array', items: string, minItems: 1, maxItems: 20 };
 const definitions = [
   ['workbench_track_operation', 'Save a Scientific AI operation in the user’s Runs panel after any model submission. Call this immediately with the returned operation ID; it is idempotent and verifies caller access.', schema({ operation_id: string, model_id: string, label: string }, ['operation_id'])],
-  ['workbench_list_operations', 'List and refresh the durable model operations saved in this user’s Runs panel. Reconnect to these IDs instead of resubmitting work.', schema({})],
+  ['workbench_list_operations', 'Discover this caller’s durable model operations automatically, most recent first. Includes scientific batches and inference from chat or API. Follow next_cursor for older runs. Reconnect to existing IDs instead of resubmitting work.', schema({ cursor: string, limit: { type: 'integer', minimum: 1, maximum: 200, default: 50 } })],
   ['workbench_get_operation', 'Refresh one saved Scientific AI operation and return its current state.', schema({ operation_id: string }, ['operation_id'])],
   ['workbench_get_operation_result', 'Retrieve a terminal result for a completed saved operation. Artifact-backed JSON is downloaded with caller credentials, size/SHA-256 verified and compacted without losing scalar metrics. Treat evidence_guidance as normative: do not infer capabilities from absent fields or mislabel the outer artifact size. Poll status first; do not treat queued or running work as complete.', schema({ operation_id: string }, ['operation_id'])],
   ['workbench_cancel_operation', 'Cancel one accessible Scientific AI operation and keep its terminal cancelled state visible in Runs.', schema({ operation_id: string }, ['operation_id'])],
@@ -41,7 +41,7 @@ async function dispatch(name, args) {
     case 'workbench_track_operation': return service.track(owner, key, args.operation_id, {
       model_id: args.model_id, label: args.label, source: 'agent',
     });
-    case 'workbench_list_operations': return service.runs(owner, key);
+    case 'workbench_list_operations': return service.runs(owner, key, args);
     case 'workbench_get_operation': return service.track(owner, key, args.operation_id, { source: 'agent' });
     case 'workbench_get_operation_result': return service.operationResult(key, args.operation_id);
     case 'workbench_cancel_operation': return service.platform(key, 'POST', `/v1/operations/${args.operation_id}:cancel`);
@@ -88,7 +88,9 @@ async function main() {
         try {
           const value = await dispatch(request.params.name, request.params.arguments || {});
           result = { content: [{ type: 'text', text: JSON.stringify(value) }], isError: false };
-        } catch (error) { result = { isError: true, content: [{ type: 'text', text: error.status ? error.message : 'Demo request failed. Inspect saved runs before submitting again.' }] }; }
+        } catch (error) {
+          result = { isError: true, content: [{ type: 'text', text: JSON.stringify(service.publicError(error)) }] };
+        }
       } else throw new Error('Unknown method');
       process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id, result }) + '\n');
     } catch { process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request?.id || null, error: { code: -32602, message: 'Invalid demo request.' } }) + '\n'); }

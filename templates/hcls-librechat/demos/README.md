@@ -1,9 +1,46 @@
-# Clinical AI demos inside LibreChat
+# Scientific AI workbench and clinical workflows inside LibreChat
 
 Source for the existing Scientific AI workbench, not another workshop website.
-The image's authenticated `/demos` route provides two tabs; the model selector
-also contains two saved agents under **Clinical demos**. The old scientific
-workbench tools remain unchanged.
+The authenticated `/demos` route provides Apps, Runs, Workspace, Clinical Report
+and MindEval. The model selector includes the main scientific agent and two
+saved agents under **Clinical demos**.
+
+## Runs and waiting for capacity
+
+Runs reads the caller-scoped `/v1/operations` history automatically, including
+model calls submitted through chat or the API. Older pages use the backend's
+cursor. Each row shows submission time, elapsed time, time before execution,
+reported activation time, status, attempts and returned error details. An
+activation measurement does not establish that a GPU snapshot was restored.
+Incomplete runs have status/details and cancellation controls; only successful
+runs offer result retrieval. Refresh and browser reconnect never resubmit work.
+
+On an older backend without the history route, Runs clearly states that only
+explicitly saved operations are available. Saved labels and explicit tracking
+use atomic files per operation and platform key; simultaneous MCP/UI writes
+cannot erase other operations. Admission errors retain whether work was
+accepted, whether retry is possible, its retry delay and any existing operation
+ID, so the client can distinguish waiting from an unknown submission outcome.
+
+## Isolated scientist qualification clients
+
+`deploy-scientist-workbenches.py` uses the existing deployment template to give
+each test scientist an endpoint, login, assigned platform key and bucket mount.
+This matches the dedicated root-execution topology of the Rene installation.
+Scientists may share a lab bucket deliberately, while different labs use
+different buckets. Ten logins on a single deployment with a shared model key
+do not qualify independent principal attribution.
+
+The helper consumes a private manifest outside Git. Top-level fields are
+`project_id`, `subnet_id`, `token_factory_secret_selector`,
+`tavily_secret_selector` and `scientists`. Each scientist requires `id`, `email`,
+`password`, `api_key`, `tenant_id`, `principal_id`, `bucket_name`,
+`s3_access_key_id` and `s3_secret_access_key`. Pass `--image`, `--manifest`,
+`--output` and `--execute`; `--only scientist-01,scientist-02` starts a subset.
+Protected receipts and browser session state remain in the output directory.
+An interrupted cloud creation is reconciled before retrying, never silently
+duplicated. Setup verifies login and assigned bucket; it is not scientific
+acceptance evidence. The campaign manager owns lifecycle and cleanup.
 
 ## Connections and identity
 

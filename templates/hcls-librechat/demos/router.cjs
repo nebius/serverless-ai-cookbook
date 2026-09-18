@@ -36,7 +36,9 @@ router.get('/apps', wrap(async (req, res) => {
   const ids = [...new Set([...native.keys(), ...batches.keys()])].sort();
   res.json({ data: ids.map((id) => ({ id, native: native.get(id), scientific: batches.get(id) })) });
 }));
-router.get('/runs', wrap(async (req, res) => res.json(await service.runs(req.user.id, await key(req)))));
+router.get('/runs', wrap(async (req, res) => res.json(await service.runs(req.user.id, await key(req), {
+  cursor: req.query.cursor, limit: req.query.limit === undefined ? 50 : Number(req.query.limit),
+}))));
 router.post('/runs', wrap(async (req, res) => res.status(201).json(await service.track(req.user.id, await key(req), req.body?.operation_id, {
   label: req.body?.label, model_id: req.body?.model_id, source: 'panel',
 }))));
@@ -79,6 +81,6 @@ router.get('/workshop/runs/:id/report', wrap(async (req, res) => res.json(await 
 router.post('/workshop/runs/:id/interventions', wrap(async (req, res) => res.json(await service.platform(await key(req), 'POST', `/v1/workshop/runs/${req.params.id}/interventions`, req.body))));
 router.use((error, _req, res, _next) => {
   const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : error.status || 500;
-  res.status(status).json({ error: status === 500 ? 'Demo service failed; refresh existing jobs before submitting again.' : error.message });
+  res.status(status).json(service.publicError(Object.assign(error, { status })));
 });
 module.exports = router;

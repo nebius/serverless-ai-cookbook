@@ -143,4 +143,59 @@ test('artifact-backed operation results are verified and compacted for the agent
     assert.equal(calls.length, 3);
   } finally { global.fetch = originalFetch; }
 });
+test('parallel operation tracking cannot overwrite another run or mix changed keys', async () => {
+  const service = await setup;
+  const ids = Array.from({ length: 30 }, () => crypto.randomUUID());
+  const originalFetch = global.fetch;
+  global.fetch = async (url) => {
+    if (String(url).includes('/v1/operations?')) return new Response('{}', { status: 404 });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const id = String(url).split('/').pop();
+    return new Response(JSON.stringify({ id, status: 'succeeded', model_id: 'test-app',
+      accepted_at: '2026-09-18T18:00:00Z', completed_at: '2026-09-18T18:01:00Z' }));
+  };
+  try {
+    await Promise.all(ids.map((id) => service.track('parallel-scientist', 'one-key', id)));
+    const records = await service.runs('parallel-scientist', 'one-key');
+    assert.deepEqual(new Set(records.data.map((row) => row.id)), new Set(ids));
+    assert.equal(records.history_available, false);
+    assert.deepEqual((await service.runs('parallel-scientist', 'another-key')).data, []);
+  } finally { global.fetch = originalFetch; }
+});
+test('caller history discovers untracked operations and follows the platform page cursor', async () => {
+  const service = await setup;
+  const id = crypto.randomUUID();
+  const originalFetch = global.fetch;
+  const requests = [];
+  global.fetch = async (url, options) => {
+    requests.push({ url: String(url), authorization: options.headers.Authorization });
+    return new Response(JSON.stringify({ data: [{ id, model_id: 'mosaic', status: 'queued',
+      protocol: 'scientific-batch-v1', accepted_at: '2026-09-18T18:00:00Z' }], next_cursor: 'next_page' }));
+  };
+  try {
+    const page = await service.runs('new-scientist', 'caller-key', { limit: 25, cursor: 'previous_page' });
+    assert.equal(page.data[0].id, id);
+    assert.equal(page.data[0].accepted_at, '2026-09-18T18:00:00Z');
+    assert.equal(page.history_available, true);
+    assert.equal(page.next_cursor, 'next_page');
+    assert.equal(requests.length, 1);
+    assert.ok(requests[0].url.endsWith('/v1/operations?limit=25&cursor=previous_page'));
+    assert.equal(requests[0].authorization, 'Bearer caller-key');
+    await assert.rejects(service.runs('new-scientist', 'caller-key', { cursor: '../bad' }), /Invalid/);
+  } finally { global.fetch = originalFetch; }
+});
+test('admission errors retain retry and accepted-work facts for the panel and agent', async () => {
+  const service = await setup;
+  const originalFetch = global.fetch;
+  global.fetch = async () => new Response(JSON.stringify({ error: { code: 'admission_limit_reached',
+    message: 'Your current run is still active.', retryable: true, durable_admission: false } }),
+  { status: 429, headers: { 'retry-after': '12' } });
+  try {
+    await assert.rejects(service.platform('caller-key', 'POST', '/v1/workshop/runs', {}), (error) => {
+      assert.deepEqual(service.publicError(error), { error: 'Your current run is still active.',
+        code: 'admission_limit_reached', retryable: true, durable_admission: false, retry_after_seconds: 12 });
+      return true;
+    });
+  } finally { global.fetch = originalFetch; }
+});
 after(async () => { await setup; await fs.rm(root, { recursive: true }); });

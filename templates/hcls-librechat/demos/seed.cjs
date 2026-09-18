@@ -23,7 +23,8 @@ async function main() {
     for (const entry of definitions) {
       await db.collection('agents').updateOne({ id: entry.id }, { $set: { id: entry.id, name: entry.name,
         description: entry.description, instructions: entry.instructions, provider: 'Nebius Token Factory',
-        model: 'zai-org/GLM-5.3-Flash', model_parameters: { model: 'zai-org/GLM-5.3-Flash', max_tokens: 8192 },
+        model: 'Qwen/Qwen3-235B-A22B-Instruct-2507',
+        model_parameters: { model: 'Qwen/Qwen3-235B-A22B-Instruct-2507', max_tokens: 8192 },
         tools: demoTools.filter((tool) => tool.name.startsWith(entry.id === 'agent_clinical_report' ? 'clinical_' : 'workshop_'))
           .map((tool) => `${tool.name}_mcp_scientific-demos`),
         mcpServerNames: ['scientific-demos'], skills_enabled: true, skills_scope: 'all',

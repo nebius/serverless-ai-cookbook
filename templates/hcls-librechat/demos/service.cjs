@@ -11,8 +11,18 @@ const REPORT_PROVIDER = 'https://api.tokenfactory.nebius.com/v1';
 const FILES = ['report.md', 'transcript.txt', 'follow-up.md', 'review.md', 'document.json', 'review.json', 'run.json'];
 const WORKSPACE = process.env.SCIENTIFIC_WORKSPACE || '/workspace';
 const RUN_ID = /^[a-f0-9-]{36}$/i;
+const TERMINAL_STATES = new Set(['succeeded', 'completed', 'failed', 'cancelled', 'preempted', 'expired']);
 const hash = (text) => crypto.createHash('sha256').update(text).digest('hex');
 const failure = (message, status = 400) => Object.assign(new Error(message), { status });
+function publicError(error) {
+  return { error: error.status === 500 || !error.status
+    ? 'Workbench request failed. Refresh existing runs before submitting again.' : error.message,
+  ...(error.code ? { code: error.code } : {}),
+  ...(typeof error.retryable === 'boolean' ? { retryable: error.retryable } : {}),
+  ...(typeof error.durable_admission === 'boolean' ? { durable_admission: error.durable_admission } : {}),
+  ...(error.operation_id ? { operation_id: error.operation_id } : {}),
+  ...(error.retry_after_seconds !== undefined ? { retry_after_seconds: error.retry_after_seconds } : {}) };
+}
 async function fileHash(filename) {
   const value = crypto.createHash('sha256');
   for await (const chunk of createReadStream(filename)) value.update(chunk);
@@ -37,6 +47,7 @@ async function platform(key, method, resource, body, idempotencyKey) {
   privateKey(key);
   const allowed = resource === '/v1/models' || resource === '/v1/scientific-models' || resource === '/v1/storage'
     || resource === '/v1/storage/credentials'
+    || /^\/v1\/operations\?limit=\d{1,3}(?:&cursor=[A-Za-z0-9_-]{1,256})?$/.test(resource)
     || /^\/v1\/operations\/[a-f0-9-]{36}(?::cancel|\/(?:events|result))?$/.test(resource)
     || /^\/v1\/workshop\/(catalog|runs(?:\/[a-f0-9-]{36}(?:\/(?:interventions|report|events))?)?)$/.test(resource);
   if (!allowed || !['GET', 'POST'].includes(method)) throw failure('Unsupported platform operation');
@@ -49,8 +60,18 @@ async function platform(key, method, resource, body, idempotencyKey) {
   } catch { throw failure('Platform connection interrupted. Check existing runs before retrying with the same request ID.', 503); }
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const detail = typeof result.detail === 'string' ? result.detail : result.error?.message;
-    throw failure(detail || `Platform returned HTTP ${response.status}`, response.status);
+    const detail = result.error && typeof result.error === 'object' ? result.error
+      : result.detail && typeof result.detail === 'object' ? result.detail : result;
+    const message = typeof result.detail === 'string' ? result.detail
+      : detail.message || detail.detail || `Platform returned HTTP ${response.status}`;
+    const error = failure(typeof message === 'string' ? message : `Platform returned HTTP ${response.status}`, response.status);
+    error.code = detail.code || detail.error_code;
+    error.retryable = typeof detail.retryable === 'boolean' ? detail.retryable : undefined;
+    error.durable_admission = typeof detail.durable_admission === 'boolean' ? detail.durable_admission : undefined;
+    error.operation_id = RUN_ID.test(detail.operation_id || '') ? detail.operation_id : undefined;
+    const retryAfter = Number(response.headers.get('retry-after') ?? detail.retry_after_seconds);
+    if (Number.isFinite(retryAfter) && retryAfter >= 0) error.retry_after_seconds = retryAfter;
+    throw error;
   }
   return result;
 }
@@ -170,44 +191,107 @@ async function operationResult(key, operationId) {
 }
 
 function runFile(owner) {
+  if (!owner) throw failure('LibreChat user identity is missing.', 401);
   return path.join(ROOT, 'workbench', hash(owner), 'runs.json');
 }
-async function tracked(owner) {
-  return read(runFile(owner)).catch(() => ({ data: [] }));
+function runDirectory(owner, key) {
+  return path.join(path.dirname(runFile(owner)), 'runs', hash(privateKey(key)));
+}
+async function optionalRead(filename, fallback) {
+  try { return await read(filename); }
+  catch (error) { if (error.code === 'ENOENT') return fallback; throw error; }
+}
+async function tracked(owner, key) {
+  const legacy = await optionalRead(runFile(owner), { data: [] });
+  const folder = runDirectory(owner, key);
+  let filenames;
+  try { filenames = await fs.readdir(folder); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; filenames = []; }
+  const current = await Promise.all(filenames.filter((name) => RUN_ID.test(name.replace(/\.json$/, ''))
+    && name.endsWith('.json')).map((name) => read(path.join(folder, name))));
+  // One atomic file per operation avoids lost updates when UI and MCP processes
+  // save different operations concurrently. Legacy rows are reauthorized below.
+  const data = new Map((legacy.data || []).map((item) => [item.id, { ...item, legacy: true }]));
+  for (const item of current) data.set(item.id, item);
+  return { data: [...data.values()] };
+}
+async function saveRun(owner, key, entry) {
+  const folder = runDirectory(owner, key);
+  await fs.mkdir(folder, { recursive: true, mode: 0o700 });
+  await save(path.join(folder, entry.id + '.json'), entry);
+}
+function runEntry(operation, previous = {}, metadata = {}) {
+  return {
+    id: operation.id, model_id: operation.model_id || previous.model_id || metadata.model_id,
+    protocol: operation.protocol || previous.protocol, status: operation.status,
+    source: previous.source || metadata.source || 'workbench',
+    label: typeof metadata.label === 'string' ? metadata.label.slice(0, 160) : previous.label,
+    first_seen_at: previous.first_seen_at || new Date().toISOString(),
+    accepted_at: operation.accepted_at || operation.created_at || previous.accepted_at,
+    started_at: operation.started_at, completed_at: operation.completed_at,
+    updated_at: new Date().toISOString(), operation,
+  };
 }
 async function track(owner, key, operationId, metadata = {}) {
   if (!RUN_ID.test(operationId || '')) throw failure('Supply a valid operation ID.');
   const current = await platform(key, 'GET', `/v1/operations/${operationId}`);
-  const existing = await tracked(owner);
-  const entry = {
-    id: operationId,
-    model_id: current.model_id || current.operation?.model_id || metadata.model_id,
-    protocol: current.protocol || current.operation?.protocol,
-    status: current.status || current.operation?.status,
-    source: metadata.source || 'workbench',
-    label: typeof metadata.label === 'string' ? metadata.label.slice(0, 160) : undefined,
-    first_seen_at: existing.data.find((item) => item.id === operationId)?.first_seen_at || new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-  const data = [entry, ...existing.data.filter((item) => item.id !== operationId)].slice(0, 200);
-  await fs.mkdir(path.dirname(runFile(owner)), { recursive: true, mode: 0o700 });
-  await save(runFile(owner), { data });
-  return { ...entry, operation: current };
+  const operation = current.operation && typeof current.operation === 'object' ? current.operation : current;
+  if (operation.id !== operationId) throw failure('Platform returned a mismatched operation.', 502);
+  const existing = await optionalRead(path.join(runDirectory(owner, key), operationId + '.json'), {});
+  const entry = runEntry(operation, existing, metadata);
+  await saveRun(owner, key, entry);
+  return { ...entry, ...(current.batch ? { batch: current.batch } : {}) };
 }
-async function runs(owner, key) {
-  const existing = await tracked(owner);
-  const refreshed = await Promise.all(existing.data.map(async (item) => {
-    try {
-      const value = await platform(key, 'GET', `/v1/operations/${item.id}`);
-      return { ...item, model_id: value.model_id || value.operation?.model_id || item.model_id,
-        protocol: value.protocol || value.operation?.protocol || item.protocol,
-        status: value.status || value.operation?.status || item.status,
-        updated_at: new Date().toISOString(), operation: value };
-    } catch (error) {
-      return { ...item, refresh_error: error.message, refresh_status: error.status || 500 };
+async function runs(owner, key, { cursor, limit = 50 } = {}) {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200
+      || (cursor !== undefined && !/^[A-Za-z0-9_-]{1,256}$/.test(cursor))) {
+    throw failure('Invalid operation history page.');
+  }
+  const existing = await tracked(owner, key);
+  let history;
+  try {
+    history = await platform(key, 'GET', `/v1/operations?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`);
+  } catch (error) {
+    if (error.status !== 404) throw error;
+    // Older deployments do not have discovery. Keep saved runs usable during a
+    // rolling upgrade and state this limitation instead of pretending completeness.
+    return { ...(await trackedRuns(owner, key, existing)), history_available: false,
+      history_notice: 'Automatic history is unavailable on this platform version. Only explicitly saved runs are shown.',
+      next_cursor: null };
+  }
+  if (!Array.isArray(history.data)) throw failure('Platform operation history has an invalid response.', 502);
+  const byId = new Map(existing.data.map((item) => [item.id, item]));
+  return { data: history.data.map((operation) => runEntry(operation, byId.get(operation.id), { source: 'platform' })),
+    next_cursor: history.next_cursor || null, history_available: true };
+}
+async function trackedRuns(owner, key, existing) {
+  const pending = [...existing.data].sort((a, b) => (b.accepted_at || b.first_seen_at || '')
+    .localeCompare(a.accepted_at || a.first_seen_at || ''));
+  const refreshed = [];
+  // Bound platform fanout while preserving every saved operation. A terminal
+  // operation is immutable; refresh its permission periodically, not every 5s.
+  await Promise.all(Array.from({ length: Math.min(4, pending.length) }, async () => {
+    while (pending.length) {
+      const item = pending.shift();
+      if (!item.legacy && item.operation && TERMINAL_STATES.has(item.status)
+          && Date.now() - Date.parse(item.updated_at) < 60000) {
+        refreshed.push(item); continue;
+      }
+      try {
+        const value = await platform(key, 'GET', `/v1/operations/${item.id}`);
+        const operation = value.operation && typeof value.operation === 'object' ? value.operation : value;
+        if (operation.id !== item.id) throw failure('Platform returned a mismatched operation.', 502);
+        const entry = runEntry(operation, item);
+        await saveRun(owner, key, entry);
+        refreshed.push(entry);
+      } catch (error) {
+        // A changed key must not expose previously attached another-tenant rows.
+        if ([401, 403, 404].includes(error.status)) continue;
+        if (!item.legacy) refreshed.push({ ...item, refresh_error: error.message, refresh_status: error.status || 500 });
+      }
     }
   }));
-  if (refreshed.length) await save(runFile(owner), { data: refreshed.map(({ operation, ...item }) => item) });
+  refreshed.sort((a, b) => (b.accepted_at || b.first_seen_at || '').localeCompare(a.accepted_at || a.first_seen_at || ''));
   return { data: refreshed };
 }
 
@@ -359,4 +443,4 @@ async function output(owner, id, filename) {
   catch (error) { if (error.code === 'ENOENT') throw failure('This report file has not been produced. Check job status.', 409); throw error; }
 }
 module.exports = { platform, operationResult, summarizeResult, clinical, status, list, start, output, track, runs, workspaceInfo, workspaceList,
-  workspacePut, workspaceGet, save, read, failure, FILES, REPORT_MODEL };
+  workspacePut, workspaceGet, save, read, failure, publicError, FILES, REPORT_MODEL };

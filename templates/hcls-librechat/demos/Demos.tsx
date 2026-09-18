@@ -15,14 +15,30 @@ type AppRow = { id: string; native?: { display_name?: string; enabled?: boolean;
   scientific?: { display_name?: string; operations?: string[]; service_classes?: string[]; mcp_tool_name?: string;
     mcp_tool_description?: string; runtime?: { state?: string } } };
 type RunRow = { id: string; model_id?: string; protocol?: string; status?: string; label?: string; source?: string;
-  first_seen_at: string; refresh_error?: string; operation?: Record<string, unknown> };
+  first_seen_at: string; accepted_at?: string; started_at?: string; completed_at?: string; refresh_error?: string;
+  operation?: { error_code?: string; error_detail?: string; result_available?: boolean; accepted_at?: string;
+    activation_started_at?: string; ready_at?: string; started_at?: string; completed_at?: string;
+    cold_start_seconds?: number; attempt?: number; max_attempts?: number } };
+type RunPage = { data: RunRow[]; next_cursor?: string; history_available?: boolean; history_notice?: string };
 type WorkspaceEntry = { name: string; path: string; kind: 'directory' | 'file'; size_bytes?: number; updated_at: string };
 const BASE = '/api/scientific-demos';
 const field = 'rounded-lg border border-border-medium bg-surface-primary p-2 text-text-primary';
 const errorText = (error: Error) => {
-  const detail = (error as Error & { response?: { data?: { error?: string } } }).response?.data?.error;
-  return detail || error.message;
+  const detail = (error as Error & { response?: { data?: { error?: string; durable_admission?: boolean;
+    retryable?: boolean; retry_after_seconds?: number; operation_id?: string } } }).response?.data;
+  const message = detail?.error || error.message;
+  if (detail?.operation_id) return `${message} Existing run: ${detail.operation_id}. Refresh its status before retrying.`;
+  if (detail?.durable_admission === false && detail.retryable) {
+    return `${message} No new run was accepted. Retry the same request${detail.retry_after_seconds ? ` after ${detail.retry_after_seconds}s` : ' when capacity is available'}.`;
+  }
+  return message;
 };
+function elapsed(start?: string, end?: string, active = false) {
+  if (!start || (!end && !active)) return '—';
+  const seconds = ((end ? Date.parse(end) : Date.now()) - Date.parse(start)) / 1000;
+  if (!Number.isFinite(seconds) || seconds < 0) return '—';
+  return seconds < 60 ? `${seconds.toFixed(1)}s` : `${Math.floor(seconds / 60)}m ${Math.floor(seconds % 60)}s`;
+}
 function download(name: string, data: BlobPart, type = 'application/json') {
   const url = URL.createObjectURL(new Blob([data], { type }));
   const anchor = document.createElement('a');
@@ -49,6 +65,7 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
   const [operationId, setOperationId] = useState('');
   const [selectedRun, setSelectedRun] = useState('');
   const [runResult, setRunResult] = useState('');
+  const [runPages, setRunPages] = useState<string[]>(['']);
   const [workspacePath, setWorkspacePath] = useState('');
   const [workspaceFile, setWorkspaceFile] = useState<File | null>(null);
   const [workspaceName, setWorkspaceName] = useState('');
@@ -56,7 +73,8 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
   const settings = useQuery(['scientific-demos', 'settings'], () => request.get<{ configured: boolean }>(`${BASE}/settings`));
   const enabled = settings.data?.configured === true;
   const apps = useQuery(['scientific-demos', 'apps'], () => request.get<{ data: AppRow[] }>(`${BASE}/apps`), { enabled: enabled && tab === 'apps', retry: false });
-  const runs = useQuery(['scientific-demos', 'runs'], () => request.get<{ data: RunRow[] }>(`${BASE}/runs`), { enabled: enabled && tab === 'runs', retry: false, refetchInterval: tab === 'runs' ? 5000 : false });
+  const runCursor = runPages[runPages.length - 1];
+  const runs = useQuery(['scientific-demos', 'runs', runCursor], () => request.get<RunPage>(`${BASE}/runs${runCursor ? `?cursor=${encodeURIComponent(runCursor)}` : ''}`), { enabled: enabled && tab === 'runs', retry: false, refetchInterval: tab === 'runs' ? 5000 : false });
   const workspace = useQuery(['scientific-demos', 'workspace', workspacePath], () => request.get<{ info: Record<string, unknown>; prefix: string; data: WorkspaceEntry[] }>(`${BASE}/workspace?path=${encodeURIComponent(workspacePath)}`), { enabled: enabled && tab === 'workspace', retry: false });
   async function act(work: () => Promise<void>) {
     setBusy(true); setError('');
@@ -95,11 +113,24 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
       {enabled && !apps.isLoading && !(apps.data?.data.length) && <p role="status">This key currently has no authorized Apps.</p>}
     </section>}
     {tab === 'runs' && <section>
-      <h2 className="text-xl font-semibold">Runs</h2><p className="my-2 text-sm text-text-secondary">Durable operations saved by the agent or added here. A reconnect refreshes the original ID; it never silently resubmits compute.</p>
+      <h2 className="text-xl font-semibold">Runs</h2><p className="my-2 text-sm text-text-secondary">Your model operations from chat and API appear automatically. Reconnect to follow the same run while it waits for capacity or executes.</p>
+      {runs.data?.history_notice && <p role="status" className="my-3 rounded border border-border-medium p-3 text-sm">{runs.data.history_notice}</p>}
       <form className="mb-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); void act(async () => {
         const value = await request.post<RunRow>(`${BASE}/runs`, { operation_id: operationId }); setSelectedRun(value.id); setOperationId('');
       }); }}><Input aria-label="Operation ID" placeholder="operation UUID" value={operationId} onChange={(event) => setOperationId(event.target.value)} /><Button type="submit" disabled={!enabled || !operationId || busy}>Add run</Button></form>
-      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>App / run</th><th>Status</th><th>Source</th><th>Started</th><th>Actions</th></tr></thead><tbody>{(runs.data?.data || []).map((run) => <tr key={run.id} className="border-t border-border-light"><td className="max-w-sm py-3"><strong>{run.model_id || 'Unknown App'}</strong><br /><code className="text-xs">{run.id}</code>{run.refresh_error && <p className="text-xs">Refresh: {run.refresh_error}</p>}</td><td>{run.status || 'unknown'}</td><td>{run.source}</td><td>{new Date(run.first_seen_at).toLocaleString()}</td><td><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => void act(async () => { const value = await request.get(`${BASE}/runs/${run.id}/result`); setSelectedRun(run.id); setRunResult(JSON.stringify(value, null, 2)); })}>Result</Button>{!['succeeded', 'failed', 'cancelled', 'completed'].includes(run.status || '') && <Button size="sm" variant="outline" onClick={() => void act(async () => { await request.post(`${BASE}/runs/${run.id}/cancel`); })}>Cancel</Button>}</div></td></tr>)}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr><th>App / run</th><th>Status</th><th>Elapsed</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>{(runs.data?.data || []).map((run) => {
+        const terminal = ['succeeded', 'failed', 'cancelled', 'completed', 'preempted', 'expired'].includes(run.status || '');
+        return <tr key={run.id} className="border-t border-border-light"><td className="max-w-sm py-3 pr-3"><strong>{run.model_id || 'Unknown App'}</strong>{run.label && <p className="text-xs">{run.label}</p>}<code className="text-xs">{run.id}</code>{run.refresh_error && <p className="text-xs">Refresh: {run.refresh_error}</p>}</td>
+          <td className="pr-3">{run.status || 'unknown'}{run.status === 'queued' && <p className="text-xs text-text-secondary">Accepted; execution has not started</p>}{run.operation?.error_code && <p className="max-w-xs text-xs">{run.operation.error_code}: {run.operation.error_detail || 'See details'}</p>}{(run.operation?.attempt || 0) > 1 && <p className="text-xs">Attempt {run.operation?.attempt} / {run.operation?.max_attempts || '—'}</p>}</td>
+          <td className="pr-3">{elapsed(run.accepted_at, run.completed_at, !terminal)}<p className="text-xs text-text-secondary">Wait {elapsed(run.accepted_at, run.started_at, !terminal && !run.started_at)}</p>{run.operation?.cold_start_seconds !== undefined && run.operation.cold_start_seconds !== null && <p className="text-xs text-text-secondary">Activation {run.operation.cold_start_seconds.toFixed(1)}s</p>}</td>
+          <td className="pr-3">{run.accepted_at ? new Date(run.accepted_at).toLocaleString() : 'Unknown'}</td><td><div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { const value = await request.get(`${BASE}/runs/${run.id}`); setSelectedRun(run.id); setRunResult(JSON.stringify(value, null, 2)); })}>Details</Button>
+            {['succeeded', 'completed'].includes(run.status || '') && <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { const value = await request.get(`${BASE}/runs/${run.id}/result`); setSelectedRun(run.id); setRunResult(JSON.stringify(value, null, 2)); })}>Result</Button>}
+            {!terminal && <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { await request.post(`${BASE}/runs/${run.id}/cancel`); })}>Cancel</Button>}
+          </div></td></tr>;
+      })}</tbody></table></div>
+      {enabled && !runs.isLoading && !runs.error && !(runs.data?.data.length) && <p role="status" className="my-4">No runs on this page yet.</p>}
+      <div className="mt-4 flex gap-2"><Button variant="outline" disabled={runPages.length < 2} onClick={() => setRunPages((pages) => pages.slice(0, -1))}>Newer runs</Button><Button variant="outline" disabled={!runs.data?.next_cursor} onClick={() => { if (runs.data?.next_cursor) setRunPages((pages) => [...pages, runs.data!.next_cursor!]); }}>Older runs</Button></div>
       {selectedRun && runResult && <section className="mt-4 rounded-xl border border-border-medium p-4"><h3 className="font-semibold">Result · {selectedRun}</h3><pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs">{runResult}</pre></section>}
     </section>}
     {tab === 'workspace' && <section>
