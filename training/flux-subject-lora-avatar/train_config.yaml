@@ -1,0 +1,92 @@
+# ai-toolkit (https://github.com/ostris/ai-toolkit) config for a FLUX.2-dev
+# personal-subject LoRA. This recipe reproduces a validated run: rank 32,
+# lr 5e-5, EMA, caption dropout 0.10, qfloat8-quantized transformer,
+# 1200 steps (~3 s/step on one modern datacenter GPU).
+#
+# __RUN_NAME__ is substituted by train.sh at launch time.
+#
+# If you change the trigger token (TOK4ME), change it EVERYWHERE at once:
+# your captions (prepare_dataset.py --trigger), trigger_word below, and the
+# sample prompts. Case matters - never rely on filename-based inference.
+#
+# Capacity variant (won an internal 13-candidate identity bench on a B200,
+# needs ~180 GB VRAM because the transformer stays unquantized):
+#   network.linear/linear_alpha: 64, train.lr: 2.5e-5, train.steps: 1400,
+#   model.quantize: false, caption_dropout_rate: 0.08
+---
+job: extension
+config:
+  name: "__RUN_NAME__"
+  process:
+    - type: 'sd_trainer'
+      training_folder: "/workspace/output"
+      performance_log_every: 100
+      device: cuda:0
+      trigger_word: "TOK4ME"
+      logging:
+        log_every: 10
+        use_wandb: false          # set true + export WANDB_API_KEY in train.sh
+        project_name: "flux-avatar-lora"
+        run_name: "__RUN_NAME__"
+      network:
+        type: "lora"
+        linear: 32
+        linear_alpha: 32
+      save:
+        dtype: float16
+        save_every: 200           # intermediate checkpoints let the identity
+        max_step_saves_to_keep: 6 # gate pick the best step, not just the last
+      datasets:
+        - folder_path: "/workspace/work-dataset"
+          caption_ext: "txt"
+          caption_dropout_rate: 0.10
+          shuffle_tokens: false
+          cache_latents_to_disk: true   # writes into the dataset folder ->
+          resolution: [512, 768, 1024]  # train from a LOCAL copy, not the S3 mount
+      train:
+        batch_size: 1
+        steps: 1200
+        gradient_accumulation_steps: 1
+        train_unet: true
+        train_text_encoder: false
+        gradient_checkpointing: true
+        unload_text_encoder: true
+        cache_text_embeddings: true
+        timestep_type: "sigmoid"
+        noise_scheduler: "flowmatch"
+        optimizer: "adamw8bit"
+        lr: 5e-5
+        ema_config:
+          use_ema: true
+          ema_decay: 0.99
+        dtype: bf16
+      model:
+        name_or_path: "black-forest-labs/FLUX.2-dev"  # gated - HF_TOKEN required
+        arch: "flux2"
+        quantize: true
+        quantize_te: true
+        qtype: "qfloat8"
+        qtype_te: "qfloat8"
+      sample:
+        sampler: "flowmatch"
+        sample_every: 200
+        width: 1024
+        height: 1024
+        # Keep sample prompts identical across experiments so checkpoint grids
+        # are directly comparable. Match your caption style ("TOK4ME person, ...";
+        # adjust the class word to man/woman if that is what your captions use).
+        prompts:
+          - "photo of TOK4ME person, studio portrait, natural skin texture"
+          - "TOK4ME person, professional headshot, neutral background"
+          - "close-up portrait of TOK4ME person, soft window light"
+          - "TOK4ME person in everyday clothing, outdoor natural light"
+          - "TOK4ME person walking on a city street, documentary photo"
+          - "TOK4ME person seated at a cafe, natural candid photo"
+        neg: ""
+        seed: 42
+        walk_seed: true
+        guidance_scale: 4
+        sample_steps: 28
+meta:
+  name: "FLUX.2-dev personal subject LoRA"
+  version: '1.0'
