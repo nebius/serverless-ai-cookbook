@@ -92,4 +92,68 @@ async function compare(kind, key, args, storage) {
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 
-module.exports = { compare };
+async function aging(key, args, storage) {
+  if (!['phenoage', 'altumage'].includes(args.model_id)
+      || !Array.isArray(args.cohorts) || !args.cohorts.length || args.cohorts.length > 8) {
+    throw fail('Choose an aging model and one to eight explicitly labelled input/result file pairs.');
+  }
+  const inputs = {};
+  const get = async (field, relative) => {
+    if (typeof relative !== 'string' || !relative) throw fail('Supply existing workspace-relative file paths.');
+    const file = await storage.workspaceGet(key, relative);
+    if (file.size_bytes > 64 * 1024 * 1024) throw fail('Analysis input exceeds the bounded 64 MiB helper limit.');
+    const bytes = await fs.readFile(file.absolute);
+    inputs[field] = { ...file, sha256: hash(bytes), size_bytes: bytes.length };
+    return file.absolute;
+  };
+  const cohorts = [];
+  for (const [index, cohort] of args.cohorts.entries()) {
+    cohorts.push({ label: cohort.label,
+      input_file: await get(`cohort_${index}_input`, cohort.input_file),
+      result_file: await get(`cohort_${index}_result`, cohort.result_file) });
+  }
+  const ages = args.reference_ages_file ? await get('reference_ages', args.reference_ages_file) : undefined;
+  const helper = path.join(HELPERS, 'aging-analysis.py');
+  const helperHash = hash(await fs.readFile(helper));
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'scientific-aging-analysis-'));
+  try {
+    const cohortPath = path.join(temporary, 'cohorts.json');
+    await fs.writeFile(cohortPath, JSON.stringify(cohorts));
+    const argv = [helper, '--model', args.model_id, '--cohorts', cohortPath, '--output-dir', temporary];
+    if (args.coefficient_version) argv.push('--coefficient-version', args.coefficient_version);
+    if (ages) argv.push('--reference-ages', ages);
+    try { await (storage.execute || execute)(PYTHON, argv, { timeout: 120000, maxBuffer: 2 * 1024 * 1024 }); }
+    catch (error) {
+      const diagnostic = String(error.stderr || error.message).slice(-4000);
+      const retained = await storage.retainWorkspaceBytes(key,
+        `.scientific-analysis/failures/${hash(diagnostic)}/diagnostic.txt`, Buffer.from(diagnostic));
+      throw fail(`Independent aging analysis failed; no metrics accepted. Read ${retained.relative_path || 'the retained diagnostic'}.`);
+    }
+    for (const file of Object.values(inputs)) {
+      if (hash(await fs.readFile(file.absolute)) !== file.sha256) throw fail('Input changed during analysis; no metrics accepted.');
+    }
+    const bytes = await fs.readFile(path.join(temporary, 'metrics.json'));
+    const metrics = JSON.parse(bytes);
+    const prefix = `.scientific-analysis/aging/${helperHash}/${hash(bytes)}`;
+    const files = {};
+    for (const name of ['metrics.json', 'rows.csv', 'report.md']) {
+      files[name] = await storage.retainWorkspaceBytes(key, `${prefix}/${name}`, await fs.readFile(path.join(temporary, name)));
+    }
+    const provenance = { helper: 'aging-analysis.py', helper_sha256: helperHash,
+      evaluator_sha256: metrics.evaluator_sha256, method: metrics.method,
+      inputs: Object.fromEntries(Object.entries(inputs).map(([field, file]) => [field,
+        { workspace_path: file.normalized, size_bytes: file.size_bytes, sha256: file.sha256 }])),
+      result_sha256: hash(bytes), inference_submitted: false };
+    files['provenance.json'] = await storage.retainWorkspaceBytes(key, `${prefix}/provenance.json`, Buffer.from(JSON.stringify(provenance, null, 2)));
+    return { analysis_completed: true, inference_submitted: false, files, provenance,
+      metrics: { schema: metrics.schema, model_id: metrics.model_id, model_version: metrics.model_version,
+        all_numerical_checks_pass: metrics.all_numerical_checks_pass, cohorts: metrics.cohorts,
+        row_count: metrics.rows.length,
+        overlaps: metrics.overlaps.map((pair) => ({ ...pair, pairs: pair.pairs.slice(0, 20),
+          full_pair_count: pair.pairs.length, complete_rows_in: files['metrics.json'].relative_path })),
+        limitations: metrics.limitations },
+      evidence_guidance: 'Use the retained deterministic row table and report. Exact sample overlap is not the total cohort size. Numerical agreement, age-label error, biological validity and clinical utility are distinct; do not invent another network or change coefficient versions to force agreement.' };
+  } finally { await fs.rm(temporary, { recursive: true, force: true }); }
+}
+
+module.exports = { compare, aging };

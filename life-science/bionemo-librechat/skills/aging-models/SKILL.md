@@ -81,3 +81,30 @@ not log, not mg/L), `lymphocyte_percent`, `mean_cell_volume_fl`,
 
 Predicted age (years) per sample. Present as research epigenetic/clinical
 estimates, not medical assessments. Live verification status: readiness report.
+
+## Independent analysis of saved results
+
+Use `workbench_analyze_aging` with `model_id` and a `cohorts` list of explicit
+`label`, `input_file`, `result_file` workspace-relative paths. It reads exact
+request/result files outside chat and returns retained deterministic CSV,
+metrics, report and source hashes. It does not call either model again.
+
+For PhenoAge also pass `coefficient_version`:
+`levine-2018-supplement-rounded-v1`. The independent60-digit evaluator uses
+the declared primary supplement equations. Do not substitute DNAm PhenoAge,
+pyaging's alternative mortality conversion, or higher-precision coefficients
+and label their differences a serving error.
+
+For AltumAge the original pinned H5 and robust scaler are packaged. The helper
+reads the actual model_config layer order, including SELU activation and
+BatchNormalization; do not guess a network from alphabetically sorted weight
+groups. Feature names and beta columns are aligned together. Missing values
+only use the explicitly selected imputation policy. Multiple cohorts compare
+only exact overlapping sample IDs with matching normalized inputs/policy:
+one canonical sample versus16 reversed samples is a one-sample invariance
+comparison, not16 pairs. All17 predictions can still be independently checked.
+
+Optional `reference_ages_file` maps exact sample IDs to known chronological
+ages. Those label errors are descriptive, not proof of generalization or
+medical validity. Quote the saved deterministic row table and preserve any
+numerical disagreement; never alter the reference to obtain a passing result.

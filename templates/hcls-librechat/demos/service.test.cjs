@@ -88,11 +88,14 @@ test('stdio MCP exposes typed tools and rejects absent identity without inferenc
     { id: 3, method: 'tools/call', params: { name: 'clinical_list_jobs' } } ].map((item) => JSON.stringify({ jsonrpc: '2.0', ...item })).join('\n') + '\n');
   assert.equal(await new Promise((resolve) => child.on('exit', resolve)), 0);
   const messages = stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(messages[1].result.tools.length, 20);
+  assert.equal(messages[1].result.tools.length, 21);
   assert.ok(messages[1].result.tools.every((tool) => tool.inputSchema.additionalProperties === false));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_track_operation'));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'clinical_report_from_workspace'));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_compare_docking'));
+  const aging = messages[1].result.tools.find((tool) => tool.name === 'workbench_analyze_aging');
+  assert.deepEqual(aging.inputSchema.properties.model_id.enum, ['phenoage', 'altumage']);
+  assert.deepEqual(aging.inputSchema.properties.cohorts.items.required, ['label', 'input_file', 'result_file']);
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_compare_structures'));
   assert.equal(messages[2].result.isError, true);
 });

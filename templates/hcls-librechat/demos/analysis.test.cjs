@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 process.env.SCIENTIFIC_ANALYSIS_HELPERS = path.resolve(__dirname, '..');
-const { compare } = require('./analysis.cjs');
+const { compare, aging } = require('./analysis.cjs');
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 
 async function fixture(run) {
@@ -85,4 +85,27 @@ test('ambiguous sources, missing coordinate-frame confirmation or chain mapping 
   await assert.rejects(compare('docking', 'fixture-key', { ...args, prediction_file: 'other.sdf' }, storage), /exactly one/);
   await assert.rejects(compare('docking', 'fixture-key', { ...args, same_coordinate_frame: false }, storage), /coordinate frame/);
   await assert.rejects(compare('structure', 'fixture-key', args, storage), /explicit/);
+}));
+test('typed aging analysis retains actual row files, hashes and exact cohort overlap counts', () => fixture(async ({ storage, retained }) => {
+  storage.execute = async (_, argv) => {
+    assert.equal(argv[argv.indexOf('--model') + 1], 'phenoage');
+    assert.equal(argv[argv.indexOf('--coefficient-version') + 1], 'levine-2018-supplement-rounded-v1');
+    const cohorts = JSON.parse(await fs.readFile(argv[argv.indexOf('--cohorts') + 1], 'utf8'));
+    assert.equal(cohorts.length, 1);
+    assert.ok(cohorts[0].input_file.endsWith('reference.sdf'));
+    const folder = argv[argv.indexOf('--output-dir') + 1];
+    await fs.writeFile(path.join(folder, 'metrics.json'), JSON.stringify({ schema: 'scientific-aging-analysis/v1',
+      model_id: 'phenoage', model_version: 'levine-2018-supplement-rounded-v1', method: 'independent reference',
+      evaluator_sha256: 'reference-hash', rows: [{ sample_id: 'one', independent_age_years: 41.9 }],
+      cohorts: [{ sample_count: 1 }], overlaps: [], all_numerical_checks_pass: true }));
+    await fs.writeFile(path.join(folder, 'rows.csv'), 'sample_id,independent_age_years\none,41.9\n');
+    await fs.writeFile(path.join(folder, 'report.md'), '# Actual numerical report\n');
+  };
+  const result = await aging('fixture-key', { model_id: 'phenoage', coefficient_version: 'levine-2018-supplement-rounded-v1',
+    cohorts: [{ label: 'one', input_file: 'reference.sdf', result_file: 'result.json' }] }, storage);
+  assert.equal(result.metrics.row_count, 1);
+  assert.equal(result.inference_submitted, false);
+  assert.equal(result.provenance.inputs.cohort_0_input.sha256, hash('reference bytes'));
+  assert.equal(result.files['metrics.json'].sha256, result.provenance.result_sha256);
+  assert.ok(retained[result.files['rows.csv'].relative_path].toString().includes('one,41.9'));
 }));

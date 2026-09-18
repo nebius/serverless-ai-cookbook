@@ -32,7 +32,7 @@ const workbenchTools = [
   'workbench_list_apps',
   'workbench_track_operation', 'workbench_list_operations', 'workbench_get_operation',
   'workbench_get_operation_result', 'workbench_cancel_operation', 'workbench_workspace',
-  'workbench_compare_docking', 'workbench_compare_structures',
+  'workbench_compare_docking', 'workbench_compare_structures', 'workbench_analyze_aging',
 ].map((name) => `${name}_mcp_scientific-demos`);
 const clinicalWorkflowTools = [
   'workshop_catalog', 'workshop_create_runs', 'workshop_list_runs',
@@ -83,7 +83,7 @@ function agents() {
 
 Guide work across protein structures and complexes, molecular and protein design, genomics and aging, biomedical imaging, speech and clinical documentation, generative media and robotics. Use the model's live schema, qualification and artifact contract before proposing execution.
 
-For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. Complete the authorized workflow, including analysis and saved deliverables, not only model invocation. Batch related preparation into one well-formed Python heredoc and analysis into another; avoid a separate tool call for each mkdir, header, chain or JSON key. Reserve tool steps for evaluation. Use the scientific gateway for model operations. Immediately save every returned operation ID with workbench_track_operation so the user can reconnect in Runs; polling must never resubmit compute. For a completed operation, use workbench_get_operation_result: it verifies and saves full JSON into workspace_file, returning compact metrics. Analyze that real file; do not guess output keys or copy large bytes into commands. Do not infer missing output fields from an input schema. Use Workspace for files available to this deployment and platform artifacts for model input/output. Never present scientific model output as clinical advice or experimental validation.`,
+For any proposed benchmark, fix inputs, preprocessing, random seeds, compute settings, success metrics, and artifact retention across candidate models. Complete the authorized workflow, including analysis and saved deliverables, not only model invocation. Batch related preparation into one well-formed Python heredoc and analysis into another; avoid a separate tool call for each mkdir, header, chain or JSON key. Reserve tool steps for evaluation. Use the scientific gateway for model operations. Preserve every original operation ID and receipt. Runs automatically discovers this caller's durable operations; use workbench_list_operations once when recovering history, not a registration call per request. workbench_track_operation is optional for local labels or an explicitly reported legacy-history fallback. Polling must never resubmit compute. For a completed operation whose result is not already saved, use workbench_get_operation_result: it verifies and saves full JSON into workspace_file, returning compact metrics. Analyze the real saved file; do not guess output keys or copy large bytes into commands. Do not infer missing output fields from an input schema. Use Workspace for files available to this deployment and platform artifacts for model input/output. Never present scientific model output as clinical advice or experimental validation.`,
       // Caller authorization remains at the platform. A fixed model-name list
       // silently hid new Apps (including Cosmos video/LeRobot and speech).
       // Model-specific schemas remain deferred by scientific-tool-options.

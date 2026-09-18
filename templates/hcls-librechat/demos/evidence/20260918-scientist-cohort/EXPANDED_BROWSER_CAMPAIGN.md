@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-18 22:01 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-18 23:28 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -25,7 +25,7 @@ They may include short-lived signed download URLs; do not copy them into Git.
 Public fixture provenance is in the frozen dataset manifests. A successful HTTP
 response, inference result or hash check does not establish scientific validity.
 
-## Current browser studies
+## Browser study inventory at22:01 (later release-specific updates below)
 
 | Scientist | Study | Evidence and remaining work |
 |---|---|---|
@@ -181,6 +181,42 @@ failures or establish two clean final-release cohorts.
   with compact metadata returned to chat. Live six-record recovery passed.
 
 ## Release pins and limitations
+
+### 23:28 UTC — one-turn genome replay; independent aging helper candidate
+
+Fresh05 v27 conversation `2aa5a7f4-1f69-5b17-932f-cf70bedd24a8` completed the
+same four frozen Evo2 inputs and saved report in one turn without intervention.
+Downloaded raw requests/results and all GC, reference identity, lengths,
+timestamps and report values independently verify. Report SHA256
+`8c9433331bf7ef733b737e070568b135fce0a1bd1cc88c5ee19913dc1663cf6e`.
+Its47.224s workflow value is explicitly first admission→last completion, not
+the execution-job interval used in the earlier comparison. The agent chose
+the existing valid CLI workflow, so this does not prove typed-step adoption.
+One small genomic workflow does not establish general readiness.
+
+Parent07 v26 completed four aging calls but failed twice to produce correct
+analysis: PhenoAge field-name mistakes and an invented H5 architecture caused
+an apparent~262-year AltumAge error. The new typed `workbench_analyze_aging`
+candidate imports the existing independent qualification functions unchanged:
+60-digit published rounded PhenoAge equations, and original checksum-pinned H5
+model_config layer order/SELU/BatchNormalization with original robust scaler.
+Build-only trusted preprocessing becomes plain JSON; runtime reads no pickles.
+It saves complete per-sample metrics, CSV, methods report and hash lineage,
+matches samples explicitly, and never submits inference.
+
+Read-only verification of the actual downloaded07 results finds32 PhenoAge
+rows within3.02e-14 years of declared rounded-v1 and17 AltumAge rows within
+1.553e-5 years of the independent H5 reference. There is exactly one matching
+reordered sample, difference−5.364418e-7 years, not16 pairs. The hosted models
+are numerically consistent; the agent-generated reference was wrong. Original
+failure/incorrect files are retained. Evidence:
+`browser-evidence/scientist-07-v26-independent-aging-v28`.
+
+Four helper tests cover published formula/version, exact IDs/raw CRP, actual
+H5 execution order/SELU, and33 real pinned complete/reordered/missingness rows.
+23 Node service/tool tests and21 seed tests pass. Candidate guidance removes
+obsolete per-operation tracking calls because Runs already auto-discovers
+caller history. Typed aging live browser qualification remains pending.
 
 ### 23:12 UTC — matched timing independently verified; canonical steps published
 

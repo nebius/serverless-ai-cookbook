@@ -14,6 +14,13 @@ RUN node /tmp/patch-demos.mjs client
 WORKDIR /app/client
 RUN NODE_ENV=production NODE_OPTIONS=--max-old-space-size=8192 /app/node_modules/.bin/vite build
 
+FROM ${LIBRECHAT_BASE} AS aging-reference
+USER root
+COPY templates/hcls-librechat/prepare-aging-reference.py /tmp/prepare-aging-reference.py
+RUN python3 -m venv /tmp/aging-reference-builder \
+ && /tmp/aging-reference-builder/bin/pip install --no-cache-dir numpy==2.2.6 pandas==2.2.3 scikit-learn==1.7.2 \
+ && /tmp/aging-reference-builder/bin/python /tmp/prepare-aging-reference.py --output /opt/aging-reference
+
 FROM ${LIBRECHAT_BASE}
 
 ARG HCLS_IMAGE_REVISION=unknown
@@ -48,8 +55,11 @@ COPY templates/hcls-librechat/upload-artifact.py /opt/bionemo/upload-artifact.py
 COPY templates/hcls-librechat/scripts/scientific-batch-acceptance.py /opt/bionemo/invoke-scientific-batch.py
 COPY templates/hcls-librechat/structure-analysis.py /opt/bionemo/structure-analysis.py
 COPY templates/hcls-librechat/molecule-analysis.py /opt/bionemo/molecule-analysis.py
+COPY templates/hcls-librechat/aging-analysis.py /opt/bionemo/aging-analysis.py
+COPY templates/hcls-librechat/scripts/qualification/evaluators.py /opt/bionemo/qualification_evaluators.py
+COPY --from=aging-reference /opt/aging-reference /opt/bionemo/aging-reference
 RUN python3 -m venv /opt/scientific-client \
- && /opt/scientific-client/bin/pip install --no-cache-dir mcp==2.2.0 httpx2==2.12.0 jsonschema==4.26.0 numpy==2.2.6 biopython==1.85 rdkit==2025.3.6
+ && /opt/scientific-client/bin/pip install --no-cache-dir mcp==2.2.0 httpx2==2.12.0 jsonschema==4.26.0 numpy==2.2.6 biopython==1.85 rdkit==2025.3.6 h5py==3.13.0
 COPY life-science/bionemo-librechat/viewer-mcp.py /opt/bionemo/viewer-mcp.py
 COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 RUN node /opt/hcls-librechat/patch-server.mjs

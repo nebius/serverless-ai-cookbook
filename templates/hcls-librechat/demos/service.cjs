@@ -532,7 +532,9 @@ async function clinicalOutput(owner, key, id, filename) {
   return { bytes, workspace_file };
 }
 async function analyzeWorkspace(kind, key, args) {
-  return require('./analysis.cjs').compare(kind, key, args, { workspaceGet, retainWorkspaceBytes });
+  const analysis = require('./analysis.cjs');
+  return kind === 'aging' ? analysis.aging(key, args, { workspaceGet, retainWorkspaceBytes })
+    : analysis.compare(kind, key, args, { workspaceGet, retainWorkspaceBytes });
 }
 module.exports = { platform, listApps, operationResult, workshopRun, summarizeResult, clinical, clinicalFromWorkspace, status, list, start, output, clinicalOutput, analyzeWorkspace, track, waitOperation, runs, workspaceInfo, workspaceList,
   workspacePut, workspaceGet, save, read, failure, publicError, FILES, REPORT_MODEL };

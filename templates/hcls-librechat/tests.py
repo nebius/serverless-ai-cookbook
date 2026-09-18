@@ -206,6 +206,9 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
         assert "tavily_search_mcp_tavily" in agent["tools"]
         assert "workbench_track_operation_mcp_scientific-demos" in agent["tools"]
         assert "run_scientific_workflow_mcp_environment-execution" in agent["tools"]
+        assert "workbench_analyze_aging_mcp_scientific-demos" in agent["tools"]
+    assert "Immediately save every returned operation ID with workbench_track_operation" not in general['instructions']
+    assert "Runs automatically discovers" in general['instructions']
 
 
 def test_genmol_skill_distinguishes_tokens_from_atom_measurements() -> None:
