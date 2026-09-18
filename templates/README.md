@@ -235,7 +235,7 @@ Templates are quick-start configurations to help you serve models and run jobs i
 <tbody>
 <tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/65df9200dc3292a8983e5017/Vs5FPVCH-VZBipV3qKTuy.png" width="20" height="20" alt="Cosmos 3 Reasoner" align="absmiddle">&nbsp;<a href="endpoint-cosmos3-reasoner/README.md"><strong>Cosmos 3 Reasoner</strong></a></td>
-  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.29.0&amp;command=vllm%20serve%20nvidia%2FCosmos3-Nano%20--tensor-parallel-size%201%20--mm-encoder-tp-mode%20data%20--async-scheduling%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.29.0&amp;command=vllm%20serve%20nvidia%2FCosmos3-Nano%20--tensor-parallel-size%201%20--mm-encoder-tp-mode%20data%20--async-scheduling%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
   <td width="580" valign="middle">Cosmos3-Nano Reasoner is NVIDIA's OpenMDW-1.1 world model for video and image understanding in robotics and driving, served OpenAI-compatibly via vLLM on a single H100.</td>
 </tr>
 </tbody>

@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.29.0&amp;command=vllm%20serve%20nvidia%2FCosmos3-Nano%20--tensor-parallel-size%201%20--mm-encoder-tp-mode%20data%20--async-scheduling%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-openai%3Av0.29.0&amp;command=vllm%20serve%20nvidia%2FCosmos3-Nano%20--tensor-parallel-size%201%20--mm-encoder-tp-mode%20data%20--async-scheduling%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -33,13 +33,17 @@ Copy the endpoint's public URL from the console (**Public endpoints**) into `BAS
 Prefer the managed HTTPS FQDN (`https://port8000-<id>.tunnel.applications.<region>.nebius.cloud`);
 the raw `IP:port` form also works while it is offered.
 
-This template leaves authentication **off** by default so you can try it quickly. For
-production, enable token auth when creating the endpoint and send
-`Authorization: Bearer <token>` — see
-[How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
+> **Auth.** The 1-click link **enables token authentication** — the create form opens with
+> Token auth selected and you generate the token there (it is never put in the URL). Every
+> call needs `Authorization: Bearer <token>`; set `TOKEN` below and the snippets add the
+> header. Without it the endpoint answers `401`. For a quick public test, set Authentication
+> to None (or drop `auth=true` from the link) and leave `AUTH` empty. See
+> [How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
 
 ```bash
 export BASE_URL='https://port8000-<id>.tunnel.applications.eu-north1.nebius.cloud'
+export TOKEN='<endpoint-auth-token>'               # from the console / CLI output
+AUTH=(-H "Authorization: Bearer $TOKEN")           # AUTH=() if the endpoint has no auth
 ```
 
 **First boot:** the 32.6 GiB repository is pulled from the Hub and vLLM compiles CUDA
@@ -47,7 +51,7 @@ graphs — expect ~15 minutes from create to first answer, during which the cons
 already shows RUNNING. Poll until the API answers:
 
 ```bash
-until curl -sf "$BASE_URL/v1/models" >/dev/null; do echo "waiting…"; sleep 15; done
+until curl -sf "${AUTH[@]}" "$BASE_URL/v1/models" >/dev/null; do echo "waiting…"; sleep 15; done
 ```
 
 The examples below use NVIDIA's public sample media from the
@@ -64,7 +68,7 @@ export ASSETS='https://raw.githubusercontent.com/nvidia/cosmos/main/cookbooks/co
 ### Image caption
 
 ```bash
-curl -sS -X POST "$BASE_URL/v1/chat/completions" -H "Content-Type: application/json" -d '{
+curl -sS -X POST "$BASE_URL/v1/chat/completions" "${AUTH[@]}" -H "Content-Type: application/json" -d '{
   "model": "nvidia/Cosmos3-Nano", "max_tokens": 512, "seed": 0,
   "temperature": 0.7, "top_p": 0.8, "top_k": 20, "presence_penalty": 1.5,
   "messages": [{"role": "user", "content": [
@@ -80,7 +84,7 @@ Videos use `video_url`. Frame sampling is set per request through `media_io_kwar
 media before the text in `content`.
 
 ```bash
-curl -sS -X POST "$BASE_URL/v1/chat/completions" -H "Content-Type: application/json" -d '{
+curl -sS -X POST "$BASE_URL/v1/chat/completions" "${AUTH[@]}" -H "Content-Type: application/json" -d '{
   "model": "nvidia/Cosmos3-Nano", "max_tokens": 512, "seed": 0,
   "temperature": 0.7, "top_p": 0.8, "top_k": 20, "presence_penalty": 1.5,
   "media_io_kwargs": {"video": {"num_frames": -1, "fps": 4}},
@@ -102,7 +106,7 @@ and places it into the cardboard box.
 ### Temporal localization (event timeline as JSON)
 
 ```bash
-curl -sS -X POST "$BASE_URL/v1/chat/completions" -H "Content-Type: application/json" -d '{
+curl -sS -X POST "$BASE_URL/v1/chat/completions" "${AUTH[@]}" -H "Content-Type: application/json" -d '{
   "model": "nvidia/Cosmos3-Nano", "max_tokens": 1024, "seed": 0,
   "temperature": 0.7, "top_p": 0.8, "top_k": 20, "presence_penalty": 1.5,
   "media_io_kwargs": {"video": {"num_frames": -1, "fps": 4}},
@@ -127,7 +131,7 @@ Append NVIDIA's reasoning instruction to turn chain-of-thought on, and switch to
 reasoning sampling values.
 
 ```bash
-curl -sS -X POST "$BASE_URL/v1/chat/completions" -H "Content-Type: application/json" -d '{
+curl -sS -X POST "$BASE_URL/v1/chat/completions" "${AUTH[@]}" -H "Content-Type: application/json" -d '{
   "model": "nvidia/Cosmos3-Nano", "max_tokens": 2048, "seed": 0,
   "temperature": 0.6, "top_p": 0.95, "top_k": 20, "presence_penalty": 0.0,
   "media_io_kwargs": {"video": {"num_frames": -1, "fps": 4}},
@@ -149,7 +153,7 @@ Robot Arm 2 places the USB to serial converter into the cardboard box on the lef
 Boxes come back in normalized `0–1000` coordinates, `[x1, y1, x2, y2]`, origin top-left.
 
 ```bash
-curl -sS -X POST "$BASE_URL/v1/chat/completions" -H "Content-Type: application/json" -d '{
+curl -sS -X POST "$BASE_URL/v1/chat/completions" "${AUTH[@]}" -H "Content-Type: application/json" -d '{
   "model": "nvidia/Cosmos3-Nano", "max_tokens": 256, "seed": 0,
   "temperature": 0.7, "top_p": 0.8, "top_k": 20, "presence_penalty": 1.5,
   "messages": [{"role": "user", "content": [
@@ -163,7 +167,7 @@ Observed answer: `[{"bbox_2d": [218, 145, 476, 707], "label": "load"}]`
 ### Physical plausibility
 
 ```bash
-curl -sS -X POST "$BASE_URL/v1/chat/completions" -H "Content-Type: application/json" -d '{
+curl -sS -X POST "$BASE_URL/v1/chat/completions" "${AUTH[@]}" -H "Content-Type: application/json" -d '{
   "model": "nvidia/Cosmos3-Nano", "max_tokens": 64, "seed": 0,
   "temperature": 0.7, "top_p": 0.8, "top_k": 20, "presence_penalty": 1.5,
   "media_io_kwargs": {"video": {"num_frames": -1, "fps": 4}},
@@ -224,11 +228,14 @@ nebius ai endpoint create \
   --container-port 8000 \
   --shm-size 16Gi \
   --disk-size 500Gi \
+  --auth token \
   --container-command vllm \
   --args "serve nvidia/Cosmos3-Nano --tensor-parallel-size 1 --mm-encoder-tp-mode data --async-scheduling --host 0.0.0.0 --port 8000"
 ```
 
-Add `--auth token` to have Nebius generate a bearer token (printed once at creation).
+`--auth token` without `--token` makes Nebius generate a bearer token and print it **once**
+(`Token: …`) — copy it into `TOKEN`; it is truncated in `endpoint get` and unrecoverable.
+Pass `--token <value>` to set your own, or `--token-secret <secret-version-id>` for CI.
 
 ### Other model sizes
 
