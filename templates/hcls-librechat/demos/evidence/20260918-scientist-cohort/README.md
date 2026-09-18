@@ -1,5 +1,13 @@
 # Ten-scientist live cohort — 18 September 2026
 
+> Historical R3–R11 baseline, not the current twelve-hour qualification result.
+> Its small bounded cases do not establish readiness for real scientific work.
+> The expanded campaign begun at 18:04 UTC uses ten distinct identities and
+> natural browser workflows plus larger API studies; failures, fixes and current
+> evidence are tracked in `../../QUALIFICATION_DEFECTS_20260918.md` and the Task
+> Deck scientific-qualification parent/child cards. Retain this baseline rather
+> than treating later successful tests as if the original gaps never occurred.
+
 This is a customer-shaped qualification of the Scientific AI Workbench, not a
 claim that ten published papers were reproduced. Every row used public or
 synthetic data and a live, caller-authorized platform App. A run is called a

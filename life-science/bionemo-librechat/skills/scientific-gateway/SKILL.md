@@ -92,15 +92,21 @@ output directory/idempotency key and resume it after a bounded wait. Inspect all
 promised output artifacts and scientific constraints; transport verification is
 not scientific validation.
 
-For sequential multi-App batch work use the packaged
+For sequential native, batch or mixed multi-App work use the packaged
 `/opt/scientific-client/bin/python /opt/bionemo/scientific-workflow.py --help`.
-It delegates to that same batch client and advances only after a verified
-terminal receipt. A short wait returning queued/running is not completion and
+It delegates to the existing clients and advances only after a verified
+terminal receipt and saved result. Native steps set `kind: native` and provide
+`id`, `model`, absolute `input` and `output` paths, and `idempotency_key`;
+`output` is the existing native receipt directory. Batch steps retain the
+existing batch-client fields. A short wait returning queued/running is not completion and
 must not trigger the next stage. The immutable plan and each step keep the
 original output directory and idempotency key; a known concurrency rejection
 waits visibly, while ambiguous admission or application failure stops for
 inspection. A long-running execution job can wait until terminal without tying
-up a chat turn; retain its execution ID. Do not change keys to evade a rejected
+up a chat turn; retain its execution ID. Run directly through the durable
+executor, not shell backgrounding/nohup or chmod on the Object Storage mount.
+Native speech calls consume concurrency too; do not submit them all in parallel
+when the caller policy allows only one active operation. Do not change keys to evade a rejected
 or unknown admission. Optional `/v1/me` describes caller policy, not real-time
 reserved capacity.
 

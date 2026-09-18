@@ -108,7 +108,39 @@ def contacts(residue_groups, cutoff):
     return found
 
 
-def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0):
+def explicit_pairs(document, reference_text, prediction_text, reference, prediction, chain_map):
+    """Use supplied design provenance, never silently equate residue positions."""
+    if (document.get('schema') != 'scientific-residue-correspondence/v1'
+            or not isinstance(document.get('description'), str) or not document['description'].strip()
+            or not isinstance(document.get('pairs'), list)):
+        raise ValueError('Explicit correspondence needs its versioned schema, description and residue pairs.')
+    for field, text in [('reference_sha256', reference_text), ('prediction_sha256', prediction_text)]:
+        if document.get(field) != hashlib.sha256(text.encode()).hexdigest():
+            raise ValueError('Explicit correspondence ' + field + ' does not match this structure.')
+    grouped = {tuple(pair): [] for pair in chain_map}
+    seen_ref, seen_pred = set(), set()
+    for pair in document['pairs']:
+        ref_id, pred_id = pair['reference_chain'], pair['prediction_chain']
+        key = (ref_id, pred_id)
+        if key not in grouped:
+            raise ValueError('Explicit correspondence references an unselected chain pair.')
+        ref_residue, pred_residue = tuple(pair['reference_residue']), tuple(pair['prediction_residue'])
+        ref_key, pred_key = (ref_id, ref_residue), (pred_id, pred_residue)
+        if ref_key in seen_ref or pred_key in seen_pred:
+            raise ValueError('Explicit residue correspondence must be one-to-one.')
+        ref_index = {r.id: i for i, r in enumerate(reference[ref_id])}
+        pred_index = {r.id: i for i, r in enumerate(prediction[pred_id])}
+        if ref_residue not in ref_index or pred_residue not in pred_index:
+            raise ValueError('Explicit correspondence contains an absent C-alpha residue.')
+        seen_ref.add(ref_key)
+        seen_pred.add(pred_key)
+        grouped[key].append((ref_index[ref_residue], pred_index[pred_residue]))
+    if any(len(pairs) < 3 for pairs in grouped.values()):
+        raise ValueError('Every mapped chain needs at least three explicit residue pairs.')
+    return grouped
+
+
+def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0, residue_correspondence=None):
     reference, prediction = load_structure(reference_text), load_structure(prediction_text)
     if not chain_map:
         if len(reference) != 1 or len(prediction) != 1:
@@ -116,18 +148,25 @@ def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0):
         chain_map = [(next(iter(reference)), next(iter(prediction)))]
     if len({a for a, _ in chain_map}) != len(chain_map) or len({b for _, b in chain_map}) != len(chain_map):
         raise ValueError('Chain mapping must be one-to-one.')
+    if any(a not in reference or b not in prediction for a, b in chain_map):
+        raise ValueError('Absent chain mapping; inspect structure chains first.')
+    explicit = explicit_pairs(residue_correspondence, reference_text, prediction_text,
+                              reference, prediction, chain_map) if residue_correspondence is not None else None
     mapped_ref, mapped_pred, reports, residue_mapping = [], [], [], []
     for ref_id, pred_id in chain_map:
         if ref_id not in reference or pred_id not in prediction:
             raise ValueError(f'Absent chain mapping {ref_id}:{pred_id}; inspect structure chains first.')
         ref, pred = reference[ref_id], prediction[pred_id]
-        pairs = matched(ref, pred)
+        pairs = explicit[(ref_id, pred_id)] if explicit is not None else matched(ref, pred)
+        identical = sum(sequence([ref[i]]) == sequence([pred[j]]) and sequence([ref[i]]) != 'X'
+                        for i, j in pairs)
         ref_selected, pred_selected = [ref[i] for i, _ in pairs], [pred[j] for _, j in pairs]
         mapped_ref.append(ref_selected)
         mapped_pred.append(pred_selected)
         reports.append({'reference_chain': ref_id, 'prediction_chain': pred_id,
                         'reference_observed_residues': len(ref), 'prediction_observed_residues': len(pred),
-                        'matched_identical_residues': len(pairs), 'reference_coverage': len(pairs) / len(ref),
+                        'mapped_residues': len(pairs), 'matched_identical_residues': identical,
+                        'reference_coverage': len(pairs) / len(ref),
                         'prediction_coverage': len(pairs) / len(pred),
                         'independently_fitted_ca_rmsd_angstrom': rmsd([r['CA'] for r in ref_selected], [r['CA'] for r in pred_selected])})
         residue_mapping.extend({'reference_chain': ref_id, 'prediction_chain': pred_id,
@@ -136,7 +175,11 @@ def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0):
     ref_atoms = [r['CA'] for group in mapped_ref for r in group]
     pred_atoms = [r['CA'] for group in mapped_pred for r in group]
     metrics = {'chains': reports, 'global_ca_rmsd_angstrom': rmsd(ref_atoms, pred_atoms),
-               'matched_identical_residues': len(ref_atoms), 'reference_protein_chains': list(reference),
+               'mapped_residues': len(ref_atoms),
+               'matched_identical_residues': sum(r['matched_identical_residues'] for r in reports),
+               'correspondence_method': 'explicit-provenance' if explicit is not None else 'identical-sequence-alignment',
+               'correspondence_description': residue_correspondence['description'] if explicit is not None else None,
+               'reference_protein_chains': list(reference),
                'prediction_protein_chains': list(prediction), 'chain_mapping': chain_map,
                'excluded_reference_chains': [c for c in reference if c not in dict(chain_map)],
                'excluded_prediction_chains': [c for c in prediction if c not in dict((b, a) for a, b in chain_map)]}
@@ -161,6 +204,8 @@ def main():
     parser.add_argument('--result', type=Path, help='Raw platform JSON result containing coordinates.')
     parser.add_argument('--structure-index', type=int, default=0)
     parser.add_argument('--chain-map', nargs='+', help='Explicit reference:prediction chain IDs, e.g. A:A D:B.')
+    parser.add_argument('--residue-map', type=Path,
+                        help='Versioned explicit correspondence JSON with description, structure hashes and residue pairs; needed for sequence-redesigned backbone comparisons.')
     parser.add_argument('--output-dir', type=Path)
     parser.add_argument('--inspect', action='store_true', help='Print observed reference chains/sequences without inference.')
     args = parser.parse_args()
@@ -182,23 +227,32 @@ def main():
     chain_map = [tuple(item.split(':')) for item in args.chain_map] if args.chain_map else None
     if chain_map and any(len(pair) != 2 for pair in chain_map):
         parser.error('Use REF:PRED chain mappings.')
-    metrics, mapping = compare(reference_text, prediction_text, chain_map)
+    correspondence = json.loads(args.residue_map.read_text()) if args.residue_map else None
+    metrics, mapping = compare(reference_text, prediction_text, chain_map, residue_correspondence=correspondence)
     metrics['model_confidence_not_reference_agreement'] = confidence_fields(result)
     metrics['provenance'] = {'reference_file': str(args.reference),
                              'reference_sha256': hashlib.sha256(reference_text.encode()).hexdigest(),
                              'prediction_sha256': hashlib.sha256(prediction_text.encode()).hexdigest(),
                              'result_file': str(args.result) if args.result else None,
+                             'residue_map_file': str(args.residue_map) if args.residue_map else None,
+                             'residue_map_sha256': hashlib.sha256(args.residue_map.read_bytes()).hexdigest() if args.residue_map else None,
                              'biopython_version': Bio.__version__, 'numpy_version': np.__version__}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for filename, data in [('metrics.json', metrics), ('residue-mapping.json', mapping)]:
         (args.output_dir / filename).write_text(json.dumps(data, indent=2, allow_nan=False) + '\n')
     suffix = 'cif' if prediction_text.lstrip().startswith('data_') else 'pdb'
     (args.output_dir / ('prediction.' + suffix)).write_text(prediction_text)
+    correspondence_method = (
+        'Explicit provenance-backed residue correspondence from the supplied versioned JSON; both structure hashes '
+        'are verified and all one-to-one residue identifiers must exist. Sequence identity is counted separately '
+        'from mapped positions. This does not prove the supplied scientific correspondence is correct. '
+        if correspondence is not None else
+        'Global pairwise sequence alignment: match 2, mismatch -1, gap-open -3, gap-extend -0.2; '
+        'first optimal alignment, identical non-X residues only. ')
     (args.output_dir / 'methods.md').write_text(
         '# Structural comparison method\n\n'
         'First coordinate model; explicit chain mapping (not an automatic biological assembly decision). '
-        'Observed standard amino acids and MSE with C-alpha atoms only. Global pairwise sequence alignment: '
-        'match 2, mismatch -1, gap-open -3, gap-extend -0.2; first optimal alignment, identical non-X residues only. '
+        'Observed standard amino acids and MSE with C-alpha atoms only. ' + correspondence_method +
         'Coverage and full residue mapping are saved. Biopython Superimposer least-squares proper-rotation '
         'C-alpha RMSD is reported in angstroms. Per-chain fits are independent; the global fit uses all mapped chains. '
         'Interface contacts use any non-hydrogen atoms within 5 angstroms among mapped residues of distinct selected '
