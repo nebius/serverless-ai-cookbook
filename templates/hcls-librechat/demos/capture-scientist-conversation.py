@@ -44,7 +44,6 @@ def main():
                               'workshop-runs': '/api/scientific-demos/workshop/runs'})
         for name, path in endpoints.items():
             response = client.get(path)
-            response.raise_for_status()
             try:
                 value = response.json()
             except ValueError:
@@ -54,7 +53,9 @@ def main():
             with target.open("w") as stream:
                 json.dump(value, stream, indent=2)
                 stream.write("\n")
-            summary["files"][name] = {"bytes": target.stat().st_size}
+            # A temporarily unavailable Runs API must not prevent independent
+            # evidence capture from the still-available workspace or chat API.
+            summary["files"][name] = {"bytes": target.stat().st_size, 'http_status': response.status_code}
         for relative in args.workspace_file:
             if Path(relative).is_absolute() or '..' in Path(relative).parts:
                 raise ValueError('Use workspace-relative deliverable paths.')
