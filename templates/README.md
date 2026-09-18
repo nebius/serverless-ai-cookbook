@@ -28,8 +28,8 @@ Templates are quick-start configurations to help you serve models and run jobs i
 <tbody>
 <tr>
   <td width="220" valign="middle">🧬&nbsp;<a href="endpoint-bioir-boltz2/README.md"><strong>BioIR: Boltz-2</strong></a></td>
-  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fbionemo-inference-runtime-boltz2%3A0.1.0&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;auth=true&amp;env=BIOIR_RELEASE%3Dlatest"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">A token-protected one-GPU tutorial that wraps NVIDIA BioNeMo Inference Runtime’s public Boltz-2 quickstart; the public launcher downloads the selected BioIR release and public assets at cold start.</td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb26%40sha256%3A98cd41bcc0a6eed1dcd106a59cc74c58a35e711138ad4ad06d482271da914668&amp;targetPort=8888&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;command=%2Fusr%2Flocal%2Fbin%2Fbioir-notebook&amp;env=JUPYTER_PASSWORD%3Dbionemo-demo"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">A password-protected L40S notebook with BioIR 0.1.0 baked in. <strong>Change JUPYTER_PASSWORD before creating the endpoint.</strong> Model assets download on first prediction.</td>
 </tr>
 </tbody>
 </table>

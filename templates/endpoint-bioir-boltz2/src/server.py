@@ -113,7 +113,7 @@ class BioIRRuntime:
                     Polymer(
                         chain_id=["A1"],
                         sequence=WARMUP_SEQUENCE,
-                        msas=[MSARecord(content=f">warmup\\n{WARMUP_SEQUENCE}\\n")],
+                        msas=[MSARecord(content=f">warmup\n{WARMUP_SEQUENCE}\n")],
                     )
                 ],
             )
@@ -168,7 +168,7 @@ class BioIRRuntime:
 
     def predict(self, request: FoldRequest, request_id: str) -> FoldResponse:
         started = time.monotonic()
-        msa = request.msa_a3m or f">query\\n{request.sequence}\\n"
+        msa = request.msa_a3m or f">query\n{request.sequence}\n"
         cif, scores, model_time = self._run(self._make_request(request_id, request.sequence, msa), request_id)
         return FoldResponse(
             request_id=request_id,

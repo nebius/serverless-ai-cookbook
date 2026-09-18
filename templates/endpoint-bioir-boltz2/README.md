@@ -10,9 +10,13 @@ difficulty: advanced
 
 # BioNeMo Inference Runtime: Boltz-2 tutorial
 
+**Before creating the endpoint, replace the prefilled `JUPYTER_PASSWORD=bionemo-demo`
+with your own strong password in the form. Anyone who knows the published demo
+password can access the public notebook and run code on its GPU.**
+
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fbionemo-inference-runtime-boltz2%3A0.2.0&amp;targetPort=8888&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;command=%2Fusr%2Flocal%2Fbin%2Fbioir-notebook&amp;env=JUPYTER_PASSWORD%3Dbionemo-demo"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb26%40sha256%3A98cd41bcc0a6eed1dcd106a59cc74c58a35e711138ad4ad06d482271da914668&amp;targetPort=8888&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=false&amp;command=%2Fusr%2Flocal%2Fbin%2Fbioir-notebook&amp;env=JUPYTER_PASSWORD%3Dbionemo-demo"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -26,23 +30,22 @@ BioNeMo Inference Runtime (BIR) is NVIDIA's Python inference-acceleration librar
 
 Click **Create Endpoint** above and create the endpoint. It launches JupyterLab
 on port `8888`, with the tutorial already at
-`notebooks/bir_boltz2_tutorial.ipynb`. The launcher image contains only the
-notebook, the optional FastAPI adapter, and a bootstrapper. Its `entrypoint.sh`
-installs NVIDIA's public BIR package at first start; BIR then retrieves the
-public Boltz-2 assets when the notebook builds the processor. The image contains
-no NVIDIA early-access image, wheel, model weights, NGC credential, or Hugging
-Face credential.
+`notebooks/bir_boltz2_tutorial.ipynb`. The image includes the public `bionemo-ir==0.1.0` release, Python 3.12,
+JupyterLab, and the optional FastAPI adapter. Dependencies are installed at image
+build time. The first prediction retrieves the public Boltz-2 assets. No NGC or
+Hugging Face credential is required.
 
-The published launcher is
-`cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/bionemo-inference-runtime-boltz2@sha256:c5499058a5e0c94712ed427ded910b422e233f0efddea1b37e5d4278f057c8fe`.
+Use NVIDIA driver 580 or newer, as required by the
+[released BioIR installation guide](https://docs.nvidia.com/bionemo/inference-runtime/install/).
+
+The published image is
+`cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb26@sha256:98cd41bcc0a6eed1dcd106a59cc74c58a35e711138ad4ad06d482271da914668`.
 
 The deployment form is prefilled for port `8888`, one L40S, 500 GiB of disk,
-and `JUPYTER_PASSWORD=bionemo-demo`. Open the port-`8888` public endpoint URL
-from the Console, enter `bionemo-demo`, then open
-`notebooks/bir_boltz2_tutorial.ipynb`. Replace that value in the form before
-creation if the endpoint will be exposed beyond a disposable tutorial. Cold
-start includes package installation and model assets; the model download begins
-at the processor-build cell, not when Jupyter opens. The L40S is in BIR's
+and a `JUPYTER_PASSWORD` field. **Change its prefilled `bionemo-demo` value
+before clicking Create.** Open the port-`8888` public endpoint URL, enter your
+chosen password, then open `notebooks/bir_boltz2_tutorial.ipynb`.
+Cold start pulls the image; the first processor-build cell downloads model assets. The L40S is in BIR's
 released support matrix; choose a different compatible platform and preset if
 that better suits your project.
 
@@ -61,9 +64,8 @@ copy the gated early-access notebook or any of its model-specific examples.
 
 ## Open the tutorial notebook
 
-1. Create the one-click endpoint and wait for it to become `RUNNING`.
-2. The one-click form sets `JUPYTER_PASSWORD=bionemo-demo`. Change it before
-   creation if needed.
+1. Open the one-click form and change `JUPYTER_PASSWORD` to your own strong password.
+2. Create the endpoint and wait for it to become `RUNNING`.
 3. In the Console, open the public port-`8888` endpoint URL, enter that
    password, then open `notebooks/bir_boltz2_tutorial.ipynb`.
 4. Run the cells in order. The processor-build cell is the first one that
@@ -73,6 +75,9 @@ The notebook starts with the BIR imports and shows the exact `InputRequest`,
 `Polymer`, `MSARecord`, `EngineProcessorConfig`, and `build_processor` calls.
 It then runs a query-only example and reads its mmCIF and score fields. That is
 the teaching path; the HTTP service below is a companion deployment pattern.
+The prediction cell uses `await asyncio.to_thread(...)` because BioIR's
+synchronous processor manages an event loop of its own, while Jupyter already
+has an active event loop.
 
 ## Optional HTTP service
 
@@ -139,12 +144,12 @@ export AUTH_TOKEN="$TOKEN"
 scripts/smoke-test.sh
 ```
 
-## Choose and pin a BIR release
+## Pinned BIR release
 
-The template installs the public `bionemo-ir` distribution without a version
-pin so that it works at launch. For repeatable work, set `BIOIR_VERSION` in the
-endpoint environment to the published version before creating the endpoint.
-`BIOIR_WHEEL_URL` is an advanced override for a specific official public wheel.
+This image contains `bionemo-ir==0.1.0`; startup never installs or upgrades it.
+`BIOIR_VERSION=0.1.0` verifies the baked version. Changing releases requires an
+image rebuild and GPU validation, not an environment-variable update. Exact
+Python dependency versions are recorded in `requirements.lock.txt`.
 
 The package release and the public model assets are separate provenance
 decisions. Record the selected release, endpoint image digest, asset revision,
@@ -152,15 +157,14 @@ GPU type, and warmup/inference measurements with scientific results. NVIDIA's
 [model-weights reference](https://docs.nvidia.com/bionemo/inference-runtime/references/model-weights/)
 describes the upstream weight sources and their terms.
 
-## Build or mirror the launcher yourself
+## Build or mirror the image yourself
 
-The prebuilt launcher is intentionally thin. Build it in your own public
-registry if you need a different base-image policy or release process. This
-does not copy BioIR or Boltz-2 into the image.
+Build the pinned public runtime in your own registry. The Dockerfile installs
+BioIR and its dependencies; model weights remain a first-prediction download.
 
 ```bash
 cd templates/endpoint-bioir-boltz2
-export IMAGE_TAG='registry.example.org/your-team/bioir-boltz2-serverless:0.1.0'
+export IMAGE_TAG='registry.example.org/your-team/bioir-boltz2-serverless:0.3.0'
 scripts/build-image.sh
 ```
 
@@ -171,15 +175,20 @@ manual helper below, or replace the prefilled image in the Console form.
 
 ## CLI alternative
 
-The Console button is the simplest route because it creates an endpoint token.
-For a scripted deployment, first create a MysteryBox secret with an
-`AUTH_TOKEN` payload key, then use a public image reference already pinned to a
-digest:
+The Console button launches the password-protected notebook. The helper below
+launches the optional token-protected HTTP service on port 8000. For that service, first create a MysteryBox secret with an
+`AUTH_TOKEN` payload key, then use the digest-pinned public image. CLI 0.12.206 rejects endpoint image
+references longer than 64 characters when creating its VM label. Set
+`DEPLOY_IMAGE_REFERENCE` to the short alias below; the helper uses
+[crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane) to
+verify that alias against `IMAGE_REFERENCE` before deployment. Omit the alias
+on a CLI/service version that accepts digest references:
 
 ```bash
 export PARENT_ID='project-...'
 export SUBNET_ID='vpcsubnet-...'
-export IMAGE_REFERENCE='registry.example.org/your-team/bioir-boltz2-serverless@sha256:<digest>'
+export IMAGE_REFERENCE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb26@sha256:98cd41bcc0a6eed1dcd106a59cc74c58a35e711138ad4ad06d482271da914668'
+export DEPLOY_IMAGE_REFERENCE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb26:r0918b'
 export AUTH_TOKEN_SECRET='<your-MysteryBox-selector>'
 
 scripts/deploy-endpoint.sh
@@ -187,16 +196,18 @@ scripts/deploy-endpoint.sh
 
 <!-- /factory:cli -->
 
+See [validation results](./VALIDATION.md) for the tested image and GPU checks.
+
 ## Troubleshooting
 
 - **Jupyter shows a password prompt** — use the `JUPYTER_PASSWORD` shown in
-  the endpoint environment. The one-click form defaults it to `bionemo-demo`.
+  the endpoint environment. Change the form's published demo password before
+  creation.
   A manual deployment that omits the variable emits a generated value once in
   the endpoint logs.
-- **BIR installation fails at boot** — NVIDIA's public package has not yet
-  been published, or the selected `BIOIR_VERSION` is unavailable. Set
-  `BIOIR_WHEEL_URL` only to an official public wheel if a specific wheel is
-  required.
+- **BIR version mismatch at boot** — use `BIOIR_VERSION=0.1.0` with this image.
+  Build and validate another image to change the installed release.
+- **CUDA initialization fails** — confirm the worker has NVIDIA driver 580 or newer.
 - **`RUNNING` but `/readyz` returns `503`** — applies to the optional HTTP
   service while it downloads assets and warms the processor. Check logs; a
   successful response has `{"status":"ready"}`.

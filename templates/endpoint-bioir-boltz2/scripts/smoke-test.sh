@@ -33,5 +33,5 @@ response="$(curl --config "$config_file" \
   --header 'Content-Type: application/json' \
   --data '{"sequence":"ACKIENIKYKGKEVESKLGSQLIDIFNDLDRAKEEYDKLSSPEFIAKFGDWINDEVERNVNEDGEPLLIQDVRQDSSKHYFFILKNGERFDLLTR"}' \
   "${base_url}/v1/fold")"
-printf '%s' "$response" | jq -e '.model == "boltz-2" and (.cif | startswith("data_")) and (.scores | type == "object")' >/dev/null
-printf '%s\n' "$response" | jq '{request_id, model, model_inference_time_seconds, total_time_seconds, score_keys: (.scores | keys)}'
+printf '%s' "$response" | jq -e '.model == "boltz-2" and (.cif | startswith("data_")) and (.cif | length > 1000) and (.scores | type == "object") and (.scores | length > 0)' >/dev/null
+printf '%s\n' "$response" | jq '{request_id, model, model_inference_time_seconds, total_time_seconds, score_keys: (.scores | keys), cif_bytes: (.cif | length)}'
