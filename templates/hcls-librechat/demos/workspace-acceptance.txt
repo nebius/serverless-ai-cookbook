@@ -1,1 +1,1 @@
-scientific-ai-workbench-v2 acceptance 2026-09-18 r4
+scientific-ai-workbench-v2 acceptance 2026-09-18 r6

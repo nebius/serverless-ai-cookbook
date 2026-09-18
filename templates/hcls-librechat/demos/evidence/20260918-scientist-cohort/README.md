@@ -14,10 +14,12 @@ contains no credentials or customer data.
 
 ## Release under test
 
-- Workbench source: commits `9eb47da` and `7a76421` on
+- Workbench source: commits `9eb47da`, `7a76421` and `46a577d` on
   `agent/scientific-ai-workbench-v2-20260918`.
-- R3 exercised the complete clinical and MindEval workers. R4 changes only the
-  authenticated Workspace download path and its browser acceptance.
+- R3 exercised the complete clinical and MindEval workers. R4 corrected the
+  authenticated Workspace download path. R5 introduced artifact-backed JSON
+  result resolution; R6 aligns it with the production direct-result envelope,
+  verifies artifacts, and summarizes large fields.
 - The live catalog exposed 32 authorized Apps and the MCP process loaded 61
   typed scientific tools.
 - All native and batch submissions used stable idempotency keys. Artifact-backed
@@ -64,6 +66,15 @@ contains no credentials or customer data.
    reattached safely, but the ten operations had to be added to the Workbench
    history explicitly. Caller-scoped server history should populate Runs
    automatically, including stage timings and evaluation artifacts.
+6. **The chat agent must inspect output, not infer it from input schema.** The
+   first R4 conversation saw only an operation-artifact pointer and incorrectly
+   treated missing inline fields as missing model output. R5 makes the
+   Workbench result tool fetch bounded JSON with the caller key, verify byte
+   count and SHA-256, then compact arrays/coordinates while retaining scalar
+   metrics. The environment-execution tools are also explicitly attached to
+   the seeded agent rather than merely configuring their MCP server. R6 also
+   exercises the production API's direct result envelope rather than relying
+   on the older wrapped fixture shape.
 
 ## Product assessment
 

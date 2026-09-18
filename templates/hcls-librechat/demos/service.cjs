@@ -104,23 +104,32 @@ function summarizeResult(value, depth = 0) {
 
 async function operationResult(key, operationId) {
   if (!RUN_ID.test(operationId || '')) throw failure('Supply a valid operation ID.');
-  const envelope = await platform(key, 'GET', `/v1/operations/${operationId}/result`);
-  if (envelope.operation?.id !== operationId) throw failure('Platform returned a mismatched operation result.', 502);
-  const result = envelope.result;
-  if (result?.schema !== 'fs2-serve.nebius.ai/operation-artifact-result/v1') return envelope;
+  // The production API returns the result body directly. Older gateways and the
+  // local fixture wrap it in { operation, result }, so accept both shapes while
+  // independently binding the response to the requested operation identity.
+  const [operationEnvelope, resultEnvelope] = await Promise.all([
+    platform(key, 'GET', `/v1/operations/${operationId}`),
+    platform(key, 'GET', `/v1/operations/${operationId}/result`),
+  ]);
+  const operation = operationEnvelope.operation || operationEnvelope;
+  if (operation?.id !== operationId || (resultEnvelope.operation && resultEnvelope.operation.id !== operationId)) {
+    throw failure('Platform returned a mismatched operation result.', 502);
+  }
+  const result = resultEnvelope.result || resultEnvelope;
+  if (result?.schema !== 'fs2-serve.nebius.ai/operation-artifact-result/v1') return { operation, result };
   const artifact = result.artifact || {};
   if (result.content_type !== 'application/json' || artifact.compression !== 'none'
       || !RUN_ID.test(artifact.artifact_id || '') || !Number.isInteger(artifact.size_bytes)
       || artifact.size_bytes < 0 || artifact.size_bytes > 8 * 1024 * 1024
       || !/^[a-f0-9]{64}$/.test(artifact.sha256 || '')) {
-    return { ...envelope, result: { ...result, resolution: 'Download in Runs; this artifact is not bounded JSON.' } };
+    return { operation, result: { ...result, resolution: 'Download in Runs; this artifact is not bounded JSON.' } };
   }
   const bytes = await platformBytes(key, `/v1/artifacts/${artifact.artifact_id}/content`);
   if (bytes.length !== artifact.size_bytes || hash(bytes) !== artifact.sha256) throw failure('Result artifact failed size or SHA-256 verification.', 502);
   let parsed;
   try { parsed = JSON.parse(bytes.toString('utf8')); }
   catch { throw failure('Result artifact was declared as JSON but could not be decoded.', 502); }
-  return { operation: envelope.operation, result: {
+  return { operation, result: {
     schema: 'fs2-serve.nebius.ai/resolved-operation-result/v1', content_type: result.content_type,
     source_artifact: artifact, summary: summarizeResult(parsed),
     resolution: 'Downloaded with caller credentials; size and SHA-256 verified; large arrays and strings summarized.',

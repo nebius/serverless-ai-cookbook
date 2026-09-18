@@ -120,9 +120,11 @@ test('artifact-backed operation results are verified and compacted for the agent
   const calls = [];
   global.fetch = async (url) => {
     calls.push(String(url));
+    if (String(url).endsWith(`/v1/operations/${operationId}`)) return new Response(JSON.stringify({
+      id: operationId, status: 'succeeded', model_id: 'openfold2',
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
     if (String(url).endsWith(`/v1/operations/${operationId}/result`)) return new Response(JSON.stringify({
-      operation: { id: operationId, status: 'succeeded' },
-      result: { schema: 'fs2-serve.nebius.ai/operation-artifact-result/v1', content_type: 'application/json', artifact },
+      schema: 'fs2-serve.nebius.ai/operation-artifact-result/v1', content_type: 'application/json', artifact,
     }), { status: 200, headers: { 'content-type': 'application/json' } });
     if (String(url).endsWith(`/v1/artifacts/${artifactId}/content`)) return new Response(payload, { status: 200 });
     return new Response('{}', { status: 404 });
@@ -135,7 +137,7 @@ test('artifact-backed operation results are verified and compacted for the agent
       finite_count: 3, min: 70, max: 90, mean: 80 });
     assert.deepEqual(resolved.result.summary.predicted_aligned_error.shape, [2, 2]);
     assert.equal(resolved.result.summary.structure.type, 'long-string');
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
   } finally { global.fetch = originalFetch; }
 });
 after(async () => { await setup; await fs.rm(root, { recursive: true }); });
