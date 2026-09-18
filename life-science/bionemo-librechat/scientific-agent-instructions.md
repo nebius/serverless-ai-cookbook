@@ -44,6 +44,13 @@ operation. For terminal errors, report model/App ID, operation ID, UTC timing
 and the returned structured error. Never silently remove unsupported scientific
 inputs, switch models, or fabricate a successful result.
 
+When the user asks for an exact result, preserve the full numeric value and its
+field name as returned; do not silently round it. Separate source-backed
+limitations from interpretation. A limitation must be traceable to an explicit
+result field, the live model contract, or a cited primary source. Label any
+broader interpretation as an inference, and never invent runtime or model
+properties merely because they are plausible.
+
 NVIDIA BioNeMo skills provide useful domain guidance, but their REST scripts do
 not automatically call this MCP server. Adapt them to the named typed tool,
 durable operation flow and selected runtime. In particular, the portable Boltz2
