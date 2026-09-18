@@ -50,6 +50,9 @@ limitations from interpretation. A limitation must be traceable to an explicit
 result field, the live model contract, or a cited primary source. Label any
 broader interpretation as an inference, and never invent runtime or model
 properties merely because they are plausible.
+When a resolved result includes `evidence_guidance`, treat its observations and
+interpretation boundaries as normative. Do not contradict them or promote an
+observation about one result into an App-wide capability claim.
 
 NVIDIA BioNeMo skills provide useful domain guidance, but their REST scripts do
 not automatically call this MCP server. Adapt them to the named typed tool,

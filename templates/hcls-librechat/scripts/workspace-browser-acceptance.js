@@ -2,8 +2,8 @@
 // playwright-cli -s=<session> run-code --filename templates/hcls-librechat/scripts/workspace-browser-acceptance.js
 // Verifies that a browser upload can be read back byte-for-byte from the mounted workspace.
 async (page) => {
-  const content = 'scientific-ai-workbench-v2 acceptance 2026-09-18 r6\n';
-  const objectPath = 'acceptance/workbench-v2-r6-acceptance.txt';
+  const content = 'scientific-ai-workbench-v2 acceptance 2026-09-18 r9\n';
+  const objectPath = 'acceptance/workbench-v2-r9-acceptance.txt';
   await page.setViewportSize({ width: 1440, height: 1000 });
   const origin = await page.evaluate(() => location.origin);
   await page.goto(`${origin}/demos?tab=workspace`);

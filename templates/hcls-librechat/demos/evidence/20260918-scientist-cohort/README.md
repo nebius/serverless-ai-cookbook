@@ -14,12 +14,13 @@ contains no credentials or customer data.
 
 ## Release under test
 
-- Workbench source: commits `9eb47da`, `7a76421` and `46a577d` on
+- Workbench source: through commit `1e366e7` on
   `agent/scientific-ai-workbench-v2-20260918`.
 - R3 exercised the complete clinical and MindEval workers. R4 corrected the
   authenticated Workspace download path. R5 introduced artifact-backed JSON
-  result resolution; R6 aligns it with the production direct-result envelope,
-  verifies artifacts, and summarizes large fields.
+  result resolution; R6 aligned it with the production direct-result envelope.
+  R8 pinned the existing agent to a chat/tool-call-qualified model, R9 preserved
+  exact returned precision, and R10 added result-level evidence boundaries.
 - The live catalog exposed 32 authorized Apps and the MCP process loaded 61
   typed scientific tools.
 - All native and batch submissions used stable idempotency keys. Artifact-backed
@@ -80,6 +81,12 @@ contains no credentials or customer data.
    with a provider-unavailable response. The default is now
    `Qwen/Qwen3-30B-A3B-Instruct-2507`, qualified with both a real chat
    completion and a real function-tool-call response before deployment.
+8. **A verified value can still be over-interpreted by an agent.** R9 copied the
+   requested confidence, pTM and inference values exactly, but initially turned
+   observations about one result into App-wide limitations. R10 therefore
+   emits machine-readable evidence observations and interpretation boundaries:
+   absent fields are not unsupported capabilities, the outer JSON artifact
+   size is not a nested PDB size, and confidence is not validation.
 
 ## Product assessment
 

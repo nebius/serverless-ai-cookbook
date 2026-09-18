@@ -102,6 +102,35 @@ function summarizeResult(value, depth = 0) {
   return String(value);
 }
 
+function evidenceGuidance(value, summary, artifact) {
+  const observations = [
+    `The complete JSON result artifact was verified at ${artifact.size_bytes} bytes with SHA-256 ${artifact.sha256}.`,
+  ];
+  const structures = Array.isArray(value?.structures_in_ranked_order) ? value.structures_in_ranked_order : [];
+  if (structures.length) {
+    observations.push(`${structures.length} structure record(s) are present in this result; this does not define the App's maximum output count.`);
+    const first = structures[0];
+    if (typeof first.relaxed === 'boolean') observations.push(`The first structure's explicit relaxed field is ${first.relaxed}.`);
+    if (typeof first.runtime_origin === 'string') observations.push(`The first structure's runtime_origin is ${first.runtime_origin}; the label alone does not describe supported inputs.`);
+    if (summary?.structures_in_ranked_order?.[0]?.predicted_aligned_error?.type === 'numeric-matrix') {
+      observations.push('The full predicted_aligned_error matrix remains in the verified JSON artifact; chat receives only its numeric summary.');
+    }
+    if (summary?.structures_in_ranked_order?.[0]?.structure?.type === 'long-string') {
+      observations.push('The structure text remains in the verified JSON artifact; chat receives a hash, length and preview rather than the complete coordinate string.');
+    }
+  }
+  return {
+    observations,
+    interpretation_boundaries: [
+      'Do not infer unsupported inputs, modalities, chain counts, ligands, batching or output cardinality from fields absent in one result.',
+      'source_artifact.size_bytes is the complete result JSON artifact size, not the size of a nested PDB, SDF, image or other scientific object.',
+      'Do not claim a separate downloadable nested artifact unless an explicit artifact reference is present.',
+      'Confidence and scoring fields are model outputs, not experimental or clinical validation.',
+      'For App-wide capabilities or constraints, consult the live model schema or an identified primary source.',
+    ],
+  };
+}
+
 async function operationResult(key, operationId) {
   if (!RUN_ID.test(operationId || '')) throw failure('Supply a valid operation ID.');
   // The production API returns the result body directly. Older gateways and the
@@ -132,9 +161,10 @@ async function operationResult(key, operationId) {
   let parsed;
   try { parsed = JSON.parse(bytes.toString('utf8')); }
   catch { throw failure('Result artifact was declared as JSON but could not be decoded.', 502); }
+  const summary = summarizeResult(parsed);
   return { operation, result: {
     schema: 'fs2-serve.nebius.ai/resolved-operation-result/v1', content_type: result.content_type,
-    source_artifact: artifact, summary: summarizeResult(parsed),
+    source_artifact: artifact, summary, evidence_guidance: evidenceGuidance(parsed, summary, artifact),
     resolution: 'Downloaded with caller credentials; size and SHA-256 verified; large arrays and strings summarized.',
   } };
 }

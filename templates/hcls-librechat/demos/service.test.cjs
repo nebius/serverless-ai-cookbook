@@ -137,6 +137,9 @@ test('artifact-backed operation results are verified and compacted for the agent
       finite_count: 3, min: 70, max: 90, mean: 80 });
     assert.deepEqual(resolved.result.summary.predicted_aligned_error.shape, [2, 2]);
     assert.equal(resolved.result.summary.structure.type, 'long-string');
+    assert.match(resolved.result.evidence_guidance.observations[0], /verified/);
+    assert.ok(resolved.result.evidence_guidance.interpretation_boundaries.some((item) => item.includes('absent')));
+    assert.ok(resolved.result.evidence_guidance.interpretation_boundaries.some((item) => item.includes('result JSON artifact size')));
     assert.equal(calls.length, 3);
   } finally { global.fetch = originalFetch; }
 });
