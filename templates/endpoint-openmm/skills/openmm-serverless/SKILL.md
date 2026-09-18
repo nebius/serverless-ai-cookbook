@@ -52,7 +52,7 @@ runs rather than resubmitting. `cancel_run` can cancel only a queued run.
 
 Confirm CUDA was selected and report the run ID, terminal state, ensemble,
 integrator, precision, particle count, steps, simulated time, OpenMM version,
-NVIDIA runtime tag/digest, GPU, wall time, `integration_ns_per_day`, energies,
+endpoint image digest, GPU, wall time, `integration_ns_per_day`, energies,
 and artifact hashes. State that the result is a synthetic research workload and
 does not establish scientific validity for another system.
 

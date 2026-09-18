@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -9,38 +10,22 @@ from app import OpenMMAdapter
 from openmm_worker import bounded_float, bounded_int
 
 
-def test_adapter_loads_selected_runtime(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    spec = tmp_path / "spec.json"
-    metadata = tmp_path / "metadata.json"
-    spec.write_text(
-        json.dumps(
-            {
-                "rootfs": str(tmp_path / "rootfs"),
-                "guest_command": "/usr/bin/python3",
-                "guest_worker": "/opt/hcls-wrapper/openmm_worker.py",
-                "image_environment": {"PATH": "/usr/bin"},
-            }
-        ),
-        encoding="utf-8",
-    )
-    metadata.write_text(
-        json.dumps(
-            {
-                "actual_engine_version": "8.1.1",
-                "available_platforms": ["Reference", "CPU", "CUDA"],
-                "resolved_tag": "8.1.1",
-                "resolved_digest": f"sha256:{'a' * 64}",
-            }
-        ),
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("OPENMM_RUNTIME_SPEC", str(spec))
-    monkeypatch.setenv("OPENMM_RUNTIME_METADATA", str(metadata))
+def test_adapter_requires_successful_cuda_step(monkeypatch: pytest.MonkeyPatch) -> None:
+    report = {"engine_version": "8.6.1", "available_platforms": ["CPU", "CUDA"], "cuda_step_passed": True}
+    calls = []
+
+    def probe(command, **kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, 0, json.dumps(report), "")
+
+    monkeypatch.setattr(subprocess, "run", probe)
     adapter = OpenMMAdapter()
     adapter.load()
-    capabilities = adapter.capabilities()
-    assert capabilities["engine"]["version"] == "8.1.1"
-    assert capabilities["runtime"]["resolved_tag"] == "8.1.1"
+    assert calls == [[sys.executable, adapter.worker, "probe"]]
+    assert adapter.capabilities()["engine"]["version"] == "8.6.1"
+    report["cuda_step_passed"] = False
+    with pytest.raises(RuntimeError, match="CUDA integration step"):
+        OpenMMAdapter().load()
 
 
 def test_worker_bounds_are_enforced() -> None:

@@ -1,0 +1,112 @@
+{
+  "health": {
+    "ready": true,
+    "engine": "OpenMM",
+    "engine_version": "8.6.1",
+    "available_platforms": [
+      "Reference",
+      "CPU",
+      "CUDA",
+      "OpenCL"
+    ],
+    "cuda_available": true,
+    "nvidia_device_detected": true,
+    "runtime": {
+      "actual_engine_version": "8.6.1",
+      "available_platforms": [
+        "Reference",
+        "CPU",
+        "CUDA",
+        "OpenCL"
+      ],
+      "source": "PyPI openmm[cuda12] (installed at image build time)",
+      "cuda_step_passed": true
+    }
+  },
+  "rest": {
+    "run_id": "d9cd26eff8a5412cb90c62deea4105fa",
+    "result": {
+      "engine": "OpenMM",
+      "engine_version": "8.6.1",
+      "ensemble": "NVT",
+      "integration_ns_per_day": 10810.157,
+      "integration_seconds": 0.015985,
+      "kinetic_energy_kj_per_mol": 793.529391,
+      "particle_count": 512,
+      "periodic_box_length_nm": 3.36,
+      "platform": "CUDA",
+      "potential_energy_kj_per_mol": -1885.45899,
+      "precision": "mixed",
+      "research_only": true,
+      "simulated_ns": 0.002,
+      "steps": 1000,
+      "system": "argon_lennard_jones",
+      "timestep_fs": 2.0,
+      "runtime": {
+        "actual_engine_version": "8.6.1",
+        "available_platforms": [
+          "Reference",
+          "CPU",
+          "CUDA",
+          "OpenCL"
+        ],
+        "source": "PyPI openmm[cuda12] (installed at image build time)",
+        "cuda_step_passed": true
+      },
+      "wall_clock_seconds": 2.359686,
+      "image_revision": "unknown"
+    },
+    "artifact": {
+      "bytes": 784,
+      "sha256": "e5ce23431f9cd53067948d168d092bcb463d9a57c9b94573ef1260587e74c73c"
+    }
+  },
+  "mcp": {
+    "server": "Nebius HCLS openmm-md",
+    "protocol_version": "2025-11-25",
+    "tools": [
+      "cancel_run",
+      "get_capabilities",
+      "get_run",
+      "list_run_artifacts",
+      "list_runs",
+      "submit_run"
+    ],
+    "run_id": "af76c4ae9fff483b9eacab4f387bb187",
+    "result": {
+      "engine": "OpenMM",
+      "engine_version": "8.6.1",
+      "ensemble": "NVT",
+      "integration_ns_per_day": 10910.102,
+      "integration_seconds": 0.015839,
+      "kinetic_energy_kj_per_mol": 793.529391,
+      "particle_count": 512,
+      "periodic_box_length_nm": 3.36,
+      "platform": "CUDA",
+      "potential_energy_kj_per_mol": -1885.45899,
+      "precision": "mixed",
+      "research_only": true,
+      "simulated_ns": 0.002,
+      "steps": 1000,
+      "system": "argon_lennard_jones",
+      "timestep_fs": 2.0,
+      "runtime": {
+        "actual_engine_version": "8.6.1",
+        "available_platforms": [
+          "Reference",
+          "CPU",
+          "CUDA",
+          "OpenCL"
+        ],
+        "source": "PyPI openmm[cuda12] (installed at image build time)",
+        "cuda_step_passed": true
+      },
+      "wall_clock_seconds": 0.446536,
+      "image_revision": "unknown"
+    },
+    "artifact_verified_through_rest": {
+      "bytes": 784,
+      "sha256": "2230855229fae98aa2ad872dba87665b9661126ba615c3c87120b5f70c4b4c54"
+    }
+  }
+}

@@ -235,8 +235,8 @@ Templates are quick-start configurations to help you serve models and run jobs i
 <tbody>
 <tr>
   <td width="220" valign="middle">🧬&nbsp;<a href="endpoint-openmm/README.md"><strong>OpenMM REST + MCP</strong></a></td>
-  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fopenmm-md-api%3A20260908-dynamic-v3&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true&amp;env=NGC_API_KEY&amp;env=OPENMM_VERSION%3Dlatest&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">Run bounded synthetic molecular dynamics through REST or MCP with a selectable official NVIDIA OpenMM runtime and persistent outputs.</td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb24%40sha256%3A4a30409ff30ca0906743938363f0f92903a7ba4c49dd4f8dfc1ab2e9634d3184&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Run bounded synthetic molecular dynamics through REST or MCP with a pinned OpenMM CUDA engine and optional persistent storage.</td>
 </tr>
 </tbody>
 </table>

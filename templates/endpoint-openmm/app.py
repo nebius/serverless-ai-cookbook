@@ -4,11 +4,11 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
 from hcls_api import create_app
-from hcls_api.oci_runtime import run_in_runtime
 
 
 MAX_PARTICLES = 4096
@@ -19,28 +19,28 @@ class OpenMMAdapter:
     service_id = "openmm-md"
 
     def __init__(self) -> None:
-        self.rootfs = Path("/")
         self.python = ""
-        self.worker = ""
-        self.image_environment: dict[str, str] = {}
+        self.worker = str(Path(__file__).with_name("openmm_worker.py"))
         self.runtime: dict[str, Any] = {}
         self.timeout_seconds = max(
             30, min(int(os.environ.get("HCLS_ENGINE_TIMEOUT_SECONDS", "1800")), 7200)
         )
 
     def load(self) -> None:
-        spec_path = os.environ.get("OPENMM_RUNTIME_SPEC")
-        metadata_path = os.environ.get("OPENMM_RUNTIME_METADATA")
-        if not spec_path or not metadata_path:
-            raise RuntimeError("OpenMM runtime selection is unavailable")
-        spec = json.loads(Path(spec_path).read_text(encoding="utf-8"))
-        self.runtime = json.loads(Path(metadata_path).read_text(encoding="utf-8"))
-        self.rootfs = Path(spec["rootfs"])
-        self.python = str(spec["guest_command"])
-        self.worker = str(spec["guest_worker"])
-        self.image_environment = dict(spec["image_environment"])
-        if not self.python.startswith("/") or not self.worker.startswith("/"):
-            raise RuntimeError("OpenMM runtime command is invalid")
+        probe = subprocess.run(
+            [sys.executable, self.worker, "probe"],
+            capture_output=True, text=True, timeout=180, check=True,
+        )
+        report = json.loads(probe.stdout.strip().splitlines()[-1])
+        if not report.get("cuda_step_passed"):
+            raise RuntimeError("OpenMM startup probe did not complete a CUDA integration step")
+        self.runtime = {
+            "actual_engine_version": report["engine_version"],
+            "available_platforms": report["available_platforms"],
+            "source": "PyPI openmm[cuda12] (installed at image build time)",
+            "cuda_step_passed": True,
+        }
+        self.python = sys.executable
 
     @staticmethod
     def gpu_visible() -> bool:
@@ -106,12 +106,10 @@ class OpenMMAdapter:
         request_path = work_dir / "openmm-request.json"
         result_path = work_dir / "openmm-result.json"
         request_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
-        completed = run_in_runtime(
-            rootfs=self.rootfs,
-            guest_command=self.python,
-            args=[self.worker, str(request_path), str(result_path)],
+        completed = subprocess.run(
+            [self.python, self.worker, str(request_path), str(result_path)],
             cwd=work_dir,
-            image_environment=self.image_environment,
+            capture_output=True, text=True, check=False,
             timeout=self.timeout_seconds,
         )
         (work_dir / "openmm.stdout.log").write_text(completed.stdout[-16000:], encoding="utf-8")

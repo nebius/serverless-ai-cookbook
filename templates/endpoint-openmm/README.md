@@ -1,75 +1,61 @@
+---
+title: OpenMM REST + MCP
+category: life-sciences
+type: endpoint
+runtime: gpu-l40s-a
+frameworks: [openmm, fastapi, mcp]
+keywords: [molecular-dynamics, simulation, cuda, rest, mcp, agent]
+difficulty: intermediate
+---
+
 # OpenMM REST + MCP
 
 <!-- markdownlint-disable MD013 MD033 -->
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fopenmm-md-api%3A20260908-dynamic-v3&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true&amp;env=NGC_API_KEY&amp;env=OPENMM_VERSION%3Dlatest&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb24%40sha256%3A4a30409ff30ca0906743938363f0f92903a7ba4c49dd4f8dfc1ab2e9634d3184&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
 <!-- factory:intro -->
 
-Run bounded OpenMM molecular-dynamics workloads on an NVIDIA GPU through REST or MCP. A lean API image pulls the selected official NVIDIA OpenMM runtime at endpoint startup and persists artifacts to Object Storage or Shared Filesystem.
+Run bounded OpenMM molecular-dynamics workloads on an NVIDIA GPU through REST or MCP. The image contains OpenMM 8.6.1 and its CUDA 12 plugin. Attach Object Storage or Shared Filesystem to persist artifacts.
 
-**License:** [MIT](https://github.com/openmm/openmm/blob/master/LICENSE) · **Runtime:** [`nvcr.io/nvidia/openmm`](https://catalog.ngc.nvidia.com/orgs/nvidia/containers/openmm)
+**License:** [MIT + LGPL-3.0-or-later](https://docs.openmm.org/latest/userguide/library/01_introduction.html#license) for OpenMM; Apache-2.0 for the API wrapper.
 
 <!-- /factory:intro -->
 
----
-
-title: OpenMM REST + MCP
-category: life-sciences
-type: endpoint
-runtime: gpu-l40s-a
-frameworks: [openmm, fastapi, mcp]
-keywords: [molecular-dynamics, simulation, nvidia-ngc, rest, mcp, agent]
-difficulty: intermediate
-
----
 
 ## What you get
 
 - A bounded asynchronous run API on port 8000 with OpenAPI docs at `/docs`.
 - A Streamable HTTP MCP server at `/mcp` for agent/tool integrations.
 - One shared queue, run ID, state, and artifact store across REST and MCP.
-- Runtime selection with `OPENMM_VERSION=latest` or an exact NVIDIA tag.
+- OpenMM 8.6.1 and CUDA support installed when the image is built.
 - Readiness gated by a real OpenMM CUDA integration step.
-- Persistent results under `/mnt/hcls/openmm-md/runs/<run-id>`.
+- Results under `/mnt/hcls/openmm-md/runs/<run-id>`; persistent only with an attached volume.
 
-The wrapper image contains the API and pull launcher, not OpenMM. At fresh endpoint
-startup it authenticates to NGC with `NGC_API_KEY`, pulls
-`nvcr.io/nvidia/openmm`, and starts the API only after the selected runtime passes
-the CUDA probe. Restarting an endpoint configured with `latest` lets it select a
-newer compatible stable release without publishing a new wrapper.
-
-The pre-built wrapper tag in the button resolves to
-`sha256:7d73bc0d6270e7bf2fcf04a6ee7544dc8a6527b7383d2e77408cb8d3f476d416`.
+The image installs `openmm[cuda12]==8.6.1` on a digest-pinned CUDA base.
+No NGC account or runtime download is needed. Startup completes a real CUDA
+integration step before the API advertises readiness. Change versions by
+rebuilding and validating a new image.
 
 ## Create the endpoint
+
+The button does not attach storage. Manually attach Object Storage or Shared
+Filesystem read-write at `/mnt/hcls` in the create form for persistent results.
+Without that attachment, `/mnt/hcls` is on ephemeral disk and results can be lost
+when the endpoint is replaced or deleted.
 
 Click **Create Endpoint** above, select your project, and review the pre-filled
 form. Before creating it:
 
-1. Paste your NVIDIA NGC API key into `NGC_API_KEY`. The launcher supplies NGC's
-   fixed `$oauthtoken` username internally.
-2. Leave `OPENMM_VERSION=latest`, or replace it with an exact NVIDIA tag such as
-   `8.1.1`.
-3. Keep **Token authentication** enabled and copy the generated endpoint token.
+1. Keep **Token authentication** enabled and copy the generated endpoint token.
    The same token protects REST and MCP; it is not an environment variable.
-4. Attach Object Storage or Shared Filesystem read-write at `/mnt/hcls`.
+2. Manually attach Object Storage or Shared Filesystem read-write at `/mnt/hcls`.
 
-The deployment URL declares every application environment variable but contains
-no credential value. Storage is selected from the customer's own project.
-
-### Environment variables
-
-| Variable | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `NGC_API_KEY` | yes | empty | Pulls the official NVIDIA OpenMM runtime. |
-| `OPENMM_VERSION` | no | `latest` | NVIDIA runtime tag or newest compatible stable tag. |
-
-An explicitly pinned tag is never silently replaced with another version.
+There are no required application environment variables or image-pull secrets.
 
 ## Storage
 
@@ -94,8 +80,7 @@ export BASE_URL='https://port8000-<id>.tunnel.applications.<region>.nebius.cloud
 export TOKEN='<endpoint-token-generated-during-create>'
 ```
 
-First boot can take several minutes while the official runtime is downloaded and
-probed. Poll readiness:
+Startup probes the installed CUDA backend. Poll readiness:
 
 ```bash
 until curl -sf -H "Authorization: Bearer $TOKEN" \
@@ -145,16 +130,12 @@ the MCP client configuration, never in the skill.
 
 ## Expected output
 
-A successful run reports the resolved NVIDIA tag/digest, OpenMM version, CUDA
+A successful run reports the installed OpenMM version, CUDA
 platform, precision, ensemble, energies, simulated time, wall time, and
 `integration_ns_per_day`. Artifacts include the request, result, logs, positions
 preview, and hashes.
 
-Qualification was repeated on 2026-09-09 using regular L40S. `latest` resolved to official
-OpenMM `8.1.1` at digest
-`sha256:f4943aef3df103f05d0e502ea0711fce4a32a92366585b0f5bd7a5b01c9b5b59`;
-independent 1,000-step REST and MCP runs both used CUDA and their result
-artifacts were hash-verified through REST and in the mounted bucket.
+See [validation results](./VALIDATION.md) for the tested image and workloads.
 
 This endpoint implements a synthetic periodic argon system, not arbitrary
 biomolecular inputs. `LangevinMiddle` is NVT; `Verlet` is NVE. Treat its
@@ -174,19 +155,29 @@ docker build --platform linux/amd64 \
 
 ## CLI alternative
 
+The tested image is `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb24@sha256:4a30409ff30ca0906743938363f0f92903a7ba4c49dd4f8dfc1ab2e9634d3184`.
+The qualification used Nebius CLI 0.12.206, which rejects endpoint image references
+longer than 64 characters when creating a VM label. For that CLI, use the short
+alias below and verify its digest with [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane)
+before creating the endpoint. Do not use an alias whose digest differs.
+
+```bash
+export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb24:r0918'
+test "$(crane digest "$IMAGE")" = 'sha256:4a30409ff30ca0906743938363f0f92903a7ba4c49dd4f8dfc1ab2e9634d3184' || exit 1
+```
+
 Choose either a Shared Filesystem or Object Storage volume and create the service:
 
 ```bash
 export NEBIUS_PROJECT_ID='project-...'
 export NEBIUS_SUBNET_ID='vpcsubnet-...'
-export NGC_API_KEY='<your-ngc-api-key>'
 export OPENMM_VOLUME='computefilesystem-<id>:/mnt/hcls:rw'
 # Or use: s3://<bucket>:/mnt/hcls:rw:<aws-profile>@<secret-selector>
 
 nebius ai endpoint create \
   --parent-id "$NEBIUS_PROJECT_ID" \
   --name openmm-rest-mcp \
-  --image cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/openmm-md-api:20260908-dynamic-v3 \
+  --image "$IMAGE" \
   --public \
   --platform gpu-l40s-a \
   --preset 1gpu-8vcpu-32gb \
@@ -194,8 +185,6 @@ nebius ai endpoint create \
   --disk-size 100Gi \
   --subnet-id "$NEBIUS_SUBNET_ID" \
   --auth token \
-  --env "NGC_API_KEY=$NGC_API_KEY" \
-  --env 'OPENMM_VERSION=latest' \
   --volume "$OPENMM_VOLUME"
 ```
 
@@ -203,18 +192,15 @@ nebius ai endpoint create \
 
 ## Cost and cleanup
 
-The link selects regular L40S because this is a retained API and replacement
-workers must pull the runtime again. Use preemptible capacity only for disposable
-tests. The endpoint accrues GPU, disk, and attached-storage charges while
+The link selects regular L40S for an interactive API. Use preemptible capacity
+for disposable tests. The endpoint accrues GPU, disk, and attached-storage charges while
 provisioned; stop or delete it when no longer needed.
 
 ## Troubleshooting
 
 | Symptom | Cause and fix |
 | --- | --- |
-| NGC returns 401/403 | Supply a valid `NGC_API_KEY`; do not use the endpoint token. |
-| Endpoint is running but returns 502 | Runtime download/probing is still in progress; poll readiness and inspect logs. |
-| CUDA is unavailable | Use a GPU platform and a runtime tag compatible with its driver. |
+| Endpoint is running but returns 502 | Image startup or the CUDA probe is still in progress; poll readiness and inspect logs. |
+| CUDA is unavailable | Use a GPU platform and an image compatible with its driver. |
 | Results disappear after restart | Attach Object Storage or Shared Filesystem at `/mnt/hcls`. |
 | REST works but MCP returns 401 | Send the same endpoint bearer token to `/mcp`. |
-| A pinned tag fails | Choose `latest` or another compatible official tag; pinned tags never fall back. |
