@@ -12,8 +12,10 @@ key determines the visible Apps and owns the resulting operations and artifacts.
 
 ## Discover before invoking
 
-1. Call `list_models` and `list_scientific_models` when the requested App or
-   current availability is not already established in this conversation.
+1. For an unknown App, prefer compact `workbench_list_apps` with a relevant
+   query. For a named App, read its schema directly. Legacy `list_models` and
+   `list_scientific_models` remain fallbacks when the workbench helper is absent.
+   Compare their `tool_catalog_revision`; refresh tools when it changes.
 2. Call `get_model_schema` with the selected public `model_id` and protocol.
 3. Use the returned `contracts[].tool_name`, flat `input_schema`, examples,
    source references and active-runtime identity. Independent Apps using the
@@ -41,13 +43,15 @@ specific incompatibility and ask the user to choose a supported workflow.
   A corrected or deliberately new request gets a new key.
 - Set serving `wait_seconds` to `0` unless a short bounded wait materially helps.
   Submission returns a durable operation/status record, not the final prediction.
-- Save and report the operation ID. Poll `get_operation`; use
-  `get_operation_result` only after `result_available` is true.
+- Save and report the operation ID. Prefer `workbench_get_operation` for bounded
+  waiting and `workbench_get_operation_result` for verified file-backed results;
+  fall back to gateway lifecycle tools if the workbench helpers are absent.
 - Scientific submissions return an operation plus batch state. Poll
   `get_scientific_status` and incrementally read `list_scientific_events`.
   Wait for result publication, then call `get_scientific_result` and retrieve
   the returned artifacts. Execution success alone may precede publication.
-- Treat `queued`, `activating`, and `running` as progress. Do not resubmit or
+- Treat `queued`, `activating`, and `running` as nonterminal, not proof of
+  advancing execution or a specific capacity problem. Do not resubmit or
   cancel because a chat/tool timeout elapsed. Terminal states are `succeeded`,
   `failed`, `cancelled`, `preempted`, and `expired`.
 - Download and verify outputs before `acknowledge_operation`; acknowledgement
@@ -55,28 +59,38 @@ specific incompatibility and ask the user to choose a supported workflow.
 
 ## Scientific artifacts
 
-Deployment limitation: the current LibreChat image has no compatible attachment
-bridge or connected structure viewer. These transfer steps require a verified
-file helper using the caller's gateway key and isolated workspace. Without one,
-use existing caller-owned finalized artifact references or explain the missing
-capability; do not promise attachment upload, verified file downloads, a UI
-download link or embedded visualization. Legacy ClawBio helpers do not implement
-this contract. Signed handles and bearer tokens must stay outside model context.
+The workbench has an authenticated Workspace upload/download panel and verified
+file helpers. Ordinary chat attachments still are not automatically gateway
+artifacts. The connected `visualize_structure` tool renders real coordinates
+from completed native inline or bounded JSON-artifact results; it does not
+resolve arbitrary scientific-batch artifact collections. Signed handles and
+bearer tokens stay outside model context. Never promise an unsupported bridge.
 
 Chat attachments and local paths are not gateway artifacts. For every input:
 
 1. Read the actual caller-owned bytes outside the language-model context.
 2. Compute exact SHA-256, byte count, media type and compression.
-3. Call `begin_scientific_artifact_upload`, transfer using its returned handle
-   or `put_scientific_artifact_bytes`, then finalize.
+3. Let the installed trusted file helper call `begin_model_artifact_upload`,
+   transfer through its handle/HTTPS content path and finalize. Scientific
+   begin/finalize names remain aliases; raw byte tools are not agent-visible.
 4. Build a canonical manifest from the returned immutable artifact references;
    upload and finalize that manifest too.
 5. Submit the named scientific tool with the finalized manifest reference.
 
-Never invent or reuse another user's artifact ID. Keep large base64 values and
-structure/media files out of chat. MCP inline transfer has base64 overhead and
-is suitable only below the advertised ceiling; use returned upload/download
-handles or the HTTPS artifact path for larger files. Check handle expiry.
+Never invent or reuse another user's artifact ID. Keep base64 values and
+structure/media files out of chat. Use returned upload/download handles or
+the HTTPS artifact path through the trusted file helper. Check handle expiry.
+
+For a native artifact input use `/opt/bionemo/upload-artifact.py`; this uploads
+one exact local file but does not create a scientific input manifest or run a
+model. For scientific batch use the installed existing
+`/opt/scientific-client/bin/python /opt/bionemo/invoke-scientific-batch.py --help`.
+It handles a source file, canonical manifest, named submission, resumable receipt
+and hash-verified downloads. Read model schema and input provenance to select
+its arguments; do not implement an improvised uploader in chat. Use one stable
+output directory/idempotency key and resume it after a bounded wait. Inspect all
+promised output artifacts and scientific constraints; transport verification is
+not scientific validation.
 
 ## Errors and user-facing results
 
@@ -89,7 +103,10 @@ handles or the HTTPS artifact path for larger files. Check handle expiry.
   idempotency identity, back off, and check the saved operation.
 - For a terminal model failure, report the public model/App, operation ID,
   timestamps and returned structured error. Do not label acceptance as success.
-- Serving `get_operation_result` returns `{operation, result}`. Scientific
+- Raw serving results may be the result body or a legacy `{operation, result}`
+  envelope. Large serving results use `operation-artifact-result/v1`; the
+  workbench resolver saves verified full JSON and returns compact metadata.
+  Scientific
   results are versioned run documents whose output manifests point to artifacts.
   Preserve structured fields and verify artifact hashes rather than pasting raw
   files into the answer.

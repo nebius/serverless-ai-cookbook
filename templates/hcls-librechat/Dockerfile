@@ -38,6 +38,7 @@ COPY templates/hcls-librechat/structure-mcp.py /opt/bionemo/structure-mcp.py
 COPY templates/hcls-librechat/execution-mcp.py /opt/bionemo/execution-mcp.py
 COPY templates/hcls-librechat/invoke-native.py /opt/bionemo/invoke-native.py
 COPY templates/hcls-librechat/upload-artifact.py /opt/bionemo/upload-artifact.py
+COPY templates/hcls-librechat/scripts/scientific-batch-acceptance.py /opt/bionemo/invoke-scientific-batch.py
 COPY templates/hcls-librechat/structure-analysis.py /opt/bionemo/structure-analysis.py
 RUN python3 -m venv /opt/scientific-client \
  && /opt/scientific-client/bin/pip install --no-cache-dir mcp==2.2.0 httpx2==2.12.0 jsonschema==4.26.0 numpy==2.2.6 biopython==1.85

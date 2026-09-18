@@ -53,6 +53,16 @@ Private resumable receipts bind the bytes, caller, App and idempotency key;
 changed bytes require a different upload identity. This is an upload, not model
 inference. Small inputs accepted inline do not need unnecessary artifact uploads.
 
+Scientific batch Apps use the existing `scripts/scientific-batch-acceptance.py`,
+installed as `/opt/bionemo/invoke-scientific-batch.py`; this is not a second
+transport implementation. It stages a source and canonical input manifest,
+validates the named tool, preserves the operation/resume receipt and verifies
+the output manifest plus every returned artifact. Use `--help` and live schema
+to select model-specific parameters, with `--wait-seconds 30` for bounded chat
+observation. Resume the unchanged directory instead of duplicate submission;
+do not run simultaneous helper processes for that directory. A verified download
+does not mean candidate quality, binding, or a paper result was established.
+
 `workbench_get_operation` waits up to 15 seconds by default (30 maximum), saving
 the real observed states and returning the latest operation without submitting
 anything. No tight poll loop is necessary. Long-running jobs still resume by ID.
