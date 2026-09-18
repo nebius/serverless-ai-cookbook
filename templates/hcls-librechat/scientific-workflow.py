@@ -29,7 +29,7 @@ batch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(batch)
 REQUIRED = {'model', 'tool', 'operation', 'source', 'media_type', 'entry_name',
             'semantic_type', 'parameters', 'output', 'idempotency_key', 'display_name'}
-OPTIONAL = {'compression', 'service_class'}
+OPTIONAL = {'compression', 'service_class', 'source_artifact'}
 
 
 def prepare(plan):
@@ -43,7 +43,9 @@ def prepare(plan):
         if set(step) - REQUIRED - OPTIONAL - {'id'} or REQUIRED - set(step):
             raise ValueError('Step must use exactly the documented batch-client arguments.')
         ids.add(identifier)
-        for field in ('source', 'parameters', 'output'):
+        for field in ('source', 'parameters', 'output', 'source_artifact'):
+            if field not in step:
+                continue
             if not Path(step[field]).is_absolute():
                 raise ValueError('Step paths must be absolute.')
         output = str(Path(step['output']).resolve())
@@ -98,6 +100,8 @@ async def run(plan, output, wait_seconds=1800, poll_seconds=10, run_step=None, c
                          'wait_seconds': 0, 'poll_seconds': poll_seconds}
             for key in ('source', 'parameters', 'output'):
                 arguments[key] = Path(arguments[key])
+            if arguments.get('source_artifact'):
+                arguments['source_artifact'] = Path(arguments['source_artifact'])
             receipt.update(state='running', current_step=step_id)
             save(receipt_path, receipt)
             try:

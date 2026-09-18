@@ -81,6 +81,46 @@ async def call(client, name: str, arguments: dict):
     return unpack(await client.call_tool(name, arguments))
 
 
+def scientific_contract(discovery: dict) -> dict:
+    contracts = discovery.get('contracts', [discovery])
+    return next((item for item in contracts if item.get('protocol') == 'scientific-batch-v1'), {})
+
+
+def preflight_source(contract: dict, parameters: dict, args, size: int) -> None:
+    """Validate a published semantic role before reserving or uploading bytes."""
+    policy = contract.get('input_artifact_contract')
+    if not policy:
+        return  # Older servers still validate the final request themselves.
+    value = {'parameters': parameters}
+    for part in policy.get('source_kind_parameter', 'parameters.source.kind').split('.'):
+        value = value.get(part) if isinstance(value, dict) else None
+    source = policy.get('source_kinds', {}).get(value)
+    if not source:
+        raise ValueError('Input source kind is not in the published input_artifact_contract.')
+    for argument, field in [('entry_name', 'name'), ('semantic_type', 'semantic_type'),
+                            ('media_type', 'media_type'), ('compression', 'compression')]:
+        if field in source and getattr(args, argument) != source[field]:
+            raise ValueError(f'Input manifest {field} must be {source[field]!r} for source kind {value!r}; '
+                             'this is a semantic role, not the local filename. No upload or inference was submitted.')
+    if source.get('maximum_bytes') is not None and size > source['maximum_bytes']:
+        raise ValueError('Input bytes exceed the published source maximum_bytes; no upload was submitted.')
+
+
+def source_reference(path: Path, data: bytes, args) -> dict:
+    reference = json.loads(path.read_text())
+    return validate_source_reference(reference, data, args)
+
+
+def validate_source_reference(reference: dict, data: bytes, args) -> dict:
+    for field, expected in {'sha256': digest(data), 'size_bytes': len(data),
+                            'media_type': args.media_type, 'compression': args.compression}.items():
+        if reference.get(field) != expected:
+            raise ValueError('Existing artifact reference does not match exact source bytes and format: ' + field)
+    if not isinstance(reference.get('artifact_id'), str) or not reference['artifact_id']:
+        raise ValueError('Existing artifact reference must include its finalized artifact_id.')
+    return {field: reference[field] for field in ('artifact_id', 'sha256', 'size_bytes', 'media_type', 'compression')}
+
+
 async def upload(http, model: str, data: bytes, media_type: str, compression: str,
                  idempotency_key: str) -> dict:
     measured = {"model_id": model, "sha256": digest(data), "size_bytes": len(data),
@@ -153,11 +193,30 @@ async def run(args) -> dict:
                 if not receipt.get("operation_id"):
                     if receipt["state"] in {"submitting", "admission_unknown"}:
                         raise RuntimeError("Previous admission is ambiguous; inspect evidence before retrying.")
+                    discovery = await call(client, 'get_model_schema', {'model_id': args.model,
+                                                                       'protocol': 'scientific-batch-v1'})
+                    save(args.output / 'model-contract.json', discovery)
+                    contract = scientific_contract(discovery)
+                    preflight_source(contract, parameters, args, len(source))
+                    descriptor = {'entry_name': args.entry_name, 'semantic_type': args.semantic_type,
+                                  'media_type': args.media_type, 'compression': args.compression,
+                                  'tool': args.tool, 'operation': args.operation}
+                    if receipt.get('request_descriptor', descriptor) != descriptor:
+                        raise ValueError('Saved manifest role or operation differs; preserve the original receipt for explicit recovery.')
+                    previous_manifest = args.output / 'input-manifest.json'
+                    if 'manifest_artifact' in receipt and previous_manifest.exists():
+                        previous = json.loads(previous_manifest.read_text())['entries'][0]
+                        if previous['name'] != args.entry_name or previous['semantic_type'] != args.semantic_type:
+                            raise ValueError('Existing uploaded manifest has a different semantic role; do not reuse it under changed arguments.')
+                    receipt['request_descriptor'] = descriptor
+                    save(receipt_path, receipt)
                     if "source_artifact" not in receipt:
-                        receipt["source_artifact"] = await upload(
+                        reused_source = getattr(args, 'source_artifact', None)
+                        receipt["source_artifact"] = source_reference(reused_source, source, args) if reused_source else await upload(
                             http, args.model, source, args.media_type, args.compression,
                             args.idempotency_key + "-source")
                         save(receipt_path, receipt)
+                    receipt['source_artifact'] = validate_source_reference(receipt['source_artifact'], source, args)
                     if parameters.get("source", {}).get("kind") == "uploaded-bundle":
                         parameters = {**parameters, "source": {
                             "kind": "uploaded-bundle", **receipt["source_artifact"]}}
@@ -165,6 +224,8 @@ async def run(args) -> dict:
                                 "manifest_id": receipt["manifest_id"], "entries": [{
                                     "name": args.entry_name, "semantic_type": args.semantic_type,
                                     "artifact": receipt["source_artifact"]}]}
+                    if contract.get('artifact_manifest_schema'):
+                        Draft202012Validator(contract['artifact_manifest_schema']).validate(manifest)
                     save(args.output / "input-manifest.json", manifest)
                     if "manifest_artifact" not in receipt:
                         receipt["manifest_artifact"] = await upload(
@@ -236,6 +297,8 @@ def main() -> None:
     parser.add_argument("--tool", required=True)
     parser.add_argument("--operation", required=True)
     parser.add_argument("--source", required=True, type=Path)
+    parser.add_argument('--source-artifact', type=Path,
+                        help='Optional finalized artifact JSON matching exact source bytes; never a filename substituted for an artifact ID.')
     parser.add_argument("--media-type", required=True)
     parser.add_argument("--compression", choices=("none", "gzip", "zstd"), default="none")
     parser.add_argument("--entry-name", required=True)
@@ -249,7 +312,10 @@ def main() -> None:
     parser.add_argument("--poll-seconds", type=float, default=10)
     args = parser.parse_args()
     with receipt_lock(args.output):
-        asyncio.run(run(args))
+        result = asyncio.run(run(args))
+    # An observation timeout is a resumable incomplete operation, not shell
+    # success. This also prevents `first && second` from overlapping admissions.
+    raise SystemExit(0 if result['state'] == 'verified' else 75)
 
 
 if __name__ == "__main__":

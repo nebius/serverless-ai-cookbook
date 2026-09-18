@@ -5,6 +5,9 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+import sys
+import argparse
+import json
 
 ROOT = Path(__file__).parent
 spec = importlib.util.spec_from_file_location('batch_client', ROOT / 'scripts/scientific-batch-acceptance.py')
@@ -64,3 +67,49 @@ def test_batch_download_must_verify_bytes_before_deliverable(tmp_path):
     with pytest.raises(RuntimeError, match='hash or size mismatch'):
         asyncio.run(client.download(HTTP(), {'artifact_id': 'fixture', 'size_bytes': 4, 'sha256': '0' * 64}, target))
     assert not target.exists()
+
+
+@pytest.mark.parametrize('state,code', [('verified', 0), ('running', 75), ('queued', 75)])
+def test_cli_observation_does_not_claim_shell_success(tmp_path, monkeypatch, state, code):
+    async def run(args):
+        return {'state': state, 'operation_id': 'original'}
+    monkeypatch.setattr(client, 'run', run)
+    monkeypatch.setattr(sys, 'argv', ['batch', '--model', 'fixture', '--tool', 'submit_fixture',
+        '--operation', 'design', '--source', str(tmp_path / 'input'), '--media-type', 'text/plain',
+        '--entry-name', 'input', '--semantic-type', 'fixture/v1', '--parameters', str(tmp_path / 'params'),
+        '--output', str(tmp_path / 'run'), '--idempotency-key', 'stable', '--display-name', 'fixture'])
+    with pytest.raises(SystemExit) as error:
+        client.main()
+    assert error.value.code == code
+
+
+def test_discovered_semantic_role_fails_before_upload_for_filename_mistake():
+    contract = {'protocol': 'scientific-batch-v1', 'input_artifact_contract': {
+        'source_kind_parameter': 'parameters.source.kind', 'exactly_one_entry': True,
+        'source_kinds': {'uploaded-bundle': {'name': 'lerobot-dataset',
+          'semantic_type': 'lerobot-v3-bundle/v1', 'media_type': 'application/x-tar',
+          'compression': 'zstd', 'maximum_bytes': 10000}}}}
+    args = argparse.Namespace(entry_name='recorded.tar.zst', semantic_type='lerobot-bundle',
+                              media_type='application/x-tar', compression='zstd')
+    with pytest.raises(ValueError, match='semantic role, not the local filename'):
+        client.preflight_source(contract, {'source': {'kind': 'uploaded-bundle'}}, args, 100)
+    args.entry_name = 'lerobot-dataset'
+    args.semantic_type = 'lerobot-v3-bundle/v1'
+    client.preflight_source(contract, {'source': {'kind': 'uploaded-bundle'}}, args, 100)
+    assert client.scientific_contract({'contracts': [contract]}) is contract
+
+
+def test_reused_finalized_source_must_match_bytes_and_format(tmp_path):
+    data = b'exact original source'
+    args = argparse.Namespace(media_type='application/x-tar', compression='zstd')
+    reference = {'artifact_id': 'caller-owned-fixture', 'sha256': client.digest(data),
+                 'size_bytes': len(data), 'media_type': args.media_type, 'compression': args.compression}
+    source = tmp_path / 'artifact.json'
+    source.write_text(json.dumps(reference))
+    assert client.source_reference(source, data, args) == reference
+    with pytest.raises(ValueError, match='exact source bytes'):
+        client.source_reference(source, data + b'changed', args)
+
+
+def test_old_schema_without_manifest_policy_retains_existing_transport():
+    client.preflight_source({}, {}, argparse.Namespace(), 100)

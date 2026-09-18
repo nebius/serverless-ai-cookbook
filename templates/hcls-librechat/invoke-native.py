@@ -14,7 +14,7 @@ import time
 from urllib.parse import quote
 
 import httpx2
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
 from scientific_receipts import load as load_receipt, receipt_lock, save
@@ -63,6 +63,22 @@ def parse_result_artifact(envelope, data):
     return json.loads(data)
 
 
+def validate_input(schema, arguments, output_dir, record):
+    """Retain a useful pre-admission diagnostic without another model call."""
+    try:
+        Draft202012Validator(schema).validate(arguments)
+    except ValidationError as error:
+        pointer = lambda parts: '/' + '/'.join(str(part).replace('~', '~0').replace('/', '~1') for part in parts)
+        evidence = {'type': 'local_input_validation', 'durable_admission': False,
+                    'message': error.message[:2000], 'validator': error.validator,
+                    'input_pointer': pointer(error.absolute_path),
+                    'schema_pointer': pointer(error.absolute_schema_path)}
+        save(output_dir / 'validation-error.json', evidence)
+        record.update(state='input_rejected', last_rejection=evidence)
+        save(output_dir / 'receipt.json', record)
+        raise
+
+
 async def run(args):
     endpoint = os.environ['SCIENTIFIC_MODELS_MCP_URL']
     key = os.environ['SCIENTIFIC_MODELS_API_KEY']
@@ -82,6 +98,7 @@ async def run(args):
         record = {'identity': identity, 'state': 'prepared'}
     if record['identity'] != identity:
         raise ValueError('Output directory belongs to different inputs, caller, model or idempotency key.')
+    save(path, record)
     if record['state'] in ('submitting', 'admission_unknown'):
         submission = args.output_dir / 'submission.json'
         saved_submission = json.loads(submission.read_text()) if submission.exists() else {}
@@ -110,6 +127,10 @@ async def run(args):
             save(path, record)
     if record['state'] in ('succeeded', 'failed', 'cancelled', 'expired', 'preempted'):
         return record
+    if getattr(args, 'recover_only', False) and not record.get('operation_id'):
+        # No admission, upload, or rediscovery is needed to read a saved error.
+        # An absent receipt is not permission to reconstruct it by resubmission.
+        raise RuntimeError('Read-only recovery has no known operation. Inspect the saved receipt and validation-error.json; no new inference was submitted.')
     async with httpx2.AsyncClient(headers={'Authorization': 'Bearer ' + key}, timeout=120, trust_env=False) as http:
         async with Client(streamable_http_client(endpoint, http_client=http)) as client:
             async def call(name, arguments, filename):
@@ -121,7 +142,7 @@ async def run(args):
                 schema = await call('get_model_schema', {'model_id': args.model, 'protocol': 'native'}, 'schema.json')
                 contract = next(c for c in schema['contracts'] if c['protocol'] == 'native')
                 arguments = dict(payload, idempotency_key=args.idempotency_key, wait_seconds=0)
-                Draft202012Validator(contract['input_schema']).validate(arguments)
+                validate_input(contract['input_schema'], arguments, args.output_dir, record)
                 record.update(state='submitting', tool=contract['tool_name'], input_bytes=len(payload_bytes))
                 save(path, record)
                 try:
@@ -176,6 +197,8 @@ def main():
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--idempotency-key', required=True)
     parser.add_argument('--wait-seconds', type=int, default=300)
+    parser.add_argument('--recover-only', action='store_true',
+                        help='Only read/poll a saved operation and its result; never submit a request to reconstruct missing evidence.')
     args = parser.parse_args()
     if not 8 <= len(args.idempotency_key) <= 200 or args.wait_seconds < 0:
         parser.error('Use an 8–200 character idempotency key and a nonnegative wait.')
@@ -186,6 +209,8 @@ def main():
         print(json.dumps({k: record[k] for k in ('state', 'operation_id', 'result_path') if k in record}))
         if record['state'] in ('failed', 'cancelled', 'expired', 'preempted'):
             raise SystemExit(1)
+        if record['state'] != 'succeeded':
+            raise SystemExit(75)
     except Exception as error:
         # Provider/library exception text may contain signed handles or headers.
         print(json.dumps({'state': 'error', 'error_type': type(error).__name__,

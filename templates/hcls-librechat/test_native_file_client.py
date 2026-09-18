@@ -93,3 +93,34 @@ def test_result_artifact_is_hash_verified_and_decoded():
     assert client.parse_result_artifact(envelope, data) == {'answer': 42}
     with pytest.raises(ValueError, match='SHA-256'):
         client.parse_result_artifact(envelope, b'{"answer":43}')
+
+
+def test_local_validation_failure_keeps_exact_pointer_and_receipt(tmp_path):
+    record = {'identity': {'model_id': 'fixture'}, 'state': 'prepared'}
+    schema = {'type': 'object', 'properties': {'samples': {'type': 'array', 'items': {
+        'type': 'object', 'required': ['measured_value']}}}}
+    with pytest.raises(client.ValidationError):
+        client.validate_input(schema, {'samples': [{}]}, tmp_path, record)
+    evidence = json.loads((tmp_path / 'validation-error.json').read_text())
+    assert evidence['input_pointer'] == '/samples/0'
+    assert evidence['schema_pointer'] == '/properties/samples/items/required'
+    assert evidence['message'] == "'measured_value' is a required property"
+    assert evidence['durable_admission'] is False
+    assert client.load_receipt(tmp_path / 'receipt.json')['state'] == 'input_rejected'
+
+
+def test_read_only_recovery_never_submits_to_recreate_missing_error(tmp_path, monkeypatch):
+    monkeypatch.setenv('SCIENTIFIC_MODELS_MCP_URL', 'https://example.invalid/mcp')
+    monkeypatch.setenv('SCIENTIFIC_MODELS_API_KEY', 'synthetic-key')
+    source = tmp_path / 'input.json'
+    source.write_text('{"samples":[{}]}')
+    args = types.SimpleNamespace(input=source, output_dir=tmp_path / 'run',
+        model='phenoage', idempotency_key='acceptance-key', recover_only=True)
+    def forbidden_network(*args, **kwargs):
+        pytest.fail('Read-only recovery must not rediscover or resubmit without a known operation.')
+    monkeypatch.setattr(client.httpx2, 'AsyncClient', forbidden_network)
+    with pytest.raises(RuntimeError, match='no known operation'):
+        asyncio.run(client.run(args))
+    receipt = client.load_receipt(args.output_dir / 'receipt.json')
+    assert receipt['state'] == 'prepared'
+    assert 'operation_id' not in receipt

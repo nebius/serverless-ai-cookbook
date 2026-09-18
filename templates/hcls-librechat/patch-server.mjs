@@ -56,6 +56,16 @@ await writeFile(graphPath, graphSource);
 
 const apiPath = '/app/packages/api/dist/index.cjs';
 let apiSource = await readFile(apiPath, 'utf8');
+// Keep the upstream step budget unchanged. Its generic final-answer nudge made
+// scientist agents omit explicitly requested files after doing the analysis.
+// Use the remaining rounds for durable deliverables, not another broad search.
+const budgetNoticeAnchor = 'make only calls you cannot finish without, and leave room to write the final answer.';
+if (!apiSource.includes(budgetNoticeAnchor)) throw new Error('Unsupported pinned step-budget notice');
+apiSource = apiSource.replace(budgetNoticeAnchor,
+  'If the user requested report or result files, prioritize writing and reading back those files now from verified evidence. '
+  + 'If jobs are still running, persist an explicitly interim report and exact operation and execution IDs; do not claim scientific completion. '
+  + 'Do not spend the remaining rounds on repeated polls, new searches, or duplicate submissions. '
+  + 'Then give a concise final status with verified file paths and what remains unresolved.');
 const exactCounterAnchor = 'if (requiresTokenEstimate(text)) return estimateBoundedTokenCount(text);';
 if (apiSource.split(exactCounterAnchor).length !== 3) throw new Error('Unsupported pinned tokenizer');
 apiSource = apiSource.replace(exactCounterAnchor,
