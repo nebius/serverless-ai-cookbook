@@ -1,0 +1,114 @@
+{
+  "health": {
+    "ready": true,
+    "engine": "AutoDock-GPU",
+    "engine_version": "v1.6",
+    "accelerator": "CUDA",
+    "gpu": {
+      "available": true,
+      "name": "NVIDIA H100 80GB HBM3",
+      "driver_version": "580.173.02"
+    },
+    "cuda_probe": "1STP docking passed"
+  },
+  "rest": {
+    "run_id": "67c2fa632f624a7ea80e08313233cb3b",
+    "result": {
+      "engine": "AutoDock-GPU",
+      "engine_version": "v1.6",
+      "scoring_semantics": "autodock4",
+      "nrun": 5,
+      "max_evaluations": 250000,
+      "seed": 17,
+      "gpu": {
+        "available": true,
+        "name": "NVIDIA H100 80GB HBM3",
+        "driver_version": "580.173.02"
+      },
+      "compiled_compute_capabilities": [
+        "8.0",
+        "8.6",
+        "8.9",
+        "9.0"
+      ],
+      "ligand_count": 1,
+      "results": [
+        {
+          "ligand_id": "1stp-biotin",
+          "best_estimated_binding_energy_kcal_per_mol": -8.17,
+          "run_energies_kcal_per_mol": [
+            -6.8,
+            -8.17,
+            -7.12,
+            -7.52,
+            -7.52
+          ],
+          "dlg_artifact": "result-001-1stp-biotin.dlg",
+          "xml_artifact": "result-001-1stp-biotin.xml"
+        }
+      ],
+      "research_only": true,
+      "wall_clock_seconds": 0.599884,
+      "image_revision": "unknown"
+    },
+    "artifact": {
+      "bytes": 804,
+      "sha256": "eefc0787362773ff91a7efef77e2d94d9e19251a8e3f147a923c67fcf141013e"
+    }
+  },
+  "mcp": {
+    "server": "Nebius HCLS autodock-gpu",
+    "protocol_version": "2025-11-25",
+    "tools": [
+      "cancel_run",
+      "get_capabilities",
+      "get_run",
+      "list_run_artifacts",
+      "list_runs",
+      "submit_run"
+    ],
+    "run_id": "f3609324fa654216a533c416aed8fdf2",
+    "result": {
+      "engine": "AutoDock-GPU",
+      "engine_version": "v1.6",
+      "scoring_semantics": "autodock4",
+      "nrun": 5,
+      "max_evaluations": 250000,
+      "seed": 17,
+      "gpu": {
+        "available": true,
+        "name": "NVIDIA H100 80GB HBM3",
+        "driver_version": "580.173.02"
+      },
+      "compiled_compute_capabilities": [
+        "8.0",
+        "8.6",
+        "8.9",
+        "9.0"
+      ],
+      "ligand_count": 1,
+      "results": [
+        {
+          "ligand_id": "1stp-biotin",
+          "best_estimated_binding_energy_kcal_per_mol": -8.26,
+          "run_energies_kcal_per_mol": [
+            -7.01,
+            -8.26,
+            -7.16,
+            -7.36,
+            -7.52
+          ],
+          "dlg_artifact": "result-001-1stp-biotin.dlg",
+          "xml_artifact": "result-001-1stp-biotin.xml"
+        }
+      ],
+      "research_only": true,
+      "wall_clock_seconds": 0.594993,
+      "image_revision": "unknown"
+    },
+    "artifact_verified_through_rest": {
+      "bytes": 805,
+      "sha256": "6e4b8a2f31a3b6922b1c151306e1604a3103d9742bcbb8969a0ac5b40e7cf96e"
+    }
+  }
+}
