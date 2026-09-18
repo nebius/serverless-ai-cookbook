@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-18 23:28 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-18 23:49 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -181,6 +181,67 @@ failures or establish two clean final-release cohorts.
   with compact metadata returned to chat. Live six-record recovery passed.
 
 ## Release pins and limitations
+
+### 23:49 UTC — fresh chemistry tables verify; narrative still fails
+
+Scientist06 v28 completed all five authorized calls without duplicate admission,
+strictly sequential by actual operation timestamps. Admission-to-final-completion
+was84.47635 seconds. All16 pose values/atom mappings, requested seed-only input
+changes, input/output hashes and all16 GenMol property rows independently match.
+GenMol returned16 valid/unique molecules,8–21 heavy atoms (mean17.375).
+
+The customer journey is **not a correctness pass**. It needed one continuation
+after two self-repaired preflight errors. It repeated an already-completed
+execution observation five times and recovered two analysis execution errors.
+The final report `1f67e3587969cec3ea941294af4c91545a26317b63411138f3e4cced187b467c`
+incorrectly calls1A52 seed23 rank3 the lowest-confidence pose (rank4 is lower),
+overgeneralizes an inverse ranking, and claims all seven positive-confidence
+poses below1.2Å although only six meet that strict threshold. Actual report size
+is6383 UTF-8 bytes, not the6339 stated in chat. Original files/chats are retained;
+proof: `browser-evidence/scientist-06-chemistry-v28-independent-verification.json`.
+
+Parent07's typed aging tools returned correct numerical analysis, but its agent
+again failed the optional combined report due to `row_count` existing only in
+the tool summary, not the saved metrics. Candidate now makes that schema
+consistent and directs reuse of the already-complete deterministic reports.
+
+The combined next candidate aligns execution observations with the existing
+30-second model-status bound, returns early on terminal/interrupted state, and
+preserves the same execution/operation receipts. No execution deadline, model
+concurrency, output budget or tool-round count changes. File preflight reports
+all missing/invalid inputs together. Existing docking analysis now additionally
+renders CSV/methods report from exact tied extrema and optional explicit strict
+threshold counts; it does not add a scientific cutoff or correlation claim.
+58 execution/workflow/config,11 docking,4 aging and24 Node tests pass. Actual
+retained06 inputs reproduce the corrected facts with no new model calls.
+Fresh deployed qualification is still required; no default client promotion.
+
+### 23:38 UTC — aging preview live; fresh complete chemistry study running
+
+v28 source `8674bd8b88309347c26cb73df4b6fef4cf279b20`, full image
+`cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0918-v28-8674bd8`, index
+`sha256:4317e180df260bbfd0b31f0472c2855488028a97bccd6fde2f0dc98d9e80909a`
+is live in isolated previews07 and06, with their original scoped keys and
+verified bucket mounts. Parent owns07's natural aging recovery. Scientist06
+conversation `e23cc87e-6aad-59e9-ad6e-02fd973fa7f0` is a fresh public1A52/3PTB
+DiffDock study with seeds19/23, four poses each, plus16 GenMol molecules. The
+natural prompt asks for reference-frame pose evaluation, explicit best/worst/
+top-ranked comparisons, measured chemical properties and auditable reports,
+without naming helper tools. It naturally chose the typed sequential workflow
+launcher, but first repaired missing/relative input paths. No operator prompt
+or duplicate admission was needed; this recovered preparation error is retained.
+The study is in progress and no report-correctness pass is claimed.
+
+A deeper audit of the prior v27 genomic one-turn completion found one internal
+analysis execution `KeyError: model_revision`: an `exec` reused a local variable.
+The agent repaired it in the same turn, with no new model inference or operator
+intervention. Its final verified report remains correct, but this is **not a
+zero-error run**. Evidence is retained with the independent verification.
+
+Source-only follow-up removes a residual mandatory per-operation tracking
+sentence in the shared instructions and emphasizes the typed sequential runner
+in the primary agent.21 seed/config tests pass. These edits are not retroactively
+attributed to the frozen v28 image or its live study.
 
 ### 23:28 UTC — one-turn genome replay; independent aging helper candidate
 

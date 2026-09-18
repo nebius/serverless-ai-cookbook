@@ -40,7 +40,15 @@ async function compare(kind, key, args, storage) {
   try {
     const argv = [helper, '--reference', inputs.reference_file.absolute,
       args.result_file ? '--result' : '--prediction', inputs[fields[1]].absolute];
-    if (kind === 'docking') argv.push('--same-coordinate-frame', '--output', path.join(temporary, 'metrics.json'));
+    if (kind === 'docking') {
+      argv.push('--same-coordinate-frame', '--output', path.join(temporary, 'metrics.json'));
+      const queries = args.threshold_queries || [];
+      if (!Array.isArray(queries) || queries.length > 20 || queries.some((query) =>
+        !Number.isFinite(query.confidence_above) || !Number.isFinite(query.rmsd_below_angstrom) || query.rmsd_below_angstrom <= 0)) {
+        throw fail('Threshold queries must name finite confidence_above and positive rmsd_below_angstrom values.');
+      }
+      for (const query of queries) argv.push('--threshold-query', String(query.confidence_above), String(query.rmsd_below_angstrom));
+    }
     else {
       if (args.structure_index !== undefined && (!Number.isInteger(args.structure_index) || args.structure_index < 0)) {
         throw fail('structure_index must identify an existing nonnegative result index.');
@@ -68,7 +76,7 @@ async function compare(kind, key, args, storage) {
     const prefix = `.scientific-analysis/${kind}/${helperHash}/${hash(metricsBytes)}`;
     const files = {};
     for (const name of await fs.readdir(temporary)) {
-      if (!/^(metrics\.json|residue-mapping\.json|prediction\.(pdb|cif)|methods\.md)$/.test(name)) continue;
+      if (!/^(metrics\.json|residue-mapping\.json|prediction\.(pdb|cif)|methods\.md|report\.md|rows\.csv)$/.test(name)) continue;
       files[name] = await storage.retainWorkspaceBytes(key, `${prefix}/${name}`, await fs.readFile(path.join(temporary, name)));
     }
     const provenance = { helper: path.basename(helper), helper_sha256: helperHash,
@@ -83,12 +91,13 @@ async function compare(kind, key, args, storage) {
       all_poses_comparable: metrics.all_poses_comparable,
       top_rank_pose_rmsd_angstrom: metrics.top_rank_pose_rmsd_angstrom,
       best_comparable_pose_rmsd_angstrom: metrics.best_comparable_pose_rmsd_angstrom,
+      rank_facts: metrics.rank_facts, threshold_counts: metrics.threshold_counts,
       poses: metrics.poses.map(({ rank, status, reason, pose_rmsd_angstrom, model_confidence_not_reference_accuracy }) =>
         ({ rank, status, reason, pose_rmsd_angstrom, model_confidence_not_reference_accuracy })),
       limitations: metrics.limitations, rdkit_version: metrics.rdkit_version, numpy_version: metrics.numpy_version,
     } : metrics;
     return { analysis_completed: true, inference_submitted: false, metrics: summary, provenance,
-      files, evidence_guidance: 'Use these saved deterministic metric values in the final table. Do not substitute a newly written calculator. Model confidence, reference agreement, service wall time and GPU occupancy are different quantities.' };
+      files, evidence_guidance: 'Use these saved deterministic metric values in the final table. Docking report.md and rows.csv are already rendered from exact rank_facts: best/worst RMSD and highest/lowest confidence are distinct. Do not infer correlation from extrema or round before threshold comparisons; request threshold_queries for explicit descriptive counts, not default success criteria. Do not substitute a newly written calculator. Model confidence, reference agreement, service wall time and GPU occupancy are different quantities.' };
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 
@@ -148,11 +157,11 @@ async function aging(key, args, storage) {
     return { analysis_completed: true, inference_submitted: false, files, provenance,
       metrics: { schema: metrics.schema, model_id: metrics.model_id, model_version: metrics.model_version,
         all_numerical_checks_pass: metrics.all_numerical_checks_pass, cohorts: metrics.cohorts,
-        row_count: metrics.rows.length,
+        row_count: metrics.row_count,
         overlaps: metrics.overlaps.map((pair) => ({ ...pair, pairs: pair.pairs.slice(0, 20),
           full_pair_count: pair.pairs.length, complete_rows_in: files['metrics.json'].relative_path })),
         limitations: metrics.limitations },
-      evidence_guidance: 'Use the retained deterministic row table and report. Exact sample overlap is not the total cohort size. Numerical agreement, age-label error, biological validity and clinical utility are distinct; do not invent another network or change coefficient versions to force agreement.' };
+      evidence_guidance: 'The retained report.md is already a complete deterministic methods/limitations report; reuse it and rows.csv instead of requiring a new combined script. Summary row_count is also present in metrics.json; cohorts use sample_count, overlaps use common_sample_count. Exact sample overlap is not total cohort size. Numerical agreement, age-label error, biological validity and clinical utility are distinct. Do not invent another network, change coefficient versions to force agreement, or infer the cause of a historical script error from a generic limitation.' };
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 

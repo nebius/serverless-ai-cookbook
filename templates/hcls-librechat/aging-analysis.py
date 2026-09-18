@@ -183,7 +183,7 @@ def analyze(model, cohorts, *, assets=None, coefficient_version=None, reference_
             else 'Independent float64 NumPy inference in original Keras model_config layer order, including SELU and BatchNormalization; original robust scaler and named-CpG alignment',
         'evaluator_sha256': evaluator_hash, 'reference_assets': assets_manifest,
         'primary_source': SUPPLEMENT if model == 'phenoage' else f'https://github.com/rsinghlab/AltumAge/tree/{ALTUM_VERSION}',
-        'inference_submitted': False, 'cohorts': cohort_reports, 'rows': rows, 'overlaps': overlaps,
+        'inference_submitted': False, 'cohorts': cohort_reports, 'row_count': len(rows), 'rows': rows, 'overlaps': overlaps,
         'all_numerical_checks_pass': all(c['all_numerical_checks_pass'] for c in cohort_reports),
         'limitations': ['Numerical agreement and feature-order invariance are not biological or clinical validation.',
             'Known example training/test membership is not established; supplied ages are descriptive labels, not a held-out accuracy benchmark.',

@@ -24,15 +24,15 @@ STEP_COMMON = {'kind': TEXT, 'id': TEXT, 'model': TEXT, 'idempotency_key': TEXT,
 NATIVE_STEP_SCHEMA = {'type': 'object', 'additionalProperties': False,
     'required': ['kind', 'id', 'model', 'input_file', 'idempotency_key'],
     'properties': {**STEP_COMMON, 'kind': {'const': 'native'},
-        'input_file': {**TEXT, 'description': 'Existing workspace-relative JSON FILE PATH containing model fields, never an inline object or array.'}}}
+        'input_file': {**TEXT, 'description': 'Existing JSON FILE PATH containing model fields: absolute /workspace/... or relative to /workspace, NOT relative to output_directory. Never an inline object or array.'}}}
 BATCH_REQUIRED = ['kind', 'id', 'model', 'tool', 'operation', 'source_file', 'parameters_file',
                   'media_type', 'entry_name', 'semantic_type', 'idempotency_key', 'display_name']
 BATCH_OPTIONAL = ['compression', 'service_class', 'source_artifact_file']
 BATCH_STEP_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required': BATCH_REQUIRED,
     'properties': {**STEP_COMMON, **{name: TEXT for name in BATCH_REQUIRED + BATCH_OPTIONAL},
         'kind': {'const': 'batch'},
-        'source_file': {**TEXT, 'description': 'Existing workspace-relative source bundle or input file.'},
-        'parameters_file': {**TEXT, 'description': 'Existing workspace-relative JSON parameter file using the selected live model contract.'},
+        'source_file': {**TEXT, 'description': 'Existing source file: absolute /workspace/... or relative to /workspace, NOT output_directory.'},
+        'parameters_file': {**TEXT, 'description': 'Existing JSON parameter file using the selected live contract: absolute /workspace/... or relative to /workspace, NOT output_directory.'},
         'source_artifact_file': {**TEXT, 'description': 'Optional finalized artifact-reference JSON file matching the exact source bytes.'}}}
 
 
@@ -115,7 +115,7 @@ def read_job(args):
     if not (directory / 'request.json').is_file():
         raise ValueError('Unknown execution job ID.')
     offset = bounded_number(args, 'offset', 0, 2**63 - 1)
-    wait = bounded_number(args, 'wait_seconds', 0, 10)
+    wait = bounded_number(args, 'wait_seconds', 15, 30)
     limit = bounded_number(args, 'max_bytes', 4000, 32000)
     deadline = time.monotonic() + wait
     while True:
@@ -132,7 +132,7 @@ def read_job(args):
                     status.update(status='interrupted', error='Execution worker exited without a final receipt; inspect saved output before rerunning.')
         if status['status'] not in ('starting', 'running') or time.monotonic() >= deadline:
             break
-        time.sleep(0.1)
+        time.sleep(min(0.1, max(0, deadline - time.monotonic())))
     output = directory / 'output.log'
     data = b''
     if output.exists():
@@ -143,6 +143,10 @@ def read_job(args):
     status.update(output=data.decode('utf-8', errors='replace'), next_offset=offset + len(data),
                   output_size_bytes=total_bytes, returned_bytes=len(data),
                   output_path=str(output), more_output=output.exists() and output.stat().st_size > offset + len(data))
+    status['observation_guidance'] = (
+        'Observe this same job once with wait_seconds=30; do not issue parallel or duplicate polls for one job.'
+        if status['status'] in ('starting', 'running') else
+        'Execution is terminal. Do not poll the same completed output again. Inspect saved files for remaining analysis/report work; execution completion alone is not scientific completion.')
     if status['more_output']:
         status['output_guidance'] = ('Full output is retained at output_path. Analyze that file locally and print concise metrics; '
                                      'read another chunk only when its text is needed. Never paste whole datasets or helper source into chat.')
@@ -197,7 +201,7 @@ def run_scientific_workflow(args):
         fcntl.flock(lock, fcntl.LOCK_EX)
         previous = json.loads(index.read_text()) if index.exists() else {}
         if previous.get('job_id'):
-            current = read_job({'job_id': previous['job_id']})
+            current = read_job({'job_id': previous['job_id'], 'wait_seconds': 0})
             if current['status'] in ('starting', 'running', 'completed') or not resume:
                 return {**current, 'workflow_identity': identity, 'reused_existing_job': True,
                         'resume_required': current['status'] not in ('starting', 'running', 'completed')}
@@ -238,12 +242,12 @@ TOOLS = [
             'timeout_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 604800, 'default': 300},
             'wait_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 10, 'default': 5}}}},
     {'name': 'read_execution',
-     'description': 'Resume a command by its job_id, including after reconnecting. Returns status, exit code and a bounded output chunk. Pass next_offset as offset to read the next chunk; poll running jobs without resubmitting commands. Receipts survive MCP restarts; running processes do not survive a container restart.',
+     'description': 'Observe the same command by its job_id, including after reconnecting. For a running scientific workflow use wait_seconds=30 (default15, maximum30); observation returns early on completion/failure/interruption and never extends the command deadline or submits model work. Returns status, exit code and a bounded output chunk. Pass next_offset as offset to avoid rereading prior logs. Running after the bounded wait is not completed analysis; retain this job and original operation IDs. Receipts survive MCP restarts; running processes do not survive a container restart.',
      'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
      'inputSchema': {'type': 'object', 'additionalProperties': False, 'required': ['job_id'],
         'properties': {'job_id': {'type': 'string'}, 'offset': {'type': 'integer', 'minimum': 0},
             'max_bytes': {'type': 'integer', 'minimum': 0, 'maximum': 32000},
-            'wait_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 10}}}},
+            'wait_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 30, 'default': 15}}}},
 ]
 
 

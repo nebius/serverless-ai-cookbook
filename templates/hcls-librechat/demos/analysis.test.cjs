@@ -59,6 +59,24 @@ test('explicit non-comparable helper exit retains the result instead of inventin
   assert.equal(result.metrics.all_poses_comparable, false);
   assert.equal(result.metrics.poses[0].pose_rmsd_angstrom, undefined);
 }));
+test('docking report, rank facts and explicit threshold query survive the typed adapter', () => fixture(async ({ storage, retained }) => {
+  storage.execute = async (_, argv) => {
+    assert.deepEqual(argv.slice(argv.indexOf('--threshold-query')), ['--threshold-query', '0.7', '1.2']);
+    const folder = path.dirname(argv[argv.indexOf('--output') + 1]);
+    const metrics = { poses: [], rank_facts: { best_rmsd: { ranks: [3] }, lowest_confidence: { ranks: [4] } },
+      threshold_counts: [{ matching_pose_count: 1, eligible_comparable_pose_count: 3 }] };
+    await fs.writeFile(path.join(folder, 'metrics.json'), JSON.stringify(metrics));
+    await fs.writeFile(path.join(folder, 'report.md'), '# Deterministic rank report\n');
+    await fs.writeFile(path.join(folder, 'rows.csv'), 'rank,rmsd\n3,1.2109\n');
+  };
+  const result = await compare('docking', 'fixture-key', { ...args,
+    threshold_queries: [{ confidence_above: 0.7, rmsd_below_angstrom: 1.2 }] }, storage);
+  assert.deepEqual(result.metrics.rank_facts.best_rmsd.ranks, [3]);
+  assert.deepEqual(result.metrics.rank_facts.lowest_confidence.ranks, [4]);
+  assert.equal(result.metrics.threshold_counts[0].matching_pose_count, 1);
+  assert.ok(retained[result.files['report.md'].relative_path].toString().includes('Deterministic'));
+  assert.ok(retained[result.files['rows.csv'].relative_path].toString().includes('1.2109'));
+}));
 test('helper failures retain diagnostics and never claim completed analysis', () => fixture(async ({ storage, retained }) => {
   storage.execute = async () => { throw Object.assign(new Error('failed'), { code: 1, stderr: 'Invalid source coordinates' }); };
   await assert.rejects(compare('docking', 'fixture-key', args, storage), /no scientific metrics accepted/);
@@ -96,7 +114,7 @@ test('typed aging analysis retains actual row files, hashes and exact cohort ove
     const folder = argv[argv.indexOf('--output-dir') + 1];
     await fs.writeFile(path.join(folder, 'metrics.json'), JSON.stringify({ schema: 'scientific-aging-analysis/v1',
       model_id: 'phenoage', model_version: 'levine-2018-supplement-rounded-v1', method: 'independent reference',
-      evaluator_sha256: 'reference-hash', rows: [{ sample_id: 'one', independent_age_years: 41.9 }],
+      evaluator_sha256: 'reference-hash', row_count: 1, rows: [{ sample_id: 'one', independent_age_years: 41.9 }],
       cohorts: [{ sample_count: 1 }], overlaps: [], all_numerical_checks_pass: true }));
     await fs.writeFile(path.join(folder, 'rows.csv'), 'sample_id,independent_age_years\none,41.9\n');
     await fs.writeFile(path.join(folder, 'report.md'), '# Actual numerical report\n');
@@ -104,6 +122,8 @@ test('typed aging analysis retains actual row files, hashes and exact cohort ove
   const result = await aging('fixture-key', { model_id: 'phenoage', coefficient_version: 'levine-2018-supplement-rounded-v1',
     cohorts: [{ label: 'one', input_file: 'reference.sdf', result_file: 'result.json' }] }, storage);
   assert.equal(result.metrics.row_count, 1);
+  assert.equal(result.metrics.row_count, JSON.parse(retained[result.files['metrics.json'].relative_path]).row_count);
+  assert.match(result.evidence_guidance, /already a complete deterministic methods/);
   assert.equal(result.inference_submitted, false);
   assert.equal(result.provenance.inputs.cohort_0_input.sha256, hash('reference bytes'));
   assert.equal(result.files['metrics.json'].sha256, result.provenance.result_sha256);

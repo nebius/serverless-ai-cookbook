@@ -83,14 +83,15 @@ def validate_files(plan):
     file preflight, not a fabricated model-capability or scientific-quality gate.
     """
     prepare(plan)
-    files = []
+    files, issues = [], []
     for step in plan['steps']:
         for field in ('source', 'parameters', 'input', 'source_artifact'):
             if field not in step:
                 continue
             path = Path(step[field])
             if not path.is_file():
-                raise ValueError(f"Step {step['id']} {field} is not an existing file: {path}")
+                issues.append(f"Step {step['id']} {field} is not an existing file: {path}")
+                continue
             digest = hashlib.sha256()
             size = 0
             with path.open('rb') as source:
@@ -101,11 +102,16 @@ def validate_files(plan):
                 try:
                     value = json.loads(path.read_bytes())
                 except ValueError as error:
-                    raise ValueError(f"Step {step['id']} {field} is not valid JSON: {path}") from error
+                    issues.append(f"Step {step['id']} {field} is not valid JSON: {path}")
+                    continue
                 if not isinstance(value, dict):
-                    raise ValueError(f"Step {step['id']} {field} must contain a JSON object: {path}")
+                    issues.append(f"Step {step['id']} {field} must contain a JSON object: {path}")
+                    continue
             files.append({'step': step['id'], 'field': field, 'path': str(path),
                           'size_bytes': size, 'sha256': digest.hexdigest()})
+    if issues:
+        raise ValueError('Workflow file preflight failed before any admission:\n'
+                         + '\n'.join(issues) + '\nPaths resolve from /workspace, not the output directory. Fix all listed files before launching.')
     return {'schema': 'scientific-workflow-file-preflight/v1', 'steps': len(plan['steps']), 'files': files}
 
 

@@ -59,6 +59,54 @@ def test_command_deadline(tmp_path):
     assert result['status'] == 'timed_out'
 
 
+def test_bounded_thirty_second_observation_returns_early_after_reconnect(tmp_path):
+    import time
+    _, started = call(tmp_path, 'execute_command', {
+        'command': 'sleep 0.2; printf completed', 'wait_seconds': 0})
+    before = time.monotonic()
+    _, result = call(tmp_path, 'read_execution', {'job_id': started['job_id'], 'wait_seconds': 30})
+    assert time.monotonic() - before < 5
+    assert result['status'] == 'completed' and result['output'] == 'completed'
+    assert result['job_id'] == started['job_id']
+    assert len(list((tmp_path / 'jobs').glob('*/request.json'))) == 1
+
+
+def test_observation_deadline_preserves_pending_job_without_new_execution(tmp_path, monkeypatch):
+    import uuid
+    spec = importlib.util.spec_from_file_location('execution_test', SCRIPT)
+    execution = importlib.util.module_from_spec(spec); spec.loader.exec_module(execution)
+    monkeypatch.setattr(execution, 'ROOT', tmp_path)
+    job = str(uuid.uuid4()); directory = tmp_path / job; directory.mkdir()
+    original = '{"command":"existing workflow","timeout_seconds":0}'
+    (directory / 'request.json').write_text(original)
+    now = [0.0]
+    monkeypatch.setattr(execution.time, 'monotonic', lambda: now[0])
+    monkeypatch.setattr(execution.time, 'sleep', lambda delay: now.__setitem__(0, now[0] + delay))
+    result = execution.read_job({'job_id': job, 'wait_seconds': 30})
+    assert now[0] == pytest.approx(30)
+    assert result['status'] == 'starting' and result['job_id'] == job
+    assert (directory / 'request.json').read_text() == original
+    assert not (directory / 'status.json').exists()
+    with pytest.raises(ValueError, match='0 to 30'):
+        execution.read_job({'job_id': job, 'wait_seconds': 31})
+    assert len(list(tmp_path.glob('*/request.json'))) == 1
+
+
+def test_observation_interrupted_worker_returns_early_without_retry(tmp_path, monkeypatch):
+    import uuid
+    spec = importlib.util.spec_from_file_location('execution_test', SCRIPT)
+    execution = importlib.util.module_from_spec(spec); spec.loader.exec_module(execution)
+    monkeypatch.setattr(execution, 'ROOT', tmp_path)
+    job = str(uuid.uuid4()); directory = tmp_path / job; directory.mkdir()
+    (directory / 'request.json').write_text('{}')
+    (directory / 'status.json').write_text(json.dumps({'job_id': job, 'status': 'running',
+        'worker_pid': 999999999, 'worker_start': 'nonexistent'}))
+    monkeypatch.setattr(execution.time, 'sleep', lambda _: pytest.fail('No wait after interrupted receipt'))
+    result = execution.read_job({'job_id': job, 'wait_seconds': 30})
+    assert result['status'] == 'interrupted' and result['job_id'] == job
+    assert len(list(tmp_path.glob('*/request.json'))) == 1
+
+
 def test_typed_workflow_reuses_execution_job_across_connections(tmp_path, monkeypatch):
     runner = tmp_path / 'fixture-runner.py'
     runner.write_text('import sys,json\nprint(json.dumps({"steps":1,"files":[{}]}) if "--validate-only" in sys.argv else "fixture complete")\n')

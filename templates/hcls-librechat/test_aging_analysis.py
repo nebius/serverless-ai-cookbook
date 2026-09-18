@@ -32,6 +32,7 @@ def pheno(tmp_path, *, prediction=41.90792243378, version=aging.PHENO_VERSION):
 def test_declared_published_formula_recomputed_not_trusted(tmp_path):
     result = aging.analyze('phenoage', [pheno(tmp_path)], coefficient_version=aging.PHENO_VERSION)
     assert result['all_numerical_checks_pass'] is True
+    assert result['row_count'] == len(result['rows']) == 1
     assert result['rows'][0]['independent_age_years'] == pytest.approx(41.90792243378, abs=1e-10)
     bad = aging.analyze('phenoage', [pheno(tmp_path, prediction=51.52728733548)], coefficient_version=aging.PHENO_VERSION)
     assert bad['all_numerical_checks_pass'] is False

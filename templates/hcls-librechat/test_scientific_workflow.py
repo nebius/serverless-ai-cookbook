@@ -38,6 +38,21 @@ def test_observation_is_not_completion_and_resume_does_not_advance(tmp_path):
     assert calls == ['a', 'a', 'b']
 
 
+def test_preflight_reports_all_missing_and_invalid_files_before_admission(tmp_path):
+    (tmp_path / 'bad.json').write_text('not JSON')
+    prepared = {'schema': 'scientific-workflow/v1', 'steps': [
+        {'id': name, 'kind': 'native', 'model': 'fixture', 'input': str(tmp_path / filename),
+         'output': str(tmp_path / name), 'idempotency_key': 'original-' + name}
+        for name, filename in [('first', 'missing.json'), ('second', 'bad.json'), ('third', 'also-missing.json')]]}
+    with pytest.raises(ValueError) as error:
+        workflow.validate_files(prepared)
+    message = str(error.value)
+    assert 'first input is not an existing file' in message
+    assert 'second input is not valid JSON' in message
+    assert 'third input is not an existing file' in message
+    assert 'before any admission' in message
+
+
 def test_explicit_concurrency_rejection_waits_but_does_not_admit_next_step(tmp_path):
     calls = []
     async def step(args):

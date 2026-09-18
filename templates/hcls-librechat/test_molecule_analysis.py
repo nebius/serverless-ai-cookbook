@@ -78,6 +78,39 @@ def test_partial_graph_failure_keeps_denominator_and_no_guessed_value():
     assert 'pose_rmsd_angstrom' not in report['poses'][1]
 
 
+def test_descriptive_extrema_do_not_conflate_best_geometry_and_lowest_confidence():
+    rows = [{'rank': i + 1, 'status': 'comparable', 'pose_rmsd_angstrom': rmsd,
+             'model_confidence_not_reference_accuracy': confidence}
+            for i, (rmsd, confidence) in enumerate([(4, 0.9), (6, 0.8), (1, 0.7), (8, -1)])]
+    facts, counts = analysis.rank_facts(rows)
+    assert facts['best_rmsd']['ranks'] == [3]
+    assert facts['worst_rmsd']['ranks'] == [4]
+    assert facts['highest_confidence']['ranks'] == [1]
+    assert facts['lowest_confidence']['ranks'] == [4]
+    assert facts['best_rmsd_also_lowest_confidence_ranks'] == []
+    assert counts == []  # No fabricated scientific cutoff.
+
+
+def test_thresholds_use_unrounded_values_exact_denominators_and_strict_operators():
+    rows = [{'rank': i + 1, 'status': 'comparable', 'pose_rmsd_angstrom': rmsd,
+             'model_confidence_not_reference_accuracy': confidence}
+            for i, (rmsd, confidence) in enumerate([(1.2109, 0.8), (1.1, 0.9), (1.2, 0.85), (0.1, 0.7)])]
+    rows.append({'rank': 5, 'status': 'not_comparable', 'model_confidence_not_reference_accuracy': 0.95})
+    _, counts = analysis.rank_facts(rows, [(0.7, 1.2)])
+    assert counts[0]['eligible_ranks'] == [1, 2, 3]
+    assert counts[0]['matching_ranks'] == [2]
+    assert counts[0]['eligible_comparable_pose_count'] == 3
+    assert counts[0]['matching_pose_count'] == 1
+
+
+def test_rank_ties_and_missing_confidence_remain_explicit():
+    rows = [{'rank': i + 1, 'status': 'comparable', 'pose_rmsd_angstrom': value}
+            for i, value in enumerate([1, 1, 3])]
+    facts, _ = analysis.rank_facts(rows)
+    assert facts['best_rmsd']['ranks'] == [1, 2]
+    assert facts['lowest_confidence'] == {'value': None, 'ranks': []}
+
+
 def test_nonfinite_and_missing_coordinates_fail_explicitly():
     with pytest.raises(ValueError, match='conformer'):
         analysis.pose_rmsd(molecule(), Chem.MolFromSmiles('CON'))
@@ -100,3 +133,8 @@ def test_cli_retains_source_hashes_and_refuses_unconfirmed_coordinate_frame(tmp_
     report = json.loads(output.read_text())
     assert report['best_comparable_pose_rmsd_angstrom'] == 0
     assert len(report['provenance']['reference_sha256']) == 64
+    assert (tmp_path / 'comparison.rows.csv').is_file()
+    text = (tmp_path / 'comparison.report.md').read_text()
+    assert 'Lowest RMSD: 0.0; rank(s) [1]' in text
+    assert report['provenance']['reference_sha256'] in text
+    assert 'not establish monotonicity, correlation or calibration' in text

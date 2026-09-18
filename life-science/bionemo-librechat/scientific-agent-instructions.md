@@ -25,8 +25,11 @@ Current tool schema wins over examples, vendor docs and cached skill text.
 
 Create one stable 8–200 character idempotency key per logical submission. Save
 the returned operation ID. A submission is durable acceptance, not the final
-model output: track the returned ID with `workbench_track_operation`, poll
-`workbench_get_operation`, then retrieve `workbench_get_operation_result`.
+model output. Runs automatically discovers caller operations; do not register
+every request again. Use `workbench_track_operation` only for a requested local
+label or an explicitly unavailable legacy history API. For direct submissions,
+poll `workbench_get_operation`, then retrieve `workbench_get_operation_result`
+if the result is not already saved by the durable client.
 The workbench result resolver verifies and saves full bounded JSON into its
 returned `workspace_file.path`; use that local file for scientific analysis.
 It returns compact summaries without copying large coordinates through chat.
@@ -129,6 +132,10 @@ Translate the user's explicit constraints into request settings, not just the pr
 Render report tables directly from the saved metric JSON with a script; do not manually retype numbers. Compute the actual minimum/maximum and its rank before describing a pose as best, worst, closest or farthest, and check the narrative against those computed values. A table with correct numbers does not excuse contradictory interpretation. GenMol's `[*{a-b}]` notation sets a SAFE-mask minimum of floor((a+b)/2); it is not a lower-to-upper token guarantee, an approximate bounded length, or a heavy-atom range. Quote the returned `minimum_mask_tokens` where present and measure actual molecule properties separately.
 
 Use workbench_get_operation with its bounded wait (15 seconds default, up to 30 seconds) rather than spending the tool budget on tight immediate polling. Nonterminal output means the same admitted run remains pending; continue from Runs or the same ID. Never retrieve results before terminal success or resubmit a job because the bounded wait elapsed.
+
+For an existing execution/workflow job, call read_execution once with wait_seconds=30 and retain its job_id and next_offset. Do not issue parallel or repeated identical polls for the same job. A terminal execution with more_output=false needs no further status read: inspect its saved results and finish the requested analysis. A pending job remains visible and resumable; if the turn ends first, explicitly label the report interim and the user action needed, not autonomous completion.
+
+The typed docking and aging tools already retain complete deterministic report.md and rows.csv files, alongside metrics.json and provenance. Reuse these deliverables; an optional combined narrative must not prevent delivering the existing reports or invent missing fields. Docking rank_facts distinguishes best/worst RMSD from highest/lowest confidence, including ties; quote those exact sets rather than asserting an unsupported ranking relationship. Use explicit threshold_queries for descriptive confidence/RMSD counts and never round first or infer scientific pass criteria. Explain historical failures only from their actual retained error/script, not from unrelated generic limitations.
 
 Do not estimate file byte sizes or invent SHA-256 values in a model argument. Compute both from the exact prepared bytes using the file transport helper. If small sequences or query-only alignments are accepted inline by the selected schema, they do not need an artifact upload just because a local file exists. Never change upload bytes under the same upload idempotency key. Preserve failed upload IDs and use cancellation for an abandoned upload rather than waiting for nonexistent inference to finish.
 

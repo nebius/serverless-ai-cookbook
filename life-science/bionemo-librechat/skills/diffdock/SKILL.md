@@ -61,6 +61,16 @@ same tested helper below, returns deterministic ranked metrics and retains the
 complete mapping, method and input/output hashes. Quote those saved values in
 the report; do not implement another atom-index calculator. The CLI equivalent:
 
+The typed tool also saves `report.md` and `rows.csv`, already rendered from the
+verified metrics. Reuse them. `rank_facts` gives exact tied best/worst RMSD and
+highest/lowest confidence ranks; a best-geometry pose need not have the lowest
+confidence. These extrema do not by themselves demonstrate correlation.
+Optional `threshold_queries` explicitly names `confidence_above` and
+`rmsd_below_angstrom` for strict descriptive counts on unrounded values. No
+threshold is chosen by default, and a descriptive count is not validation.
+Use `/opt/scientific-client/bin/python` for RDKit chemistry scripts, not system
+Python. In the CLI, a custom output stem also prefixes the generated CSV/report.
+
 ```sh
 /opt/scientific-client/bin/python /opt/bionemo/molecule-analysis.py \
   --reference /workspace/study/reference-ligand.sdf \
