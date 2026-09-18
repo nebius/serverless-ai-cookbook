@@ -196,3 +196,46 @@ Cosmos fresh runtime now independently verifies exact frame count, dimensions
 and differing requested FPS. The suspected25→24FPS output issue was disproven
 by a real fresh test; no speculative repair was applied. LeRobot still requires
 the final public action-aligned transfer test after runtime promotion.
+
+## Checkpoint at approximately 23:31 UTC
+
+- Helm168 deployed the OpenFold3 inline loader and exact preemption
+  classification repair. All three original public complex requests completed
+  on their first new attempt. Poor reference agreement remains explicit:
+  whole-complex CA RMSD18.212/15.323/19.053Å and native contact recall
+  0/0.0556/0. These are execution repairs, not accurate binding predictions.
+- The ESMFold2 request formerly lost to preemption completed in106.623s on
+  a new replay. Its original1331s failed operation remains retained. Replaying
+  successfully does not itself demonstrate another live eviction/retry cycle;
+  the original disruption evidence is separately covered by controller tests.
+- CXR's repaired public response attribution was present on20/20 permissive
+  JSON requests, with13 valid outputs and7 original formatting failures. A
+  separate exact-label JSON-schema cohort passed20/20. Runtime attribution,
+  output-format reliability and diagnostic accuracy are distinct measurements.
+- The mixed MolMIM/Qwen108-call cohort completed80 verified and28 failed
+  operations. All60 Qwen calls passed; MolMIM returned20 requested outcomes
+  and28 structured finite-search exhaustion errors. An honest error improves
+  failure semantics but does not fulfill a scientist's molecular-design request.
+- Fresh v27 scientist05 completed a four-call genomics study and independently
+  verified report in one turn. A matched v25/v26 comparison reduced workflow
+  time121.775→63.680s while model time remained about11.6s. This is a narrow
+  overhead comparison, not a platform-wide or whole-conversation speedup.
+- Proteina ligand/AME repairs remain isolated. The real H100 Python-header and
+  Triton JIT prerequisites now pass, and actual RF3 produced a structure and
+  nonzero reward. All original variants and the protein-target regression must
+  still finish before public promotion. Earlier candidate failures are retained.
+- Cosmos's warmed replacement snapshot passed strict restoration on two
+  physical H100s and the actual production Pod renderer. Cross-node CRIU/CUDA
+  restore28.534+6.042s excludes164.594s image pull. Ordinary public snapshot
+  admission is still unqualified; the bundle is not yet selected in production.
+
+| ID | Additional observation | Classification and current action |
+| --- | --- | --- |
+| Q46 | Public LeRobot operationb46eb725 generated both H100 videos but failed dataset packaging: source `next.done` was scalar while its declared feature shape was `(1,)`. | Lossless scalar-to-singleton normalization and dtype/shape preflight repaired in1a873c3b. Exact published coordinator image replay preserved all6144 non-video values across128 frames/two episodes/two cameras. Fresh ordinary public replay is pending Helm169; re-encoded unselected video is not byte-identical, and physical motion fidelity remains separate. |
+| Q47 | App Logs returned HTTP200 with `data.state=unavailable`; the backend requested5000 lines for every ordinary page and exceeded the unchanged8s Loki timeout. | Exact smaller201-line query succeeds. Source574e9d72e fetches the requested page plus lookahead and expands only for a split timestamp boundary. Existing5000-line ceiling remains;16 focused log tests and96 integration tests pass. Public169 rollout/retest is in progress. |
+| Q48 | v26 aging scientist completed four model calls but failed to deliver its report after two turns. Its hand-reconstructed AltumAge network omitted/misordered layers and reported an approximately262-year discrepancy. | Independent original-H5/scaler calculation agrees with17 actual Altum outputs within1.553e-5years;32 PhenoAge rows agree with declared rounded-v1 coefficients within3.02e-14years. A reusable typed analysis tool is being deployed in v28. Correct model outputs do not close natural workflow completion; the failed report attempts remain retained. |
+
+Root-owned live rollout169 contains the repaired LeRobot coordinator execution
+map and bounded App Logs reader; other serving owner settings and the four live
+scientific snapshot registrations are preserved. No limits, quotas, tool budgets
+or production customer concurrency settings were increased.
