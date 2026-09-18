@@ -531,5 +531,8 @@ async function clinicalOutput(owner, key, id, filename) {
     `.scientific-clinical/${id}/${hash(bytes)}/${filename}`, bytes);
   return { bytes, workspace_file };
 }
-module.exports = { platform, listApps, operationResult, workshopRun, summarizeResult, clinical, clinicalFromWorkspace, status, list, start, output, clinicalOutput, track, waitOperation, runs, workspaceInfo, workspaceList,
+async function analyzeWorkspace(kind, key, args) {
+  return require('./analysis.cjs').compare(kind, key, args, { workspaceGet, retainWorkspaceBytes });
+}
+module.exports = { platform, listApps, operationResult, workshopRun, summarizeResult, clinical, clinicalFromWorkspace, status, list, start, output, clinicalOutput, analyzeWorkspace, track, waitOperation, runs, workspaceInfo, workspaceList,
   workspacePut, workspaceGet, save, read, failure, publicError, FILES, REPORT_MODEL };

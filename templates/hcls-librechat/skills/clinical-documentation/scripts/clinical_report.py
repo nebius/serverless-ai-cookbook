@@ -257,7 +257,10 @@ def document_transcript(text, language, reporter, output):
                 # One fact per call: another fact's evidence must not justify it.
                 verdict = reporter.complete(stage, VERIFY, {"language": language, "facts": [fact]})
                 kept, dropped = apply_review([fact], verdict)
-                if dropped and dropped[0].get("verdict") == "unsupported":
+                # An incomplete citation can be labelled either unsupported or
+                # unclear. Locate evidence once for both; this never changes
+                # the statement and still requires a fresh full fact review.
+                if dropped and dropped[0].get("verdict") in {"unsupported", "unclear"}:
                     located = reporter.complete(f"locate-{index:03}-{fact['id']}", LOCATE,
                                                  {**data, "statement": fact["statement"]})
                     if located.get("source_ids"):

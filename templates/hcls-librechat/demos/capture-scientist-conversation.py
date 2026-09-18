@@ -43,6 +43,7 @@ def main():
         }
         if args.runs:
             endpoints.update({'runs': '/api/scientific-demos/runs',
+                              'clinical-jobs': '/api/scientific-demos/clinical',
                               'workshop-runs': '/api/scientific-demos/workshop/runs'})
         for name, path in endpoints.items():
             response = client.get(path)
@@ -86,7 +87,10 @@ def main():
                     'sha256': hashlib.sha256(response.content).hexdigest()}
         for index, relative in enumerate(args.workspace_list):
             response = client.get('/api/scientific-demos/workspace', params={'path': relative})
-            response.raise_for_status()
+            if response.status_code != 200:
+                summary['files'][relative + '/'] = {'http_status': response.status_code,
+                    'listing_unavailable': True}
+                continue
             target = args.output / f'workspace-list-{index}.json'
             target.write_text(json.dumps(response.json(), indent=2) + '\n')
             summary['files'][relative + '/'] = {'listing': target.name}

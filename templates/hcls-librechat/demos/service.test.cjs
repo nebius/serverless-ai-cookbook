@@ -88,10 +88,12 @@ test('stdio MCP exposes typed tools and rejects absent identity without inferenc
     { id: 3, method: 'tools/call', params: { name: 'clinical_list_jobs' } } ].map((item) => JSON.stringify({ jsonrpc: '2.0', ...item })).join('\n') + '\n');
   assert.equal(await new Promise((resolve) => child.on('exit', resolve)), 0);
   const messages = stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(messages[1].result.tools.length, 18);
+  assert.equal(messages[1].result.tools.length, 20);
   assert.ok(messages[1].result.tools.every((tool) => tool.inputSchema.additionalProperties === false));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_track_operation'));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'clinical_report_from_workspace'));
+  assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_compare_docking'));
+  assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_compare_structures'));
   assert.equal(messages[2].result.isError, true);
 });
 test('mounted workspace stays inside its root and round-trips files', async () => {

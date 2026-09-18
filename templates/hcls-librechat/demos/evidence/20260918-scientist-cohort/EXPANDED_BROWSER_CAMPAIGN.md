@@ -107,6 +107,59 @@ response, inference result or hash check does not establish scientific validity.
 
 ## Workbench repairs exercised in this campaign
 
+### 22:32 UTC: verified outcomes and a repeated fresh-study failure
+
+- v24 source `64705e4a826a2ce9b5737f342fd32fc764a903c9`, image
+  `cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0918-v24-64705e4`, digest
+  `sha256:1bf5a7cef18e147fc1c6e9604b8b208d5243a86fe279ea1f43e46ae424975a21`
+  is deployed to dedicated scientist05/08 previews. It fixes the actual seeded
+  clinical tool omission and tests seed/tool-definition parity.
+- Scientist06 completed12 Evo2 continuations (six256-base public chloroplast
+  prefixes × seeds1/7, each64 new bases). Independent downloaded-byte checks
+  against frozen154,478-base NC_000932.1 verify every request, output and metric.
+  Six suffixes match the reference exactly; training overlap remains unknown.
+  Model-reported total34.309s, summed service intervals107.253s and workflow
+  wall390.58s are separate measurements, not interchangeable GPU accounting.
+  Report v1 mislabeled milliseconds as seconds; v2 required correction and was
+  downloaded7252B, SHA256 `9d1d099d683944495b5725acbf579d87d62b9a3f58f27dd28749e61b490f3137`.
+  Original scripts/report and the unit error remain. No active06 operation;
+  key explicitly returned to parent.
+- Scientist08's one corrected clinical job
+  `9ced4689b0dcf7160faa403375c144aa` verified the223,161-byte original ASR JSON
+  and completed in41.4s. All seven actual clinical files downloaded. Transcript
+ 6817B SHA256 `e511be3353a9cdad1d2d2f10e7000ec7b9f2986e01ed3785f10723d99e3ffbee`
+  exactly matches the full ASR text; no re-transcription. Final speech report
+ 6962B SHA256 `791b101ed006298a5b224ff916514b715a7d92bb3271b6bddee8cef3b7323ba0`
+  required a continuation after treating a dictionary as a list. Its exact
+  WERv3 table is independently consistent. This is still an unvalidated draft:
+  the automated reviewer approved a standardized drug spelling not literally
+  in the source and excluded a stool-test statement with an incomplete quote.
+  The latter exposed one-shot citation relocation running only for unsupported,
+  not unclear verdicts; the narrow repair retains re-review and all rejections.
+- Fresh05 v24 ran four DiffDock requests (two complexes × two seeds, four poses)
+  and one GenMol request, all succeeding with stable distinct receipts. The
+  new report is **not accepted**: the agent ignored the installed helper and
+  again reversed RDKit's mapping direction, disabled chirality and mislabeled
+  operation wall time as GPU run time. Correct independent top/best RMSDÅ:
+ 1A52seed7 18.67284/18.67284; seed11 29.48248/29.48248;
+ 3PTBseed7 1.12041/1.12041; seed11 1.13322/0.53360. Original16 pose outputs and
+  both incorrect/correct calculations retained. GenMol returned16 valid unique
+  molecules, but `unique=false` deviated from the explicit request;8 molecules
+  have fewer than20 heavy atoms, not the narrative's6. SAFE masking is not a
+  heavy-atom or upper token-count bound. No replacement generation is used to
+  conceal these instruction/reporting defects.
+- New typed workbench analysis adapters call the same tested docking/structure
+  helpers with workspace files, retain input/output hashes and method identity,
+  and return actual deterministic metrics. No new scientific algorithm or model
+  inference. The candidate passes22 Node service/adapter tests,20 underlying
+  structure/docking tests,21 seed/build tests and4 clinical citation tests.
+  Live fresh-context read-only analysis remains a gate before acceptance.
+
+Private evidence is under the existing qualification directory's
+`browser-evidence/scientist-{05,06,08}-v{23,24}-*`; raw conversations may contain
+signed URLs and must not be published. This checkpoint does not erase prior
+failures or establish two clean final-release cohorts.
+
 - Caller-scoped durable Runs history; explicit upload operations instead of
   labeling pending uploads as GPU work.
 - Compact results with verified workspace-file pointers; native structure

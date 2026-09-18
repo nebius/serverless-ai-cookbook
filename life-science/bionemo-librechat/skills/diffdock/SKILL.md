@@ -54,7 +54,12 @@ A redocking comparison needs a held-out experimental ligand and the same
 receptor coordinate frame as the prediction. Do not feed those reference ligand
 coordinates into a SMILES-only docking input and claim a held-out experiment.
 
-Use the installed tested helper, not ad hoc atom-index loops:
+Prefer the typed `workbench_compare_docking` tool. Supply workspace-relative
+`reference_file`, `result_file` (or predicted SDF `prediction_file`), and
+`same_coordinate_frame: true` only after confirming that frame. It invokes the
+same tested helper below, returns deterministic ranked metrics and retains the
+complete mapping, method and input/output hashes. Quote those saved values in
+the report; do not implement another atom-index calculator. The CLI equivalent:
 
 ```sh
 /opt/scientific-client/bin/python /opt/bionemo/molecule-analysis.py \
