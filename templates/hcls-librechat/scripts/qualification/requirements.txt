@@ -1,0 +1,10 @@
+# Frozen to the environment used for the original scientific campaign.
+numpy==2.2.6
+biopython==1.85
+gemmi==0.7.3
+rdkit==2025.3.6
+h5py==3.13.0
+nibabel==5.3.2
+Pillow==11.3.0
+httpx==0.28.1
+jsonschema==4.26.0

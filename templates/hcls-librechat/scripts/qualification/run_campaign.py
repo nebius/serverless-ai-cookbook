@@ -13,6 +13,8 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 import fcntl
 import hashlib
+import importlib
+from importlib.metadata import version
 import json
 import os
 from pathlib import Path
@@ -55,6 +57,19 @@ def interleave(cases):
             if group:
                 ordered.append(group.popleft())
     return ordered
+
+
+def evaluator_environment():
+    """Fail before any GPU admission if this interpreter cannot score results."""
+    packages = {"numpy": "numpy", "Bio": "biopython", "gemmi": "gemmi",
+                "rdkit": "rdkit", "h5py": "h5py", "nibabel": "nibabel", "PIL": "Pillow"}
+    for module in packages:
+        try:
+            importlib.import_module(module)
+        except ImportError as error:
+            raise RuntimeError("Qualification evaluator dependencies are missing; use the pinned "
+                               "requirements.txt environment before submitting model work") from error
+    return {package: version(package) for package in packages.values()}
 
 
 def freeze_assignments(output, *, cohort, manifest_sha256, cases, people):
@@ -226,6 +241,12 @@ def execute_case(mcp, person, case, args, manifest_path, tools):
             # Keep an ambiguous admission durable; a later runner can reconcile
             # the exact idempotency key. Never generate a new key after timeout.
             receipt.update(state="admission_unknown", error_type=type(error).__name__)
+            if isinstance(error, httpx.HTTPStatusError):
+                # Record transport evidence without echoing headers, bearer
+                # credentials or a potentially reflected raw response body.
+                receipt["http_status"] = error.response.status_code
+                receipt["response_request_id"] = error.response.headers.get("x-request-id")
+                receipt["response_body_sha256"] = hashlib.sha256(error.response.content).hexdigest()
             save(path, receipt)
             return receipt
         save(path, receipt)
@@ -344,6 +365,7 @@ def main():
     parser.add_argument("--deadline", default="2026-09-19T06:04:00+00:00")
     args = parser.parse_args()
     os.umask(0o077)
+    evaluation_environment = evaluator_environment()
     manifest = json.loads(args.manifest.read_text())
     cases = manifest["cases"]
     if args.models:
@@ -360,6 +382,8 @@ def main():
     if any(not re.fullmatch(r"[A-Za-z0-9_.-]+", c["case_id"]) for c in cases):
         raise ValueError("Case IDs must be safe path components")
     args.output.mkdir(mode=0o700, parents=True, exist_ok=True)
+    save(args.output / ("evaluator-environment-" + digest(evaluation_environment)[:12] + ".json"),
+         evaluation_environment)
     freeze_assignments(args.output, cohort=args.cohort, manifest_sha256=digest(manifest), cases=cases, people=people)
     if not (args.output / "campaign.json").exists():
         save(args.output / "campaign.json", {"at": now(), "cohort": args.cohort, "cases": len(cases),
