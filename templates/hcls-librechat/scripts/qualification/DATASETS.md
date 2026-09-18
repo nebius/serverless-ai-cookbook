@@ -59,6 +59,17 @@ qualification. The manager owns the additional speech and Cosmos studies.
 coverage. A case count is not a substitute for unique targets, actual client
 execution, batch/lifecycle behavior or scientific accuracy.
 
+The coverage matrix now separates `current_evidence` from superseded
+`historical` gaps. Its dated references point to retained public cohort receipts
+or explicitly isolated candidates, with hashes for frozen summaries. Counts are
+scoped to the named retest, not cumulative proof of all modes. In particular,
+MolMIM finite-search exhaustion remains failure, Proteina ligand/AME isolated
+execution is not public qualification, and Cosmos isolated snapshot restoration
+does not close the pending ordinary-customer snapshot gate. Unchanged rows make
+no new release claim. Run `python -m unittest -v test_coverage.py` for these
+machine-readable distinctions; the manager's defect ledger retains the full
+sequence of original failures, deployments and retests.
+
 The main 895-case manifest includes eight matched folding Apps (60 cases each),
 36 redocking jobs, 36 design jobs across the five originally requested Apps,
 40 MSA searches, 180 ProteinMPNN requests, 48 MolMIM requests, 36 GenMol requests,

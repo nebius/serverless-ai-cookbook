@@ -2,39 +2,170 @@
   "schema_version": 1,
   "catalog_source": "32 Apps from saved customer catalog and 61 typed tools captured 2026-09-18; parent must reconcile against campaign live catalog",
   "verdict": "not_qualified",
+  "current_evidence_as_of": "2026-09-18T23:50:00Z",
+  "reading_guide": "fixture_status describes available inputs, not release readiness. current_evidence records a bounded observed result, not all-mode qualification. historical preserves superseded gaps and failed runs. Unlisted current_evidence means this refresh makes no new claim. Cohort receipts contain exact request, operation and runtime links; do not transfer snapshot or scientific-quality claims between runtimes.",
+  "evidence_roots": {
+    "campaign": "/home/tux/secure-handoff/scientific-qualification-20260918",
+    "protected": "/home/tux/secure-handoff",
+    "backend": "/home/tux/worktrees/fs2-cosmos-stockholm-remediation-20260917/k8s-inference",
+    "workbench": "templates/hcls-librechat"
+  },
   "shared_gates": ["actual LibreChat discovery and tool choice", "native typed tools and advertised invoke_model compatibility", "artifact uploads and downloads", "terminal semantic result", "hot/cold/snapshot path actually observed", "durable batching and cancellation", "fair waits under shared capacity", "reconnect/idempotent recovery", "caller-scoped Runs and usage attribution"],
   "apps": [
     {"model_id":"openfold2","modes":["single-sequence-no-template"],"fixture_status":"prepared","study":"20 experimental proteins, three repeats, independent structure metrics","gaps":["No MSA/template/relaxation advertised in this hosted contract; do not imply upstream capability"]},
     {"model_id":"boltz2","modes":["protein-monomer-query-only-msa","protein-complex-query-only-msa","protein-monomer-pdb70-msa"],"fixture_status":"prepared","study":"20 matched monomers, three experimental heteromers, 38 genuine completed-PDB70 MSA followups","gaps":["Ligands/affinity absent from this hosted contract","Complexes with genuine paired homolog MSAs remain untested"]},
-    {"model_id":"openfold3","modes":["protein-monomer-no-msa","protein-complex-no-msa","protein-supplied-msa"],"fixture_status":"prepared","study":"20 matched monomers, three experimental heteromers, 38 completed-MSA followups","gaps":["Fixed seed 42 and one sample; repeats are not independent seeds"]},
-    {"model_id":"esmfold2","modes":["single-sequence","precomputed-msa"],"fixture_status":"prepared","study":"20 matched proteins, three seeds; 38 genuine-MSA followups prepared from source operation receipts","gaps":["Need MSA artifact relocation study executed"]},
+    {
+      "model_id":"openfold3","modes":["protein-monomer-no-msa","protein-complex-no-msa","protein-supplied-msa"],"fixture_status":"prepared","study":"20 matched monomers, three experimental heteromers, 38 completed-MSA followups",
+      "gaps":["Fixed seed 42 and one sample; repeats are not independent seeds","Native and scientific-batch Apps/runtime paths require separate evidence","Complex execution succeeds but reference accuracy remains poor; no binding-prediction qualification"],
+      "current_evidence": {
+        "state":"public_repaired_subset_verified",
+        "summary":"Inline-loader successor completed all three formerly hanging public complexes after Helm168. Whole-complex CA RMSD 18.212/15.323/19.053 A and contact recall 0/0.0556/0 distinguish service repair from scientific accuracy. The separate MSA followup cohort completed 20 native OpenFold3 cases.",
+        "counts":{"requested":3,"verified":3,"failed":0},
+        "references":[{"root":"campaign","path":"cohorts/openfold3-inline-r168/summary.json","sha256":"e7d107e040c413ad9d441ddd8b0feac7c0ff7c134b075d15f8853c77f9218732"},{"root":"campaign","path":"cohorts/msa-followups-r1/summary.json","sha256":"4343a4fd8e39d0d6d5f169105ac147d4a7b09b6e070966d60139089e4e7bff5f"}]
+      }
+    },
+    {
+      "model_id":"esmfold2","modes":["single-sequence","precomputed-msa"],"fixture_status":"prepared","study":"20 matched proteins, three seeds; 38 genuine-MSA followups prepared from source operation receipts",
+      "historical":{"gaps":["Need MSA artifact relocation study executed"]},
+      "gaps":["Successful replay does not demonstrate another real node-eviction/retry cycle","Prepared 38-alignment manifest is not the same as 19 executed ESMFold2 followups"],
+      "current_evidence": {
+        "state":"public_repaired_subset_verified",
+        "summary":"MSA followups executed: 18 verified and one preempted operation failed after 1331s. A separate exact-input replay after disruption classification repair completed in 106.623s. Preserve the original capacity loss and software misclassification; do not rewrite the first cohort as 19/19.",
+        "counts":{"requested":1,"verified":1,"failed":0},
+        "references":[{"root":"campaign","path":"cohorts/msa-followups-r1/summary.json","sha256":"4343a4fd8e39d0d6d5f169105ac147d4a7b09b6e070966d60139089e4e7bff5f"},{"root":"campaign","path":"cohorts/esmfold-preemption-repaired-r1/summary.json","sha256":"da032b6e401dac270843f2b770f72c0232255c86748d25764ee7040ec7dae661"}]
+      }
+    },
     {"model_id":"esmfold2-fast","modes":["single-sequence"],"fixture_status":"prepared","study":"20 matched proteins, three seeds and downstream inverse-design refolding","gaps":[]},
     {"model_id":"protenix-v2","modes":["no-msa-protein-monomer","no-msa-complex"],"fixture_status":"prepared","study":"20 matched monomers and three experimental heteromers, three seeds","gaps":["Ligand modes need separate representative references if advertised; no MSA lane exposed"]},
     {"model_id":"openfold3-openbind","modes":["no-msa-protein-monomer","no-msa-complex"],"fixture_status":"prepared","study":"20 matched monomers and three experimental heteromers, three seeds","gaps":["Independent App and runtime, not an AlphaFold3 substitute"]},
     {"model_id":"alphafold3","modes":["raw-protein-monomer","raw-complex"],"fixture_status":"prepared","study":"20 query-only-MSA monomers and three experimental heteromers, three seeds with reference-data preparation stage","gaps":["Ligand/reference-data scenarios need separate evidence; academic license/access verified by parent"]},
-    {"model_id":"proteina-complexa","modes":["protein-target","ligand-target","ame"],"fixture_status":"partial","study":"PD-L1 target, three seeds, one/four designs and 100 diffusion steps","gaps":["Ligand-target and AME artifacts not yet prepared","Generated geometry is insufficient without contact/refolding analysis"]},
+    {
+      "model_id":"proteina-complexa","modes":["protein-target","ligand-target","ame"],"fixture_status":"prepared","study":"PD-L1 protein designs plus pinned FAD-binding 41_7BKC_LIGAND and AME M0584_1ldm inputs; raw and self-refolded structures evaluated separately",
+      "historical":{"fixture_status":"partial","gaps":["Ligand-target and AME artifacts not yet prepared","Generated geometry is insufficient without contact/refolding analysis"]},
+      "gaps":["Ligand-target and AME public repair/promotion remains pending; four original public requests failed","All eight raw candidate structures fail the basic CA-geometry check; all eight refolds pass only that limited check","Additional 400-step comparison remains pending; neither refolding nor service completion establishes affinity or catalytic function"],
+      "current_evidence": {
+        "state":"mixed_public_and_isolated_candidate_evidence",
+        "summary":"Protein-target artifact roles, CSV-linked provenance and actionable target discovery were repaired and exercised publicly. Ligand/AME inputs are now prepared and were actually tested: four public failures are retained. Isolated candidate e5e075237a680dc01ace45b97ecfcfb9f95f5897aa51f36164591a74778a9cd1 completed those four cases plus the PD-L1 regression, producing eight designs; this is not public or scientific qualification.",
+        "public_variant_counts":{"requested":4,"verified":0,"failed":4},
+        "isolated_candidate_counts":{"requested":5,"execution_completed":5,"designs":8},
+        "references":[{"root":"campaign","path":"cohorts/proteina-variants-r1/summary.json","sha256":"6f994940ede7c8b422b061a8f1667016d5be8d3d41719b3ff99ca8542af1e2e8"},{"root":"protected","path":"proteina-variant-repair-20260918-Mpp6FE/qualification-r4/original-geometry.json","sha256":"505479fa10d0469d0d3f4977c3ea62e792d90602b7b0bc6eae251b1bf4d1848f"},{"root":"workbench","path":"demos/QUALIFICATION_DEFECTS_20260918.md"}]
+      }
+    },
     {"model_id":"boltzgen","modes":["protein-anything","peptide-anything","protein-small_molecule","nanobody-anything","antibody-anything","protein-redesign"],"fixture_status":"partial","study":"PD-L1 protein binders, 20 candidates, independent selection repetitions","gaps":["Five additional advertised protocols need exact target/design archives and validators","Reuse-completed stage workflow not yet exercised"]},
     {"model_id":"mosaic","modes":["binder-design"],"fixture_status":"prepared","study":"Full ubiquitin target at hotspots 8/44/70, three seeds, 40/64/80-aa binders, 100 optimization steps","gaps":["Expand beyond ubiquitin and compare computational interface/refolding outcomes"]},
     {"model_id":"bindcraft","modes":["soluble-mpnn","vanilla-mpnn"],"fixture_status":"prepared","study":"PD-L1 crystallographic binding face, three seeds, both MPNN lanes","gaps":["No successful-design yield guarantee; scientific filter rejection must be presented honestly","Expand targets and binder lengths"]},
-    {"model_id":"rfdiffusion","modes":["design-backbone","scaffold-motif"],"fixture_status":"partial","study":"48/76/128/256-aa backbones, three seeds, two designs per request","gaps":["Motif preservation and downstream MPNN/refolding workflow pending"]},
-    {"model_id":"proteinmpnn","modes":["single-chain-inverse-folding","multi-chain-inverse-folding"],"fixture_status":"partial","study":"20 experimental backbones, three seeds, three temperatures, four sequences each","gaps":["Multi-chain and residue-omission cases pending","Refold designs and measure backbone recovery"]},
+    {
+      "model_id":"rfdiffusion","modes":["design-backbone","scaffold-motif"],"fixture_status":"partial","study":"48/76/128/256-aa backbones, three seeds, two designs per request",
+      "historical":{"gaps":["Motif preservation and downstream MPNN/refolding workflow pending"]},
+      "gaps":["Scaffold-motif fixture/independent preservation study remains open","One completed design-to-refold chain does not establish general recovery or experimental function"],
+      "current_evidence": {
+        "state":"public_workflow_subset_verified",
+        "summary":"Scientist04 completed RFdiffusion to ProteinMPNN to OpenFold2 with a corrected delivered report. Independent mapped self-consistency RMSD is 8.03548 A despite mean pLDDT 82.465; retain the contradictory original narrative. This closes neither motif coverage nor scientific-quality qualification.",
+        "references":[{"root":"campaign","path":"browser-evidence/scientist-04-v23-final/workspace/scientist-04/design-funnel-v18/report-v2.md"},{"root":"workbench","path":"demos/QUALIFICATION_DEFECTS_20260918.md"}]
+      }
+    },
+    {
+      "model_id":"proteinmpnn","modes":["single-chain-inverse-folding","multi-chain-inverse-folding"],"fixture_status":"prepared","study":"20 experimental backbones across seeds/temperatures plus three crystallographic complexes with all/first/second/reversed chain choices and omission policies",
+      "historical":{"fixture_status":"partial","gaps":["Multi-chain and residue-omission cases pending","Refold designs and measure backbone recovery"]},
+      "gaps":["Unresolved backbone X positions are explicit partial coverage, never invented or deleted residues","Expand refolding across targets; one downstream design workflow showed poor recovery","Sequence validity and omission-policy compliance do not establish stability or affinity"],
+      "current_evidence": {
+        "state":"public_repaired_modes_verified",
+        "summary":"After the missing-backbone boundary repair, 180/180 public requests passed semantic checks. A separate 48/48 multichain cohort returned 192 sequences with per-chain boundaries, ordering and omission policies checked, rather than only concatenated length.",
+        "counts":{"requested":228,"verified":228,"failed":0},
+        "references":[{"root":"campaign","path":"cohorts/molecular-repaired-r1/summary.json","sha256":"748eaa2b177642fe1d23613508d18c40768e49be5043cff4bb3240e1db888592"},{"root":"campaign","path":"cohorts/multichain-r1/summary.json","sha256":"e3d9652f1c542fec5bf978310c04006bda5bc96ba4f8216cd9a08e594131df32"}]
+      }
+    },
     {"model_id":"msa-search-pdb70","modes":["local-pdb70-a3m"],"fixture_status":"prepared","study":"20 proteins at 64/512 requested MSA rows; use alignments in subsequent folding jobs","gaps":[]},
     {"model_id":"diffdock","modes":["smiles-redocking"],"fixture_status":"prepared","study":"Six genuine crystal ligand complexes, three seeds, one/four poses; receptor-frame symmetry-aware RMSD","gaps":["Broader receptor size/ligand chemistry and cross-docking scenarios"]},
-    {"model_id":"genmol","modes":["denovo-QED","denovo-LogP"],"fixture_status":"prepared","study":"Three mask token ranges, two properties, one/16 molecules, three repetitions","gaps":["Mask syntax is not a heavy-atom count guarantee","Initial runtime underfilled 16 to 15; bounded-resampling fix requires exact-release GPU reruns","Chemical validity/property measurements do not establish synthesizability or efficacy"]},
-    {"model_id":"molmim","modes":["CMA-ES-QED-maximize","CMA-ES-QED-minimize"],"fixture_status":"prepared","study":"Six public ligands, two similarity cutoffs, one/eight requested candidates and both property directions","gaps":["Code inspection shows random latent samples rather than full CMA-ES; preserve evidence and resolve claim","Original-input fallback and underfilled output must be exposed"]},
-    {"model_id":"evo2-40b","modes":["DNA-generation"],"fixture_status":"prepared","study":"32 cases from benign Arabidopsis chloroplast NC_000932.1, four loci, 256-8192-base prompts, two seeds","gaps":["Variant-effect scoring, log-likelihood and embeddings absent from hosted API; generation cannot reproduce those papers"]},
+    {
+      "model_id":"genmol","modes":["denovo-QED","denovo-LogP"],"fixture_status":"prepared","study":"Three mask token ranges, two properties, one/16 molecules, three repetitions",
+      "historical":{"gaps":["Initial runtime underfilled 16 to 15; bounded-resampling fix requires exact-release GPU reruns"]},
+      "gaps":["Mask syntax is not a heavy-atom count guarantee","Chemical validity/property measurements do not establish synthesizability or efficacy","Snapshot qualification is not inherited from the predecessor runtime"],
+      "current_evidence": {
+        "state":"public_repaired_modes_verified",
+        "summary":"Bounded replenishment repaired the original underfilled success. Exact candidate passed 38 L40S and 38 H100 requests before promotion; H100 included a real second draw. All 36 public repaired requests passed exact requested-yield and independent RDKit/property checks.",
+        "counts":{"requested":36,"verified":36,"failed":0},
+        "references":[{"root":"campaign","path":"cohorts/molecular-repaired-r1/summary.json","sha256":"748eaa2b177642fe1d23613508d18c40768e49be5043cff4bb3240e1db888592"},{"root":"workbench","path":"demos/QUALIFICATION_DEFECTS_20260918.md"}]
+      }
+    },
+    {
+      "model_id":"molmim","modes":["CMA-ES-QED-maximize","CMA-ES-QED-minimize"],"fixture_status":"prepared","study":"Six public ligands, two similarity cutoffs, one/eight requested candidates and both property directions",
+      "historical":{"gaps":["Code inspection shows random latent samples rather than full CMA-ES; preserve evidence and resolve claim","Original-input fallback and underfilled output must be exposed"]},
+      "gaps":["28/48 repaired public requests exhausted their finite search without the requested yield; these remain failed scientific outcomes","Strict similarity and unchanged small default budgets limit usefulness","Guided search does not guarantee improvement, efficacy, synthesizability or snapshot compatibility"],
+      "current_evidence": {
+        "state":"public_repaired_contract_with_generation_failures",
+        "summary":"Source 86ef55721 repairs the checkpoint graph/tokenizer and implements real pinned pycma CMA-ES. The promoted public cohort returned 20 complete requested outcomes and 28 structured finite-search exhaustion errors, without unchanged-input fallback or underfilled success. Honest failure semantics do not make those 28 requests successful.",
+        "counts":{"requested":48,"verified":20,"failed":28},
+        "references":[{"root":"campaign","path":"cohorts/molmim-qwen-repaired-r1/summary.json","sha256":"cdd937b3c5ce16f2d3e20ae43ad9d0fe8a0b75c825652e2274d49fa6935a3131"},{"root":"backend","path":"models/bionemo/molmim/QUALIFICATION-20260918.md"}]
+      }
+    },
+    {
+      "model_id":"evo2-40b","modes":["DNA-generation"],"fixture_status":"prepared","study":"32 cases from benign Arabidopsis chloroplast NC_000932.1, four loci, 256-8192-base prompts, two seeds",
+      "gaps":["Variant-effect scoring, log-likelihood and embeddings absent from hosted API; generation cannot reproduce those papers","Historical snapshot qualification is not inherited by the repaired runtime"],
+      "current_evidence": {
+        "state":"public_repaired_mode_verified",
+        "summary":"Channel-tiled prefill repairs the eight original long-prefix OOMs without changing weights, precision or accepted length bounds. State/logits/seeded-output parity and production-timed health probes were checked on the isolated candidate. All 32 original public cases passed after the successor runtime was promoted.",
+        "counts":{"requested":32,"verified":32,"failed":0},
+        "references":[{"root":"campaign","path":"cohorts/evo2-repaired-r1/summary.json","sha256":"6b1e9544aa86c705a145614fe2da72794daf6dc47d6e0112cef3859914e51cf7"},{"root":"workbench","path":"demos/QUALIFICATION_DEFECTS_20260918.md"}]
+      }
+    },
     {"model_id":"altumage","modes":["complete-cpg-panel","explicit-reference-median-imputation"],"fixture_status":"prepared","study":"16 original published examples, 20318 CpGs, independent H5-weight predictions, column permutation and 1%/5% missingness; 20 jobs","gaps":["Example cohort is not a held-out generalization study"]},
     {"model_id":"phenoage","modes":["clinical-biomarker-formula"],"fixture_status":"prepared","study":"512 distinct NHANES 2009-2010 complete cases, individual and 32/128/512 batches; independent 60-digit Decimal formula","gaps":["No mortality-model validation claim without followup outcomes and survey design","NHANES age 80 is top-coded"]},
-    {"model_id":"cosmos3-nano","modes":["text-to-image","text-to-video","image-to-video","video-to-video","transfer-video"],"fixture_status":"manager_owned","study":"Real media transformations, runtime proof and artifact fidelity","gaps":["Every distinct advertised tool must have a terminal artifact and actual model-execution receipt"]},
-    {"model_id":"cosmos3-lerobot-augmentation","modes":["lerobot-to-lerobot"],"fixture_status":"manager_owned","study":"Public robotics episodes with action/timestamp/schema preservation and visible transformation","gaps":["Transport-only success does not prove GPU generation or robotics fidelity"]},
+    {
+      "model_id":"cosmos3-nano","modes":["text-to-image","text-to-video","image-to-video","video-to-video","transfer-video"],"fixture_status":"prepared","study":"Recorded ALOHA video, exact frame/dimension/FPS checks, edge/blur controls and strict H100 snapshot restoration",
+      "historical":{"fixture_status":"manager_owned","gaps":["Every distinct advertised tool must have a terminal artifact and actual model-execution receipt"]},
+      "gaps":["Public explicit edge-transfer and new strict snapshot acceptance remain pending; registration does not select or qualify a snapshot","Public repaired text-to-image/image-to-video coverage remains separate from recorded V2V and isolated T2V checks","Warm-cache isolated restore timing excludes cold image pull; fresh versus warmed outputs are not byte-identical for the same seed","Media integrity and repeatability do not establish physical fidelity"],
+      "current_evidence": {
+        "state":"public_fresh_v2v_and_isolated_snapshot_verified",
+        "summary":"Public fresh V4 operation a3bd2106-64f6-4dda-b7b5-8d0d53c2e532 returned independently decoded 64-frame 640x480 25-FPS video; active inference 15.655s, approximately 464s end-to-end. Replacement warmed snapshot passed four strict restores, including another physical H100 and actual production renderer; no fallback. Old incompatible r7 and failed 600s capture remain retained/unselected.",
+        "references":[{"root":"campaign","path":"lerobot-admission-diagnosis/public-v4-native-r1"},{"root":"backend","path":"acceptance/cosmos-recorded-video-repair-20260918/warmed-snapshot/qualification.json"},{"root":"campaign","path":"lerobot-admission-diagnosis/fresh-versus-warmed-reproducibility.json"}]
+      }
+    },
+    {
+      "model_id":"cosmos3-lerobot-augmentation","modes":["lerobot-to-lerobot"],"fixture_status":"prepared","study":"Two real recorded ALOHA segments, selected-camera generation and action/state/boolean/timestamp/schema preservation",
+      "historical":{"fixture_status":"manager_owned","gaps":["Transport-only success does not prove GPU generation or robotics fidelity"]},
+      "gaps":["Explicit edge-transfer and snapshot-backed public dataset gates remain pending","Preserved actions and limited video checks do not establish action-safe physical motion or downstream policy-training value","Unselected cameras are reencoded, not pixel-bit-identical"],
+      "current_evidence": {
+        "state":"public_recorded_v2v_workflow_verified",
+        "summary":"After singleton next.done shape normalization, public operation a04f37db-1c2b-4e8a-b776-d60225078ed5 passed on worker dacf1515 and fresh Cosmos V4. Both real H100 child generations succeeded; pinned LeRobot0.6.1 and independent Parquet checks preserve all 6144 nonvideo values across 128 frames/two episodes/two cameras. End-to-end 406.806s includes 156.202s native image pull. Original writer failure remains retained.",
+        "counts":{"requested":1,"verified":1,"failed":0},
+        "references":[{"root":"backend","path":"acceptance/lerobot-recorded-writer-20260918/public-acceptance-r2.json","sha256":"3c4cc960f7abda748ea3d4dec8dada4b603bc18d6f53685ff4e2f2486b6efad3"},{"root":"campaign","path":"lerobot-admission-diagnosis/public-v4-lerobot-original-v2v-r1"}]
+      }
+    },
     {"model_id":"nemotron-speech-en-0-6b","modes":["english-transcription"],"fixture_status":"manager_owned","study":"Human-reference medical and general speech, short/long and noisy audio","gaps":[]},
     {"model_id":"nemotron-speech-multilingual-0-6b","modes":["multilingual-transcription"],"fixture_status":"manager_owned","study":"English/German reference transcripts and language-specific medical terminology","gaps":[]},
     {"model_id":"parakeet-realtime-eou-120m-v1","modes":["transcription-end-of-utterance"],"fixture_status":"manager_owned","study":"Full recordings and valid chunked caller workflow; language contract respected","gaps":["Do not advertise streaming if the operation API exposes only completed responses"]},
     {"model_id":"diar-streaming-sortformer-4spk-v2-1","modes":["speaker-diarization"],"fixture_status":"manager_owned","study":"Overlapping speakers and speaker-time reference labels","gaps":["WER alone cannot evaluate speaker attribution; need DER/JER with declared collar"]},
     {"model_id":"magpie-tts-multilingual-357m","modes":["multilingual-speech-synthesis"],"fixture_status":"manager_owned","study":"English/German readback with medical numerals/negation and independently transcribed intelligibility","gaps":[]},
-    {"model_id":"nv-reason-cxr-3b","modes":["chest-xray-image-chat"],"fixture_status":"prepared","study":"20 distinct NIH ChestXray14 patients via pinned JPEG mirror, report-mined weak labels; actual image artifact transport","gaps":["Weak labels are not expert reference reports or clinical qualification","Mirror JPEG transformation differs from original DICOM; expert quality review remains distinct"]},
-    {"model_id":"nv-segment-ct","modes":["anatomical-label-prompt","point-prompt","combined-label-point-prompt"],"fixture_status":"prepared","study":"Nine unmodified MSD spleen CT scans with expert masks, three prompt modes; affine, labels, Dice and IoU","gaps":["One additional 41.4MB source scan is explicitly blocked by 32MiB input contract","Point prompts use oracle expert-mask locations; separate assisted/automatic scores","Spleen training-data overlap is not held-out multi-organ clinical qualification"]},
-    {"model_id":"qwen3-8b","modes":["chat","structured-output","tool-calling"],"fixture_status":"prepared","study":"20 real RCSB study metadata records across three output modes, checkable reference fields; 60 cases","gaps":["Exercise actual installed workbench agent separately from direct-model tests","Quantitative reasoning and broader context studies remain additional coverage"]},
+    {
+      "model_id":"nv-reason-cxr-3b","modes":["chest-xray-image-chat"],"fixture_status":"prepared","study":"20 distinct NIH ChestXray14 patients via pinned JPEG mirror, report-mined weak labels; actual image artifact transport",
+      "gaps":["Weak labels are not expert reference reports or clinical qualification","Mirror JPEG transformation differs from original DICOM; expert quality review remains distinct","Permissive JSON still fails formatting on 7/20 requests; exact-label schema does not improve diagnostic truth"],
+      "current_evidence": {
+        "state":"public_attribution_repaired_format_dependent",
+        "summary":"Repaired response attribution records actual Pod/node/GPU. Separate permissive-JSON cohort has 13 verified and seven formatting failures; opt-in exact-label JSON-schema cohort has 20/20 format/contract passes. Do not conflate format, runtime attribution and clinical accuracy.",
+        "references":[{"root":"campaign","path":"cohorts/cxr-attribution-repaired-r1/summary.json","sha256":"c4c20a800bc0cff97b348d64ed6f2c1778a0361e7d5452850271e60781bc35ad"},{"root":"campaign","path":"cohorts/cxr-schema-attribution-repaired-r1/summary.json","sha256":"ee438f419610b17d171214c250b2af830ecdc002e35e900b437f5f3d0bd6fa77"}]
+      }
+    },
+    {
+      "model_id":"nv-segment-ct","modes":["anatomical-label-prompt","point-prompt","combined-label-point-prompt"],"fixture_status":"prepared","study":"Nine unmodified MSD spleen CT scans with expert masks, three prompt modes; affine, labels, Dice and IoU",
+      "gaps":["One additional 41.4MB source scan is explicitly blocked by 32MiB input contract","Point prompts use oracle expert-mask locations; separate assisted/automatic scores","Spleen training-data overlap is not held-out multi-organ clinical qualification","Snapshot qualification is not inherited from the prior runtime"],
+      "current_evidence": {
+        "state":"public_repaired_modes_verified",
+        "summary":"Original 18 point/combined failures led to Tensor/NumPy and component-selection dependency repairs. Exact v2 H100 candidate passed 54 isolated requests; promoted runtime then passed all 27 public scan/prompt cases. Isolated median Dice label 0.96246, point 0.95238, combined 0.95691 are assisted spleen measurements, not general clinical accuracy.",
+        "counts":{"requested":27,"verified":27,"failed":0},
+        "references":[{"root":"campaign","path":"cohorts/ct-repaired-r1/summary.json","sha256":"bf98e573ed6317b8a7e4b7ab38a803206db931f2683ac55804cd539a33e522c7"},{"root":"workbench","path":"demos/QUALIFICATION_DEFECTS_20260918.md"}]
+      }
+    },
+    {
+      "model_id":"qwen3-8b","modes":["chat","structured-output","tool-calling"],"fixture_status":"prepared","study":"20 real RCSB study metadata records across three output modes, checkable reference fields; 60 cases",
+      "gaps":["Exercise actual installed workbench agent separately from direct-model tests","Quantitative reasoning and broader context studies remain additional coverage","Thinking-plus-JSON semantic correctness is not universal; repaired parser is not a reasoning-quality guarantee"],
+      "current_evidence": {
+        "state":"public_repaired_modes_verified",
+        "summary":"All 60 repaired chat/JSON/forced-tool requests passed in the mixed MolMIM cohort, and a separate 60-case replay also passed. Original forced-tool and reasoning-tag failures remain preserved in general-r1.",
+        "counts":{"requested":120,"verified":120,"failed":0},
+        "references":[{"root":"campaign","path":"cohorts/molmim-qwen-repaired-r1/summary.json","sha256":"cdd937b3c5ce16f2d3e20ae43ad9d0fe8a0b75c825652e2274d49fa6935a3131"},{"root":"campaign","path":"cohorts/qwen-modes-repaired-r2/summary.json","sha256":"c62bb7b0a155d06fb5180ca37e4a4a4c901dcc3c4a0fcfd4a55a21874042851e"}]
+      }
+    },
     {"model_id":"sdxl","modes":["512px-text-to-image"],"fixture_status":"prepared","study":"Six scientific illustration prompts, three seeds, two step counts; PNG size/nonblank tests plus visual review","gaps":["Generated illustrations are not scientific observations or anatomical ground truth","Automated integrity does not establish visual prompt adherence"]}
   ]
 }
