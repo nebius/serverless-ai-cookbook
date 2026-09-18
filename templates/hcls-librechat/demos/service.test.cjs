@@ -99,6 +99,8 @@ test('mounted workspace stays inside its root and round-trips files', async () =
   await fs.writeFile(source, 'workspace fixture');
   const receipt = await service.workspacePut('fixture-key', 'papers/result.txt', source);
   assert.equal(receipt.path, 'papers/result.txt');
+  assert.match(receipt.sha256, /^[a-f0-9]{64}$/);
+  await assert.rejects(service.workspacePut('fixture-key', 'papers/result.txt', source), /already exists/);
   const listing = await service.workspaceList('fixture-key', 'papers');
   assert.equal(listing.info.team_bucket_name, 'fixture-bucket');
   assert.deepEqual(listing.data.map((item) => item.name), ['result.txt']);

@@ -1,6 +1,6 @@
 /* Shared application service for the authenticated UI and per-user MCP. */
 const fs = require('node:fs/promises');
-const { createReadStream } = require('node:fs');
+const { createReadStream, constants } = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { spawn } = require('node:child_process');
@@ -134,11 +134,16 @@ async function workspacePut(key, relative, localPath) {
   const target = workspacePath(relative);
   if (!target.normalized) throw failure('Choose a file name.');
   await fs.mkdir(path.dirname(target.absolute), { recursive: true, mode: 0o700 });
-  const temporary = `${target.absolute}.${crypto.randomUUID()}.upload`;
-  await fs.copyFile(localPath, temporary);
-  await fs.rename(temporary, target.absolute);
+  const source = await fs.stat(localPath);
+  try { await fs.copyFile(localPath, target.absolute, constants.COPYFILE_EXCL); }
+  catch (error) { if (error.code === 'EEXIST') throw failure('A workspace object already exists at this path. Choose a new name.', 409); throw error; }
   const stat = await fs.stat(target.absolute);
-  return { path: target.normalized, size_bytes: stat.size, updated_at: stat.mtime.toISOString() };
+  const [expected, actual] = await Promise.all([fileHash(localPath), fileHash(target.absolute)]);
+  if (stat.size !== source.size || actual !== expected) {
+    await fs.unlink(target.absolute).catch(() => {});
+    throw failure('Workspace upload verification failed; the incomplete object was removed.', 503);
+  }
+  return { path: target.normalized, size_bytes: stat.size, sha256: actual, updated_at: stat.mtime.toISOString() };
 }
 async function workspaceGet(key, relative) {
   const info = await workspaceInfo(key);
