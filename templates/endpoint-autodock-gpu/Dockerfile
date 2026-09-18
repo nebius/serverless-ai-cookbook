@@ -40,8 +40,7 @@ LABEL org.opencontainers.image.title="Nebius Serverless AutoDock-GPU REST and MC
       org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
       org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
       org.opencontainers.image.licenses="GPL-2.0-only AND LGPL-2.1-only"
-RUN sed -i -e 's|http://archive.ubuntu.com/ubuntu|https://mirror.zetup.net/ubuntu|g' -e 's|http://security.ubuntu.com/ubuntu|https://mirror.zetup.net/ubuntu|g' /etc/apt/sources.list && \
-    apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update && \
+RUN apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 update && \
     apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=5 -o Acquire::http::Timeout=20 install -y --no-install-recommends \
       ca-certificates=20260601~22.04.1 \
       dirmngr=2.2.27-3ubuntu2.5 \

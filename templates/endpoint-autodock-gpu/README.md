@@ -1,10 +1,20 @@
+---
+title: AutoDock-GPU REST + MCP
+category: life-sciences
+type: endpoint
+runtime: gpu-h100-sxm
+frameworks: [autodock-gpu, cuda, fastapi, mcp]
+keywords: [molecular-docking, virtual-screening, gpu, rest, mcp, agent]
+difficulty: advanced
+---
+
 # AutoDock-GPU REST + MCP
 
 <!-- markdownlint-disable MD013 MD033 -->
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fhcls%2Fautodock-gpu-api%3A20260909-rest-mcp-sm80-sm90&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true&amp;volumeMountPath=%2Fmnt%2Fhcls&amp;volumeSize=32"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fcb22%40sha256%3A5c81e5455f526e19ec0dd6a34cf3dad51816898ebef2d7797e181e7879760f71&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=100GiB&amp;preemptible=false&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -16,17 +26,6 @@ Run CUDA-accelerated AutoDock-GPU redocking and bounded ligand screening through
 
 <!-- /factory:intro -->
 
----
-
-title: AutoDock-GPU REST + MCP
-category: life-sciences
-type: endpoint
-runtime: gpu-h100-sxm
-frameworks: [autodock-gpu, cuda, fastapi, mcp]
-keywords: [molecular-docking, virtual-screening, gpu, rest, mcp, agent]
-difficulty: advanced
-
----
 
 ## What you get
 
@@ -36,7 +35,7 @@ difficulty: advanced
 - A real 1STP docking startup probe before application readiness.
 - A public 1STP/biotin redocking smoke and up to 32 supplied ligands against the
   bundled 1STP affinity maps.
-- Persistent runs under `/mnt/hcls/autodock-gpu/runs/<run-id>`.
+- Runs under `/mnt/hcls/autodock-gpu/runs/<run-id>`; persistent only with an attached volume.
 
 This is GPU acceleration of AutoDock 4 scoring, not GPU-accelerated AutoDock
 Vina. Their scores and rankings are not directly comparable.
@@ -74,6 +73,11 @@ Updating AutoDock-GPU or its target architectures requires publishing and testin
 a new wrapper image; there is no misleading `AUTODOCK_VERSION` environment switch.
 
 ## Create the endpoint
+
+The button does not attach storage. Manually attach Object Storage or Shared
+Filesystem read-write at `/mnt/hcls` in the create form for persistent results.
+Without that attachment, `/mnt/hcls` is on ephemeral disk and results can be lost
+when the endpoint is replaced or deleted.
 
 Click **Create Endpoint**, select your project, then:
 
@@ -153,13 +157,7 @@ by `/v1/capabilities`.
 A successful run reports the GPU and driver, engine/source revision, scoring
 semantics, requested runs/evaluations, and best estimated binding energy for each
 ligand. Artifacts include DLG/XML output, score CSV, input copies, summary, logs,
-and SHA-256 values. Qualification on 2026-09-09 used an H100 and the public image
-at digest
-`sha256:6e5090b387dfeef7a6a20fce6b12ed7d2d1b2d79675db8c7813dadb5a0087f77`.
-Independent REST and MCP runs completed in about 0.6 seconds and reported best
-AutoDock4 energies of `-8.26` and `-8.17 kcal/mol`; both result artifacts were
-hash-verified through REST and all artifacts were confirmed in the mounted
-bucket. Use these only as plumbing checks for this bundled case.
+and SHA-256 values. See [validation results](./VALIDATION.md) for the current image and live REST/MCP tests.
 
 Docking scores are research heuristics, not experimental binding free energies.
 Validate molecule preparation, grids, parameters, poses, and conclusions
@@ -181,6 +179,17 @@ docker build --platform linux/amd64 \
 
 ## CLI alternative
 
+The tested image is `cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb22@sha256:5c81e5455f526e19ec0dd6a34cf3dad51816898ebef2d7797e181e7879760f71`.
+The qualification used Nebius CLI 0.12.206, which rejects endpoint image references
+longer than 64 characters when creating a VM label. For that CLI, use the short
+alias below and verify its digest with [crane](https://github.com/google/go-containerregistry/tree/main/cmd/crane)
+before creating the endpoint. Do not use an alias whose digest differs.
+
+```bash
+export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/cb22:r0918'
+test "$(crane digest "$IMAGE")" = 'sha256:5c81e5455f526e19ec0dd6a34cf3dad51816898ebef2d7797e181e7879760f71' || exit 1
+```
+
 ```bash
 export NEBIUS_PROJECT_ID='project-...'
 export NEBIUS_SUBNET_ID='vpcsubnet-...'
@@ -190,7 +199,7 @@ export AUTODOCK_VOLUME='computefilesystem-<id>:/mnt/hcls:rw'
 nebius ai endpoint create \
   --parent-id "$NEBIUS_PROJECT_ID" \
   --name autodock-gpu-rest-mcp \
-  --image cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/autodock-gpu-api:20260909-rest-mcp-sm80-sm90 \
+  --image "$IMAGE" \
   --public \
   --platform gpu-h100-sxm \
   --preset 1gpu-16vcpu-200gb \
