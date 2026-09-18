@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-18 23:49 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-18 23:59 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -181,6 +181,29 @@ failures or establish two clean final-release cohorts.
   with compact metadata returned to chat. Live six-record recovery passed.
 
 ## Release pins and limitations
+
+### 23:59 UTC — live observation deadline regression retained and repaired
+
+v29 source `2efd02dc27a2e169a18a54a516173b17ff956844`, image
+`cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0918-v29-2efd02d`, digest
+`sha256:06daf70ec18e907a288d01227562dbd47d5e6d25271583fb9a34ba6de4d2faaa`
+is deployed in isolated06/07 previews. Fresh06 conversation
+`5a901941-da62-595c-ae87-8f97effa8943` naturally prepared and launched all five
+same-protocol requests through the typed sequential runner. No preflight errors
+occurred, but two actual `read_execution(wait_seconds=30)` calls timed out:
+the existing MCP transport itself has a30000ms deadline. Both original durable
+jobs/receipts remained available; all five model operations completed once.
+The first turn still ended interim, and one ordinary continuation is performing
+the analysis. This is a **client regression**, not a capacity or model failure.
+
+The next fix reserves five seconds *inside* the unchanged MCP deadline:
+requested wait≤30s, effective wait≤25s, actual metadata returned. Terminal or
+interrupted jobs return early. No transport timeout, command deadline or agent
+budget is raised. A real26-second shell job is observed pending within25s under
+an explicit30-second stdio call timeout, then completed through the same job
+after reconnecting.59 execution/workflow/config tests pass, including mocked
+deadline and actual configured transport-boundary checks. Parent07's fresh
+study is held for this candidate to avoid the now-known regression.
 
 ### 23:49 UTC — fresh chemistry tables verify; narrative still fails
 

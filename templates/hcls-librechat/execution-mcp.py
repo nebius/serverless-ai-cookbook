@@ -18,6 +18,10 @@ import uuid
 
 ROOT = Path(os.environ.get('SCIENTIFIC_EXECUTION_DIR', '/data/hcls-execution'))
 WORKSPACE = os.environ.get('SCIENTIFIC_WORKSPACE', '/workspace')
+# The configured MCP call deadline is 30s. Reserve transport/serialization time;
+# an observation may return earlier but must not race that unchanged deadline.
+MCP_CALL_DEADLINE_SECONDS = 30
+OBSERVATION_TRANSPORT_MARGIN_SECONDS = 5
 TEXT = {'type': 'string', 'minLength': 1}
 STEP_COMMON = {'kind': TEXT, 'id': TEXT, 'model': TEXT, 'idempotency_key': TEXT,
                'receipt_directory': {**TEXT, 'description': 'Optional existing workspace receipt directory for explicit recovery; otherwise output_directory/steps/id.'}}
@@ -115,7 +119,8 @@ def read_job(args):
     if not (directory / 'request.json').is_file():
         raise ValueError('Unknown execution job ID.')
     offset = bounded_number(args, 'offset', 0, 2**63 - 1)
-    wait = bounded_number(args, 'wait_seconds', 15, 30)
+    requested_wait = bounded_number(args, 'wait_seconds', 15, MCP_CALL_DEADLINE_SECONDS)
+    wait = min(requested_wait, MCP_CALL_DEADLINE_SECONDS - OBSERVATION_TRANSPORT_MARGIN_SECONDS)
     limit = bounded_number(args, 'max_bytes', 4000, 32000)
     deadline = time.monotonic() + wait
     while True:
@@ -142,6 +147,8 @@ def read_job(args):
     total_bytes = output.stat().st_size if output.exists() else 0
     status.update(output=data.decode('utf-8', errors='replace'), next_offset=offset + len(data),
                   output_size_bytes=total_bytes, returned_bytes=len(data),
+                  requested_wait_seconds=requested_wait, effective_wait_seconds=wait,
+                  transport_margin_seconds=OBSERVATION_TRANSPORT_MARGIN_SECONDS,
                   output_path=str(output), more_output=output.exists() and output.stat().st_size > offset + len(data))
     status['observation_guidance'] = (
         'Observe this same job once with wait_seconds=30; do not issue parallel or duplicate polls for one job.'
@@ -242,7 +249,7 @@ TOOLS = [
             'timeout_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 604800, 'default': 300},
             'wait_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 10, 'default': 5}}}},
     {'name': 'read_execution',
-     'description': 'Observe the same command by its job_id, including after reconnecting. For a running scientific workflow use wait_seconds=30 (default15, maximum30); observation returns early on completion/failure/interruption and never extends the command deadline or submits model work. Returns status, exit code and a bounded output chunk. Pass next_offset as offset to avoid rereading prior logs. Running after the bounded wait is not completed analysis; retain this job and original operation IDs. Receipts survive MCP restarts; running processes do not survive a container restart.',
+     'description': 'Observe the same command by its job_id, including after reconnecting. For a running scientific workflow request wait_seconds=30 (default 15, maximum 30); effective observation is at most 25 seconds to reserve 5 seconds inside the unchanged 30-second MCP deadline. Returns early on completion/failure/interruption and never extends command deadlines or submits model work. Returns actual wait metadata, status, exit code and bounded output. Pass next_offset to avoid rereading prior logs. Running is not completed analysis; retain this job and original operation IDs. Receipts survive MCP restarts; running processes do not survive container restart.',
      'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
      'inputSchema': {'type': 'object', 'additionalProperties': False, 'required': ['job_id'],
         'properties': {'job_id': {'type': 'string'}, 'offset': {'type': 'integer', 'minimum': 0},

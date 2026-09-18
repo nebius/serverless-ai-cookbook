@@ -16,7 +16,7 @@ def call(tmp_path, name, args):
     request = {'jsonrpc': '2.0', 'id': 1, 'method': 'tools/call',
                'params': {'name': name, 'arguments': args}}
     proc = subprocess.run([sys.executable, str(SCRIPT)], input=json.dumps(request) + '\n',
-                          env=env, text=True, capture_output=True, check=True)
+                          env=env, text=True, capture_output=True, check=True, timeout=30)
     result = json.loads(proc.stdout)['result']
     return result, json.loads(result['content'][0]['text'])
 
@@ -83,7 +83,10 @@ def test_observation_deadline_preserves_pending_job_without_new_execution(tmp_pa
     monkeypatch.setattr(execution.time, 'monotonic', lambda: now[0])
     monkeypatch.setattr(execution.time, 'sleep', lambda delay: now.__setitem__(0, now[0] + delay))
     result = execution.read_job({'job_id': job, 'wait_seconds': 30})
-    assert now[0] == pytest.approx(30)
+    assert now[0] == pytest.approx(25)
+    assert result['requested_wait_seconds'] == 30
+    assert result['effective_wait_seconds'] == 25
+    assert result['transport_margin_seconds'] == 5
     assert result['status'] == 'starting' and result['job_id'] == job
     assert (directory / 'request.json').read_text() == original
     assert not (directory / 'status.json').exists()
@@ -105,6 +108,26 @@ def test_observation_interrupted_worker_returns_early_without_retry(tmp_path, mo
     result = execution.read_job({'job_id': job, 'wait_seconds': 30})
     assert result['status'] == 'interrupted' and result['job_id'] == job
     assert len(list(tmp_path.glob('*/request.json'))) == 1
+
+
+def test_actual_pending_observation_fits_existing_mcp_deadline_and_reconnects(tmp_path):
+    import time
+    # A real stdio command must return before the exact configured client call
+    # timeout, not merely pass a mocked clock test. The original job continues.
+    configuration = SCRIPT.with_name('render-config.mjs').read_text()
+    section = configuration.split("'environment-execution': {", 1)[1].split("'structure-viewer':", 1)[0]
+    assert 'timeout: 30000' in section
+    _, started = call(tmp_path, 'execute_command', {'command': 'sleep 26; printf finished', 'wait_seconds': 0})
+    before = time.monotonic()
+    _, pending = call(tmp_path, 'read_execution', {'job_id': started['job_id'], 'wait_seconds': 30})
+    elapsed = time.monotonic() - before
+    assert 24.8 <= elapsed < 29
+    assert pending['status'] == 'running'
+    assert pending['effective_wait_seconds'] + pending['transport_margin_seconds'] == 30
+    _, completed = call(tmp_path, 'read_execution', {'job_id': started['job_id'], 'wait_seconds': 3})
+    assert completed['status'] == 'completed' and completed['output'] == 'finished'
+    assert completed['job_id'] == started['job_id']
+    assert len(list((tmp_path / 'jobs').glob('*/request.json'))) == 1
 
 
 def test_typed_workflow_reuses_execution_job_across_connections(tmp_path, monkeypatch):
