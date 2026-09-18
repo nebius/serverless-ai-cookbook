@@ -10,6 +10,7 @@ import json
 import tarfile
 from pathlib import Path
 from urllib.parse import quote, urlparse
+from uuid import UUID
 
 import httpx
 
@@ -59,6 +60,21 @@ def upload(client, model, data, media_type, compression, request_id):
 
 
 def prepare_arguments(client, case, root, folder, request_id, receipt):
+    # The frozen case names a manifest entry, never an invented artifact UUID.
+    # Validate declarations before uploading anything or admitting model work.
+    preparation = case.get("preparation", {})
+    bindings = preparation.get("artifact_id_parameters", {})
+    if not isinstance(bindings, dict):
+        raise ValueError("artifact_id_parameters must map parameter names to input names")
+    input_names = [item["name"] for item in preparation.get("inputs", [])]
+    if len(input_names) != len(set(input_names)):
+        raise ValueError("Scientific input names must be unique")
+    arguments = copy.deepcopy(case["arguments"])
+    for parameter, name in bindings.items():
+        if (not isinstance(parameter, str) or not parameter.endswith("_artifact_id")
+                or not isinstance(name, str) or name not in input_names
+                or not isinstance(arguments.get("parameters"), dict)):
+            raise ValueError("Unresolved scientific artifact-ID parameter binding")
     receipt.setdefault("input_artifacts", {})
     entries = []
     for item in case.get("preparation", {}).get("inputs", []):
@@ -74,6 +90,16 @@ def prepare_arguments(client, case, root, folder, request_id, receipt):
                         "artifact": receipt["input_artifacts"][item["name"]]})
     if not entries:
         raise ValueError("Scientific batch case has no declared inputs")
+    for parameter, name in bindings.items():
+        reference = receipt["input_artifacts"][name]
+        artifact_id = reference.get("artifact_id")
+        try:
+            if not isinstance(artifact_id, str):
+                raise ValueError("Artifact ID is not a string")
+            UUID(artifact_id)
+        except (ValueError, AttributeError) as error:
+            raise ValueError("Bound scientific artifact does not have a valid artifact UUID") from error
+        arguments["parameters"][parameter] = artifact_id
     manifest = {"schema": "fs2-serve.nebius.ai/scientific-artifact-manifest/v1",
                 "manifest_id": request_id, "entries": entries}
     save(folder / "input-manifest.json", manifest)
@@ -81,7 +107,7 @@ def prepare_arguments(client, case, root, folder, request_id, receipt):
         receipt["input_manifest"] = upload(client, case["model_id"], canonical(manifest),
             "application/vnd.fs2.scientific-manifest+json", "none", request_id + "-manifest")
         save(folder / "receipt.json", receipt)
-    return {**case["arguments"], "input_manifest": receipt["input_manifest"],
+    return {**arguments, "input_manifest": receipt["input_manifest"],
             "idempotency_key": request_id,
             "client_context": {"display_name": case["case_id"], "correlation_id": request_id}}
 
