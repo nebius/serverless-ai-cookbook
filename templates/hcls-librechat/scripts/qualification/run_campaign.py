@@ -59,6 +59,17 @@ def interleave(cases):
     return ordered
 
 
+def select_case_ids(cases, selected):
+    """Select a reviewed replay without copying or rewriting pinned inputs."""
+    if not selected:
+        return cases
+    wanted = set(selected.split(","))
+    missing = wanted - {case["case_id"] for case in cases}
+    if missing:
+        raise ValueError("Requested case IDs are absent from selected manifest/models: " + ", ".join(sorted(missing)))
+    return [case for case in cases if case["case_id"] in wanted]
+
+
 def evaluator_environment():
     """Fail before any GPU admission if this interpreter cannot score results."""
     packages = {"numpy": "numpy", "Bio": "biopython", "gemmi": "gemmi",
@@ -356,6 +367,7 @@ def main():
     parser.add_argument("--only", default="")
     parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--models", default="", help="Comma-separated App IDs to select")
+    parser.add_argument("--case-ids", default="", help="Exact comma-separated cases to replay in a new cohort")
     parser.add_argument("--interleave", action="store_true", help="Mix Apps instead of exhausting one model first")
     parser.add_argument("--wait-for-cohort", type=Path, help="Wait for each scientist's preceding worker lock")
     parser.add_argument("--parallel", type=int, default=10, choices=range(1, 11))
@@ -370,6 +382,7 @@ def main():
     cases = manifest["cases"]
     if args.models:
         cases = [case for case in cases if case["model_id"] in args.models.split(",")]
+    cases = select_case_ids(cases, args.case_ids)
     if args.interleave:
         cases = interleave(cases)
     cases = cases[:args.limit or None]

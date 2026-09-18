@@ -30,3 +30,12 @@ def test_legacy_or_duplicate_is_not_silently_rewritten(tmp_path):
         freeze_assignments(tmp_path, **args())
     with pytest.raises(ValueError, match="unique"):
         freeze_assignments(tmp_path, **{**args(), "cases": [{"case_id": "a"}, {"case_id": "a"}]})
+
+
+def test_exact_replay_selection_preserves_manifest_order_and_rejects_unknown_cases():
+    from run_campaign import select_case_ids
+    cases = [{"case_id": "a"}, {"case_id": "b"}, {"case_id": "c"}]
+    assert select_case_ids(cases, "c,a") == [cases[0], cases[2]]
+    assert select_case_ids(cases, "") is cases
+    with pytest.raises(ValueError, match="absent"):
+        select_case_ids(cases, "typo")
