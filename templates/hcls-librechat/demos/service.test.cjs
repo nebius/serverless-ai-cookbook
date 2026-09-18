@@ -121,7 +121,7 @@ test('artifact-backed operation results are verified and compacted for the agent
   global.fetch = async (url) => {
     calls.push(String(url));
     if (String(url).endsWith(`/v1/operations/${operationId}`)) return new Response(JSON.stringify({
-      id: operationId, status: 'succeeded', model_id: 'openfold2',
+      id: operationId, status: 'succeeded', model_id: 'openfold2', operation: 'infer_openfold2',
     }), { status: 200, headers: { 'content-type': 'application/json' } });
     if (String(url).endsWith(`/v1/operations/${operationId}/result`)) return new Response(JSON.stringify({
       schema: 'fs2-serve.nebius.ai/operation-artifact-result/v1', content_type: 'application/json', artifact,

@@ -111,11 +111,14 @@ async function operationResult(key, operationId) {
     platform(key, 'GET', `/v1/operations/${operationId}`),
     platform(key, 'GET', `/v1/operations/${operationId}/result`),
   ]);
-  const operation = operationEnvelope.operation || operationEnvelope;
-  if (operation?.id !== operationId || (resultEnvelope.operation && resultEnvelope.operation.id !== operationId)) {
+  const nestedOperation = operationEnvelope.operation;
+  const operation = nestedOperation && typeof nestedOperation === 'object' ? nestedOperation : operationEnvelope;
+  const resultOperation = resultEnvelope.operation;
+  if (operation?.id !== operationId
+      || (resultOperation && typeof resultOperation === 'object' && resultOperation.id !== operationId)) {
     throw failure('Platform returned a mismatched operation result.', 502);
   }
-  const result = resultEnvelope.result || resultEnvelope;
+  const result = resultOperation && typeof resultOperation === 'object' ? resultEnvelope.result : resultEnvelope;
   if (result?.schema !== 'fs2-serve.nebius.ai/operation-artifact-result/v1') return { operation, result };
   const artifact = result.artifact || {};
   if (result.content_type !== 'application/json' || artifact.compression !== 'none'
