@@ -194,6 +194,11 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
         and item["preset"]["model"] == "Qwen/Qwen3-30B-A3B-Instruct-2507"
         for item in specs
     )
+    assert any(
+        item["group"] == "Public Token Factory"
+        and item["preset"]["model"] == "Qwen/Qwen3-235B-A22B-Instruct-2507"
+        for item in specs
+    )
     assert config["interface"]["modelSelect"] is False  # curated specs remain selectable
     assert [item["name"] for item in config["endpoints"]["custom"]] == ["Nebius Token Factory"]
     token_configs = {

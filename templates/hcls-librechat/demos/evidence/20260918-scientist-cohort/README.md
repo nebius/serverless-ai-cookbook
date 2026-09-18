@@ -79,8 +79,10 @@ contains no credentials or customer data.
 7. **Catalog presence is not chat readiness.** The previously seeded
    `zai-org/GLM-5.3-Flash` remained selectable but failed after tool execution
    with a provider-unavailable response. The default is now
-   `Qwen/Qwen3-30B-A3B-Instruct-2507`, qualified with both a real chat
-   completion and a real function-tool-call response before deployment.
+   `Qwen/Qwen3-235B-A22B-Instruct-2507`, qualified with a real function-tool
+   call and the exact verified OpenFold result before deployment. The 30B model
+   remains selectable but is not the default scientific agent because it
+   contradicted explicit evidence boundaries in the customer-shaped test.
 8. **A verified value can still be over-interpreted by an agent.** R9 copied the
    requested confidence, pTM and inference values exactly, but initially turned
    observations about one result into App-wide limitations. R10 therefore
