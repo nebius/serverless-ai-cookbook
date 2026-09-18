@@ -87,6 +87,8 @@ if (process.env.NEBIUS_API_KEY && process.env.NEBIUS_API_KEY !== 'user_provided'
   }
 }
 
+// Personal installations need not depend on retired event-only endpoints.
+const dedicatedChatEnabled = process.env.SCIENTIFIC_DEDICATED_CHAT_ENABLED !== 'false';
 const providerModels = [
   { endpoint: 'Nebius Token Factory Dedicated', group: 'Dedicated Token Factory', models: dedicatedTokenFactoryModels },
   { endpoint: 'Nebius Token Factory', group: 'Public Token Factory', models: availablePublicTokenModels },
@@ -98,10 +100,10 @@ const providerModels = [
     ['claude-opus-5', 'Claude Opus 5'], ['claude-sonnet-5', 'Claude Sonnet 5'],
     ['claude-haiku-4-5', 'Claude Haiku 4.5'],
   ] },
-];
+].filter(({ endpoint }) => dedicatedChatEnabled || endpoint !== 'Nebius Token Factory Dedicated');
 
 const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => models.map(([model, label], index) => {
-  const isDefault = endpoint === 'Nebius Token Factory Dedicated' && index === 0;
+  const isDefault = endpoint === (dedicatedChatEnabled ? 'Nebius Token Factory Dedicated' : 'Nebius Token Factory') && index === 0;
   return {
     name: isDefault ? 'nebius-scientific-ai-agent' : `science-${endpoint}-${model}`.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase(),
     label, group, groupIcon: endpoint === 'anthropic' ? 'anthropic' : endpoint === 'openAI' ? 'openAI' : '/assets/token-factory.svg',
@@ -215,6 +217,11 @@ const config = {
     },
   },
 };
+
+if (!dedicatedChatEnabled) {
+  config.endpoints.custom = config.endpoints.custom.filter(({ name }) => name !== 'Nebius Token Factory Dedicated');
+  config.endpoints.agents.allowedProviders = config.endpoints.agents.allowedProviders.filter((name) => name !== 'Nebius Token Factory Dedicated');
+}
 
 // JSON is valid YAML and preserves multiline instructions and literal key references.
 await writeFile(outputPath, JSON.stringify(config, null, 2) + '\n', { mode: 0o600 });

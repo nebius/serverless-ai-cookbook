@@ -41,6 +41,24 @@ def test_serverless_and_librechat_auth_are_separated() -> None:
     assert 'GROMACS' not in deploy
 
 
+def test_personal_installation_can_use_public_chat_without_event_capacity(tmp_path):
+    config, _ = render_config(tmp_path, SCIENTIFIC_DEDICATED_CHAT_ENABLED="false")
+    defaults = [item for item in config["modelSpecs"]["list"] if item["default"]]
+    assert len(defaults) == 1
+    assert defaults[0]["preset"]["endpoint"] == "Nebius Token Factory"
+    assert not any("Dedicated" in item["group"] for item in config["modelSpecs"]["list"])
+    assert not any("Dedicated" in item["name"] for item in config["endpoints"]["custom"])
+    assert "Nebius Token Factory Dedicated" not in config["endpoints"]["agents"]["allowedProviders"]
+
+
+def test_personal_serverless_mount_keeps_database_off_object_storage():
+    deploy = (ROOT / "scripts/deploy.sh").read_text()
+    assert 's3://${TEAM_BUCKET_NAME}:/workspace:rw:default@${S3_CREDENTIAL_SECRET_SELECTOR}' in deploy
+    assert '--env "ALLOW_REGISTRATION=false"' in deploy
+    assert '--env-secret "SEED_DEFAULT_USER_PASSWORD=$USER_PASSWORD_SECRET_SELECTOR"' in deploy
+    assert ':/data' not in deploy
+
+
 def test_footer_is_powered_by_nvidia() -> None:
     footer = (ROOT / "PoweredByFooter.tsx").read_text(encoding="utf-8")
     assert "Powered by" in footer
