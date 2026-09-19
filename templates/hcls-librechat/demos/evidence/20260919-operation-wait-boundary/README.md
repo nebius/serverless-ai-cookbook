@@ -75,6 +75,14 @@ Protected immutable-input join receipt:
 `Q/robotics-natural179/joined-runtime-evidence.json`, derived read-only from
 the retained public Runs response and three persisted App Logs responses.
 
+Later complete startup-log captures also expose named subprocess timings:
+native CRIU restore19.644418s, CUDA restore for PID3025.560960s and
+PID1740.037010s; child Pod CRIU19.905719s, CUDA PID3025.502026s and
+PID1740.034569s. Every listed command returned0. These are individual process
+restore components, not full cold start, accepted-to-ready, image pull,
+queue delay, or GPU occupancy. Source logs remain intact at
+`Q/robotics-natural179/{native,children}-full-startup-logs.json`.
+
 ## Deadline diagnosis
 
 Both failed tools supplied `wait_seconds:30`:

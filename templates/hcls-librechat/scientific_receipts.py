@@ -8,6 +8,8 @@ silently skipped in favor of an older pre-admission state.
 """
 import json
 from contextlib import contextmanager
+from dataclasses import dataclass
+import errno
 import fcntl
 import hashlib
 import os
@@ -15,6 +17,98 @@ from pathlib import Path
 import tempfile
 import time
 from uuid import uuid4
+
+FILE_CHUNK_BYTES = 1024 * 1024
+
+
+def file_measurement(path: Path) -> tuple[int, str]:
+    """Hash a closed scientific file without loading it all into memory."""
+    size, checksum = 0, hashlib.sha256()
+    with Path(path).open('rb') as stream:
+        while chunk := stream.read(FILE_CHUNK_BYTES):
+            size += len(chunk)
+            checksum.update(chunk)
+    return size, checksum.hexdigest()
+
+
+def verify_file(path: Path, reference: dict) -> None:
+    if file_measurement(path) != (reference['size_bytes'], reference['sha256']):
+        raise RuntimeError('Existing artifact bytes differ from the declared result; preserve them and use a new recovery directory.')
+
+
+def publish_file(staged: Path, target: Path, reference: dict) -> str:
+    """Existing artifact publisher: exclusive streaming and verified readback.
+
+    A local hard link is atomic. Bucket publication is an exclusive streamed
+    copy, NOT atomically visible; a receipt is valid only after readback.
+    """
+    try:
+        os.link(staged, target)
+        return 'atomic-link'
+    except FileExistsError:
+        verify_file(target, reference)
+        return 'verified-existing'
+    except OSError as error:
+        if error.errno not in {errno.EXDEV, errno.ENOTSUP, errno.EOPNOTSUPP, errno.EPERM, errno.ENOSYS}:
+            raise
+    created = False
+    try:
+        with open(target, 'xb', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
+            created = True
+            with staged.open('rb') as source:
+                while chunk := source.read(FILE_CHUNK_BYTES):
+                    output.write(chunk)
+            output.flush()
+            os.fsync(output.fileno())
+        verify_file(target, reference)
+        return 'verified-copy'
+    except FileExistsError:
+        verify_file(target, reference)
+        return 'verified-existing'
+    except BaseException as error:
+        if created:
+            try:
+                target.unlink(missing_ok=True)
+            except OSError as cleanup_error:
+                error.add_note(f'Partial artifact remains at {target}; cleanup failed: {cleanup_error}. No verified receipt was published.')
+        raise
+
+
+def persist_local_file(source: Path, target: Path) -> dict:
+    """Publish a CLOSED local file; identical destinations resume, conflicts fail.
+
+    Writers must be closed first. Use SQLite's backup API to a closed standalone
+    file; copying a live database/WAL or arbitrary directory is not supported.
+    """
+    source, target = Path(source), Path(target)
+    size, checksum = file_measurement(source)
+    with source.open('rb') as stream:
+        os.fsync(stream.fileno())
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    reference = {'size_bytes': size, 'sha256': checksum}
+    publication = publish_file(source, target, reference)
+    return {'path': str(target), **reference, 'publication': publication}
+
+
+@dataclass
+class StagedOutput:
+    path: Path
+    receipt: dict | None = None
+
+
+@contextmanager
+def staged_output(target: Path):
+    """Yield a seekable local path; publish only after a successful closed writer.
+
+    Example: ``with staged_output(target) as staged: np.savez(staged.path, x=x)``.
+    After exit, ``staged.receipt`` contains exact persisted size/hash. Scratch
+    is temporary, not durable. Close every library handle inside the block.
+    """
+    target = Path(target)
+    with tempfile.TemporaryDirectory(prefix='scientific-output-') as folder:
+        staged = StagedOutput(Path(folder) / target.name)
+        yield staged
+        staged.receipt = persist_local_file(staged.path, target)
 
 
 @contextmanager

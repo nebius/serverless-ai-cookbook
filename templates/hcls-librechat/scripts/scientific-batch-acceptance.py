@@ -7,7 +7,6 @@ operation; it never silently resubmits after ambiguous admission.
 
 import argparse
 import asyncio
-import errno
 import hashlib
 import json
 import os
@@ -26,7 +25,14 @@ from mcp.client.streamable_http import streamable_http_client
 # The same source is installed beside scientific_receipts.py in the image.
 if Path(__file__).parent.name == 'scripts':
     sys.path.insert(0, str(Path(__file__).parent.parent))
-from scientific_receipts import load as load_receipt, receipt_lock, save
+from scientific_receipts import (
+    file_measurement as artifact_file_measurement,  # noqa: F401 - retained helper import API
+    load as load_receipt,
+    publish_file as publish_artifact,
+    receipt_lock,
+    save,
+    verify_file as verify_artifact_file,
+)
 
 
 TERMINAL = {"failed", "cancelled", "expired", "preempted"}
@@ -178,63 +184,6 @@ async def upload(http, model: str, data: bytes, media_type: str, compression: st
         if key != "model_id" and result.get(key) != value:
             raise RuntimeError("Finalized artifact metadata mismatch.")
     return result
-
-
-def artifact_file_measurement(path: Path) -> tuple[int, str]:
-    """Hash retained files without loading an entire scientific dataset."""
-    size, checksum = 0, hashlib.sha256()
-    with path.open('rb') as stream:
-        while chunk := stream.read(ARTIFACT_CHUNK_BYTES):
-            size += len(chunk)
-            checksum.update(chunk)
-    return size, checksum.hexdigest()
-
-
-def verify_artifact_file(path: Path, reference: dict) -> None:
-    if artifact_file_measurement(path) != (reference['size_bytes'], reference['sha256']):
-        raise RuntimeError('Existing artifact bytes differ from the declared result; preserve them and use a new recovery directory.')
-
-
-def publish_artifact(staged: Path, target: Path, reference: dict) -> str:
-    """Publish verified local bytes without overwriting prior evidence.
-
-    A same-filesystem hard link is atomic and exclusive. Object Storage mounts
-    do not support that operation (or reliable rename); there the final copy is
-    exclusive, streamed, fsynced and read back before its receipt is published.
-    It is deliberately not described as atomically visible on a bucket mount.
-    """
-    try:
-        os.link(staged, target)
-        return 'atomic-link'
-    except FileExistsError:
-        verify_artifact_file(target, reference)
-        return 'verified-existing'
-    except OSError as error:
-        if error.errno not in {errno.EXDEV, errno.ENOTSUP, errno.EOPNOTSUPP, errno.EPERM, errno.ENOSYS}:
-            raise
-    created = False
-    try:
-        with open(target, 'xb', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
-            created = True
-            with staged.open('rb') as source:
-                while chunk := source.read(ARTIFACT_CHUNK_BYTES):
-                    output.write(chunk)
-            output.flush()
-            os.fsync(output.fileno())
-        verify_artifact_file(target, reference)
-        return 'verified-copy'
-    except FileExistsError:
-        verify_artifact_file(target, reference)
-        return 'verified-existing'
-    except BaseException as error:
-        # Only the partial file exclusively created by this attempt is removed.
-        # Existing files and all operation/admission receipts remain untouched.
-        if created:
-            try:
-                target.unlink(missing_ok=True)
-            except OSError as cleanup_error:
-                error.add_note(f'Partial artifact remains at {target}; cleanup failed: {cleanup_error}. No verified receipt was published.')
-        raise
 
 
 async def download(http, reference: dict, target: Path) -> dict:
