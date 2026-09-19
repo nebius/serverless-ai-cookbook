@@ -90,8 +90,25 @@ const inlineCode = `      <code onDoubleClick={handleDoubleClick} className={cla
         {children}
       </code>`;
 if (markdown.split(inlineCode).length !== 3) throw new Error('Unsupported inline Markdown code renderer');
-markdown = "import WorkspaceInlineCode from '~/components/WorkspaceInlineCode';\n" + markdown;
+markdown = "import WorkspaceInlineCode, { WorkspaceCodeBlockLinks } from '~/components/WorkspaceInlineCode';\n" + markdown;
 markdown = markdown.replaceAll(inlineCode, `      <WorkspaceInlineCode onDoubleClick={handleDoubleClick} className={className}>
         {children}
       </WorkspaceInlineCode>`);
+// Preserve the actual pinned CodeBlock, including copy/run controls and text.
+// The wrapper is inert unless all nonempty lines are exact workspace URLs.
+const executableBlock = `      <CodeBlock
+        lang={lang ?? 'text'}
+        codeChildren={children}
+        blockIndex={blockIndex}
+        allowExecution={canRunCode}
+      />`;
+if (markdown.split(executableBlock).length !== 2) throw new Error('Unsupported executable fenced Markdown renderer');
+markdown = markdown.replace(executableBlock, `      <WorkspaceCodeBlockLinks codeChildren={children}>
+${executableBlock}
+      </WorkspaceCodeBlockLinks>`);
+const readOnlyBlock = "    return <CodeBlock lang={lang ?? 'text'} codeChildren={children} allowExecution={false} />;";
+if (markdown.split(readOnlyBlock).length !== 2) throw new Error('Unsupported read-only fenced Markdown renderer');
+markdown = markdown.replace(readOnlyBlock, `    return <WorkspaceCodeBlockLinks codeChildren={children}>
+      <CodeBlock lang={lang ?? 'text'} codeChildren={children} allowExecution={false} />
+    </WorkspaceCodeBlockLinks>;`);
 await writeFile(markdownPath, markdown);

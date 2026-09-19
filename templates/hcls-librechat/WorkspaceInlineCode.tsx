@@ -20,6 +20,40 @@ export function workspaceCodeHref(children: unknown): string | undefined {
   return url.pathname + url.search;
 }
 
+/** Add navigation only to a block containing complete workspace URL lines. */
+export function workspaceCodeLinks(children: unknown): Array<{ href: string; label: string }> {
+  const text = typeof children === 'string' ? children
+    : Array.isArray(children) && children.every((part) => typeof part === 'string')
+      ? children.join('') : undefined;
+  if (!text) return [];
+  const lines = text.split(/\r?\n/u).filter((line) => line !== '');
+  if (!lines.length) return [];
+  const hrefs = lines.map(workspaceCodeHref);
+  if (hrefs.some((href) => !href)) return [];
+  return hrefs.map((href) => ({
+    href: href!,
+    label: new URL(href!, 'https://workspace.invalid').searchParams.get('file')!.split('/').pop()!,
+  }));
+}
+
+/** Keep the original fenced renderer/copy text; add adjacent authenticated links. */
+export function WorkspaceCodeBlockLinks({ codeChildren, children }: {
+  codeChildren: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const links = workspaceCodeLinks(codeChildren);
+  if (!links.length) return <>{children}</>;
+  return <>{children}<nav aria-label="Workspace files" className="my-2">
+    <ul className="flex flex-wrap gap-x-4 gap-y-2">
+      {links.map(({ href, label }, index) => <li key={`${index}:${href}`}>
+        <a href={href} target="_blank" rel="noopener noreferrer" className="underline">
+          {label}
+        </a>
+      </li>)}
+    </ul>
+  </nav></>;
+}
+
 export default function WorkspaceInlineCode({ children, className, onDoubleClick }: {
   children: React.ReactNode;
   className?: string;
