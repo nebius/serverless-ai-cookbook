@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 TERMINAL = {"succeeded", "failed", "cancelled", "expired", "preempted"}
-STATES = TERMINAL | {"queued", "running", "loading", "pending", "accepted", "admitted"}
+STATES = TERMINAL | {"queued", "activating", "running", "loading", "pending", "accepted", "admitted"}
 CAPACITY_CODES = {
     "preempted",
     "capacity_unavailable",
@@ -180,6 +180,8 @@ def operation_documents(doc):
     ):
         return [doc]
     result = []
+    if doc.get("http_status") == 200 and isinstance(doc.get("body"), dict):
+        result.extend(operation_documents(doc["body"]))
     if isinstance(doc.get("operation"), dict):
         result.extend(operation_documents(doc["operation"]))
     for child in (
@@ -187,6 +189,8 @@ def operation_documents(doc):
     ):
         result.extend(operation_documents(child))
     data = doc.get("data", {})
+    if isinstance(data, dict) and isinstance(data.get("operation"), dict):
+        result.extend(operation_documents(data["operation"]))
     run = data.get("run", {}) if isinstance(data, dict) else {}
     if identifier(run.get("id")) and isinstance(run.get("model"), dict):
         result.append(
@@ -339,6 +343,52 @@ def new_row(opid):
         "cohorts": [],
         "workflow_labels": [],
     }
+
+
+def join_retained_status(rows, root, as_of, counters, errors):
+    """Refresh admitted IDs from canonical captures, never invent admissions.
+
+    Operator status captures may be stored separately from the original client
+    receipt. Exact parent links also admit child observations, not new top-level
+    requests. Preserve old observations and their hashes alongside each refresh.
+    """
+    paths = set()
+    for name in ("operation.json", "children.json", "final-status.json", "admin-final.json"):
+        paths.update(root.rglob(name))
+    for path in sorted(paths):
+        if excluded(path.relative_to(root)) or not path.is_file():
+            continue
+        try:
+            documents = operation_documents(read(path))
+        except (OSError, ValueError) as error:
+            errors.append({"path": str(path.relative_to(root)), "error_type": type(error).__name__})
+            continue
+        source = evidence(path, root)
+        for operation in documents:
+            oid = identifier(operation.get("id"))
+            parent = identifier(operation.get("parent_operation_id"))
+            if not oid or (oid not in rows and parent not in rows):
+                continue
+            moment = observed_time(operation)
+            if moment and moment > as_of:
+                continue
+            row = rows.setdefault(oid, new_row(oid))
+            selected = {key: operation.get(key) for key in (
+                "model_id", "status", "protocol", "operation", "parent_operation_id",
+                "accepted_at", "started_at", "completed_at", "error_code", "attempt",
+            )}
+            selected.update(observed_at=stamp(moment), source=source)
+            runtime = operation.get("execution_identity") or {}
+            selected["runtime_image_digest"] = runtime.get("runtime_image_digest")
+            selected["execution_identity_sha256"] = runtime.get(
+                "execution_identity_sha256", runtime.get("execution_identity_digest")
+            )
+            if selected not in row["observations"]:
+                row["observations"].append(selected)
+                row["sources"].append(source)
+                counters["joined_retained_status_observations"] += 1
+            if parent in rows:
+                row["cohorts"].extend(rows[parent]["cohorts"])
 
 
 def scan(root, as_of, *, current=None, annotations=None):
@@ -497,7 +547,17 @@ def scan(root, as_of, *, current=None, annotations=None):
                     **attempt,
                     "source": ref,
                 }
-    normalized = [finalize(row, current or {}) for row in rows.values()]
+    join_retained_status(rows, root, as_of, counters, scan_errors)
+    auxiliary = []
+    inference_rows = []
+    for row in rows.values():
+        if any(item.get("protocol") == "scientific-artifact-upload-v1"
+               or item.get("operation") == "upload" for item in row["observations"]):
+            auxiliary.append({"operation_id": row["operation_id"], "kind": "artifact_upload",
+                              "sources": row["sources"]})
+        else:
+            inference_rows.append(row)
+    normalized = [finalize(row, current or {}) for row in inference_rows]
     normalized.sort(key=lambda row: (row["model_id"], row["operation_id"]))
     annotations = annotations or {}
     for row in normalized:
@@ -519,6 +579,7 @@ def scan(root, as_of, *, current=None, annotations=None):
         "by_app": groups(normalized, "model_id"),
         "by_workflow": groups(normalized, "workflow"),
         "operations": normalized,
+        "auxiliary_operations_excluded": auxiliary,
         "separate_workshop_population": scan_workshop(root, as_of),
         "unadmitted_logical_items": list(unadmitted_by_key.values()),
         "scan": {

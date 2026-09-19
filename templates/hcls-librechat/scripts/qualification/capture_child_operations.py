@@ -27,7 +27,7 @@ async def main():
             if parent_row is None:
                 raise ValueError('Exact campaign parent not found')
             children = await connection.fetch(
-                'SELECT id, parent_operation_id, model_id, status, accepted_at, '
+                'SELECT id, parent_operation_id, model_id, protocol, operation, status, accepted_at, '
                 'started_at, completed_at, error_code FROM fs2_operations '
                 'WHERE parent_operation_id=$1 AND principal_id=$2 AND tenant_id=$3 '
                 'ORDER BY accepted_at, id LIMIT 4097', UUID(parent), principal, tenant)

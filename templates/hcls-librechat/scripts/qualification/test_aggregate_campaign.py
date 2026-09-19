@@ -57,6 +57,72 @@ class AggregationTest(unittest.TestCase):
         self.assertEqual(report["counts"]["durable_operation_ids"], 1)
         self.assertEqual(report["counts"]["service_states"], {"succeeded": 1})
 
+    def test_separate_status_refresh_does_not_create_new_admissions(self):
+        prefix = self.receipt(state="running")
+        self.put(prefix + "/operation.json", {
+            "id": OP, "model_id": "model", "status": "running",
+            "started_at": "2026-09-19T00:50:00Z",
+        })
+        self.put("final-refresh/one/operation.json", {
+            "id": OP, "model_id": "model", "status": "succeeded",
+            "completed_at": "2026-09-19T01:30:00Z",
+        })
+        self.put("unrelated/operation.json", {
+            "id": PROBE, "model_id": "model", "status": "succeeded",
+        })
+        result = self.report()
+        self.assertEqual(result["counts"]["durable_operation_ids"], 1)
+        self.assertEqual(result["counts"]["service_states"], {"succeeded": 1})
+        self.assertEqual(len(result["operations"][0]["observations"]), 2)
+
+    def test_separate_child_upload_is_not_a_model_call(self):
+        self.receipt()
+        self.put("child-refresh/children.json", {"children": [
+            {"id": CHILD, "parent_operation_id": OP, "model_id": "child",
+             "protocol": "scientific-artifact-upload-v1", "operation": "upload",
+             "status": "succeeded", "completed_at": "2026-09-19T01:10:00Z"},
+            {"id": PROBE, "parent_operation_id": OP, "model_id": "child",
+             "protocol": "native", "operation": "generate-media",
+             "status": "succeeded", "started_at": "2026-09-19T01:11:00Z",
+             "completed_at": "2026-09-19T01:12:00Z"},
+        ]})
+        result = self.report()
+        self.assertEqual(result["counts"]["durable_operation_ids"], 2)
+        self.assertEqual(result["counts"]["operation_kinds"],
+                         {"top_level_serving": 1, "child_inference": 1})
+        self.assertEqual([r["operation_id"] for r in result["auxiliary_operations_excluded"]], [CHILD])
+
+    def test_future_separate_refresh_does_not_replace_observed_state(self):
+        self.receipt(state="running")
+        self.put("final-refresh/operation.json", {
+            "id": OP, "model_id": "model", "status": "succeeded",
+            "completed_at": "2026-09-19T03:00:00Z",
+        })
+        self.assertEqual(self.report()["counts"]["service_states"], {"running": 1})
+
+    def test_activating_status_is_retained_and_known_upload_not_inference(self):
+        self.receipt(state="queued")
+        self.put("separate/operation.json", {
+            "id": OP, "model_id": "model", "status": "activating", "protocol": "native",
+        })
+        self.assertEqual(self.report()["counts"]["service_states"], {"activating": 1})
+        self.put("separate/operation.json", {
+            "id": OP, "model_id": "model", "status": "succeeded",
+            "protocol": "scientific-artifact-upload-v1", "operation": "upload",
+        })
+        result = self.report()
+        self.assertEqual(result["counts"]["top_level_inference_request_ids"], 0)
+        self.assertEqual(len(result["auxiliary_operations_excluded"]), 1)
+
+    def test_captured_admin_response_requires_success_and_exact_operation_shape(self):
+        self.receipt(state="running")
+        operation = {"id": OP, "model_id": "model", "status": "succeeded",
+                     "completed_at": "2026-09-19T01:30:00Z"}
+        self.put("admin/operation.json", {"http_status": 500, "body": {"data": {"operation": operation}}})
+        self.assertEqual(self.report()["counts"]["service_states"], {"running": 1})
+        self.put("admin/operation.json", {"http_status": 200, "body": {"data": {"operation": operation}}})
+        self.assertEqual(self.report()["counts"]["service_states"], {"succeeded": 1})
+
     def test_offline_reassessments_preserve_failed_history(self):
         prefix = self.receipt(reevaluated_at="2026-09-19T01:10:00Z")
         self.put(
