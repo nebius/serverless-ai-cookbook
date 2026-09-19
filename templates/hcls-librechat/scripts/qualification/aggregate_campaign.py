@@ -507,6 +507,8 @@ def scan(root, as_of, *, current=None, annotations=None):
     unadmitted_by_key = defaultdict(list)
     for item in unadmitted:
         unadmitted_by_key[item["logical_identity_sha256"]].append(item)
+    from aggregate_workshop import scan_workshop
+
     return {
         "schema": "fs2.qualification-campaign-aggregate/v1",
         "as_of": stamp(as_of),
@@ -517,6 +519,7 @@ def scan(root, as_of, *, current=None, annotations=None):
         "by_app": groups(normalized, "model_id"),
         "by_workflow": groups(normalized, "workflow"),
         "operations": normalized,
+        "separate_workshop_population": scan_workshop(root, as_of),
         "unadmitted_logical_items": list(unadmitted_by_key.values()),
         "scan": {
             **dict(counters),
@@ -978,6 +981,31 @@ def markdown(report):
             )
         if not report[field]:
             lines.append("Not inventoried in this capture; do not read this as zero.")
+    workshop = report.get("separate_workshop_population")
+    if workshop:
+        lines += [
+            "",
+            "## MindEval consultations — separate population",
+            "",
+            workshop["scope"],
+            "",
+        ]
+        for name, values in [
+            ("All retained workshop runs", workshop["summary"]),
+            *workshop["by_cohort"].items(),
+        ]:
+            lines.append(
+                f"- {name}: {values['consultations']} consultations; "
+                f"{values['completed_model_responses']} identified model responses; "
+                f"roles `{json.dumps(values['responses_by_role'], sort_keys=True)}`; "
+                f"states `{json.dumps(values['consultation_states'], sort_keys=True)}`; "
+                f"{values['judgments_with_five_finite_1_to_6_scores']} structurally valid judgments."
+            )
+        lines += [
+            "",
+            "Seed/human turns and planned rounds are excluded. Reported retries are separate; "
+            "unobserved failed provider attempts cannot be reconstructed. Scores are not clinician validation.",
+        ]
     lines += ["", "## Limitations", ""] + [
         "- " + item for item in report["limitations"]
     ]

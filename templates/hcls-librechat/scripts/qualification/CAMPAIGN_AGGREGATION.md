@@ -64,6 +64,34 @@ read, not a claim that later mutable documents still have the same hash.
   sourced diagnosis establishes a cause. Historical ESMFold preemption plus
   erroneous nonretryable classification remains two different facts.
 
+## Separate MindEval workshop population
+
+`aggregate_campaign.py` also includes `separate_workshop_population`, implemented
+by `aggregate_workshop.py`. It reads retained workshop runs and batch admissions,
+deduplicates consultation UUIDs and completion request IDs across snapshots,
+and groups batches by their actual admitted run IDs. Old pilot consultations are
+not counted as new full-batch runs. Transcript seed greetings, human takeovers,
+polls and configured rounds are not model calls; judges are separate responses.
+Reported retries remain a separate lower-bound observation because individual
+provider-attempt IDs are unavailable. These totals are **never** added to serving
+operation, scientific-stage or GPU-hour denominators.
+
+Run just that bounded supplement without rescanning other campaign evidence:
+
+```bash
+python3 aggregate_workshop.py \
+  --root /home/tux/secure-handoff/scientific-qualification-20260918 \
+  --output /home/tux/secure-handoff/scientific-qualification-20260918/campaign-reports/new-workshop-capture
+```
+
+Each output is a new immutable timestamped report. Five finite1–6 scores is only
+a judgment-shape check, not calibration or independent clinical validation.
+No transcript/profile text, completion content, reasoning or credentials are
+copied into these reports. Missing identities and conflicting snapshots remain
+explicitly unqualified; equivalent JSON numbers (`3` versus `3.0`) do not
+fabricate conflicts. Run `pytest test_aggregate_campaign.py
+test_aggregate_workshop.py test_campaign_latency.py` for the combined35 checks.
+
 ## Limits: this is not the final readiness verdict
 
 The receipt-anchored population is a retained-evidence lower bound. It cannot
