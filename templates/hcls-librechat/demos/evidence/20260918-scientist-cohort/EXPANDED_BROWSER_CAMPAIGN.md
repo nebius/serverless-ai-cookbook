@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 01:01 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 01:06 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -53,8 +53,25 @@ returns the same6,537 bytes/hash above. Anonymous file API requests return401;
 a missing selected file shows a clear not-found state without starting download.
 This qualifies existing dedicated-deployment file access, not shared-user
 isolation or scientific narrative. Natural read-only recovery conversation
-`5ba784c0-965a-58db-b43a-bdd9d0bb14fd` is in progress using unchanged original
-inputs and a new output directory; no new model inference requested.
+`5ba784c0-965a-58db-b43a-bdd9d0bb14fd` completed in92.265 seconds, one user turn,
+14 execution calls and zero model inference. All16 pose rows,4 summary rows and
+16 molecule rows independently match saved verified metrics; source files and
+CSVs are byte-identical. The9,255-byte report hash is
+`f790828f42258635bc56289ad4235fd9b96878c4e61e06e5d96b4fec3243b763`.
+It remains **not accepted**: seven ad hoc execution calls failed, the available
+assembler was ignored, categorical failure language lacks a declared criterion,
+and the actual generated chat links fail. The agent invented an absolute
+`/workspace` folder plus basename-file link; browser clicking shows
+`Workspace folder not found`. The earlier canonical-link pass remains valid
+but did not cover this natural output. Both evidence paths are retained.
+
+The narrowly scoped v34 follow-up accepts documented mount paths and basename
+file links by normalizing to the existing authenticated bucket-relative route;
+it does not change ownership, server path containment, permissions or budgets.
+Thirty-one focused tests pass, including exact Unicode filenames, canonical and
+mount-path links, missing files and traversal not resolving to an allowed file.
+Actual failed-link replay on its immutable preview remains required; no planner
+change or further planner experiment is planned.
 
 ### Latest release gate: v31 raw results correct, combined report malformed
 

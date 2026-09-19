@@ -47,6 +47,18 @@ function download(name: string, data: BlobPart, type = 'application/json') {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+// Chat/files use the documented /workspace mount while the authenticated API
+// uses bucket-relative paths. Accept either, without resolving traversal or
+// changing the server's existing ownership/path validation.
+function workspaceSelection(params: URLSearchParams) {
+  const relative = (value: string) => value.replace(/^\/workspace(?:\/|$)/, '').replace(/^\/+/, '');
+  const directory = relative(params.get('path') || '');
+  const suppliedFile = relative(params.get('file') || '');
+  const file = suppliedFile && !suppliedFile.includes('/') && directory
+    ? `${directory}/${suppliedFile}` : suppliedFile;
+  return { directory, file };
+}
+
 const workbenchTabs = [['apps', 'Apps'], ['runs', 'Runs'], ['workspace', 'Workspace'],
   ['clinical', 'Clinical Report'], ['mindeval', 'MindEval']] as const;
 function WorkbenchHeader({ tab, choose }: { tab: string; choose: (tab: string) => void }) {
@@ -68,8 +80,7 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
   const [selectedRun, setSelectedRun] = useState('');
   const [runResult, setRunResult] = useState('');
   const [runPages, setRunPages] = useState<string[]>(['']);
-  const workspacePath = params.get('path') || '';
-  const selectedWorkspaceFile = params.get('file') || '';
+  const { directory: workspacePath, file: selectedWorkspaceFile } = workspaceSelection(params);
   const setWorkspacePath = (next: string) => setParams({ tab: 'workspace', ...(next ? { path: next } : {}) });
   const [workspaceFile, setWorkspaceFile] = useState<File | null>(null);
   const [workspaceName, setWorkspaceName] = useState('');

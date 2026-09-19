@@ -65,3 +65,24 @@ test('missing selected files do not download and folder navigation preserves a u
   assert.equal(page.navigation[0].file, undefined);
   assert.deepEqual(page.requests, []);
 });
+
+test('documented mount paths and basename links select the same authenticated bucket file', async () => {
+  const target = 'study/Å & data.csv';
+  for (const file of ['Å & data.csv', target, '/workspace/' + target]) {
+    const page = render(new URLSearchParams({ tab: 'workspace', path: '/workspace/study', file }).toString(),
+      [{ name: 'Å & data.csv', path: target, kind: 'file', size_bytes: 11 }]);
+    const button = page.elements.find((item) => item.type === 'Button' && item.props.children === 'Download selected file');
+    assert.ok(button);
+    button.props.onClick();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(page.requests, ['/api/scientific-demos/workspace/file?path=' + encodeURIComponent(target)]);
+    assert.deepEqual(page.downloads, ['Å & data.csv']);
+  }
+});
+
+test('deep-link normalization does not reinterpret traversal as an authorized file', () => {
+  const page = render('tab=workspace&path=%2Fworkspace%2Fstudy&file=..%2Foutside.csv',
+    [{ name: 'outside.csv', path: 'outside.csv', kind: 'file', size_bytes: 1 }]);
+  assert.equal(page.elements.some((item) => item.props?.children === 'Download selected file'), false);
+  assert.deepEqual(page.requests, []);
+});
