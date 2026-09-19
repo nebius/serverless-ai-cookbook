@@ -77,6 +77,37 @@ def evict(pod, body):
     return json.loads(outcome.stdout)
 
 
+def recovery_verified(attempts, eviction):
+    """A successful retry is not enough unless the evicted attempt is accounted for."""
+    if len(attempts) != 2 or not eviction:
+        return False
+    first, second = sorted(attempts, key=lambda attempt: attempt["attempt_number"])
+    return (first["attempt_id"] == eviction["attempt_id"]
+            and first["attempt_id"] != second["attempt_id"]
+            and first["attempt_number"] == 1 and second["attempt_number"] == 2
+            and first["outcome"] == "failed" and first["failure_kind"] == "infrastructure"
+            and second["outcome"] == "succeeded"
+            and all(attempt["resource_released"] for attempt in attempts))
+
+
+def worker_logs(pod):
+    """Capture only this operation's GPU container; retain payloads privately."""
+    metadata = pod["metadata"]
+    output = {"pod_uid": metadata["uid"], "observed_at": now(), "containers": {}}
+    for container in pod["spec"]["containers"]:
+        if not int(container.get("resources", {}).get("requests", {}).get("nvidia.com/gpu", 0)):
+            continue
+        result = subprocess.run(
+            ["kubectl", "--kubeconfig", KUBECONFIG, "--context", CONTEXT,
+             "--request-timeout=10s", "-n", metadata["namespace"], "logs", metadata["name"],
+             "-c", container["name"], "--timestamps", "--tail=2000"],
+            capture_output=True, text=True, timeout=15)
+        output["containers"][container["name"]] = {
+            "available": result.returncode == 0, "text": result.stdout,
+            "error": result.stderr[:500] if result.returncode else None}
+    return output
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scientists", required=True, type=Path)
@@ -87,6 +118,7 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--stage", default="fold")
     parser.add_argument("--evict-owned-worker", action="store_true")
+    parser.add_argument("--capture-worker-logs", action="store_true")
     parser.add_argument("--wait-seconds", type=int, default=1800)
     args = parser.parse_args()
     os.umask(0o077)
@@ -126,6 +158,7 @@ def main():
         index = max((int(path.name.split("-", 1)[0]) for path in
                      (args.output / "observations").glob("*-status.json")), default=0)
         previous = None
+        next_log_capture = 0
         while time.monotonic() < until:
             index += 1
             status = mcp.call("get_scientific_status", {"operation_id": receipt["operation_id"]})
@@ -136,6 +169,12 @@ def main():
             pods = kube("-n", receipt["namespace"], "get", "pods", "-l",
                         LABEL + "operation-id=" + receipt["operation_id"])
             save(args.output / "observations" / f"{index:05d}-pods.json", pods)
+            if args.capture_worker_logs and time.monotonic() >= next_log_capture:
+                for pod in pods["items"]:
+                    if pod["metadata"].get("labels", {}).get(LABEL + "stage-id") == args.stage:
+                        save(args.output / "worker-logs" / f"{index:05d}-{pod['metadata']['uid']}.json",
+                             worker_logs(pod))
+                next_log_capture = time.monotonic() + 10
             if args.evict_owned_worker and not receipt.get("eviction_intent"):
                 for pod in pods["items"]:
                     if (pod["metadata"].get("labels", {}).get(LABEL + "stage-id") != args.stage
@@ -162,6 +201,9 @@ def main():
                 previous = state
             terminal = operation["status"] in {"failed", "cancelled", "expired", "preempted"}
             published = operation["status"] == "succeeded" and status["batch"]["result_published"]
+            if published and not all(a["resource_released"] for s in stages for a in s["attempts"]):
+                time.sleep(2)
+                continue
             if terminal or published:
                 save(args.output / "status.json", status)
                 receipt.update(state=operation["status"], finished_at=now())
@@ -178,9 +220,16 @@ def main():
                     attempted = next(s for s in stages if s["stage_id"] == args.stage)["attempts"]
                     receipt.update(verified_artifacts=outputs["verified_artifacts"],
                         semantic_validation=envelope["semantic_validation"], gpu_attempts=len(attempted),
-                        recovery_verified=bool(receipt.get("eviction_accepted_at")) and len(attempted) == 2)
+                        recovery_verified=bool(receipt.get("eviction_accepted_at"))
+                            and recovery_verified(attempted, receipt.get("eviction_intent")))
                     if envelope["semantic_validation"]["status"] != "passed":
                         raise ValueError("Model semantic output check failed")
+                    replay = mcp.call(args.tool, request)
+                    save(args.output / "idempotent-replay.json", replay)
+                    if (replay["operation"]["id"] != receipt["operation_id"]
+                            or replay["batch"]["workload_id"] != receipt["workload_id"]):
+                        raise ValueError("Replaying the same scientific request created different work")
+                    receipt["same_identity_replay_verified"] = True
                     receipt["state"] = "verified" if (not args.evict_owned_worker or receipt["recovery_verified"]) else "fault_not_qualified"
                 save(receipt_path, receipt)
                 print(json.dumps(receipt), flush=True)

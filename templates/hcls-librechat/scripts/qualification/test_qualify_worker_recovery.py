@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from qualify_worker_recovery import LABEL, eviction_body, request_identity
+from qualify_worker_recovery import LABEL, eviction_body, request_identity, recovery_verified
 
 
 def fixture():
@@ -65,3 +65,25 @@ def test_new_fixture_preserves_scientific_request_and_immutable_input():
     assert result["idempotency_key"] == "new"
     assert source["idempotency_key"] == "old"
     assert digest == request_identity(source, run_id="another")[1]
+
+
+def test_recovery_requires_exact_bounded_attempt_lineage_and_resource_release():
+    attempts = [
+        {"attempt_id": "first", "attempt_number": 1, "outcome": "failed",
+         "failure_kind": "infrastructure", "resource_released": True},
+        {"attempt_id": "second", "attempt_number": 2, "outcome": "succeeded",
+         "failure_kind": None, "resource_released": True}]
+    assert recovery_verified(attempts, {"attempt_id": "first"})
+    assert recovery_verified(list(reversed(attempts)), {"attempt_id": "first"})
+    for index, key, value in [(0, "failure_kind", "application"),
+                              (0, "attempt_id", "unrelated"),
+                              (1, "attempt_id", "first"),
+                              (1, "attempt_number", 3),
+                              (1, "outcome", "failed"),
+                              (0, "resource_released", False),
+                              (1, "resource_released", False)]:
+        changed = copy.deepcopy(attempts)
+        changed[index][key] = value
+        assert not recovery_verified(changed, {"attempt_id": "first"})
+    assert not recovery_verified(attempts[:1], {"attempt_id": "first"})
+    assert not recovery_verified(attempts, None)
