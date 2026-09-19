@@ -207,6 +207,7 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
         assert "workbench_track_operation_mcp_scientific-demos" in agent["tools"]
         assert "run_scientific_workflow_mcp_environment-execution" in agent["tools"]
         assert "workbench_analyze_aging_mcp_scientific-demos" in agent["tools"]
+        assert "workbench_compare_docking_batch_mcp_scientific-demos" in agent["tools"]
     assert "Immediately save every returned operation ID with workbench_track_operation" not in general['instructions']
     assert "track the returned ID with `workbench_track_operation`" not in general['instructions']
     assert "Runs automatically discovers" in general['instructions']

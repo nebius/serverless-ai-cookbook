@@ -175,27 +175,17 @@ def write_report(report, output):
     (directory / (prefix + 'report.md')).write_text('\n'.join(lines) + '\n')
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--reference', required=True, type=Path, help='One experimental/reference ligand SDF record.')
-    sources = parser.add_mutually_exclusive_group(required=True)
-    sources.add_argument('--prediction', type=Path, help='Predicted SDF records in retained rank order.')
-    sources.add_argument('--result', type=Path, help='Saved DiffDock JSON containing ligand_positions molblocks.')
-    parser.add_argument('--same-coordinate-frame', action='store_true', required=True,
-                        help='Confirm input/output poses share the same receptor frame; do not ligand-fit.')
-    parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--max-matches', type=int, default=10000)
-    parser.add_argument('--threshold-query', type=float, nargs=2, action='append', default=[],
-                        metavar=('CONFIDENCE_ABOVE', 'RMSD_BELOW'), help='Explicit strict descriptive threshold count; never a default success criterion.')
-    args = parser.parse_args()
-    reference_bytes = args.reference.read_bytes()
+def compare_files(reference_file, result_file=None, prediction_file=None, max_matches=10000, threshold_queries=()):
+    if bool(result_file) == bool(prediction_file):
+        raise ValueError('Supply exactly one result_file or prediction_file.')
+    reference_bytes = Path(reference_file).read_bytes()
     reference = parse_molecules(reference_bytes)
     if len(reference) != 1:
         raise ValueError('Select exactly one reference SDF record explicitly.')
-    source = args.result or args.prediction
+    source = Path(result_file or prediction_file)
     source_bytes = source.read_bytes()
     confidences = None
-    if args.result:
+    if result_file:
         result = json.loads(source_bytes)
         blocks = result.get('ligand_positions')
         if not isinstance(blocks, list) or not blocks or any(not isinstance(block, str) for block in blocks):
@@ -209,14 +199,135 @@ def main():
         confidences = result.get('position_confidence')
     else:
         predictions = parse_molecules(source_bytes)
-    report = compare(reference[0], predictions, confidences, args.max_matches, args.threshold_query)
-    report['provenance'] = {'reference_file': str(args.reference), 'prediction_source': str(source),
+    report = compare(reference[0], predictions, confidences, max_matches, threshold_queries)
+    report['provenance'] = {'reference_file': str(reference_file), 'prediction_source': str(source),
                             'reference_sha256': hashlib.sha256(reference_bytes).hexdigest(),
                             'prediction_source_sha256': hashlib.sha256(source_bytes).hexdigest(),
                             'shared_receptor_frame': 'explicitly_confirmed_by_caller'}
+    return report
+
+
+def summarize_runs(runs, threshold_queries=()):
+    """Count runs, top-ranked poses and all poses separately, with denominators."""
+    rows = [{**pose, 'run_id': run['run_id']} for run in runs for pose in run['metrics']['poses']]
+    top = [row for row in rows if row['rank'] == 1]
+    def subset(selected):
+        comparable = [row for row in selected if row['status'] == 'comparable']
+        scored = [row for row in comparable if 'model_confidence_not_reference_accuracy' in row]
+        counts = []
+        for confidence, rmsd in threshold_queries:
+            eligible = [row for row in comparable if row.get('model_confidence_not_reference_accuracy', -np.inf) > confidence]
+            matches = [row for row in eligible if row['pose_rmsd_angstrom'] < rmsd]
+            counts.append({'confidence_above': confidence, 'rmsd_below_angstrom': rmsd,
+                'selected_pose_count': len(selected), 'eligible_pose_count': len(eligible),
+                'matching_pose_count': len(matches),
+                'matching_poses': [{'run_id': row['run_id'], 'rank': row['rank']} for row in matches],
+                'operators': 'strict confidence > threshold AND RMSD < threshold', 'descriptive_only': True})
+        return {'pose_count': len(selected), 'comparable_pose_count': len(comparable),
+            'confidence_scored_comparable_pose_count': len(scored),
+            'confidence_min': min((row['model_confidence_not_reference_accuracy'] for row in scored), default=None),
+            'confidence_max': max((row['model_confidence_not_reference_accuracy'] for row in scored), default=None),
+            'rmsd_min_angstrom': min((row['pose_rmsd_angstrom'] for row in comparable), default=None),
+            'rmsd_max_angstrom': max((row['pose_rmsd_angstrom'] for row in comparable), default=None),
+            'threshold_counts': counts}
+    eligible = [run for run in runs if run['metrics']['all_poses_comparable']
+        and run['metrics']['rank_facts']['confidence_scored_comparable_pose_count'] == run['metrics']['requested_pose_count']]
+    overlap = [run['run_id'] for run in eligible if run['metrics']['rank_facts']['best_rmsd_also_highest_confidence_ranks']]
+    return {'run_count': len(runs), 'run_ids': [run['run_id'] for run in runs],
+        'all_poses': subset(rows), 'top_ranked_poses': subset(top),
+        'highest_confidence_overlaps_best_rmsd': {'eligible_run_count': len(eligible),
+            'matching_run_count': len(overlap), 'matching_run_ids': overlap,
+            'definition': 'At least one highest-confidence pose is also minimum-RMSD; includes ties. Only fully comparable, fully confidence-scored runs qualify.'}}
+
+
+def compare_batch(specifications, max_matches=10000, threshold_queries=()):
+    if not isinstance(specifications, list) or not 1 <= len(specifications) <= 16:
+        raise ValueError('Provide one to sixteen explicitly identified runs.')
+    identifiers = [run.get('run_id') for run in specifications]
+    if any(not isinstance(value, str) or not value.strip() or len(value) > 128 for value in identifiers) or len(set(identifiers)) != len(identifiers):
+        raise ValueError('run_id values must be distinct nonempty strings of at most128 characters.')
+    runs = []
+    for specification in specifications:
+        metrics = compare_files(specification['reference_file'], specification.get('result_file'),
+            specification.get('prediction_file'), max_matches, threshold_queries)
+        group = specification.get('group_id') or metrics['provenance']['reference_sha256']
+        if not isinstance(group, str) or not group.strip() or len(group) > 128:
+            raise ValueError('group_id must be a nonempty string of at most128 characters.')
+        runs.append({'run_id': specification['run_id'], 'group_id': group, 'metrics': metrics})
+    groups = []
+    for group in dict.fromkeys(run['group_id'] for run in runs):
+        members = [run for run in runs if run['group_id'] == group]
+        groups.append({'group_id': group, **summarize_runs(members, threshold_queries),
+            'reference_sha256s': sorted({run['metrics']['provenance']['reference_sha256'] for run in members})})
+    return {'schema': 'scientific-ai/docking-multi-run-comparison/v1', 'runs': runs,
+        'summary': summarize_runs(runs, threshold_queries), 'groups': groups,
+        'method': runs[0]['metrics']['method'],
+        'grouping': 'Explicit caller group_id; omitted groups use exact reference-file SHA-256. Group labels do not establish biological comparability.',
+        'all_poses_comparable': all(run['metrics']['all_poses_comparable'] for run in runs),
+        'limitations': runs[0]['metrics']['limitations'], 'inference_submitted': False,
+        'rdkit_version': rdBase.rdkitVersion, 'numpy_version': np.__version__}
+
+
+def write_batch_report(report, output):
+    directory = output.parent
+    fields = ['group_id', 'run_id', 'rank', 'status', 'pose_rmsd_angstrom', 'model_confidence_not_reference_accuracy', 'reason']
+    with (directory / 'rows.csv').open('w', newline='') as stream:
+        writer = csv.DictWriter(stream, fieldnames=fields, extrasaction='ignore')
+        writer.writeheader()
+        for run in report['runs']:
+            writer.writerows({'group_id': run['group_id'], 'run_id': run['run_id'], **pose} for pose in run['metrics']['poses'])
+    clean = lambda value: str(value).replace('|', '\\|').replace('\n', ' ')
+    lines = ['# Multi-run docking analysis', '', report['method'], '', report['grouping'], '',
+        '| Scope | Runs | All poses (comparable / total) | Top-ranked poses (comparable / total) | Highest-confidence overlaps best RMSD (runs / eligible runs) |',
+        '|---|---:|---:|---:|---:|']
+    for group in [{'group_id': 'ALL RUNS', **report['summary']}, *report['groups']]:
+        all_poses, top, overlap = group['all_poses'], group['top_ranked_poses'], group['highest_confidence_overlaps_best_rmsd']
+        lines.append(f"| {clean(group['group_id'])} | {group['run_count']} | {all_poses['comparable_pose_count']} / {all_poses['pose_count']} | {top['comparable_pose_count']} / {top['pose_count']} | {overlap['matching_run_count']} / {overlap['eligible_run_count']} |")
+        for name, selected in [('all poses', all_poses), ('top-ranked poses', top)]:
+            for query in selected['threshold_counts']:
+                lines.append(f"\n{clean(group['group_id'])}, {name}: {query['matching_pose_count']} matching / {query['eligible_pose_count']} eligible / {query['selected_pose_count']} selected; confidence > {query['confidence_above']}, RMSD < {query['rmsd_below_angstrom']} Å (unrounded strict comparisons).\n")
+    lines += ['', '## Per-run extrema', '', '| Run | Group | Best RMSD ranks | Worst RMSD ranks | Highest confidence ranks | Lowest confidence ranks |', '|---|---|---|---|---|---|']
+    for run in report['runs']:
+        facts = run['metrics']['rank_facts']
+        lines.append(f"| {clean(run['run_id'])} | {clean(run['group_id'])} | {facts['best_rmsd']['ranks']} | {facts['worst_rmsd']['ranks']} | {facts['highest_confidence']['ranks']} | {facts['lowest_confidence']['ranks']} |")
+    lines += ['', '## Every returned pose', '', '| Run | Rank | Status | Unfitted RMSD (Å) | Confidence |', '|---|---:|---|---:|---:|']
+    for run in report['runs']:
+        for pose in run['metrics']['poses']:
+            lines.append(f"| {clean(run['run_id'])} | {pose['rank']} | {pose['status']} | {pose.get('pose_rmsd_angstrom', 'unavailable')} | {pose.get('model_confidence_not_reference_accuracy', 'unavailable')} |")
+    lines += ['', '## Provenance and limits', '', 'Confidence is not reference accuracy, affinity or evidence of binding. A run has one supplied top-ranked pose; all-pose counts must not be described as top-ranked counts. Ties are explicitly retained. No general correlation or biological validation is inferred.',
+        f"RDKit: {report['rdkit_version']}; NumPy: {report['numpy_version']}.", '', *report['limitations']]
+    for run in report['runs']:
+        provenance = run['metrics']['provenance']
+        lines.append(f"\n{clean(run['run_id'])}: reference SHA-256 {provenance['reference_sha256']}; prediction SHA-256 {provenance['prediction_source_sha256']}.")
+    (directory / 'report.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--reference', type=Path, help='One experimental/reference ligand SDF record.')
+    sources = parser.add_mutually_exclusive_group(required=True)
+    sources.add_argument('--prediction', type=Path, help='Predicted SDF records in retained rank order.')
+    sources.add_argument('--result', type=Path, help='Saved DiffDock JSON containing ligand_positions molblocks.')
+    sources.add_argument('--runs', type=Path, help='JSON list of run_id, optional group_id, reference_file and exactly one result_file/prediction_file.')
+    parser.add_argument('--same-coordinate-frame', action='store_true', required=True,
+                        help='Confirm input/output poses share the same receptor frame; do not ligand-fit.')
+    parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--max-matches', type=int, default=10000)
+    parser.add_argument('--threshold-query', type=float, nargs=2, action='append', default=[],
+                        metavar=('CONFIDENCE_ABOVE', 'RMSD_BELOW'), help='Explicit strict descriptive threshold count; never a default success criterion.')
+    args = parser.parse_args()
+    if args.runs:
+        if args.reference:
+            parser.error('--runs provides each reference; do not also supply --reference')
+        report = compare_batch(json.loads(args.runs.read_text()), args.max_matches, args.threshold_query)
+    else:
+        if not args.reference:
+            parser.error('--reference is required for a single comparison')
+        report = compare_files(args.reference, args.result, args.prediction, args.max_matches, args.threshold_query)
     save(args.output, report)
-    write_report(report, args.output)
-    print(json.dumps(report, allow_nan=False))
+    (write_batch_report if args.runs else write_report)(report, args.output)
+    print(json.dumps({'schema': report['schema'], 'summary': report['summary'], 'output': str(args.output)}
+                     if args.runs else report, allow_nan=False))
     if not report['all_poses_comparable']:
         raise SystemExit(2)
 

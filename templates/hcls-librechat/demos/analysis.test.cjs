@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 process.env.SCIENTIFIC_ANALYSIS_HELPERS = path.resolve(__dirname, '..');
-const { compare, aging } = require('./analysis.cjs');
+const { compare, dockingBatch, aging } = require('./analysis.cjs');
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 
 async function fixture(run) {
@@ -39,6 +39,35 @@ async function fixture(run) {
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 }
 const args = { reference_file: 'reference.sdf', result_file: 'result.json', same_coordinate_frame: true };
+test('multi-run docking uses existing helper once and retains true UTF-8 bytes and explicit denominators', () => fixture(async ({ storage, retained }) => {
+  let executed = 0;
+  storage.execute = async (_, argv, options) => {
+    executed += 1;
+    assert.equal(options.timeout, 50000);
+    const runs = JSON.parse(await fs.readFile(argv[argv.indexOf('--runs') + 1], 'utf8'));
+    assert.deepEqual(runs.map((run) => [run.run_id, run.group_id]), [['first', 'target'], ['second', 'target']]);
+    assert.ok(runs.every((run) => run.reference_file.endsWith('/reference.sdf')));
+    const folder = path.dirname(argv[argv.indexOf('--output') + 1]);
+    await fs.writeFile(path.join(folder, 'metrics.json'), JSON.stringify({ schema: 'multi-run-test',
+      method: 'existing-helper', summary: { run_count: 2, all_poses: { pose_count: 8 }, top_ranked_poses: { pose_count: 2 } },
+      groups: [], runs: runs.map((run) => ({ ...run, metrics: { rank_facts: {}, requested_pose_count: 4, comparable_pose_count: 4 } })) }));
+    await fs.writeFile(path.join(folder, 'report.md'), '# Report — RMSD Å\n');
+    await fs.writeFile(path.join(folder, 'rows.csv'), 'run,rank\nfirst,1\n');
+  };
+  const result = await dockingBatch('fixture-key', { same_coordinate_frame: true,
+    runs: ['first', 'second'].map((run_id) => ({ run_id, group_id: 'target', reference_file: 'reference.sdf', result_file: 'result.json' })) }, storage);
+  assert.equal(executed, 1);
+  assert.equal(result.metrics.summary.top_ranked_poses.pose_count, 2);
+  const bytes = retained[result.files['report.md'].relative_path];
+  assert.equal(result.files['report.md'].size_bytes, bytes.length);
+  assert.notEqual(bytes.length, bytes.toString().length);
+  assert.equal(result.files['report.md'].sha256, hash(bytes));
+  assert.equal(result.provenance.inputs['0_result_file'].sha256, hash('{}'));
+  assert.equal(result.inference_submitted, false);
+  await assert.rejects(dockingBatch('fixture-key', { same_coordinate_frame: true,
+    runs: [{ run_id: 'same' }, { run_id: 'same' }] }, storage), /distinct/);
+  assert.equal(executed, 1);
+}));
 test('typed docking adapter preserves actual helper metrics and exact byte/hash lineage', () => fixture(async ({ storage, retained }) => {
   const result = await compare('docking', 'fixture-key', args, storage);
   assert.equal(result.analysis_completed, true);

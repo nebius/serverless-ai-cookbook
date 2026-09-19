@@ -54,7 +54,17 @@ A redocking comparison needs a held-out experimental ligand and the same
 receptor coordinate frame as the prediction. Do not feed those reference ligand
 coordinates into a SMILES-only docking input and claim a held-out experiment.
 
-Prefer the typed `workbench_compare_docking` tool. Supply workspace-relative
+For multiple runs prefer `workbench_compare_docking_batch`: supply a `runs` list
+of distinct `run_id`, optional scientifically justified `group_id`, and actual
+`reference_file` plus `result_file` or `prediction_file`. Confirm
+`same_coordinate_frame: true`. It invokes the same tested helper once and saves
+a complete combined report and CSV, with separate per-group run counts,
+top-ranked-pose counts and all-pose counts. Omitted group IDs use exact reference
+hashes. Never call all-pose counts top-ranked selections or infer group identity
+from filenames. Reuse the deterministic combined report; an optional narrative
+must agree with the explicit denominators and retain non-comparable poses.
+
+For a single run use `workbench_compare_docking`. Supply workspace-relative
 `reference_file`, `result_file` (or predicted SDF `prediction_file`), and
 `same_coordinate_frame: true` only after confirming that frame. It invokes the
 same tested helper below, returns deterministic ranked metrics and retains the

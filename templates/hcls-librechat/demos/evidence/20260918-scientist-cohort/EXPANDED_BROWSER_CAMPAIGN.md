@@ -1,11 +1,41 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-18 23:59 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 00:12 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### Latest release gate: v29 narrative failure, v30 observation repair, v31 candidate
+
+Scientist06 v29 completed five distinct sequential operations in89.088641s
+from first admission to last completion. All16 pose metrics and16 molecular
+rows, exact request settings and source hashes independently verify. Its final
+report still fails: it claims three of four top-ranked3PTB selections although
+only two3PTB runs exist, understates the confidence range of good poses, and
+calls8,611 Unicode characters bytes (actual8,785 UTF-8 bytes; hash correct).
+One self-recovered `NameError: metrics` was incorrectly called a truncated
+heredoc. One continuation was needed. Original report SHA256
+`8b1eee4bd43d56c1140cbc526876f2460b4f7ad79cd060d7eaca06daee1fffe3`
+and complete raw evidence remain under the protected v29 capture folders.
+
+v29 also exposed two execution-observation MCP timeouts at the unchanged30s
+transport boundary. v30 source75452e9 reserves5s: requested30 becomes effective25
+with explicit metadata and early terminal return.59 tests include an actual
+30s stdio deadline and same-job reconnect. Image digest
+`sha256:76866b573cc304f65c9b19f8f907a56eb0bd516bd71b13acb476b5fb70ce1f70`
+is live on isolated06/07 previews.07's provider Internal create failure was
+retained; two exact-name inventories showed no resource before one retry.
+No timeout, model budget, tool-round budget or key concurrency was raised.
+
+The source-only v31 candidate extends the existing docking helper with typed
+multi-run inputs and deterministic grouped reports: runs, all poses and
+top-ranked poses have separate explicit denominators, confidence ranges,
+threshold counts and provenance. It does not change the RMSD algorithm or
+invent thresholds.14 Python and9 Node adapter tests pass, including ties,
+partial comparability, missing confidence, exact UTF-8 bytes and grouped counts.
+Actual natural-browser qualification of this candidate is still pending.
 
 Ten test scientists have distinct login identities and platform API keys across
 three collaborating lab tenants. Every preview uses its assigned tenant bucket.

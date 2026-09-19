@@ -32,7 +32,7 @@ const workbenchTools = [
   'workbench_list_apps',
   'workbench_track_operation', 'workbench_list_operations', 'workbench_get_operation',
   'workbench_get_operation_result', 'workbench_cancel_operation', 'workbench_workspace',
-  'workbench_compare_docking', 'workbench_compare_structures', 'workbench_analyze_aging',
+  'workbench_compare_docking', 'workbench_compare_docking_batch', 'workbench_compare_structures', 'workbench_analyze_aging',
 ].map((name) => `${name}_mcp_scientific-demos`);
 const clinicalWorkflowTools = [
   'workshop_catalog', 'workshop_create_runs', 'workshop_list_runs',

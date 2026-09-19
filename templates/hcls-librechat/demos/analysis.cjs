@@ -101,6 +101,78 @@ async function compare(kind, key, args, storage) {
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 
+async function dockingBatch(key, args, storage) {
+  if (args.same_coordinate_frame !== true || !Array.isArray(args.runs) || !args.runs.length || args.runs.length > 16) {
+    throw fail('Supply one to sixteen saved runs and explicitly confirm their shared receptor coordinate frames.');
+  }
+  const ids = args.runs.map((run) => run.run_id);
+  if (ids.some((id) => typeof id !== 'string' || !id.trim() || id.length > 128) || new Set(ids).size !== ids.length) {
+    throw fail('Every run needs a distinct nonempty run_id of at most128 characters.');
+  }
+  const inputs = {};
+  const runs = [];
+  for (const [index, run] of args.runs.entries()) {
+    if (Boolean(run.result_file) === Boolean(run.prediction_file)) throw fail('Each run needs exactly one result_file or prediction_file.');
+    const saved = { run_id: run.run_id, group_id: run.group_id };
+    for (const field of ['reference_file', run.result_file ? 'result_file' : 'prediction_file']) {
+      if (typeof run[field] !== 'string' || !run[field]) throw fail('Supply actual workspace-relative files.');
+      const file = await storage.workspaceGet(key, run[field]);
+      if (file.size_bytes > 64 * 1024 * 1024) throw fail('Analysis input exceeds the bounded 64 MiB helper limit.');
+      const bytes = await fs.readFile(file.absolute);
+      inputs[`${index}_${field}`] = { ...file, sha256: hash(bytes), size_bytes: bytes.length };
+      saved[field] = file.absolute;
+    }
+    runs.push(saved);
+  }
+  const queries = args.threshold_queries || [];
+  if (!Array.isArray(queries) || queries.length > 20 || queries.some((query) =>
+    !Number.isFinite(query.confidence_above) || !Number.isFinite(query.rmsd_below_angstrom) || query.rmsd_below_angstrom <= 0)) {
+    throw fail('Threshold queries need finite confidence_above and positive rmsd_below_angstrom.');
+  }
+  const helper = path.join(HELPERS, 'molecule-analysis.py');
+  const helperHash = hash(await fs.readFile(helper));
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'scientific-docking-batch-'));
+  try {
+    const manifest = path.join(temporary, 'runs.json');
+    await fs.writeFile(manifest, JSON.stringify(runs));
+    const argv = [helper, '--runs', manifest, '--same-coordinate-frame', '--output', path.join(temporary, 'metrics.json')];
+    for (const query of queries) argv.push('--threshold-query', String(query.confidence_above), String(query.rmsd_below_angstrom));
+    // Keep analysis and response publication inside the existing60s MCP call.
+    try { await (storage.execute || execute)(PYTHON, argv, { timeout: 50000, maxBuffer: 2 * 1024 * 1024 }); }
+    catch (error) {
+      if (error.code !== 2) {
+        const diagnostic = String(error.stderr || error.message).slice(-4000);
+        const retained = await storage.retainWorkspaceBytes(key, `.scientific-analysis/failures/${hash(diagnostic)}/diagnostic.txt`, Buffer.from(diagnostic));
+        throw fail(`Multi-run docking analysis failed; no metrics accepted. Read ${retained.relative_path}.`);
+      }
+    }
+    for (const file of Object.values(inputs)) {
+      if (hash(await fs.readFile(file.absolute)) !== file.sha256) throw fail('Input changed during analysis; no metrics accepted.');
+    }
+    const bytes = await fs.readFile(path.join(temporary, 'metrics.json'));
+    const metrics = JSON.parse(bytes);
+    const prefix = `.scientific-analysis/docking-batch/${helperHash}/${hash(bytes)}`;
+    const files = {};
+    for (const name of ['metrics.json', 'rows.csv', 'report.md']) {
+      const content = await fs.readFile(path.join(temporary, name));
+      files[name] = { ...await storage.retainWorkspaceBytes(key, `${prefix}/${name}`, content),
+        size_bytes: content.length, sha256: hash(content) };
+    }
+    const provenance = { helper: 'molecule-analysis.py', helper_sha256: helperHash, method: metrics.method,
+      inputs: Object.fromEntries(Object.entries(inputs).map(([field, file]) => [field,
+        { workspace_path: file.normalized, size_bytes: file.size_bytes, sha256: file.sha256 }])),
+      result_sha256: hash(bytes), inference_submitted: false };
+    files['provenance.json'] = await storage.retainWorkspaceBytes(key, `${prefix}/provenance.json`, Buffer.from(JSON.stringify(provenance, null, 2)));
+    return { analysis_completed: true, inference_submitted: false, files, provenance,
+      metrics: { schema: metrics.schema, method: metrics.method, summary: metrics.summary, groups: metrics.groups,
+        all_poses_comparable: metrics.all_poses_comparable,
+        runs: metrics.runs.map((run) => ({ run_id: run.run_id, group_id: run.group_id,
+          rank_facts: run.metrics.rank_facts, requested_pose_count: run.metrics.requested_pose_count,
+          comparable_pose_count: run.metrics.comparable_pose_count })), limitations: metrics.limitations },
+      evidence_guidance: 'Reuse report.md and rows.csv as the complete cross-run docking deliverable. Every group has explicit run, all-pose and top-ranked-pose denominators; never substitute one for another. Threshold counts are unrounded descriptive queries, not clinical/scientific pass criteria. Highest-confidence/best-RMSD overlap includes ties. File size_bytes is the exact UTF-8 byte count, not a character count. Optional interpretation must agree with these saved aggregates and preserve non-comparable poses.' };
+  } finally { await fs.rm(temporary, { recursive: true, force: true }); }
+}
+
 async function aging(key, args, storage) {
   if (!['phenoage', 'altumage'].includes(args.model_id)
       || !Array.isArray(args.cohorts) || !args.cohorts.length || args.cohorts.length > 8) {
@@ -165,4 +237,4 @@ async function aging(key, args, storage) {
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 
-module.exports = { compare, aging };
+module.exports = { compare, dockingBatch, aging };

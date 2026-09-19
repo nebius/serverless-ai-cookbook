@@ -138,3 +138,66 @@ def test_cli_retains_source_hashes_and_refuses_unconfirmed_coordinate_frame(tmp_
     assert 'Lowest RMSD: 0.0; rank(s) [1]' in text
     assert report['provenance']['reference_sha256'] in text
     assert 'not establish monotonicity, correlation or calibration' in text
+
+
+def test_multirun_denominators_do_not_confuse_top_ranked_with_all_poses(monkeypatch):
+    def metrics(rmsds, confidences):
+        rows = [{'rank': index + 1, 'status': 'comparable', 'pose_rmsd_angstrom': value,
+                 'model_confidence_not_reference_accuracy': confidences[index]} for index, value in enumerate(rmsds)]
+        facts, counts = analysis.rank_facts(rows)
+        return {'poses': rows, 'rank_facts': facts, 'threshold_counts': counts,
+            'all_poses_comparable': True, 'requested_pose_count': len(rows), 'method': 'test method',
+            'limitations': [], 'provenance': {'reference_sha256': 'test-ref', 'prediction_source_sha256': 'test-pred'}}
+    sources = {'one': metrics([1.2109, 0.3, 1.2, 0.9], [.9, .8, .75, .7]),
+               'two': metrics([1.1, 0.5, 0.8, 9], [.85, .83, .8, -.5]),
+               'other': metrics([5, 6], [-1, -2])}
+    monkeypatch.setattr(analysis, 'compare_files', lambda _, result, *rest: sources[result])
+    report = analysis.compare_batch([{'run_id': name, 'group_id': 'target' if name != 'other' else 'separate',
+        'reference_file': 'unused', 'result_file': name} for name in sources], threshold_queries=[(.7, 1.2)])
+    group = report['groups'][0]
+    assert group['run_count'] == 2
+    assert group['all_poses']['pose_count'] == 8
+    assert group['top_ranked_poses']['pose_count'] == 2
+    assert group['top_ranked_poses']['threshold_counts'][0]['matching_pose_count'] == 1
+    assert group['top_ranked_poses']['threshold_counts'][0]['eligible_pose_count'] == 2
+    assert group['all_poses']['threshold_counts'][0]['matching_pose_count'] == 4
+    assert group['all_poses']['confidence_min'] == -.5
+    assert report['summary']['run_count'] == 3
+    assert report['summary']['all_poses']['pose_count'] == 10
+    assert group['highest_confidence_overlaps_best_rmsd']['matching_run_count'] == 0
+
+
+def test_multirun_partial_comparability_missing_confidence_and_ties():
+    reference = molecule()
+    complete = analysis.compare(reference, [reference, reference], [1, 1])
+    missing_score = analysis.compare(reference, [reference])
+    partial = analysis.compare(reference, [reference, molecule('CCN')], [1, 4])
+    summary = analysis.summarize_runs([{'run_id': str(index), 'metrics': metrics}
+        for index, metrics in enumerate([complete, missing_score, partial])])
+    assert summary['all_poses']['pose_count'] == 5
+    assert summary['all_poses']['comparable_pose_count'] == 4
+    assert summary['top_ranked_poses']['pose_count'] == 3
+    overlap = summary['highest_confidence_overlaps_best_rmsd']
+    assert overlap['eligible_run_count'] == overlap['matching_run_count'] == 1
+    assert overlap['matching_run_ids'] == ['0']
+
+
+def test_multirun_cli_retains_original_hashes_and_complete_report(tmp_path):
+    reference = tmp_path / 'reference.sdf'
+    prediction = tmp_path / 'prediction.sdf'
+    reference.write_text(Chem.MolToMolBlock(molecule()) + '\n$$$$\n')
+    prediction.write_bytes(reference.read_bytes())
+    specifications = [{'run_id': f'run-{index}', 'reference_file': str(reference),
+                        'prediction_file': str(prediction)} for index in range(2)]
+    source = tmp_path / 'runs.json'; source.write_text(json.dumps(specifications))
+    output = tmp_path / 'metrics.json'
+    subprocess.run([sys.executable, spec.origin, '--runs', str(source), '--same-coordinate-frame',
+                    '--output', str(output)], capture_output=True, check=True)
+    report = json.loads(output.read_text())
+    assert report['summary']['run_count'] == 2
+    assert len(report['groups']) == 1  # Default exact-reference-hash grouping.
+    assert report['groups'][0]['group_id'] == report['runs'][0]['metrics']['provenance']['reference_sha256']
+    assert '| ALL RUNS | 2 | 2 / 2 | 2 / 2 | 0 / 0 |' in (tmp_path / 'report.md').read_text()
+    assert len((tmp_path / 'rows.csv').read_text().splitlines()) == 3
+    with pytest.raises(ValueError, match='distinct'):
+        analysis.compare_batch([specifications[0], specifications[0]])
