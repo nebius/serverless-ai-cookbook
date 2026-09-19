@@ -1,4 +1,4 @@
-"""Compare docking poses in a shared receptor coordinate frame, without fitting.
+"""Deterministic saved-result analysis for docking poses and GenMol molecules.
 
 No inference, coordinate generation, ligand alignment or chemical repair occurs.
 Full heavy-atom graph/stereochemistry identity is required. Confidence scores are
@@ -15,8 +15,158 @@ from pathlib import Path
 
 import numpy as np
 from rdkit import Chem, rdBase
+from rdkit.Chem import Crippen, QED
 
-from scientific_receipts import save
+from scientific_receipts import save, staged_output
+
+
+def analyze_genmol(request, result):
+    """Measure every retained GenMol row; never filter, pad or generate molecules.
+
+    The hosted result contract is exactly ``molecules:[{smiles,score}]``. Missing
+    or malformed envelopes are not recursively searched for plausible strings.
+    Chemical invalidity, duplicates and underfill remain measured outcomes.
+    """
+    if not isinstance(request, dict) or not isinstance(request.get('smiles'), str) or not request['smiles']:
+        raise ValueError('GenMol request must contain its original nonempty smiles mask.')
+    requested = request.get('num_molecules', 1)
+    unique = request.get('unique', False)
+    scoring = request.get('scoring', 'QED')
+    if isinstance(requested, bool) or not isinstance(requested, int) or requested < 1:
+        raise ValueError('num_molecules must be a positive integer.')
+    if not isinstance(unique, bool) or not isinstance(scoring, str) or scoring.upper() not in {'QED', 'LOGP'}:
+        raise ValueError('GenMol requires boolean unique and scoring QED or LogP.')
+    scoring = scoring.upper()
+    if not isinstance(result, dict) or not isinstance(result.get('molecules'), list):
+        raise ValueError('Use the saved raw GenMol result with molecules:[{smiles,score}], not a compact summary or operation envelope.')
+    runtime_metrics = result.get('metrics', {})
+    if not isinstance(runtime_metrics, dict):
+        raise ValueError('GenMol result metrics must be an object when supplied.')
+    rows, first_canonical = [], {}
+    for index, item in enumerate(result['molecules']):
+        if not isinstance(item, dict) or not isinstance(item.get('smiles'), str):
+            raise ValueError(f'GenMol molecule row{index + 1} must contain a literal smiles string.')
+        score = item.get('score')
+        if score is not None and (isinstance(score, bool) or not isinstance(score, (int, float)) or not np.isfinite(score)):
+            raise ValueError(f'GenMol molecule row{index + 1} score must be finite numeric or absent; no replacement value is inferred.')
+        row = {'row': index + 1, 'raw_smiles': item['smiles'], 'valid': False,
+               'canonical_smiles': None, 'canonical_duplicate_of_row': None,
+               'heavy_atoms': None, 'independent_qed': None, 'independent_logp': None,
+               'model_score': score, 'model_scoring': scoring, 'score_absolute_error': None,
+               'score_comparison_state': 'invalid_molecule', 'reason': None}
+        molecule = Chem.MolFromSmiles(item['smiles'])
+        if molecule is None or molecule.GetNumAtoms() == 0:
+            row['reason'] = 'RDKit could not sanitize a nonempty molecule; original row retained.'
+        else:
+            canonical = Chem.MolToSmiles(molecule, isomericSmiles=True)
+            qed, logp = float(QED.qed(molecule)), float(Crippen.MolLogP(molecule))
+            if not np.isfinite(qed) or not np.isfinite(logp):
+                raise ValueError(f'Nonfinite RDKit descriptor at row{index + 1}; no numeric result fabricated.')
+            row.update(valid=True, canonical_smiles=canonical, heavy_atoms=molecule.GetNumHeavyAtoms(),
+                       independent_qed=qed, independent_logp=logp,
+                       canonical_duplicate_of_row=first_canonical.get(canonical),
+                       score_comparison_state='unavailable' if score is None else 'measured',
+                       score_absolute_error=None if score is None else abs(score - (qed if scoring == 'QED' else logp)))
+            first_canonical.setdefault(canonical, index + 1)
+        rows.append(row)
+    valid = [row for row in rows if row['valid']]
+    def distribution(field):
+        values = [row[field] for row in valid]
+        return {'count': len(values), 'minimum': min(values) if values else None,
+                'maximum': max(values) if values else None,
+                'mean': float(np.mean(values)) if values else None}
+    declared_counts = {key: {'declared': runtime_metrics[key], 'measured': measured,
+        'matches': type(runtime_metrics[key]) is int and runtime_metrics[key] == measured}
+        for key, measured in [('requested_molecules', requested), ('returned_molecules', len(rows)),
+                              ('accepted_molecules', len(valid))] if key in runtime_metrics}
+    flags = []
+    if len(rows) < requested:
+        flags.append('underfilled')
+    if len(rows) > requested:
+        flags.append('overfilled')
+    if len(valid) != len(rows):
+        flags.append('invalid_molecules_retained')
+    if unique and len(first_canonical) != len(valid):
+        flags.append('canonical_duplicates_despite_unique_request')
+    if any(not row['matches'] for row in declared_counts.values()):
+        flags.append('runtime_count_mismatch')
+    return {'schema': 'scientific-ai/genmol-descriptors/v1', 'rows': rows,
+        'requested_count': requested, 'returned_count': len(rows),
+        'underfilled': len(rows) < requested, 'overfilled': len(rows) > requested,
+        'valid_count': len(valid), 'invalid_count': len(rows) - len(valid),
+        'canonical_unique_valid': len(first_canonical),
+        'canonical_duplicate_valid_count': len(valid) - len(first_canonical),
+        'unique_requested': unique, 'scoring': scoring, 'request': request,
+        'runtime_status': result.get('status'), 'runtime_metrics': runtime_metrics,
+        'runtime_count_comparisons': declared_counts, 'quality_flags': flags,
+        'heavy_atom_distribution': distribution('heavy_atoms'),
+        'qed_distribution': distribution('independent_qed'),
+        'logp_distribution': distribution('independent_logp'),
+        'score_compared_count': sum(row['score_comparison_state'] == 'measured' for row in rows),
+        'score_comparison_tolerance': None,
+        'rdkit_version': rdBase.rdkitVersion, 'inference_submitted': False,
+        'scientific_claims_validated': False,
+        'method': 'RDKit sanitization, canonical isomeric SMILES uniqueness, heavy-atom count, QED and Crippen MolLogP. Original rows and supplied scores remain separate.',
+        'limitations': ['The GenMol mask is a token-generation control, not a heavy-atom bound.',
+            'Invalid, duplicate, underfilled and overfilled results are retained without padding or filtering.',
+            'QED and LogP are computed molecular descriptors, not measured affinity, efficacy or proof of drug suitability.',
+            'No automatic score-agreement threshold or biological pass is inferred. Missing scores remain unavailable.',
+            'Canonical uniqueness uses RDKit canonical isomeric SMILES; no tautomer, protonation or stereochemistry repair is performed.']}
+
+
+def analyze_genmol_files(request_file, result_file):
+    request_file, result_file = Path(request_file), Path(result_file)
+    request_bytes, result_bytes = request_file.read_bytes(), result_file.read_bytes()
+    def invalid_constant(value):
+        raise ValueError(f'Nonfinite JSON token {value} is not a measured number.')
+    report = analyze_genmol(json.loads(request_bytes, parse_constant=invalid_constant),
+                            json.loads(result_bytes, parse_constant=invalid_constant))
+    report['provenance'] = {'request_file': str(request_file), 'result_file': str(result_file),
+        'request_sha256': hashlib.sha256(request_bytes).hexdigest(), 'request_size_bytes': len(request_bytes),
+        'result_sha256': hashlib.sha256(result_bytes).hexdigest(), 'result_size_bytes': len(result_bytes)}
+    return report
+
+
+def write_genmol_report(report, output):
+    """Publish three closed measured files, then their completion manifest."""
+    output = Path(output)
+    prefix = '' if output.name == 'metrics.json' else output.stem + '.'
+    buffer = io.StringIO(newline='')
+    fields = ['row', 'raw_smiles', 'valid', 'canonical_smiles', 'canonical_duplicate_of_row',
+              'heavy_atoms', 'independent_qed', 'independent_logp', 'model_score',
+              'model_scoring', 'score_absolute_error', 'score_comparison_state', 'reason']
+    writer = csv.DictWriter(buffer, fieldnames=fields)
+    writer.writeheader()
+    writer.writerows(report['rows'])
+    def clean(value):
+        return str(value).replace('|', '\\|').replace('\n', ' ').replace('\r', ' ')
+    lines = ['# GenMol saved-result analysis', '', report['method'], '',
+        f"Requested: {report['requested_count']}; returned: {report['returned_count']}; valid: {report['valid_count']}; canonical-unique valid: {report['canonical_unique_valid']}.",
+        f"Underfilled: {report['underfilled']}; overfilled: {report['overfilled']}; unique requested: {report['unique_requested']}.",
+        f"Measured flags: {', '.join(report['quality_flags']) or 'none detected by these descriptive checks'}.", '',
+        '| Row | Raw SMILES | Valid | Canonical duplicate of row | Heavy atoms | Independent QED | Independent LogP | Supplied score | Score absolute error |',
+        '|---:|---|---|---:|---:|---:|---:|---:|---:|']
+    for row in report['rows']:
+        lines.append('| ' + ' | '.join(clean(row[field]) if row[field] is not None else 'unavailable'
+            for field in ['row', 'raw_smiles', 'valid', 'canonical_duplicate_of_row', 'heavy_atoms',
+                          'independent_qed', 'independent_logp', 'model_score', 'score_absolute_error']) + ' |')
+    lines += ['', 'All computed values above are unrounded; CSV and JSON contain the same values.',
+              f"Supplied score method: {report['scoring']}. QED is dimensionless; LogP is the computed octanol/water partition coefficient on a log10 scale, not an experimental measurement.",
+              '', '## Provenance and limits', '', f"Request SHA-256: {report['provenance']['request_sha256']}",
+              f"Result SHA-256: {report['provenance']['result_sha256']}", f"RDKit: {report['rdkit_version']}", '', *report['limitations']]
+    files = {output.name: (json.dumps(report, indent=2, allow_nan=False) + '\n').encode(),
+             prefix + 'rows.csv': buffer.getvalue().encode(),
+             prefix + 'report.md': ('\n'.join(lines) + '\n').encode()}
+    completion = {'schema': 'scientific-ai/genmol-analysis-artifacts/v1', 'state': 'complete',
+        'inference_submitted': False, 'scientific_claims_validated': False,
+        'helper_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        'inputs': report['provenance'], 'artifacts': [{'path': name, 'size_bytes': len(raw),
+            'sha256': hashlib.sha256(raw).hexdigest()} for name, raw in files.items()]}
+    files[prefix + 'completion-manifest.json'] = (json.dumps(completion, indent=2) + '\n').encode()
+    for name, raw in files.items():
+        with staged_output(output.parent / name) as staged:
+            staged.path.write_bytes(raw)
+    return completion
 
 
 def parse_molecules(data):
@@ -149,7 +299,8 @@ def write_report(report, output):
     fields = ['rank', 'status', 'pose_rmsd_angstrom', 'model_confidence_not_reference_accuracy', 'reason']
     with (directory / (prefix + 'rows.csv')).open('w', newline='') as stream:
         writer = csv.DictWriter(stream, fieldnames=fields, extrasaction='ignore')
-        writer.writeheader(); writer.writerows(report['poses'])
+        writer.writeheader()
+        writer.writerows(report['poses'])
     lines = ['# Docking pose comparison', '', report['method'], '',
         f"Comparable poses: {report['comparable_pose_count']} / {report['requested_pose_count']}",
         'The supplied order is retained; confidence is not reference accuracy.', '',
@@ -276,7 +427,8 @@ def write_batch_report(report, output):
         writer.writeheader()
         for run in report['runs']:
             writer.writerows({'group_id': run['group_id'], 'run_id': run['run_id'], **pose} for pose in run['metrics']['poses'])
-    clean = lambda value: str(value).replace('|', '\\|').replace('\n', ' ')
+    def clean(value):
+        return str(value).replace('|', '\\|').replace('\n', ' ')
     lines = ['# Multi-run docking analysis', '', report['method'], '', report['grouping'], '',
         '| Scope | Runs | All poses (comparable / total) | Top-ranked poses (comparable / total) | Highest-confidence overlaps best RMSD (runs / eligible runs) |',
         '|---|---:|---:|---:|---:|']
@@ -309,13 +461,30 @@ def main():
     sources.add_argument('--prediction', type=Path, help='Predicted SDF records in retained rank order.')
     sources.add_argument('--result', type=Path, help='Saved DiffDock JSON containing ligand_positions molblocks.')
     sources.add_argument('--runs', type=Path, help='JSON list of run_id, optional group_id, reference_file and exactly one result_file/prediction_file.')
-    parser.add_argument('--same-coordinate-frame', action='store_true', required=True,
+    sources.add_argument('--genmol-result', type=Path, help='Raw saved GenMol JSON with molecules:[{smiles,score}]; no model call.')
+    parser.add_argument('--request', type=Path, help='Original GenMol request JSON for --genmol-result.')
+    parser.add_argument('--same-coordinate-frame', action='store_true',
                         help='Confirm input/output poses share the same receptor frame; do not ligand-fit.')
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--max-matches', type=int, default=10000)
     parser.add_argument('--threshold-query', type=float, nargs=2, action='append', default=[],
                         metavar=('CONFIDENCE_ABOVE', 'RMSD_BELOW'), help='Explicit strict descriptive threshold count; never a default success criterion.')
     args = parser.parse_args()
+    if args.genmol_result:
+        if not args.request:
+            parser.error('--genmol-result requires the original --request JSON file')
+        if args.reference or args.same_coordinate_frame or args.threshold_query or args.max_matches != 10000:
+            parser.error('Docking coordinate, reference and threshold options do not apply to GenMol descriptors')
+        report = analyze_genmol_files(args.request, args.genmol_result)
+        write_genmol_report(report, args.output)
+        print(json.dumps({'schema': report['schema'], 'returned_count': report['returned_count'],
+            'valid_count': report['valid_count'], 'canonical_unique_valid': report['canonical_unique_valid'],
+            'quality_flags': report['quality_flags'], 'output': str(args.output)}, allow_nan=False))
+        return
+    if args.request:
+        parser.error('--request is only used with --genmol-result')
+    if not args.same_coordinate_frame:
+        parser.error('--same-coordinate-frame is required for docking comparisons')
     if args.runs:
         if args.reference:
             parser.error('--runs provides each reference; do not also supply --reference')
