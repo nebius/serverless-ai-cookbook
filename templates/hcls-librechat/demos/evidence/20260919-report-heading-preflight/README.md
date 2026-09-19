@@ -53,3 +53,44 @@ Protected evidence in `U/report-metadata-v52.lizsEc/`:
 This is source/offline retained-data evidence, not installed v52 or natural-client
 acceptance. No planner is selected by this change. Root owns the immutable build,
 fresh client qualification and any later customer handoff or migration.
+
+## Exact installed v52 follow-through
+
+Frozen source `e4005cea9e8dd4429064104a53861e8a877016a9` was published as
+OCI index `sha256:0c2a60ea79d3a2ff27c3927964ad5ddb95b02c7f21d94a86990b40200a29f182`
+(amd64 runtime `sha256:5d82cb257547ce928dd0d7bc011638d4fc31b78e702f38c176dcb6625ea7596b`).
+Task-owned Docker tests used that immutable image with network disabled. Only
+test scripts, evidence and disposable workspaces were mounted; installed
+renderer, LibreChat MCP environment processing, SDK transport and runtime
+modules were not overlaid.
+
+All 11 baseline SDK cases pass, including three CPU studies completed after
+stdio disconnection. A separate real installed-MCP test rejects a compact
+MindEval input before admission, preserves that failed draft, reconnects,
+corrects it to full native records, rejects a known directory deliverable, then
+finalizes and admits exactly one study through the unchanged launcher. An
+independent worker completes it with the exact retained 381-character heading.
+Its two-record fixture is synthetic transport evidence, not a new six-case
+scientific or natural-client result.
+
+Independent readback verifies all 22 nonempty final files/manifests across the
+four CPU studies and the four installed runtime hashes against frozen source.
+There were zero model/provider calls or cloud mutations. An initial private
+readback test split on a literal escaped newline and failed its heading-length
+assertion; that test is retained. The corrected test-only successor passes;
+no runtime or image change was made.
+
+Protected evidence: `U/workbench-v52-installed.bCjsMm/`:
+
+- `acceptance.json`, SHA256 `81ea27c1a46f56f95d14da4adf09a0c856b17da3ecb91b17074b04c3ff4b9784`.
+- `stdio-installed-gate.json`, SHA256 `37fea8455ddb2576e58cf6d456c65e4da4af4e9d2d1bde3ee4f5d79654960b5d`.
+- `semantic-stdio-gate.json`, SHA256 `55dd1496163fe4a25ff152a8ce1337243ce5c5d5a0577efd3432d4f5470cf375`.
+- Private semantic test SHA256 `b07de9412091215bbc2714654cb6411885285976d2193e4ffe4d968d4b9b7854`.
+
+The private Rene replacement helper is prepared with this exact image and an
+explicit Kimi-K3 planning candidate, retaining low reasoning and the existing
+131072/8192 context/output settings. Six binding tests pass. Preparation is not
+a cloud migration, current customer-state verification or a qualified default
+planner decision. Plan SHA256:
+`0ff062e7b42d5bd4817d95daae595f499988f23e563850e8c1dc4c0aac449464`.
+Natural v52 acceptance remains a separate gate.
