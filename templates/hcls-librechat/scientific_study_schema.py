@@ -62,6 +62,22 @@ STEPS = [NATIVE, BATCH, CLINICAL,
         ['script', 'inputs', 'parameters', 'outputs'])),
     local('parquet-export', object_schema({'source': FILE, 'formats': {'type': 'array', 'minItems': 1,
         'uniqueItems': True, 'items': {'enum': ['npz', 'hdf5', 'zip', 'sqlite']}}})),
+    local('robotics-analysis', object_schema({
+        'source_video': FILE, 'source_archive': FILE,
+        'native_result': {**FILE, 'description': FILE['description'] + ' Exact native result.json with verified scientific-native-file/v1 MP4 metadata; never guess sibling filenames.'},
+        'manifest_file': {**FILE, 'description': FILE['description'] + ' Exact LeRobot batch output-manifest.json; reads hash-verified output-NN.artifact archive siblings. Compares all recorded values/types, episode timestamps, every camera and decoded video; geometry/action validity remain unproven.'},
+        'selected_cameras': {'type': 'array', 'minItems': 1, 'uniqueItems': True, 'items': TEXT},
+        'variant_index': {'type': 'integer', 'minimum': 0, 'default': 0}},
+        ['source_video','source_archive','native_result','manifest_file','selected_cameras'])),
+    local('evo2-continuation', object_schema({
+        'reference_file': {**FILE, 'description': FILE['description'] + ' Exact FASTA or plain DNA reference; measurements preserve its raw hash and do not infer likelihood/variant scores.'},
+        'reference_id': TEXT, 'title': TEXT,
+        'cases': {'type': 'array', 'minItems': 1, 'items': object_schema({
+            'id': TEXT, 'start_zero_based': {'type': 'integer', 'minimum': 0},
+            'input_file': FILE, 'result_file': FILE, 'operation_file': FILE,
+            'sequence_mode': {'enum': ['suffix', 'prefix-and-suffix'], 'default': 'suffix'}},
+            ['id','start_zero_based','input_file','result_file','operation_file'])}},
+        ['reference_file','cases'])),
     local('proteinmpnn-input', object_schema({'backbone': FILE, 'structure_index': {'type': 'integer', 'minimum': 0},
         'chain': CHAIN,
         'num_sequences': {'type': 'integer', 'minimum': 1, 'maximum': 8},
@@ -129,12 +145,14 @@ DRAFT_SCHEMA = object_schema({
 # loosely documented plan language. Lists apply only to successful phases;
 # conditional filenames must never become unconditional final deliverables.
 PHASE_OUTPUTS = {
-    'native': (['result.json'], ['Other files depend on the native result contract.']),
+    'native': (['result.json'], ['JSON models retain their original result shape. Native media publish scientific-native-file/v1 in result.json with verified file.path/size_bytes/sha256 plus result.mp4, result.wav or another declared media extension. Do not JSON-decode binary media or infer its identity by directory globbing.']),
     'batch': (['result.json', 'output-manifest.json'], ['output-NN.artifact: one verified sibling per manifest entry; role, MIME and compression come from output-manifest.json.']),
     'clinical': (['clinical-outcome.json', 'clinical-outcome.md'], ['Normal report success publishes the existing clinical files. Explicit allow_no_report permits only no_supported_clinical_facts, preserving transcript.txt, review.json, coverage.json and run.json; report.md, document.json and follow-up.md do not exist for that outcome. Reference the guaranteed clinical-outcome.md in downstream reports when either outcome is allowed.']),
     'write-json': ([], ['Exactly the declared filename; JSON values are not automatically loaded from file references.']),
     'python-script': (['script.py', 'input-bindings.json', 'script-provenance.json'], ['Every declared outputs filename is required nonempty before success.']),
     'parquet-export': (['comparison.json', 'report.md'], ['Requested formats only: data.npz, data.h5, data.zip, data.sqlite.']),
+    'robotics-analysis': (['metrics.json','report.md','native-output.mp4','augmented-dataset.tar.zst','completion-manifest.json'], ['helper-input.json retains the resolved exact inputs when run as a study. No geometry or physical-action validity claim; inspect recorded measurements and clips.']),
+    'evo2-continuation': (['metrics.json','rows.csv','report.md','completion-manifest.json'], ['helper-input.json retains the resolved exact inputs when run as a study. Actual generation/suffix diversity, not likelihood or variant effects.']),
     'proteinmpnn-input': (['input.json', 'backbone.pdb', 'provenance.json', 'report.md'], []),
     'esmfold2-fast-input': (['input.json', 'parameters.json', 'selected.fasta', 'backbone.pdb', 'provenance.json', 'report.md'], []),
     'design-refold-correspondence': (['reference.pdb', 'prediction.structure', 'prediction-result.json', 'residue-map.json', 'provenance.json', 'report.md'], []),
@@ -161,6 +179,8 @@ PHASE_OUTPUT_ALTERNATIVES = {
     'design-refold-correspondence': [],
     'genmol': [],
     'protein-design-analysis': [],
+    'robotics-analysis': ['helper-input.json'],
+    'evo2-continuation': ['helper-input.json'],
 }
 
 

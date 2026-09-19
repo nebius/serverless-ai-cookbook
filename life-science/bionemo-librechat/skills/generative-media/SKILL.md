@@ -82,5 +82,22 @@ equality does **not** establish that generated pixels remain aligned to those
 actions, and neither a prompt nor a decoded MP4 establishes policy-training
 suitability. Report those limits instead of calling augmentation fully verified.
 
+For an unattended recorded-video + LeRobot study, use the published typed
+`robotics-analysis` phase after the native and batch phases. Supply the exact
+original `source_video` and `source_archive`, the earlier native `result.json`
+as `native_result`, the batch `output-manifest.json` as `manifest_file`, and
+explicit `selected_cameras`. It reads the verified native-file contract and
+manifest-indexed archive bytes, checks every nonvideo value/type, episode
+identity/timestamp and camera, and measures decoded RGB/temporal differences.
+Do not replace these checks with a script globbing `*.mp4` beside result.json:
+native bytes are declared by the result contract and batch media are inside
+verified archives. Missing files or null comparisons are not successful checks.
+The helper publishes `metrics.json`, `report.md`, `native-output.mp4`,
+`augmented-dataset.tar.zst` and `completion-manifest.json`. Declare the returned
+video and dataset as deliverables, not just manifest links. Use the existing
+`parquet-export` phase for NPZ/HDF5/ZIP/SQLite exports from the original recorded
+Parquet. Keep whole-study operation receipts in the final provenance. Automated
+measurements do not replace a visual review or prove action-label validity.
+
 Mode selection and byte integrity are not a scientific acceptance result.
 Require evidence from the exact deployed runtime and actual requested workflow.

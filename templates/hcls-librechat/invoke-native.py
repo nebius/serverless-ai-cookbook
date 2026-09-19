@@ -17,7 +17,7 @@ import httpx2
 from jsonschema import Draft202012Validator, ValidationError
 from mcp import Client
 from mcp.client.streamable_http import streamable_http_client
-from scientific_receipts import load as load_receipt, receipt_lock, save
+from scientific_receipts import load as load_receipt, receipt_lock, save, staged_output, verify_file
 
 
 def unpack(response):
@@ -61,6 +61,48 @@ def parse_result_artifact(envelope, data):
             or hashlib.sha256(data).hexdigest() != artifact.get('sha256')):
         raise ValueError('Result artifact format, size or SHA-256 mismatch.')
     return json.loads(data)
+
+
+def materialize_result_artifact(envelope, data, output_dir):
+    """Keep JSON compatibility and publish native media as verified files.
+
+    The gateway's content_type describes the bytes, whereas its storage
+    artifact may use application/octet-stream. Never parse MP4/audio as JSON
+    or mistake a successful model's download for a new inference admission.
+    """
+    if envelope.get('content_type') == 'application/json':
+        return parse_result_artifact(envelope, data)
+    artifact = envelope.get('artifact', {})
+    if (envelope.get('schema') != 'fs2-serve.nebius.ai/operation-artifact-result/v1'
+            or artifact.get('compression') != 'none'
+            or len(data) != artifact.get('size_bytes')
+            or hashlib.sha256(data).hexdigest() != artifact.get('sha256')):
+        raise ValueError('Result artifact format, size or SHA-256 mismatch.')
+    media_type = envelope.get('content_type')
+    extensions = {'video/mp4': 'mp4', 'video/webm': 'webm', 'image/png': 'png',
+                  'image/jpeg': 'jpg', 'audio/wav': 'wav', 'audio/x-wav': 'wav',
+                  'audio/mpeg': 'mp3', 'audio/ogg': 'ogg',
+                  'application/octet-stream': 'bin'}
+    if media_type not in extensions:
+        raise ValueError('Native artifact content type has no supported file contract.')
+    target = output_dir / ('result.' + extensions[media_type])
+    with staged_output(target) as staged:
+        staged.path.write_bytes(data)
+    return {'schema': 'scientific-native-file/v1', 'content_type': media_type,
+            'artifact': artifact, 'file': staged.receipt}
+
+
+def verify_saved_native_file(value, output_dir):
+    if value.get('schema') != 'scientific-native-file/v1':
+        return
+    reference = value['file']
+    target = Path(reference['path'])
+    if target.parent.resolve() != output_dir.resolve() or not target.name.startswith('result.'):
+        raise ValueError('Saved native media must belong to this operation directory.')
+    if (reference['size_bytes'], reference['sha256']) != (
+            value['artifact']['size_bytes'], value['artifact']['sha256']):
+        raise ValueError('Saved native file identity differs from its gateway artifact.')
+    verify_file(target, reference)
 
 
 def validate_input(schema, arguments, output_dir, record):
@@ -121,6 +163,7 @@ async def run(args):
     if record['state'] == 'succeeded':
         result_path = args.output_dir / 'result.json'
         saved_result = json.loads(result_path.read_text()) if result_path.is_file() else {}
+        verify_saved_native_file(saved_result, args.output_dir)
         if (not result_path.is_file()
                 or saved_result.get('schema') == 'fs2-serve.nebius.ai/operation-artifact-result/v1'):
             record['state'] = 'result_pending'
@@ -183,7 +226,7 @@ async def run(args):
                         origin = endpoint.removesuffix('/mcp').removesuffix('/mcp/')
                         downloaded = await http.get(origin + '/v1/artifacts/' + quote(artifact_id, safe='') + '/content')
                         downloaded.raise_for_status()
-                        value = parse_result_artifact(value, downloaded.content)
+                        value = materialize_result_artifact(value, downloaded.content, args.output_dir)
                     save(args.output_dir / 'result.json', value)
                     record.update(state='succeeded', result_path=str(args.output_dir / 'result.json'))
                     save(path, record)

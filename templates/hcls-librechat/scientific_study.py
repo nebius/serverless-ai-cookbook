@@ -30,7 +30,7 @@ SCHEMA = 'scientific-workflow/v2'
 FINAL = {'completed', 'failed', 'cancelled', 'needs_attention'}
 MODEL_KINDS = {'native', 'batch'}
 PROTEIN_METHODS = {'proteinmpnn-input', 'esmfold2-fast-input', 'design-refold-correspondence'}
-LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'protein-design-analysis', 'docking', 'docking-batch', 'genmol', 'aging', 'report', 'mindeval', 'clinical-study'} | PROTEIN_METHODS
+LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'protein-design-analysis', 'robotics-analysis', 'evo2-continuation', 'docking', 'docking-batch', 'genmol', 'aging', 'report', 'mindeval', 'clinical-study'} | PROTEIN_METHODS
 HELPERS = {name: HERE / filename for name, filename in {
     'structure': 'structure-analysis.py', 'docking': 'molecule-analysis.py',
     'docking-batch': 'molecule-analysis.py', 'genmol': 'molecule-analysis.py', 'aging': 'aging-analysis.py', 'report': 'report-assembly.py',
@@ -40,6 +40,8 @@ HELPERS['clinical-study'] = Path(os.environ.get('SCIENTIFIC_CLINICAL_REPORT_HELP
 HELPERS.update({name: HERE / 'scientific_protein_preparation.py' for name in PROTEIN_METHODS})
 HELPERS['python-script'] = HERE / 'scientific_study.py'
 HELPERS['protein-design-analysis'] = HERE / 'design-artifact-analysis.py'
+HELPERS['robotics-analysis'] = HERE / 'robotics-analysis.py'
+HELPERS['evo2-continuation'] = HERE / 'sequence-analysis.py'
 
 
 def workspace():
@@ -158,6 +160,11 @@ def input_references(step):
         return [args['input_file'], args['result_file']]
     if method == 'protein-design-analysis':
         return [args[key] for key in ('manifest_file', 'target_reference') if key in args]
+    if method == 'robotics-analysis':
+        return [args[key] for key in ('source_video', 'source_archive', 'native_result', 'manifest_file')]
+    if method == 'evo2-continuation':
+        return [args['reference_file'], *[case[key] for case in args['cases']
+                for key in ('input_file', 'result_file', 'operation_file')]]
     if method == 'docking-batch':
         return [run[key] for run in args['runs'] for key in ('reference_file', 'prediction_file', 'result_file') if key in run]
     if method == 'aging':
@@ -299,6 +306,8 @@ def validate_local_arguments(method, args):
         'docking-batch': ({'runs', 'same_coordinate_frame'}, {'threshold_queries'}),
         'genmol': ({'input_file', 'result_file'}, set()),
         'protein-design-analysis': ({'manifest_file'}, {'binder_chain', 'binder_length_min', 'binder_length_max', 'target_reference', 'target_chain'}),
+        'robotics-analysis': ({'source_video', 'source_archive', 'native_result', 'manifest_file', 'selected_cameras'}, {'variant_index'}),
+        'evo2-continuation': ({'reference_file', 'cases'}, {'title', 'reference_id'}),
         'aging': ({'model', 'cohorts'}, {'coefficient_version', 'reference_ages'}),
         'report': ({'title', 'sections'}, set()), 'mindeval': ({'title', 'records'}, set()),
         'clinical-study': ({'plan_file'}, set()),
@@ -443,6 +452,10 @@ def verify_inputs(record):
 def local_command(method, args, scratch):
     helper = HELPERS[method]
     command = [sys.executable, str(helper)]
+    if method in {'robotics-analysis', 'evo2-continuation'}:
+        plan = scratch / 'helper-input.json'
+        plan.write_bytes(canonical(args))
+        return command + ['--plan', str(plan), '--output-dir', str(scratch)]
     if method == 'clinical-study':
         return command + ['assemble', '--plan', args['plan_file'], '--output', str(scratch)]
     if method == 'genmol':

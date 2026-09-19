@@ -95,6 +95,89 @@ def test_result_artifact_is_hash_verified_and_decoded():
         client.parse_result_artifact(envelope, b'{"answer":43}')
 
 
+@pytest.mark.parametrize('media_type,extension', [('video/mp4','mp4'),('audio/wav','wav'),('image/png','png')])
+def test_native_media_is_published_and_verified_not_json_decoded(tmp_path, media_type, extension):
+    raw = b'\x00binary-model-output\xff'
+    envelope = {'schema': 'fs2-serve.nebius.ai/operation-artifact-result/v1',
+                'content_type': media_type, 'artifact': {'artifact_id': 'original-artifact',
+                    'media_type': 'application/octet-stream', 'compression': 'none',
+                    'size_bytes': len(raw), 'sha256': client.hashlib.sha256(raw).hexdigest()}}
+    result = client.materialize_result_artifact(envelope, raw, tmp_path)
+    assert result['schema'] == 'scientific-native-file/v1'
+    assert (tmp_path / ('result.' + extension)).read_bytes() == raw
+    client.verify_saved_native_file(result, tmp_path)
+    assert client.materialize_result_artifact(envelope, raw, tmp_path)['file']['sha256'] == result['file']['sha256']
+    with pytest.raises(ValueError, match='SHA-256'):
+        client.materialize_result_artifact(envelope, b'wrong', tmp_path)
+    (tmp_path / ('result.' + extension)).write_bytes(b'corrupted')
+    with pytest.raises(RuntimeError, match='differ'):
+        client.verify_saved_native_file(result, tmp_path)
+
+
+def test_native_media_reference_cannot_escape_its_saved_operation(tmp_path):
+    value = {'schema': 'scientific-native-file/v1', 'file': {'path': str(tmp_path.parent/'result.mp4')}}
+    with pytest.raises(ValueError, match='operation directory'):
+        client.verify_saved_native_file(value, tmp_path)
+
+
+def test_native_json_materialization_preserves_existing_contract(tmp_path):
+    data=b'{"answer":42}'
+    envelope={'schema':'fs2-serve.nebius.ai/operation-artifact-result/v1',
+              'content_type':'application/json','artifact':{'compression':'none',
+              'size_bytes':len(data),'sha256':client.hashlib.sha256(data).hexdigest()}}
+    assert client.materialize_result_artifact(envelope,data,tmp_path)=={'answer':42}
+    assert list(tmp_path.iterdir())==[]
+
+
+def test_known_native_mp4_result_recovery_never_submits_again(tmp_path, monkeypatch):
+    monkeypatch.setenv('SCIENTIFIC_MODELS_MCP_URL','https://example.invalid/mcp')
+    monkeypatch.setenv('SCIENTIFIC_MODELS_API_KEY','synthetic-key')
+    source=tmp_path/'input.json';source.write_text('{"mode":"transfer-video"}')
+    args=types.SimpleNamespace(input=source,output_dir=tmp_path/'run',model='cosmos3-nano',
+        idempotency_key='existing-video-key',wait_seconds=30,recover_only=True)
+    args.output_dir.mkdir()
+    identity={'model_id':args.model,'input_sha256':client.hashlib.sha256(source.read_bytes()).hexdigest(),
+              'endpoint':'https://example.invalid/mcp',
+              'caller_fingerprint':client.hashlib.sha256(b'synthetic-key').hexdigest(),
+              'idempotency_key':args.idempotency_key}
+    client.save(args.output_dir/'receipt.json',{'identity':identity,'state':'result_pending','operation_id':'known-video'})
+    raw=b'\x00\x00\x00\x18ftypisomretained-video'
+    envelope={'schema':'fs2-serve.nebius.ai/operation-artifact-result/v1',
+              'content_type':'video/mp4','artifact':{'artifact_id':'known-artifact','media_type':'application/octet-stream',
+              'compression':'none','size_bytes':len(raw),'sha256':client.hashlib.sha256(raw).hexdigest()}}
+    calls=[]
+    class Response:
+        def __init__(self,value): self.value=value
+        def model_dump(self,**kwargs):return {'structuredContent':self.value}
+    class MCP:
+        async def __aenter__(self):return self
+        async def __aexit__(self,*args):pass
+        async def call_tool(self,name,arguments):
+            calls.append(name)
+            if name=='get_operation':return Response({'id':'known-video','status':'succeeded','result_available':True})
+            if name=='get_operation_result':return Response({'operation':{'id':'known-video'},'result':envelope})
+            pytest.fail('Known result recovery must not submit or rediscover: '+name)
+    class Download:
+        content=raw
+        def raise_for_status(self):pass
+    class HTTP:
+        async def __aenter__(self):return self
+        async def __aexit__(self,*args):pass
+        async def get(self,url):
+            assert url=='https://example.invalid/v1/artifacts/known-artifact/content'
+            calls.append('download');return Download()
+    monkeypatch.setattr(client.httpx2,'AsyncClient',lambda **kwargs:HTTP())
+    monkeypatch.setattr(client,'streamable_http_client',lambda *args,**kwargs:None)
+    monkeypatch.setattr(client,'Client',lambda transport:MCP())
+    completed=asyncio.run(client.run(args))
+    assert completed['state']=='succeeded' and completed['operation_id']=='known-video'
+    assert (args.output_dir/'result.mp4').read_bytes()==raw
+    saved=json.loads((args.output_dir/'result.json').read_bytes())
+    client.verify_saved_native_file(saved,args.output_dir)
+    assert asyncio.run(client.run(args))==completed
+    assert calls==['get_operation','get_operation_result','download']
+
+
 def test_local_validation_failure_keeps_exact_pointer_and_receipt(tmp_path):
     record = {'identity': {'model_id': 'fixture'}, 'state': 'prepared'}
     schema = {'type': 'object', 'properties': {'samples': {'type': 'array', 'items': {
