@@ -233,6 +233,57 @@ def test_correspondence_covers_changed_sequence_positions_with_exact_hashes(tmp_
     assert structure_helper().confidence_fields(json.loads((output / 'prediction-result.json').read_bytes())) == {'retained_source_result.confidence': 0.7}
 
 
+def test_explicit_sole_chain_selects_observed_id_not_assumed_a(tmp_path):
+    source = tmp_path / 'backbone.pdb'
+    source.write_text(backbone('Z'))
+    output = tmp_path / 'mpnn'
+    output.mkdir()
+    args = {**mpnn_args(source), 'chain': {'selection': 'sole-protein-chain'}}
+    metadata = prepare('proteinmpnn-input', args, output)
+    assert metadata['selection']['chain'] == 'Z'
+    assert metadata['arguments']['chain'] == {'selection': 'sole-protein-chain'}
+    assert json.loads((output / 'input.json').read_bytes())['input_pdb_chains'] == ['Z']
+
+
+@pytest.mark.parametrize('text', ['', backbone('A').replace('END\n', 'TER\n') + backbone('B')])
+def test_sole_chain_rejects_absent_or_multiple_protein_chains(tmp_path, text):
+    source = tmp_path / 'backbone.pdb'
+    source.write_text(text)
+    with pytest.raises((ValueError, StopIteration)):
+        prepare('proteinmpnn-input', {**mpnn_args(source), 'chain': {'selection': 'sole-protein-chain'}}, tmp_path)
+    assert not (tmp_path / 'input.json').exists()
+
+
+def test_correspondence_selects_actual_returned_chain_and_analysis_uses_hashbound_map(tmp_path, monkeypatch):
+    monkeypatch.setenv('SCIENTIFIC_WORKSPACE', str(tmp_path))
+    args = correspondence_fixture(tmp_path)
+    path = Path(args['prediction'])
+    data = json.loads(path.read_bytes())
+    data['structure'] = '\n'.join(line[:21] + 'Z' + line[22:] if line.startswith('ATOM') else line
+                                 for line in data['structure'].splitlines()) + '\n'
+    path.write_text(json.dumps(data))
+    args['prediction_chain'] = {'selection': 'sole-protein-chain'}
+    output = tmp_path / 'correspondence'
+    output.mkdir()
+    metadata = prepare('design-refold-correspondence', args, output)
+    assert metadata['selection']['prediction_chain'] == 'Z'
+    analysis = {'reference': str(output / 'reference.pdb'), 'result': str(output / 'prediction-result.json'),
+                'residue_map': str(output / 'residue-map.json')}
+    study.validate_local_arguments('structure', analysis)
+    record = {'output_directory': str(tmp_path / 'study'), 'steps': {}}
+    result = study.run_local({'id': 'compare', 'kind': 'analysis', 'method': 'structure', 'arguments': analysis}, record)
+    metrics = json.loads(Path(result['files']['metrics.json']['path']).read_bytes())
+    assert metrics['mapped_residues'] == 3 and metrics['matched_identical_residues'] == 0
+    from scientific_study_schema import PHASE_OUTPUTS
+    assert set(PHASE_OUTPUTS['structure'][0]) <= result['files'].keys()
+    with pytest.raises(ValueError, match='contradicts'):
+        study.local_command('structure', {**analysis, 'chain_map': ['A:A']}, tmp_path)
+    # Deriving chain labels never bypasses the existing exact byte-hash gate.
+    (output / 'reference.pdb').write_text(backbone('A') + 'REMARK changed\n')
+    with pytest.raises(RuntimeError, match='helper failed'):
+        study.run_local({'id': 'bad-hash', 'kind': 'analysis', 'method': 'structure', 'arguments': analysis}, record)
+
+
 def test_correspondence_consumes_published_mmcif_and_confidence_without_new_transport(tmp_path):
     import io
     from Bio.PDB import MMCIFIO, PDBParser

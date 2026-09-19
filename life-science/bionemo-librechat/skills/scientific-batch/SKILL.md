@@ -17,36 +17,43 @@ publication names.
 
 ## How to submit
 
-1. Discover `list_scientific_models`, then call `get_model_schema` with the
-   selected model ID and `protocol: "scientific-batch-v1"`. Use the returned
-   contract's embedded parameter schema, allowed operations and examples.
-   Source-tree access is unnecessary for normal schema discovery.
-2. Prepare real inputs: upload FASTA/PDB/A3M bytes via
-   `begin_scientific_artifact_upload` → `put_scientific_artifact_bytes` →
-   `finalize_scientific_artifact_upload`; compute sha256/size from the actual
-   bytes; build the `input_manifest` from returned immutable artifact refs.
-   Fixture artifact IDs from checked-in examples are templates, never
-   submissions.
-   The current LibreChat deployment has no compatible attachment/file bridge.
-   Continue only with existing caller-owned finalized artifacts or a verified
-   helper that reads, hashes and transfers the actual bytes outside the model
-   context. Otherwise explain the missing file capability and keep this workflow
-   at the preparation stage. Do not invent hashes or move base64 through chat.
-3. Submit once with the named typed tool — `submit_alphafold3`,
-   `submit_openfold3_openbind`, `submit_protenix_v2`, `submit_esmfold2`,
-   `submit_esmfold2_fast`, `submit_proteina_complexa`, `submit_bindcraft`,
-   `submit_boltzgen`, `submit_mosaic`, `submit_rfdiffusion` (LibreChat
-   suffixes tool IDs) — or `submit_scientific_run` as the model-agnostic
-   route. The run document fields go in **flat** (no `request` wrapper):
-   `schema: "fs2-serve.nebius.ai/scientific-run-request/v1"`, `operation`
-   from discovery, `service_class` your key may select — checked-in examples
-   use `customer-batch`, `parameters` from the model schema, optional
-   `client_context` with `batch_id`/`correlation_id`/`display_name`, plus the
-   optional `idempotency_key`. For `rfdiffusion`, `operation` selects
-   `design-backbone` or `scaffold-motif`.
-4. Follow with `get_scientific_status` / `list_scientific_events`, then
-   `get_scientific_result`; download artifacts and verify hashes; acknowledge
-   only after the user has outputs.
+1. For a known model, read its live `get_model_schema` directly, including
+   `input_artifact_contract`, parameter schema, allowed operation and examples.
+   Use exact registered tool names. Do not inspect implementation source or
+   load unrelated catalogs to discover a known contract.
+2. Whole studies use `run_scientific_workflow_mcp_environment-execution` with
+   inline `study` OR existing `plan_file` containing `scientific-workflow/v2`.
+   Get only needed phase schemas/output filenames from
+   `describe_scientific_workflow_mcp_environment-execution`. The batch phase
+   takes real mounted source/parameter files and exact published entry metadata;
+   the existing client hashes/uploads/finalizes bytes and constructs the outer
+   manifest. No manual handles, copied base64, invented hashes or parallel
+   reservation calls are needed. Workspace supports authenticated file upload.
+3. Include preparation, dependent model inputs, analysis and final report in
+   the immutable study. Longer plans/scripts can be written in bounded logical
+   pieces and submitted by path. The supervisor serializes calls and completes
+   declared phases after disconnect; no mechanical continuation is required.
+   Keep original idempotency keys and settings. A pending study is not completed
+   analysis. Direct model tools remain available for supported standalone calls.
+4. Successful batch phases publish `output-manifest.json`, `result.json` and
+   `output-NN.artifact` siblings. Roles, MIME, compression and hashes are in the
+   manifest. Use these exact filenames in `{step,file}` dependencies. Native
+   phases publish `result.json`. Do not interpret an artifact index as a seed.
+
+RFdiffusion `design-backbone` is unconditional: its published `text/plain`
+source is a human-readable provenance note describing the design, not a PDB,
+executable constraint language or guessed JSON. The runtime uses the typed
+parameters (`contigs`, `num_designs`, `seed`, `diffuser_T`). Preserve user
+settings; any chosen published default must be labelled as a default.
+`scaffold-motif` has a different published input contract; never substitute it.
+
+For dependent protein studies, `proteinmpnn-input.chain` and
+`design-refold-correspondence.prediction_chain` accept an exact chain ID or an
+explicit `{selection:"sole-protein-chain"}`. The latter inspects actual returned
+coordinates, records the ID and fails on zero/multiple protein chains; it does
+not guess A. The structure phase may derive chain pairs from the already
+hash-bound residue map, while still validating both structure hashes and every
+position. Multi-chain biological choices remain explicit.
 
 ## Result conventions
 

@@ -15,7 +15,7 @@ import subprocess
 import sys
 import time
 import uuid
-from scientific_study_schema import STUDY_SCHEMA
+from scientific_study_schema import STUDY_SCHEMA, PHASE_OUTPUTS, describe_workflow
 
 ROOT = Path(os.environ.get('SCIENTIFIC_EXECUTION_DIR', '/data/hcls-execution'))
 WORKSPACE = os.environ.get('SCIENTIFIC_WORKSPACE', '/workspace')
@@ -165,7 +165,7 @@ def read_job(args):
                   transport_margin_seconds=OBSERVATION_TRANSPORT_MARGIN_SECONDS,
                   output_path=str(output), more_output=output.exists() and output.stat().st_size > offset + len(data))
     status['observation_guidance'] = (
-        'Call read_execution for this saved job_id with wait_seconds=30; this is observation, not execute_command. '
+        'Call read_execution_mcp_environment-execution for this saved job_id with wait_seconds=30; this observes existing work, not a new execution. '
         'execute_command launches work and accepts wait_seconds only from 0 to 10 (default 5). '
         'Do not issue parallel or duplicate polls for one job.'
         if status['status'] in ('starting', 'running') else
@@ -175,6 +175,7 @@ def read_job(args):
                                      'read another chunk only when its text is needed. Never paste whole datasets or helper source into chat.')
     if status['status'] in ('starting', 'running'):
         status['next_observation'] = {
+            'registered_tool_name': 'read_execution_mcp_environment-execution',
             'tool_name': 'read_execution',
             'arguments': {'job_id': job_id, 'wait_seconds': MCP_CALL_DEADLINE_SECONDS,
                           'offset': status['next_offset']},
@@ -225,6 +226,8 @@ def run_scientific_workflow(args):
         plan_bytes = plan_path.read_bytes()
         parsed = json.loads(plan_bytes)
         if parsed.get('schema') == 'scientific-workflow/v2':
+            if args.get('resume'):
+                raise ValueError('Whole studies resume automatically from their immutable receipt; omit resume.')
             import scientific_study
             return scientific_study.submit(parsed, output)
     resume = args.get('resume', False)
@@ -410,6 +413,11 @@ def upload_worker(plan_path):
 
 
 TOOLS = [
+    {'name': 'describe_scientific_workflow',
+     'description': 'Read-only compact discovery for the existing durable whole-study launcher. Omit methods for available phase names; select only needed methods for the exact SAME typed step schemas, guaranteed versus conditional output filenames, and a concise file-backed v2 example. Prefer this to reading helper implementation or unrelated catalogs. Does not inspect patient data, submit work, alter files or select model settings.',
+     'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
+     'inputSchema': {'type': 'object', 'additionalProperties': False, 'properties': {
+         'methods': {'type': 'array', 'minItems': 1, 'uniqueItems': True, 'items': {'enum': list(PHASE_OUTPUTS)}}}}},
     {'name': 'recover_scientific_results',
      'description': 'Recover an existing COMPLETED scientific-batch operation into actual workspace files in one job. Preferred over separate status/result/download-handle/curl calls. Reuses the existing batch client, saves result.json, output-manifest.json, every flat manifest artifact and recovery-receipt.json with names, semantic roles, compression, sizes and SHA256. Supply a new empty output_directory or the same recovery directory to resume. Does NOT submit inference, reserve uploads, change settings or extract archives. Use packaged zstd for zstd archives afterward. Failed/incomplete operations remain failures; observe with read_execution. Repeated identical calls reuse the job; resume=true only for an inspected interrupted download.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
@@ -430,14 +438,14 @@ TOOLS = [
                     'media_type': {**TEXT, 'description': 'Actual source MIME accepted by the live model contract.'},
                     'idempotency_key': {'type': 'string', 'minLength': 8, 'maxLength': 200}}}}}}},
     {'name': 'run_scientific_workflow',
-     'description': 'Preferred whole-study launch: supply study (scientific-workflow/v2) with ordered preparation, native/batch, deterministic analysis and declared final deliverables, plus output_directory. File inputs are existing workspace paths or {step,file} references to an earlier phase. A dedicated persistent worker performs all phases after chat disconnect or process restart, serializes admission, and publishes a verified final manifest. Final reports come from installed deterministic helpers, not a later chat calculation. Runs shows study status/files; do NOT ask the user to continue merely to wait or run declared analysis. No agent loop or increased model/tool budgets. Repeating the same plan/output returns the same study. Unknown admissions stop for inspection, never automatic resubmission. Legacy native/batch-only steps or plan_file remain compatible but are not whole-study completion. Preflight and completion are not scientific validation.',
+     'description': 'Preferred whole-study launch: supply inline study OR plan_file pointing to existing scientific-workflow/v2 JSON, plus output_directory. Both use the same immutable plan, input validation and persistent worker. Prefer file-backed plans for longer studies: write source/plan files in bounded logical pieces, then submit their path, not a giant script inside tool arguments. Include ordered preparation, native/batch/clinical, deterministic analysis and final deliverables. File references are existing workspace paths or {step,file}; native result.json and batch output-manifest.json preserve their verified sibling artifacts. Supported mindeval analysis consumes full saved record paths directly and publishes exact transcripts, scores, counts and report without catalog or new model calls. The worker continues after chat disconnect or process restart, serializes admission, and publishes verified final files in Runs. Do NOT ask for mechanical continue to run declared phases. Repeating the same plan/output returns the same study; unknown admissions stop for inspection. Only legacy steps or scientific-workflow/v1 plan files omit whole-study analysis. No budgets are increased; completion is not scientific validation.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
      'inputSchema': {'type': 'object', 'additionalProperties': False,
         'required': ['output_directory'], 'oneOf': [{'required': ['steps'], 'not': {'anyOf': [{'required': ['plan_file']}, {'required': ['study']}]}},
             {'required': ['plan_file'], 'not': {'anyOf': [{'required': ['steps']}, {'required': ['study']}]}},
             {'required': ['study'], 'not': {'anyOf': [{'required': ['steps']}, {'required': ['plan_file']}]}}], 'properties': {
             'study': STUDY_SCHEMA,
-            'plan_file': {'type': 'string'}, 'output_directory': {'type': 'string'},
+            'plan_file': {'type': 'string', 'description': 'Existing workspace JSON file: scientific-workflow/v2 launches the full durable study; scientific-workflow/v1 retains legacy native/batch-only behavior. Mutually exclusive with study and steps.'}, 'output_directory': {'type': 'string'},
             'steps': {'type': 'array', 'minItems': 1, 'items': {'oneOf': [NATIVE_STEP_SCHEMA, BATCH_STEP_SCHEMA]}},
             'resume': {'type': 'boolean', 'default': False}}}},
     {'name': 'execute_command',
@@ -479,13 +487,14 @@ def main():
             elif method == 'tools/call':
                 params = request['params']
                 handler = {'execute_command': execute, 'read_execution': read_job,
+                           'describe_scientific_workflow': lambda args: describe_workflow(args.get('methods')),
                            'run_scientific_workflow': run_scientific_workflow,
                            'recover_scientific_results': recover_scientific_results,
                            'upload_workspace_files': upload_workspace_files}[params['name']]
                 try:
                     value = handler(params.get('arguments', {}))
                     result = {'content': [{'type': 'text', 'text': json.dumps(value)}],
-                              'isError': value['status'] in ('failed', 'timed_out', 'interrupted')}
+                              'isError': value.get('status') in ('failed', 'timed_out', 'interrupted')}
                 except (ValueError, KeyError, OSError) as error:
                     result = {'isError': True, 'content': [{'type': 'text', 'text': str(error)}]}
             else:

@@ -41,6 +41,18 @@ def unwrap(value):
     return value
 
 
+def selected_chain(chains, selection):
+    if isinstance(selection, dict):
+        if selection != {'selection': 'sole-protein-chain'}:
+            raise ValueError('Unknown chain selection; use an explicit chain ID or sole-protein-chain.')
+        if len(chains) != 1:
+            raise ValueError(f'sole-protein-chain requires exactly one observed protein chain; found {list(chains)}.')
+        return next(iter(chains))
+    if not isinstance(selection, str) or selection not in chains:
+        raise ValueError(f'Explicit chain {selection!r} absent; available chains are {list(chains)}.')
+    return selection
+
+
 def complete_chain(pdb, chain):
     """Reject ambiguous positional correspondence instead of filling/truncating."""
     import numpy as np
@@ -132,9 +144,8 @@ def design_correspondence(args, output):
     helper = structure_helper()
     reference = helper.load_structure(reference_text)
     prediction = helper.load_structure(predicted_text)
-    ref_chain, pred_chain = selection['reference_chain'], args['prediction_chain']
-    if pred_chain not in prediction:
-        raise ValueError(f'Explicit prediction chain {pred_chain!r} absent; available chains are {list(prediction)}.')
+    ref_chain = selection['reference_chain']
+    pred_chain = selected_chain(prediction, args['prediction_chain'])
     ref_residues, pred_residues = reference[ref_chain], prediction[pred_chain]
     sequence = query['sequences'][0]['sequence']
     if len(ref_residues) != len(sequence) or len(pred_residues) != len(sequence) or helper.sequence(pred_residues) != sequence:
@@ -183,12 +194,13 @@ def prepare(method, args, output):
     if method == 'proteinmpnn-input':
         index = args['structure_index']
         pdb, available, _ = coordinate_input(inputs['backbone'], index, inputs, measurements)
-        sequence = complete_chain(pdb, args['chain'])
-        request = {'input_pdb': pdb, 'input_pdb_chains': [args['chain']],
+        chain = selected_chain(structure_helper().load_structure(pdb), args['chain'])
+        sequence = complete_chain(pdb, chain)
+        request = {'input_pdb': pdb, 'input_pdb_chains': [chain],
                    'num_seq_per_target': args['num_sequences'], 'random_seed': args['seed'],
                    'sampling_temp': args['sampling_temp'], 'omit_AAs': args['omit_aas']}
         (output / 'input.json').write_bytes(canonical(request) + b'\n')
-        selection = {'structure_index': index, 'available_structures': available, 'chain': args['chain'],
+        selection = {'structure_index': index, 'available_structures': available, 'chain': chain,
                      'residue_count': len(sequence), 'destination_model': 'proteinmpnn'}
     elif method == 'esmfold2-fast-input':
         from Bio import SeqIO

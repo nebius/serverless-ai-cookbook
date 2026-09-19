@@ -28,13 +28,23 @@ GPU capacity waiting.
 
 ## Existing tool, typed complete plan
 
-Call `run_scientific_workflow` with `output_directory` and `study`, whose schema
-is `scientific-workflow/v2`. The executable typed schema is
+Call `run_scientific_workflow_mcp_environment-execution` with `output_directory`
+and inline `study` OR `plan_file` pointing to existing `scientific-workflow/v2`
+JSON. Both use the same durable submitter. The executable typed schema is
 `scientific_study_schema.py`, not an opaque command string. A plan has a title,
 ordered steps, and final deliverables. File values are existing mounted paths
 or `{ "step": "earlier-id", "file": "published-name" }`. The plan, original
 input hashes, helper hashes, selected models, parameters and request keys are
 frozen before admission. A changed plan cannot take over an existing output.
+
+`describe_scientific_workflow_mcp_environment-execution` is read-only and
+returns a compact list by default. Select only required `methods` for their
+exact launcher schemas and guaranteed versus conditional output filenames.
+It includes a small versioned file-plan example, not a fixture-specific plan.
+Write longer files in bounded logical pieces; never put an entire scientific
+program plus whole-study plan into one model tool argument. This changes no
+tool/provider budget or runtime policy. Only v1 plan files retain legacy
+native/batch-only behavior.
 
 Supported phases reuse installed implementations:
 
@@ -52,6 +62,7 @@ Supported phases reuse installed implementations:
 | analysis/structure, docking, docking-batch, aging | Existing deterministic domain helpers |
 | analysis/clinical-study | Existing clinical study assembler; source selection and optional WER remain separate |
 | analysis/report | Existing deterministic report assembler and typed measured-domain sections |
+| analysis/mindeval | Full frozen record paths → existing score renderer, row-level CSVs, exact records/transcripts and source-bound final report; no provider/catalog calls |
 
 `clinical` is a draft-generation stage, not a diagnosis or clinical validation.
 Its original extraction/review/question budgets and algorithm stay unchanged.
@@ -104,7 +115,13 @@ output manifest and verified sibling artifacts (PDB or mmCIF). It validates the
 exact selected designed sequence against the saved query and every returned
 C-alpha position. Its `reference.pdb`, `prediction-result.json` and
 `residue-map.json` feed the existing `structure` phase using `reference`,
-`result`, `residue_map` and explicit reference:prediction `chain_map`.
+`result`, `residue_map` and optional explicit reference:prediction `chain_map`.
+Without chain_map, exact pairs are derived only from that hash-bound map; an
+explicit contradictory mapping is rejected. Both structure hashes and every
+mapped position still pass the existing evaluator. For a future returned
+single-chain output, explicitly choose `{selection:"sole-protein-chain"}` for
+the preparation's chain/prediction_chain; it records the observed ID and fails
+on zero/multiple chains. No chain letter is guessed before inference.
 Original confidence data remains separate from reference agreement. This is
 not a sequence-identity-only fit or an arbitrary observed-output tolerance.
 Declare the final structural analysis/report separately. Input

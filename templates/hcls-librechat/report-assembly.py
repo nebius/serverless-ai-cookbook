@@ -289,12 +289,120 @@ def publish_bundle(manifest_file, output_dir):
         'completion_manifest_sha256': digest(files['completion-manifest.json'])}
 
 
+def publish_mindeval(plan_file, output_dir):
+    """Collect frozen full records, reusing the existing measured-score renderer.
+
+    No catalog/provider call and no transcript summarization occurs here.
+    Missing judgments stay missing; comparisons are descriptive within profile.
+    """
+    plan_file, output_dir = Path(plan_file), Path(output_dir)
+    plan_bytes = plan_file.read_bytes()
+    plan = json.loads(plan_bytes)
+    if not isinstance(plan, dict) or set(plan) != {'title', 'records'}:
+        raise ValueError('MindEval plan requires exactly title and records.')
+    if not isinstance(plan['records'], list) or not plan['records']:
+        raise ValueError('MindEval records must be a nonempty list of full record files.')
+    runs, sources, extras, run_rows = [], [], {}, []
+    for index, filename in enumerate(plan['records']):
+        if not isinstance(filename, str) or not filename:
+            raise ValueError('MindEval record paths must be nonempty strings.')
+        path = Path(filename)
+        path = path if path.is_absolute() else plan_file.parent / path
+        raw = path.read_bytes()
+        run = json.loads(raw)
+        state = run.get('state') if isinstance(run, dict) else None
+        if not isinstance(state, dict) or not isinstance(state.get('config'), dict):
+            raise ValueError('MindEval requires full retained run.state/config, not a compact summary.')
+        transcript = state.get('transcript')
+        if not isinstance(transcript, list) or not transcript:
+            raise ValueError('MindEval full record must retain its nonempty transcript.')
+        if any(not isinstance(message, dict) or not isinstance(message.get('content'), str)
+               or not isinstance(message.get('role'), str) for message in transcript):
+            raise ValueError('MindEval transcript messages need literal content and role strings.')
+        config = state['config']
+        judgment = {} if state.get('judgment') is None else state['judgment']
+        if not isinstance(judgment, dict):
+            raise ValueError('MindEval judgment envelope must be an object or absent.')
+        raw_name, text_name = f'records/{index:03d}.json', f'transcripts/{index:03d}.txt'
+        extras[raw_name] = raw
+        extras[text_name] = ''.join(f'[{number + 1}] {message["role"]}\n{message["content"]}\n\n'
+                                  for number, message in enumerate(transcript)).encode()
+        sources.append({'path': str(path), 'sha256': digest(raw), 'size_bytes': len(raw),
+                        'record_file': raw_name, 'transcript_file': text_name, 'run_id': run.get('id')})
+        run_rows.append({'run_id': run.get('id'), 'status': run.get('status'),
+            **{key: config.get(key) for key in ('profile_id', 'clinician_model', 'patient_model', 'max_turns')},
+            'judge_model': judgment.get('model'), 'judge_provider_model': judgment.get('provider_model'),
+            'message_count': len(transcript), 'seed_message_count': sum(message.get('seed') is True for message in transcript),
+            'judgment_state': 'supplied' if judgment.get('judgment') is not None else 'unavailable',
+            'intervened': state.get('intervened'), 'record_file': raw_name, 'transcript_file': text_name})
+        runs.append(run)
+    payload = (json.dumps({'data': runs}, ensure_ascii=False, allow_nan=False) + '\n').encode()
+    _, measurements = measurement_section('mindeval-runs', payload)  # Existing validation/algorithm.
+    criteria = sorted({criterion for run in runs for criterion in
+                       ((run['state'].get('judgment') or {}).get('judgment') or {})})
+    score_rows = []
+    for run, row in zip(runs, run_rows):
+        scores = (run['state'].get('judgment') or {}).get('judgment') or {}
+        for criterion in criteria:
+            score_rows.append({key: row[key] for key in ('run_id', 'profile_id', 'clinician_model', 'patient_model', 'judge_model')} |
+                {'criterion': criterion, 'score': scores.get(criterion),
+                 'measurement_state': 'supplied' if criterion in scores else 'unavailable', 'unit': 'judge score (1–6; uncalibrated)'})
+
+    def csv_bytes(rows, fields):
+        buffer = io.StringIO(newline='')
+        writer = csv.DictWriter(buffer, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+        return buffer.getvalue().encode()
+
+    run_csv = csv_bytes(run_rows, list(run_rows[0]))
+    score_csv = csv_bytes(score_rows, ['run_id', 'profile_id', 'clinician_model', 'patient_model', 'judge_model',
+                                    'criterion', 'score', 'measurement_state', 'unit'])
+    methods = ('Analysis of reused MindEval records; no new consultations, judgments or interventions.\n\n'
+        'The comparison unit is a retained consultation, paired descriptively by profile and criterion across clinicians. '
+        'Missing criterion cells are explicitly unavailable, not zero or imputed. Source status and intervention fields remain visible. '
+        'Message counts include seed messages; they are not the configured number of patient–clinician rounds. '
+        'Complete original JSON and untruncated transcript text are included. Preservation of supplied records does not prove an absent message never existed.\n\n'
+        'A shared judge may favor style or a related model family. These uncalibrated stochastic scores do not establish clinical efficacy, '
+        'statistical superiority, independent replicates or generalization from the observed profiles. '
+        'Different patient/judge identities must not be treated as a controlled comparison.\n').encode()
+    sections = [{'title': title, 'file': name, 'format': kind} for title, name, kind in [
+        ('Scope and limitations', 'methods.md', 'markdown'), ('Retained consultations', 'runs.csv', 'csv'),
+        ('Paired criterion rows', 'scores.csv', 'csv'), ('Measured counts and scores', 'records.json', 'mindeval-runs')]]
+    report, provenance = assemble(plan['title'], sections, source_data=[methods, run_csv, score_csv, payload])
+    measurements.update(message_count=sum(row['message_count'] for row in run_rows),
+                        score_rows=len(score_rows), supplied_score_rows=sum(row['measurement_state'] == 'supplied' for row in score_rows))
+    helper = Path(__file__).read_bytes()
+    provenance.update(schema='scientific-ai/mindeval-report/v1', inputs=sources,
+                      manifest_sha256=digest(plan_bytes), helper_sha256=digest(helper), reused_results=True)
+    files = {'report.md': report, 'methods.md': methods, 'runs.csv': run_csv, 'scores.csv': score_csv, 'records.json': payload,
+             'measurements.json': (json.dumps(measurements, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode(),
+             'provenance.json': (json.dumps(provenance, indent=2, allow_nan=False) + '\n').encode(),
+             'mindeval-plan.json': plan_bytes, 'helper.py': helper, **extras}
+    completion = {'schema': 'scientific-ai/report-artifacts/v1', 'state': 'complete',
+        'manifest_sha256': digest(plan_bytes), 'helper_sha256': digest(helper), 'record_count': len(runs),
+        'inference_submitted': False, 'scientific_claims_validated': False,
+        'artifacts': [{'path': name, 'sha256': digest(data), 'size_bytes': len(data)} for name, data in sorted(files.items())]}
+    files['completion-manifest.json'] = (json.dumps(completion, indent=2, allow_nan=False) + '\n').encode()
+    for name, data in files.items():
+        target = output_dir / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with staged_output(target) as staged:
+            staged.path.write_bytes(data)
+    return {'state': 'complete', 'record_count': len(runs), 'message_count': measurements['message_count'],
+        'report_size_bytes': len(report), 'report_sha256': digest(report), 'inference_submitted': False,
+        'completion_manifest': str(output_dir / 'completion-manifest.json')}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--manifest', required=True, type=Path)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument('--manifest', type=Path)
+    source.add_argument('--mindeval-plan', type=Path)
     parser.add_argument('--output-dir', required=True, type=Path)
     args = parser.parse_args()
-    print(json.dumps(publish_bundle(args.manifest, args.output_dir)))
+    print(json.dumps(publish_mindeval(args.mindeval_plan, args.output_dir) if args.mindeval_plan
+                     else publish_bundle(args.manifest, args.output_dir)))
 
 
 if __name__ == '__main__':

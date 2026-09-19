@@ -80,6 +80,7 @@ def test_pending_response_names_observation_not_launch(tmp_path, monkeypatch):
     response = EXECUTION.read_job({"job_id": job, "wait_seconds": 0})
     followup = response["next_observation"]
     assert followup["tool_name"] == "read_execution"
+    assert followup["registered_tool_name"] == "read_execution_mcp_environment-execution"
     assert followup["arguments"] == {"job_id": job, "wait_seconds": 30, "offset": 0}
     Draft202012Validator(TOOLS[followup["tool_name"]]["inputSchema"]).validate(
         followup["arguments"]
@@ -95,14 +96,14 @@ def test_actual_packaged_and_seeded_instructions_distinguish_tools():
     )
     instructions = instructions_path.read_text()
     assert (
-        "`execute_command` launches work: `wait_seconds` is 0 to 10 seconds, default 5"
+        "`execute_command_mcp_environment-execution` launches work: `wait_seconds` is 0 to 10 seconds, default 5"
         in instructions
     )
     assert (
-        "`read_execution` observes a saved job: `wait_seconds` is 0 to 30 seconds, default 15"
+        "`read_execution_mcp_environment-execution` observes a saved job: `wait_seconds` is 0 to 30 seconds, default 15"
         in instructions
     )
-    assert "Never pass `wait_seconds=30` to `execute_command`" in instructions
+    assert "Never pass `wait_seconds=30` to `execute_command_mcp_environment-execution`" in instructions
     assert (
         "COPY life-science/bionemo-librechat/scientific-agent-instructions.md /app/scientific-agent-instructions.md"
         in (ROOT / "Dockerfile").read_text()

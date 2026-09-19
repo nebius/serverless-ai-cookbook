@@ -30,10 +30,11 @@ SCHEMA = 'scientific-workflow/v2'
 FINAL = {'completed', 'failed', 'cancelled', 'needs_attention'}
 MODEL_KINDS = {'native', 'batch'}
 PROTEIN_METHODS = {'proteinmpnn-input', 'esmfold2-fast-input', 'design-refold-correspondence'}
-LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'docking', 'docking-batch', 'aging', 'report', 'clinical-study'} | PROTEIN_METHODS
+LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'docking', 'docking-batch', 'aging', 'report', 'mindeval', 'clinical-study'} | PROTEIN_METHODS
 HELPERS = {name: HERE / filename for name, filename in {
     'structure': 'structure-analysis.py', 'docking': 'molecule-analysis.py',
-    'docking-batch': 'molecule-analysis.py', 'aging': 'aging-analysis.py', 'report': 'report-assembly.py'}.items()}
+    'docking-batch': 'molecule-analysis.py', 'aging': 'aging-analysis.py', 'report': 'report-assembly.py',
+    'mindeval': 'report-assembly.py'}.items()}
 HELPERS['clinical-study'] = Path(os.environ.get('SCIENTIFIC_CLINICAL_REPORT_HELPER',
     '/app/skill/clinical-documentation/scripts/study_report.py'))
 HELPERS.update({name: HERE / 'scientific_protein_preparation.py' for name in PROTEIN_METHODS})
@@ -137,6 +138,8 @@ def input_references(step):
         return [cohort[key] for cohort in args['cohorts'] for key in ('input_file', 'result_file')] + ([args['reference_ages']] if args.get('reference_ages') else [])
     if method == 'report':
         return [section['file'] for section in args['sections']]
+    if method == 'mindeval':
+        return args['records']
     values = [args['plan_file']]
     if isinstance(args['plan_file'], str):
         plan_path = path_in_workspace(args['plan_file'])
@@ -230,11 +233,12 @@ def validate_local_arguments(method, args):
         'proteinmpnn-input': ({'backbone', 'structure_index', 'chain', 'num_sequences', 'seed', 'sampling_temp', 'omit_aas'}, set()),
         'esmfold2-fast-input': ({'design_input', 'design_result', 'design_index', 'seed'}, set()),
         'design-refold-correspondence': ({'design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction', 'design_index', 'structure_index', 'prediction_chain'}, set()),
-        'structure': ({'reference', 'chain_map'}, {'prediction', 'result', 'structure_index', 'residue_map', 'request_file'}),
+        'structure': ({'reference'}, {'chain_map', 'prediction', 'result', 'structure_index', 'residue_map', 'request_file'}),
         'docking': ({'reference', 'same_coordinate_frame'}, {'prediction', 'result', 'threshold_queries'}),
         'docking-batch': ({'runs', 'same_coordinate_frame'}, {'threshold_queries'}),
         'aging': ({'model', 'cohorts'}, {'coefficient_version', 'reference_ages'}),
-        'report': ({'title', 'sections'}, set()), 'clinical-study': ({'plan_file'}, set()),
+        'report': ({'title', 'sections'}, set()), 'mindeval': ({'title', 'records'}, set()),
+        'clinical-study': ({'plan_file'}, set()),
     }
     required, optional = fields[method]
     if required - args.keys() or args.keys() - required - optional:
@@ -260,8 +264,11 @@ def validate_local_arguments(method, args):
     if method == 'parquet-export' and (not isinstance(args['formats'], list) or not args['formats'] or
             any(item not in {'npz', 'hdf5', 'zip', 'sqlite'} for item in args['formats']) or len(set(args['formats'])) != len(args['formats'])):
         raise ValueError('parquet-export formats must be a unique nonempty list of npz, hdf5, zip, sqlite.')
-    if method == 'structure' and (not isinstance(args['chain_map'], list) or not args['chain_map'] or any(not isinstance(item, str) or ':' not in item for item in args['chain_map'])):
-        raise ValueError('structure chain_map must explicitly list reference:prediction pairs.')
+    if method == 'structure':
+        if 'chain_map' not in args and 'residue_map' not in args:
+            raise ValueError('structure needs explicit chain_map or a hash-bound residue_map from which to derive exactly those pairs.')
+        if 'chain_map' in args and (not isinstance(args['chain_map'], list) or not args['chain_map'] or any(not isinstance(item, str) or ':' not in item for item in args['chain_map'])):
+            raise ValueError('structure chain_map must explicitly list reference:prediction pairs.')
     for name in ('sections', 'cohorts', 'runs'):
         if name in args and (not isinstance(args[name], list) or not args[name] or any(not isinstance(item, dict) for item in args[name])):
             raise ValueError(f'{method} {name} must be a nonempty list of named objects.')
@@ -365,17 +372,30 @@ def local_command(method, args, scratch):
     command = [sys.executable, str(helper)]
     if method == 'clinical-study':
         return command + ['assemble', '--plan', args['plan_file'], '--output', str(scratch)]
-    if method in {'report', 'aging', 'docking-batch'}:
-        data = {'title': args['title'], 'sections': args['sections']} if method == 'report' else args['cohorts'] if method == 'aging' else args['runs']
+    if method in {'report', 'mindeval', 'aging', 'docking-batch'}:
+        data = args if method in {'report', 'mindeval'} else args['cohorts'] if method == 'aging' else args['runs']
         manifest = scratch / 'helper-input.json'
         manifest.write_bytes(canonical(data))
-        command += [{'report': '--manifest', 'aging': '--cohorts', 'docking-batch': '--runs'}[method], str(manifest)]
+        command += [{'report': '--manifest', 'mindeval': '--mindeval-plan', 'aging': '--cohorts', 'docking-batch': '--runs'}[method], str(manifest)]
     if method in {'structure', 'docking'}:
         for key in ('reference', 'prediction', 'result', 'structure_index', 'residue_map', 'request_file'):
             if key in args:
                 command += ['--' + key.replace('_', '-'), str(args[key])]
         if method == 'structure':
-            command += ['--chain-map', *args['chain_map']]
+            chain_map = args.get('chain_map')
+            if args.get('residue_map'):
+                mapping = json.loads(path_in_workspace(args['residue_map']).read_bytes())
+                if (mapping.get('schema') != 'scientific-residue-correspondence/v1'
+                        or not all(re.fullmatch(r'[0-9a-f]{64}', mapping.get(key, '')) for key in ('reference_sha256', 'prediction_sha256'))
+                        or not isinstance(mapping.get('pairs'), list) or not mapping['pairs']):
+                    raise ValueError('Chain selection requires a nonempty hash-bound residue correspondence.')
+                derived = list(dict.fromkeys(f'{item["reference_chain"]}:{item["prediction_chain"]}' for item in mapping['pairs']))
+                if chain_map is not None and set(chain_map) != set(derived):
+                    raise ValueError('Explicit chain_map contradicts the hash-bound residue_map pairs.')
+                chain_map = derived
+            # Existing evaluator verifies both structure hashes and every
+            # residue identity before using these exact correspondence pairs.
+            command += ['--chain-map', *chain_map]
     if method == 'aging':
         command += ['--model', args['model']]
         for key in ('coefficient_version', 'reference_ages'):
