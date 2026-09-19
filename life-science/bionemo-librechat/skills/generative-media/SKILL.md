@@ -1,6 +1,6 @@
 ---
 name: generative-media
-description: Generate research images (sdxl) and media (cosmos3-nano) through the scientific gateway native lane.
+description: Generate research images or augment recorded videos and LeRobot data through the live scientific model contracts.
 license: Apache-2.0 AND CC-BY-4.0
 ---
 
@@ -33,4 +33,35 @@ Media generation: `mode` (required, e.g. `"text-to-video"`), `prompt`
 }
 ```
 
-Live verification status: readiness report (not yet live-tested).
+## Match the control mode to the scientific goal
+
+For a new imagined clip, use a supported text/image generation mode. For
+continuing a prefix or suffix, `video-to-video` is appropriate: it conditions
+only selected latent frames, then generates the rest. A prompt asking it to
+"preserve motion" does not condition the entire recorded trajectory.
+
+For restyling an existing recording while retaining its motion/geometry,
+inspect the live **transfer** contract and use whole-sequence controls derived
+from the source, such as edge conditioning. Do not silently substitute prefix
+continuation when full-clip preservation was requested. Explain a missing
+control mode before spending the customer's inference request. Do not invent
+depth/segmentation controls if those data were not supplied or validly derived.
+
+For `cosmos3-lerobot-augmentation`, read its scientific schema and artifact
+contract. The current recorded-video path is `augmentation.mode: transfer`
+with supported `augmentation.conditioning.controls`, for example `edge`.
+Select actual episodes/cameras, retain the original actions and state, and use
+the existing file-based batch helper with the exact published artifact roles.
+The native Cosmos transfer request has its own typed control-input fields;
+do not copy the LeRobot parameter shape into the native request.
+
+Measure frame count, dimensions, FPS, episode/timestamp integrity, selected
+and unselected cameras, and exact non-video values. Inspect same-index frames
+and temporal motion, retaining original and generated clips. Transfer can
+still change materials, geometry, contacts or fine motion. Numeric action-array
+equality does **not** establish that generated pixels remain aligned to those
+actions, and neither a prompt nor a decoded MP4 establishes policy-training
+suitability. Report those limits instead of calling augmentation fully verified.
+
+Mode selection and byte integrity are not a scientific acceptance result.
+Require evidence from the exact deployed runtime and actual requested workflow.
