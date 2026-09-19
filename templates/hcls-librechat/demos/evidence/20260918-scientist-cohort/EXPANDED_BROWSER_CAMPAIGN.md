@@ -1,11 +1,43 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 03:44 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 03:56 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### v41 immutable candidate: deployment blocked, not accepted
+
+Source1b15d5d combines streaming downloads, explicit existing uploaded-source
+binding/help, exact-contract discovery, and use of upstream tool_search's
+existing max_results1/fields:name/server filter for an exact known name.
+No new search algorithm, budget increase, protocol or transport.91 source
+tests/Ruff plus4 tests against the installed pinned ToolSearch package pass;
+semantic queries retain ordinary multi-result behavior. Image
+cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0918-v41-1b15d5d,
+indexae862cd01b16462961f7a5b1baab5eeaf5d211d561a43578ede2cc4a796bed12,
+amd64b647a9aa7e8448a59548bd747da13af698c09bc57c4800c03ac023af7f1308e7
+pulls and runs the original bundle recovery/extraction/all9hashes/resume/NumPy
+checks in14.341s without inference or packages installed at test time.
+This local bind-mount proof does not prove mounted Object Storage behavior or
+natural workflow completion. v40 was never deployed; v39 is unchanged.
+
+One approved obsolete v37 preview was fully backed up and deleted:
+aiendpoint-e00nemt4vr7z4xww0e, deleteopvmapp-e00prf1kzsntv14ney,
+03:45:34.426–03:48:34.844; original bucket/secret retained. Two v41 Create
+attempts returned providerInternal, with exact-name reconciliation empty
+after each. Requests b55b3a0d-116b-453c-bafb-49da514ff029 and
+8d3669e0-0d43-41fa-ba8e-1161771b7f19; traces
+cec7c9b60b598a1cbd387bed1c709837 andea4033783e5885c913478bcaced5dab9.
+Source/helper/spec comparison shows only the intended name/image differences
+from runningv39. No supported imageUpdate exists in installedCLI or the
+[official EndpointService API](https://github.com/nebius/api/blob/main/nebius/ai/v1/endpoint_service.proto);
+Restart accepts onlyid. No unsupported mutation, quota increase, more deletion
+or blind retry is attempted. The parent coordinates one blocker notification.
+All protected setup/image/backup/comparison evidence is retained. The original
+natural prompt forv41 is frozen with only its outputpath changed and has not
+been submitted; no readiness claim transfers from fresh-container checks.
 
 ### v39 robotics preparation failure and bounded source repairs
 
