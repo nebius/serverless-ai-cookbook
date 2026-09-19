@@ -1,0 +1,2797 @@
+{
+  "schema": "public-native-contract-selection-fixture/v1",
+  "source": "Retained public get_model_schema response, backend190, 2026-09-19; only native contract names/protocol/input_schema retained. No caller requests, handles or credentials.",
+  "model_id": "cosmos3-nano",
+  "contracts": [
+    {
+      "protocol": "native",
+      "tool_name": "cosmos3_nano_generate_media_native",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "description": "Exact pinned model identity; omit to use this fixed deployment."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Exact Cosmos workflow; prefer its dedicated MCP tool.",
+            "enum": [
+              "text-to-image",
+              "text-to-video",
+              "image-to-video",
+              "video-to-video",
+              "transfer-video"
+            ]
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "negative_prompt": {
+            "type": "string",
+            "description": "Content and artifacts to avoid.",
+            "maxLength": 4096,
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "description": "Deterministic sampling seed.",
+            "minimum": 0,
+            "maximum": 4294967295,
+            "default": 0
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "description": "Denoising steps.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 30
+          },
+          "guidance_scale": {
+            "type": "number",
+            "description": "Prompt guidance strength.",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 7
+          },
+          "size": {
+            "type": "string",
+            "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+            "pattern": "^[0-9]+x[0-9]+$",
+            "minLength": 7,
+            "maxLength": 9
+          },
+          "num_frames": {
+            "type": "integer",
+            "description": "Generated video frames (5–400).",
+            "minimum": 5,
+            "maximum": 400,
+            "default": 25
+          },
+          "fps": {
+            "type": "integer",
+            "description": "Generated video frames per second.",
+            "minimum": 1,
+            "maximum": 30,
+            "default": 24
+          },
+          "input_reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                "pattern": "^https://",
+                "maxLength": 4096
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "artifact_id": {
+                    "type": "string",
+                    "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "description": "SHA-256 of the exact uploaded bytes.",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "description": "Exact uploaded byte count.",
+                    "minimum": 0
+                  },
+                  "media_type": {
+                    "type": "string",
+                    "description": "Media type of the uploaded bytes.",
+                    "enum": [
+                      "image/jpeg",
+                      "image/png",
+                      "image/webp",
+                      "video/mp4",
+                      "application/mp4"
+                    ]
+                  },
+                  "compression": {
+                    "const": "none",
+                    "default": "none",
+                    "description": "Artifact input must be stored without transport compression."
+                  }
+                },
+                "required": [
+                  "artifact_id",
+                  "sha256",
+                  "size_bytes",
+                  "media_type",
+                  "compression"
+                ],
+                "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+              }
+            ],
+            "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+            "x-fs2-artifact-materialization": "data-url",
+            "x-fs2-artifact-max-bytes": 536870912,
+            "x-fs2-artifact-media-types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "video/mp4",
+              "application/mp4"
+            ]
+          },
+          "vision_path": {
+            "type": "string",
+            "description": "Deprecated compatibility alias for input_reference. Only an HTTPS URL is accepted; a customer-local path never is.",
+            "pattern": "^https://",
+            "maxLength": 4096
+          },
+          "generate_sound": {
+            "type": "boolean",
+            "description": "Generate synchronized AAC audio for text-to-video or image-to-video.",
+            "default": false
+          },
+          "sound_duration": {
+            "type": "number",
+            "description": "Generated audio seconds; requires generate_sound=true.",
+            "exclusiveMinimum": 0,
+            "maximum": 30
+          },
+          "condition_frame_indexes_vision": {
+            "type": "array",
+            "description": "Selected latent frames used for V2V continuation, not full-trajectory preservation. [0] reads one source pixel frame; [0,1] reads five. Unconditioned future motion is generated.",
+            "items": {
+              "type": "integer",
+              "description": "Nonnegative conditioned latent-frame index.",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true
+          },
+          "condition_video_keep": {
+            "type": "string",
+            "description": "Decode the needed reference frames from the beginning or end.",
+            "enum": [
+              "first",
+              "last"
+            ],
+            "default": "first"
+          },
+          "controls": {
+            "type": "array",
+            "description": "One or more typed transfer controls.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "control_type": {
+                  "type": "string",
+                  "description": "Transfer representation supplied to Cosmos.",
+                  "enum": [
+                    "edge",
+                    "blur",
+                    "depth",
+                    "seg",
+                    "wsm"
+                  ]
+                },
+                "reference": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "Optional control image/video. Required for depth, segmentation and WSM; edge/blur may derive from input_reference. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                      "pattern": "^https://",
+                      "maxLength": 4096
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "artifact_id": {
+                          "type": "string",
+                          "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "description": "SHA-256 of the exact uploaded bytes.",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "description": "Exact uploaded byte count.",
+                          "minimum": 0
+                        },
+                        "media_type": {
+                          "type": "string",
+                          "description": "Media type of the uploaded bytes.",
+                          "enum": [
+                            "image/jpeg",
+                            "image/png",
+                            "image/webp",
+                            "video/mp4",
+                            "application/mp4"
+                          ]
+                        },
+                        "compression": {
+                          "const": "none",
+                          "default": "none",
+                          "description": "Artifact input must be stored without transport compression."
+                        }
+                      },
+                      "required": [
+                        "artifact_id",
+                        "sha256",
+                        "size_bytes",
+                        "media_type",
+                        "compression"
+                      ],
+                      "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                    }
+                  ],
+                  "description": "Optional control image/video. Required for depth, segmentation and WSM; edge/blur may derive from input_reference. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+                  "x-fs2-artifact-materialization": "data-url",
+                  "x-fs2-artifact-max-bytes": 134217728,
+                  "x-fs2-artifact-media-types": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "video/mp4",
+                    "application/mp4"
+                  ]
+                },
+                "control_weight": {
+                  "type": "number",
+                  "description": "Nonnegative relative control weight; at least one selected control must be positive.",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 1
+                },
+                "edge_threshold": {
+                  "type": "string",
+                  "description": "Edge extraction preset; valid only for edge control.",
+                  "enum": [
+                    "none",
+                    "very_low",
+                    "low",
+                    "medium",
+                    "high",
+                    "very_high"
+                  ]
+                },
+                "blur_strength": {
+                  "type": "string",
+                  "description": "Blur extraction preset; valid only for blur control.",
+                  "enum": [
+                    "none",
+                    "very_low",
+                    "low",
+                    "medium",
+                    "high",
+                    "very_high"
+                  ]
+                }
+              },
+              "required": [
+                "control_type"
+              ],
+              "description": "One typed transfer control. Control types may not repeat in a request.",
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "control_type": {
+                        "enum": [
+                          "depth",
+                          "seg",
+                          "wsm"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "control_type"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "reference"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "control_type": {
+                        "not": {
+                          "const": "edge"
+                        }
+                      }
+                    },
+                    "required": [
+                      "control_type"
+                    ]
+                  },
+                  "then": {
+                    "not": {
+                      "required": [
+                        "edge_threshold"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "control_type": {
+                        "not": {
+                          "const": "blur"
+                        }
+                      }
+                    },
+                    "required": [
+                      "control_type"
+                    ]
+                  },
+                  "then": {
+                    "not": {
+                      "required": [
+                        "blur_strength"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 5
+          },
+          "resolution": {
+            "type": "integer",
+            "description": "Legacy transfer resolution hint retained for compatibility. The hosted runtime uses explicit size for output dimensions (448x256 when omitted); this hint does not preserve source aspect ratio.",
+            "enum": [
+              256,
+              480,
+              704,
+              720
+            ],
+            "default": 480
+          },
+          "control_guidance": {
+            "type": "number",
+            "description": "Transfer control guidance strength.",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 1.5
+          },
+          "control_guidance_interval": {
+            "type": "array",
+            "description": "Ordered [start,end] transfer-guidance interval.",
+            "items": {
+              "type": "number",
+              "description": "Inclusive denoising fraction.",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "num_video_frames_per_chunk": {
+            "type": "integer",
+            "description": "Transfer chunk size.",
+            "minimum": 5,
+            "maximum": 400,
+            "default": 93
+          },
+          "num_conditional_frames": {
+            "type": "integer",
+            "description": "Conditional frames per transfer chunk.",
+            "minimum": 1,
+            "maximum": 16,
+            "default": 1
+          },
+          "num_first_chunk_conditional_frames": {
+            "type": "integer",
+            "description": "Additional first-chunk conditional frames.",
+            "minimum": 0,
+            "maximum": 16,
+            "default": 0
+          },
+          "share_vision_temporal_positions": {
+            "type": "boolean",
+            "description": "Share control/target temporal positions in transfer mode.",
+            "default": true
+          },
+          "emphasize_control_in_prompt": {
+            "type": "boolean",
+            "description": "Append the pinned control-adherence directive in transfer mode.",
+            "default": true
+          },
+          "output_format": {
+            "type": "string",
+            "description": "Mode-specific output format.",
+            "enum": [
+              "png",
+              "mp4"
+            ]
+          },
+          "output_delivery": {
+            "type": "string",
+            "description": "Video delivery only: use the operation artifact store or legacy inline text-to-video. Omit for text-to-image, which returns the legacy PNG JSON envelope.",
+            "enum": [
+              "inline-base64",
+              "artifact"
+            ]
+          },
+          "idempotency_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 8,
+            "maxLength": 200,
+            "description": "Reuse this key when retrying the same submission to avoid duplicate work."
+          },
+          "wait_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 30,
+            "default": 0,
+            "description": "Wait briefly for completion; otherwise poll get_operation using the returned operation ID."
+          }
+        },
+        "required": [
+          "prompt",
+          "mode"
+        ],
+        "description": "Generate or transform image/video from text and bounded media controls; large MP4 results are artifacts. Pinned Cosmos3 Nano media API. Media inputs use tenant artifacts or immutable HTTPS URLs; large MP4 outputs use the operation artifact store. Submit once, then poll the returned operation ID and retrieve its result when completed.",
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "model": {
+                "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "description": "Exact pinned model identity; omit to use this fixed deployment."
+              },
+              "prompt": {
+                "type": "string",
+                "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "negative_prompt": {
+                "type": "string",
+                "description": "Content and artifacts to avoid.",
+                "maxLength": 4096,
+                "default": ""
+              },
+              "seed": {
+                "type": "integer",
+                "description": "Deterministic sampling seed.",
+                "minimum": 0,
+                "maximum": 4294967295,
+                "default": 0
+              },
+              "num_inference_steps": {
+                "type": "integer",
+                "description": "Denoising steps.",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 30
+              },
+              "guidance_scale": {
+                "type": "number",
+                "description": "Prompt guidance strength.",
+                "minimum": 0,
+                "maximum": 20,
+                "default": 7
+              },
+              "size": {
+                "type": "string",
+                "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+                "pattern": "^[0-9]+x[0-9]+$",
+                "minLength": 7,
+                "maxLength": 9
+              },
+              "mode": {
+                "const": "text-to-image",
+                "default": "text-to-image",
+                "description": "Select the text-to-image Cosmos workflow."
+              },
+              "output_format": {
+                "const": "png",
+                "default": "png",
+                "description": "PNG output only."
+              }
+            },
+            "required": [
+              "prompt",
+              "mode"
+            ],
+            "description": "Typed text-to-image inputs for the pinned Cosmos3 Nano runtime.",
+            "allOf": [
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "condition_frame_indexes_vision"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "condition_video_keep"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "control_guidance"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "control_guidance_interval"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "controls"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "emphasize_control_in_prompt"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "fps"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "generate_sound"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "input_reference"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_conditional_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_first_chunk_conditional_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_video_frames_per_chunk"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "output_delivery"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "resolution"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "share_vision_temporal_positions"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "sound_duration"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "vision_path"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "model": {
+                "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "description": "Exact pinned model identity; omit to use this fixed deployment."
+              },
+              "prompt": {
+                "type": "string",
+                "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "negative_prompt": {
+                "type": "string",
+                "description": "Content and artifacts to avoid.",
+                "maxLength": 4096,
+                "default": ""
+              },
+              "seed": {
+                "type": "integer",
+                "description": "Deterministic sampling seed.",
+                "minimum": 0,
+                "maximum": 4294967295,
+                "default": 0
+              },
+              "num_inference_steps": {
+                "type": "integer",
+                "description": "Denoising steps.",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 30
+              },
+              "guidance_scale": {
+                "type": "number",
+                "description": "Prompt guidance strength.",
+                "minimum": 0,
+                "maximum": 20,
+                "default": 7
+              },
+              "size": {
+                "type": "string",
+                "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+                "pattern": "^[0-9]+x[0-9]+$",
+                "minLength": 7,
+                "maxLength": 9
+              },
+              "num_frames": {
+                "type": "integer",
+                "description": "Generated video frames (5–400).",
+                "minimum": 5,
+                "maximum": 400,
+                "default": 25
+              },
+              "fps": {
+                "type": "integer",
+                "description": "Generated video frames per second.",
+                "minimum": 1,
+                "maximum": 30,
+                "default": 24
+              },
+              "generate_sound": {
+                "type": "boolean",
+                "description": "Generate synchronized AAC audio for text-to-video or image-to-video.",
+                "default": false
+              },
+              "sound_duration": {
+                "type": "number",
+                "description": "Generated audio seconds; requires generate_sound=true.",
+                "exclusiveMinimum": 0,
+                "maximum": 30
+              },
+              "mode": {
+                "const": "text-to-video",
+                "default": "text-to-video",
+                "description": "Select the text-to-video Cosmos workflow."
+              },
+              "output_format": {
+                "const": "mp4",
+                "default": "mp4",
+                "description": "MP4 output only."
+              },
+              "output_delivery": {
+                "type": "string",
+                "description": "Return legacy inline base64 or externalize the MP4 through the operation artifact store.",
+                "enum": [
+                  "inline-base64",
+                  "artifact"
+                ]
+              }
+            },
+            "required": [
+              "prompt",
+              "mode"
+            ],
+            "description": "Typed text-to-video inputs for the pinned Cosmos3 Nano runtime.",
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "sound_duration"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "generate_sound": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "generate_sound"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "condition_frame_indexes_vision"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "condition_video_keep"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "control_guidance"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "control_guidance_interval"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "controls"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "emphasize_control_in_prompt"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "input_reference"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_conditional_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_first_chunk_conditional_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_video_frames_per_chunk"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "resolution"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "share_vision_temporal_positions"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "vision_path"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "model": {
+                "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "description": "Exact pinned model identity; omit to use this fixed deployment."
+              },
+              "prompt": {
+                "type": "string",
+                "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "negative_prompt": {
+                "type": "string",
+                "description": "Content and artifacts to avoid.",
+                "maxLength": 4096,
+                "default": ""
+              },
+              "seed": {
+                "type": "integer",
+                "description": "Deterministic sampling seed.",
+                "minimum": 0,
+                "maximum": 4294967295,
+                "default": 0
+              },
+              "num_inference_steps": {
+                "type": "integer",
+                "description": "Denoising steps.",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 30
+              },
+              "guidance_scale": {
+                "type": "number",
+                "description": "Prompt guidance strength.",
+                "minimum": 0,
+                "maximum": 20,
+                "default": 7
+              },
+              "size": {
+                "type": "string",
+                "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+                "pattern": "^[0-9]+x[0-9]+$",
+                "minLength": 7,
+                "maxLength": 9
+              },
+              "num_frames": {
+                "type": "integer",
+                "description": "Generated video frames (5–400).",
+                "minimum": 5,
+                "maximum": 400,
+                "default": 25
+              },
+              "fps": {
+                "type": "integer",
+                "description": "Generated video frames per second.",
+                "minimum": 1,
+                "maximum": 30,
+                "default": 24
+              },
+              "input_reference": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                    "pattern": "^https://",
+                    "maxLength": 4096
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "artifact_id": {
+                        "type": "string",
+                        "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "description": "SHA-256 of the exact uploaded bytes.",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "description": "Exact uploaded byte count.",
+                        "minimum": 0
+                      },
+                      "media_type": {
+                        "type": "string",
+                        "description": "Media type of the uploaded bytes.",
+                        "enum": [
+                          "image/jpeg",
+                          "image/png",
+                          "image/webp",
+                          "video/mp4",
+                          "application/mp4"
+                        ]
+                      },
+                      "compression": {
+                        "const": "none",
+                        "default": "none",
+                        "description": "Artifact input must be stored without transport compression."
+                      }
+                    },
+                    "required": [
+                      "artifact_id",
+                      "sha256",
+                      "size_bytes",
+                      "media_type",
+                      "compression"
+                    ],
+                    "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                  }
+                ],
+                "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+                "x-fs2-artifact-materialization": "data-url",
+                "x-fs2-artifact-max-bytes": 536870912,
+                "x-fs2-artifact-media-types": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "video/mp4",
+                  "application/mp4"
+                ]
+              },
+              "vision_path": {
+                "type": "string",
+                "description": "Deprecated compatibility alias for input_reference. Only an HTTPS URL is accepted; a customer-local path never is.",
+                "pattern": "^https://",
+                "maxLength": 4096
+              },
+              "generate_sound": {
+                "type": "boolean",
+                "description": "Generate synchronized AAC audio for text-to-video or image-to-video.",
+                "default": false
+              },
+              "sound_duration": {
+                "type": "number",
+                "description": "Generated audio seconds; requires generate_sound=true.",
+                "exclusiveMinimum": 0,
+                "maximum": 30
+              },
+              "mode": {
+                "const": "image-to-video",
+                "default": "image-to-video",
+                "description": "Select the image-to-video Cosmos workflow."
+              },
+              "output_format": {
+                "const": "mp4",
+                "default": "mp4",
+                "description": "MP4 output only."
+              },
+              "output_delivery": {
+                "const": "artifact",
+                "default": "artifact",
+                "description": "Store MP4 bytes as a tenant-owned operation artifact."
+              }
+            },
+            "required": [
+              "prompt",
+              "mode"
+            ],
+            "description": "Typed image-to-video inputs for the pinned Cosmos3 Nano runtime.",
+            "oneOf": [
+              {
+                "required": [
+                  "input_reference"
+                ]
+              },
+              {
+                "required": [
+                  "vision_path"
+                ]
+              }
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "sound_duration"
+                  ]
+                },
+                "then": {
+                  "properties": {
+                    "generate_sound": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "generate_sound"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "condition_frame_indexes_vision"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "condition_video_keep"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "control_guidance"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "control_guidance_interval"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "controls"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "emphasize_control_in_prompt"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_conditional_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_first_chunk_conditional_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_video_frames_per_chunk"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "resolution"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "share_vision_temporal_positions"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "model": {
+                "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "description": "Exact pinned model identity; omit to use this fixed deployment."
+              },
+              "prompt": {
+                "type": "string",
+                "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "negative_prompt": {
+                "type": "string",
+                "description": "Content and artifacts to avoid.",
+                "maxLength": 4096,
+                "default": ""
+              },
+              "seed": {
+                "type": "integer",
+                "description": "Deterministic sampling seed.",
+                "minimum": 0,
+                "maximum": 4294967295,
+                "default": 0
+              },
+              "num_inference_steps": {
+                "type": "integer",
+                "description": "Denoising steps.",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 30
+              },
+              "guidance_scale": {
+                "type": "number",
+                "description": "Prompt guidance strength.",
+                "minimum": 0,
+                "maximum": 20,
+                "default": 7
+              },
+              "size": {
+                "type": "string",
+                "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+                "pattern": "^[0-9]+x[0-9]+$",
+                "minLength": 7,
+                "maxLength": 9
+              },
+              "num_frames": {
+                "type": "integer",
+                "description": "Generated video frames (5–400).",
+                "minimum": 5,
+                "maximum": 400,
+                "default": 25
+              },
+              "fps": {
+                "type": "integer",
+                "description": "Generated video frames per second.",
+                "minimum": 1,
+                "maximum": 30,
+                "default": 24
+              },
+              "input_reference": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                    "pattern": "^https://",
+                    "maxLength": 4096
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "artifact_id": {
+                        "type": "string",
+                        "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "description": "SHA-256 of the exact uploaded bytes.",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "description": "Exact uploaded byte count.",
+                        "minimum": 0
+                      },
+                      "media_type": {
+                        "type": "string",
+                        "description": "Media type of the uploaded bytes.",
+                        "enum": [
+                          "image/jpeg",
+                          "image/png",
+                          "image/webp",
+                          "video/mp4",
+                          "application/mp4"
+                        ]
+                      },
+                      "compression": {
+                        "const": "none",
+                        "default": "none",
+                        "description": "Artifact input must be stored without transport compression."
+                      }
+                    },
+                    "required": [
+                      "artifact_id",
+                      "sha256",
+                      "size_bytes",
+                      "media_type",
+                      "compression"
+                    ],
+                    "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                  }
+                ],
+                "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+                "x-fs2-artifact-materialization": "data-url",
+                "x-fs2-artifact-max-bytes": 536870912,
+                "x-fs2-artifact-media-types": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "video/mp4",
+                  "application/mp4"
+                ]
+              },
+              "vision_path": {
+                "type": "string",
+                "description": "Deprecated compatibility alias for input_reference. Only an HTTPS URL is accepted; a customer-local path never is.",
+                "pattern": "^https://",
+                "maxLength": 4096
+              },
+              "condition_frame_indexes_vision": {
+                "type": "array",
+                "description": "Selected latent frames used for V2V continuation, not full-trajectory preservation. [0] reads one source pixel frame; [0,1] reads five. Unconditioned future motion is generated.",
+                "items": {
+                  "type": "integer",
+                  "description": "Nonnegative conditioned latent-frame index.",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "minItems": 1,
+                "maxItems": 16,
+                "uniqueItems": true
+              },
+              "condition_video_keep": {
+                "type": "string",
+                "description": "Decode the needed reference frames from the beginning or end.",
+                "enum": [
+                  "first",
+                  "last"
+                ],
+                "default": "first"
+              },
+              "mode": {
+                "const": "video-to-video",
+                "default": "video-to-video",
+                "description": "Select the video-to-video Cosmos workflow."
+              },
+              "output_format": {
+                "const": "mp4",
+                "default": "mp4",
+                "description": "MP4 output only."
+              },
+              "output_delivery": {
+                "const": "artifact",
+                "default": "artifact",
+                "description": "Store MP4 bytes as a tenant-owned operation artifact."
+              }
+            },
+            "required": [
+              "prompt",
+              "mode"
+            ],
+            "description": "Typed video-to-video inputs for the pinned Cosmos3 Nano runtime.",
+            "oneOf": [
+              {
+                "required": [
+                  "input_reference"
+                ]
+              },
+              {
+                "required": [
+                  "vision_path"
+                ]
+              }
+            ],
+            "allOf": [
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "control_guidance"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "control_guidance_interval"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "controls"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "emphasize_control_in_prompt"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "generate_sound"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_conditional_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_first_chunk_conditional_frames"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "num_video_frames_per_chunk"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "resolution"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "share_vision_temporal_positions"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "sound_duration"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "model": {
+                "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+                "description": "Exact pinned model identity; omit to use this fixed deployment."
+              },
+              "prompt": {
+                "type": "string",
+                "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+                "minLength": 1,
+                "maxLength": 4096
+              },
+              "negative_prompt": {
+                "type": "string",
+                "description": "Content and artifacts to avoid.",
+                "maxLength": 4096,
+                "default": ""
+              },
+              "seed": {
+                "type": "integer",
+                "description": "Deterministic sampling seed.",
+                "minimum": 0,
+                "maximum": 4294967295,
+                "default": 0
+              },
+              "num_inference_steps": {
+                "type": "integer",
+                "description": "Denoising steps.",
+                "minimum": 1,
+                "maximum": 50,
+                "default": 30
+              },
+              "guidance_scale": {
+                "type": "number",
+                "description": "Prompt guidance strength.",
+                "minimum": 0,
+                "maximum": 20,
+                "default": 7
+              },
+              "size": {
+                "type": "string",
+                "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+                "pattern": "^[0-9]+x[0-9]+$",
+                "minLength": 7,
+                "maxLength": 9
+              },
+              "num_frames": {
+                "type": "integer",
+                "description": "Generated video frames (5–400).",
+                "minimum": 5,
+                "maximum": 400,
+                "default": 25
+              },
+              "fps": {
+                "type": "integer",
+                "description": "Generated video frames per second.",
+                "minimum": 1,
+                "maximum": 30,
+                "default": 24
+              },
+              "input_reference": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                    "pattern": "^https://",
+                    "maxLength": 4096
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "artifact_id": {
+                        "type": "string",
+                        "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                      },
+                      "sha256": {
+                        "type": "string",
+                        "description": "SHA-256 of the exact uploaded bytes.",
+                        "pattern": "^[0-9a-f]{64}$"
+                      },
+                      "size_bytes": {
+                        "type": "integer",
+                        "description": "Exact uploaded byte count.",
+                        "minimum": 0
+                      },
+                      "media_type": {
+                        "type": "string",
+                        "description": "Media type of the uploaded bytes.",
+                        "enum": [
+                          "image/jpeg",
+                          "image/png",
+                          "image/webp",
+                          "video/mp4",
+                          "application/mp4"
+                        ]
+                      },
+                      "compression": {
+                        "const": "none",
+                        "default": "none",
+                        "description": "Artifact input must be stored without transport compression."
+                      }
+                    },
+                    "required": [
+                      "artifact_id",
+                      "sha256",
+                      "size_bytes",
+                      "media_type",
+                      "compression"
+                    ],
+                    "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                  }
+                ],
+                "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+                "x-fs2-artifact-materialization": "data-url",
+                "x-fs2-artifact-max-bytes": 536870912,
+                "x-fs2-artifact-media-types": [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "video/mp4",
+                  "application/mp4"
+                ]
+              },
+              "vision_path": {
+                "type": "string",
+                "description": "Deprecated compatibility alias for input_reference. Only an HTTPS URL is accepted; a customer-local path never is.",
+                "pattern": "^https://",
+                "maxLength": 4096
+              },
+              "controls": {
+                "type": "array",
+                "description": "One or more typed transfer controls.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "control_type": {
+                      "type": "string",
+                      "description": "Transfer representation supplied to Cosmos.",
+                      "enum": [
+                        "edge",
+                        "blur",
+                        "depth",
+                        "seg",
+                        "wsm"
+                      ]
+                    },
+                    "reference": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "description": "Optional control image/video. Required for depth, segmentation and WSM; edge/blur may derive from input_reference. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                          "pattern": "^https://",
+                          "maxLength": 4096
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "artifact_id": {
+                              "type": "string",
+                              "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "sha256": {
+                              "type": "string",
+                              "description": "SHA-256 of the exact uploaded bytes.",
+                              "pattern": "^[0-9a-f]{64}$"
+                            },
+                            "size_bytes": {
+                              "type": "integer",
+                              "description": "Exact uploaded byte count.",
+                              "minimum": 0
+                            },
+                            "media_type": {
+                              "type": "string",
+                              "description": "Media type of the uploaded bytes.",
+                              "enum": [
+                                "image/jpeg",
+                                "image/png",
+                                "image/webp",
+                                "video/mp4",
+                                "application/mp4"
+                              ]
+                            },
+                            "compression": {
+                              "const": "none",
+                              "default": "none",
+                              "description": "Artifact input must be stored without transport compression."
+                            }
+                          },
+                          "required": [
+                            "artifact_id",
+                            "sha256",
+                            "size_bytes",
+                            "media_type",
+                            "compression"
+                          ],
+                          "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                        }
+                      ],
+                      "description": "Optional control image/video. Required for depth, segmentation and WSM; edge/blur may derive from input_reference. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+                      "x-fs2-artifact-materialization": "data-url",
+                      "x-fs2-artifact-max-bytes": 134217728,
+                      "x-fs2-artifact-media-types": [
+                        "image/jpeg",
+                        "image/png",
+                        "image/webp",
+                        "video/mp4",
+                        "application/mp4"
+                      ]
+                    },
+                    "control_weight": {
+                      "type": "number",
+                      "description": "Nonnegative relative control weight; at least one selected control must be positive.",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "default": 1
+                    },
+                    "edge_threshold": {
+                      "type": "string",
+                      "description": "Edge extraction preset; valid only for edge control.",
+                      "enum": [
+                        "none",
+                        "very_low",
+                        "low",
+                        "medium",
+                        "high",
+                        "very_high"
+                      ]
+                    },
+                    "blur_strength": {
+                      "type": "string",
+                      "description": "Blur extraction preset; valid only for blur control.",
+                      "enum": [
+                        "none",
+                        "very_low",
+                        "low",
+                        "medium",
+                        "high",
+                        "very_high"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "control_type"
+                  ],
+                  "description": "One typed transfer control. Control types may not repeat in a request.",
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": {
+                          "control_type": {
+                            "enum": [
+                              "depth",
+                              "seg",
+                              "wsm"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "control_type"
+                        ]
+                      },
+                      "then": {
+                        "required": [
+                          "reference"
+                        ]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "control_type": {
+                            "not": {
+                              "const": "edge"
+                            }
+                          }
+                        },
+                        "required": [
+                          "control_type"
+                        ]
+                      },
+                      "then": {
+                        "not": {
+                          "required": [
+                            "edge_threshold"
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {
+                          "control_type": {
+                            "not": {
+                              "const": "blur"
+                            }
+                          }
+                        },
+                        "required": [
+                          "control_type"
+                        ]
+                      },
+                      "then": {
+                        "not": {
+                          "required": [
+                            "blur_strength"
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                },
+                "minItems": 1,
+                "maxItems": 5
+              },
+              "resolution": {
+                "type": "integer",
+                "description": "Legacy transfer resolution hint retained for compatibility. The hosted runtime uses explicit size for output dimensions (448x256 when omitted); this hint does not preserve source aspect ratio.",
+                "enum": [
+                  256,
+                  480,
+                  704,
+                  720
+                ],
+                "default": 480
+              },
+              "control_guidance": {
+                "type": "number",
+                "description": "Transfer control guidance strength.",
+                "minimum": 0,
+                "maximum": 20,
+                "default": 1.5
+              },
+              "control_guidance_interval": {
+                "type": "array",
+                "description": "Ordered [start,end] transfer-guidance interval.",
+                "items": {
+                  "type": "number",
+                  "description": "Inclusive denoising fraction.",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "num_video_frames_per_chunk": {
+                "type": "integer",
+                "description": "Transfer chunk size.",
+                "minimum": 5,
+                "maximum": 400,
+                "default": 93
+              },
+              "num_conditional_frames": {
+                "type": "integer",
+                "description": "Conditional frames per transfer chunk.",
+                "minimum": 1,
+                "maximum": 16,
+                "default": 1
+              },
+              "num_first_chunk_conditional_frames": {
+                "type": "integer",
+                "description": "Additional first-chunk conditional frames.",
+                "minimum": 0,
+                "maximum": 16,
+                "default": 0
+              },
+              "share_vision_temporal_positions": {
+                "type": "boolean",
+                "description": "Share control/target temporal positions in transfer mode.",
+                "default": true
+              },
+              "emphasize_control_in_prompt": {
+                "type": "boolean",
+                "description": "Append the pinned control-adherence directive in transfer mode.",
+                "default": true
+              },
+              "mode": {
+                "const": "transfer-video",
+                "default": "transfer-video",
+                "description": "Select the transfer-video Cosmos workflow."
+              },
+              "output_format": {
+                "const": "mp4",
+                "default": "mp4",
+                "description": "MP4 output only."
+              },
+              "output_delivery": {
+                "const": "artifact",
+                "default": "artifact",
+                "description": "Store MP4 bytes as a tenant-owned operation artifact."
+              }
+            },
+            "required": [
+              "prompt",
+              "controls",
+              "mode"
+            ],
+            "description": "Typed transfer-video inputs for the pinned Cosmos3 Nano runtime.",
+            "allOf": [
+              {
+                "not": {
+                  "required": [
+                    "input_reference",
+                    "vision_path"
+                  ]
+                }
+              },
+              {
+                "not": {
+                  "anyOf": [
+                    {
+                      "required": [
+                        "condition_frame_indexes_vision"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "condition_video_keep"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "generate_sound"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "sound_duration"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    },
+    {
+      "protocol": "native",
+      "tool_name": "cosmos3_nano_text_to_image",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "description": "Exact pinned model identity; omit to use this fixed deployment."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "negative_prompt": {
+            "type": "string",
+            "description": "Content and artifacts to avoid.",
+            "maxLength": 4096,
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "description": "Deterministic sampling seed.",
+            "minimum": 0,
+            "maximum": 4294967295,
+            "default": 0
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "description": "Denoising steps.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 30
+          },
+          "guidance_scale": {
+            "type": "number",
+            "description": "Prompt guidance strength.",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 7
+          },
+          "size": {
+            "type": "string",
+            "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+            "pattern": "^[0-9]+x[0-9]+$",
+            "minLength": 7,
+            "maxLength": 9
+          },
+          "idempotency_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 8,
+            "maxLength": 200,
+            "description": "Reuse this key when retrying the same submission to avoid duplicate work."
+          },
+          "wait_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 30,
+            "default": 0,
+            "description": "Wait briefly for completion; otherwise poll get_operation using the returned operation ID."
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "description": "Typed text-to-image inputs for the pinned Cosmos3 Nano runtime."
+      }
+    },
+    {
+      "protocol": "native",
+      "tool_name": "cosmos3_nano_text_to_video",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "description": "Exact pinned model identity; omit to use this fixed deployment."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "negative_prompt": {
+            "type": "string",
+            "description": "Content and artifacts to avoid.",
+            "maxLength": 4096,
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "description": "Deterministic sampling seed.",
+            "minimum": 0,
+            "maximum": 4294967295,
+            "default": 0
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "description": "Denoising steps.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 30
+          },
+          "guidance_scale": {
+            "type": "number",
+            "description": "Prompt guidance strength.",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 7
+          },
+          "size": {
+            "type": "string",
+            "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+            "pattern": "^[0-9]+x[0-9]+$",
+            "minLength": 7,
+            "maxLength": 9
+          },
+          "num_frames": {
+            "type": "integer",
+            "description": "Generated video frames (5–400).",
+            "minimum": 5,
+            "maximum": 400,
+            "default": 25
+          },
+          "fps": {
+            "type": "integer",
+            "description": "Generated video frames per second.",
+            "minimum": 1,
+            "maximum": 30,
+            "default": 24
+          },
+          "generate_sound": {
+            "type": "boolean",
+            "description": "Generate synchronized AAC audio for text-to-video or image-to-video.",
+            "default": false
+          },
+          "sound_duration": {
+            "type": "number",
+            "description": "Generated audio seconds; requires generate_sound=true.",
+            "exclusiveMinimum": 0,
+            "maximum": 30
+          },
+          "idempotency_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 8,
+            "maxLength": 200,
+            "description": "Reuse this key when retrying the same submission to avoid duplicate work."
+          },
+          "wait_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 30,
+            "default": 0,
+            "description": "Wait briefly for completion; otherwise poll get_operation using the returned operation ID."
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "description": "Typed text-to-video inputs for the pinned Cosmos3 Nano runtime.",
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "sound_duration"
+              ]
+            },
+            "then": {
+              "properties": {
+                "generate_sound": {
+                  "const": true
+                }
+              },
+              "required": [
+                "generate_sound"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "protocol": "native",
+      "tool_name": "cosmos3_nano_image_to_video",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "description": "Exact pinned model identity; omit to use this fixed deployment."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "negative_prompt": {
+            "type": "string",
+            "description": "Content and artifacts to avoid.",
+            "maxLength": 4096,
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "description": "Deterministic sampling seed.",
+            "minimum": 0,
+            "maximum": 4294967295,
+            "default": 0
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "description": "Denoising steps.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 30
+          },
+          "guidance_scale": {
+            "type": "number",
+            "description": "Prompt guidance strength.",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 7
+          },
+          "size": {
+            "type": "string",
+            "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+            "pattern": "^[0-9]+x[0-9]+$",
+            "minLength": 7,
+            "maxLength": 9
+          },
+          "num_frames": {
+            "type": "integer",
+            "description": "Generated video frames (5–400).",
+            "minimum": 5,
+            "maximum": 400,
+            "default": 25
+          },
+          "fps": {
+            "type": "integer",
+            "description": "Generated video frames per second.",
+            "minimum": 1,
+            "maximum": 30,
+            "default": 24
+          },
+          "input_reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                "pattern": "^https://",
+                "maxLength": 4096
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "artifact_id": {
+                    "type": "string",
+                    "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "description": "SHA-256 of the exact uploaded bytes.",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "description": "Exact uploaded byte count.",
+                    "minimum": 0
+                  },
+                  "media_type": {
+                    "type": "string",
+                    "description": "Media type of the uploaded bytes.",
+                    "enum": [
+                      "image/jpeg",
+                      "image/png",
+                      "image/webp",
+                      "video/mp4",
+                      "application/mp4"
+                    ]
+                  },
+                  "compression": {
+                    "const": "none",
+                    "default": "none",
+                    "description": "Artifact input must be stored without transport compression."
+                  }
+                },
+                "required": [
+                  "artifact_id",
+                  "sha256",
+                  "size_bytes",
+                  "media_type",
+                  "compression"
+                ],
+                "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+              }
+            ],
+            "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+            "x-fs2-artifact-materialization": "data-url",
+            "x-fs2-artifact-max-bytes": 536870912,
+            "x-fs2-artifact-media-types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "video/mp4",
+              "application/mp4"
+            ]
+          },
+          "vision_path": {
+            "type": "string",
+            "description": "Deprecated compatibility alias for input_reference. Only an HTTPS URL is accepted; a customer-local path never is.",
+            "pattern": "^https://",
+            "maxLength": 4096
+          },
+          "generate_sound": {
+            "type": "boolean",
+            "description": "Generate synchronized AAC audio for text-to-video or image-to-video.",
+            "default": false
+          },
+          "sound_duration": {
+            "type": "number",
+            "description": "Generated audio seconds; requires generate_sound=true.",
+            "exclusiveMinimum": 0,
+            "maximum": 30
+          },
+          "idempotency_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 8,
+            "maxLength": 200,
+            "description": "Reuse this key when retrying the same submission to avoid duplicate work."
+          },
+          "wait_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 30,
+            "default": 0,
+            "description": "Wait briefly for completion; otherwise poll get_operation using the returned operation ID."
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "description": "Typed image-to-video inputs for the pinned Cosmos3 Nano runtime.",
+        "oneOf": [
+          {
+            "required": [
+              "input_reference"
+            ]
+          },
+          {
+            "required": [
+              "vision_path"
+            ]
+          }
+        ],
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "sound_duration"
+              ]
+            },
+            "then": {
+              "properties": {
+                "generate_sound": {
+                  "const": true
+                }
+              },
+              "required": [
+                "generate_sound"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "protocol": "native",
+      "tool_name": "cosmos3_nano_video_to_video",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "description": "Exact pinned model identity; omit to use this fixed deployment."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "negative_prompt": {
+            "type": "string",
+            "description": "Content and artifacts to avoid.",
+            "maxLength": 4096,
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "description": "Deterministic sampling seed.",
+            "minimum": 0,
+            "maximum": 4294967295,
+            "default": 0
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "description": "Denoising steps.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 30
+          },
+          "guidance_scale": {
+            "type": "number",
+            "description": "Prompt guidance strength.",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 7
+          },
+          "size": {
+            "type": "string",
+            "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+            "pattern": "^[0-9]+x[0-9]+$",
+            "minLength": 7,
+            "maxLength": 9
+          },
+          "num_frames": {
+            "type": "integer",
+            "description": "Generated video frames (5–400).",
+            "minimum": 5,
+            "maximum": 400,
+            "default": 25
+          },
+          "fps": {
+            "type": "integer",
+            "description": "Generated video frames per second.",
+            "minimum": 1,
+            "maximum": 30,
+            "default": 24
+          },
+          "input_reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                "pattern": "^https://",
+                "maxLength": 4096
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "artifact_id": {
+                    "type": "string",
+                    "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "description": "SHA-256 of the exact uploaded bytes.",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "description": "Exact uploaded byte count.",
+                    "minimum": 0
+                  },
+                  "media_type": {
+                    "type": "string",
+                    "description": "Media type of the uploaded bytes.",
+                    "enum": [
+                      "image/jpeg",
+                      "image/png",
+                      "image/webp",
+                      "video/mp4",
+                      "application/mp4"
+                    ]
+                  },
+                  "compression": {
+                    "const": "none",
+                    "default": "none",
+                    "description": "Artifact input must be stored without transport compression."
+                  }
+                },
+                "required": [
+                  "artifact_id",
+                  "sha256",
+                  "size_bytes",
+                  "media_type",
+                  "compression"
+                ],
+                "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+              }
+            ],
+            "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+            "x-fs2-artifact-materialization": "data-url",
+            "x-fs2-artifact-max-bytes": 536870912,
+            "x-fs2-artifact-media-types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "video/mp4",
+              "application/mp4"
+            ]
+          },
+          "vision_path": {
+            "type": "string",
+            "description": "Deprecated compatibility alias for input_reference. Only an HTTPS URL is accepted; a customer-local path never is.",
+            "pattern": "^https://",
+            "maxLength": 4096
+          },
+          "condition_frame_indexes_vision": {
+            "type": "array",
+            "description": "Selected latent frames used for V2V continuation, not full-trajectory preservation. [0] reads one source pixel frame; [0,1] reads five. Unconditioned future motion is generated.",
+            "items": {
+              "type": "integer",
+              "description": "Nonnegative conditioned latent-frame index.",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true
+          },
+          "condition_video_keep": {
+            "type": "string",
+            "description": "Decode the needed reference frames from the beginning or end.",
+            "enum": [
+              "first",
+              "last"
+            ],
+            "default": "first"
+          },
+          "idempotency_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 8,
+            "maxLength": 200,
+            "description": "Reuse this key when retrying the same submission to avoid duplicate work."
+          },
+          "wait_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 30,
+            "default": 0,
+            "description": "Wait briefly for completion; otherwise poll get_operation using the returned operation ID."
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "description": "Typed video-to-video inputs for the pinned Cosmos3 Nano runtime.",
+        "oneOf": [
+          {
+            "required": [
+              "input_reference"
+            ]
+          },
+          {
+            "required": [
+              "vision_path"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "protocol": "native",
+      "tool_name": "cosmos3_nano_transfer_video",
+      "input_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": {
+            "const": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "default": "nvidia/Cosmos3-Nano@7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+            "description": "Exact pinned model identity; omit to use this fixed deployment."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Scene description or robotics instruction. Structured upsampled prompts are accepted as strings.",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "negative_prompt": {
+            "type": "string",
+            "description": "Content and artifacts to avoid.",
+            "maxLength": 4096,
+            "default": ""
+          },
+          "seed": {
+            "type": "integer",
+            "description": "Deterministic sampling seed.",
+            "minimum": 0,
+            "maximum": 4294967295,
+            "default": 0
+          },
+          "num_inference_steps": {
+            "type": "integer",
+            "description": "Denoising steps.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 30
+          },
+          "guidance_scale": {
+            "type": "number",
+            "description": "Prompt guidance strength.",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 7
+          },
+          "size": {
+            "type": "string",
+            "description": "WIDTHxHEIGHT; each dimension is a multiple of 16, width 256–1280, height 256–720 and area <=921600.",
+            "pattern": "^[0-9]+x[0-9]+$",
+            "minLength": 7,
+            "maxLength": 9
+          },
+          "num_frames": {
+            "type": "integer",
+            "description": "Generated video frames (5–400).",
+            "minimum": 5,
+            "maximum": 400,
+            "default": 25
+          },
+          "fps": {
+            "type": "integer",
+            "description": "Generated video frames per second.",
+            "minimum": 1,
+            "maximum": 30,
+            "default": 24
+          },
+          "input_reference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                "pattern": "^https://",
+                "maxLength": 4096
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "artifact_id": {
+                    "type": "string",
+                    "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "description": "SHA-256 of the exact uploaded bytes.",
+                    "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "size_bytes": {
+                    "type": "integer",
+                    "description": "Exact uploaded byte count.",
+                    "minimum": 0
+                  },
+                  "media_type": {
+                    "type": "string",
+                    "description": "Media type of the uploaded bytes.",
+                    "enum": [
+                      "image/jpeg",
+                      "image/png",
+                      "image/webp",
+                      "video/mp4",
+                      "application/mp4"
+                    ]
+                  },
+                  "compression": {
+                    "const": "none",
+                    "default": "none",
+                    "description": "Artifact input must be stored without transport compression."
+                  }
+                },
+                "required": [
+                  "artifact_id",
+                  "sha256",
+                  "size_bytes",
+                  "media_type",
+                  "compression"
+                ],
+                "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+              }
+            ],
+            "description": "Reference image or MP4 selected by mode. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+            "x-fs2-artifact-materialization": "data-url",
+            "x-fs2-artifact-max-bytes": 536870912,
+            "x-fs2-artifact-media-types": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "video/mp4",
+              "application/mp4"
+            ]
+          },
+          "vision_path": {
+            "type": "string",
+            "description": "Deprecated compatibility alias for input_reference. Only an HTTPS URL is accepted; a customer-local path never is.",
+            "pattern": "^https://",
+            "maxLength": 4096
+          },
+          "controls": {
+            "type": "array",
+            "description": "One or more typed transfer controls.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "control_type": {
+                  "type": "string",
+                  "description": "Transfer representation supplied to Cosmos.",
+                  "enum": [
+                    "edge",
+                    "blur",
+                    "depth",
+                    "seg",
+                    "wsm"
+                  ]
+                },
+                "reference": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "description": "Optional control image/video. Required for depth, segmentation and WSM; edge/blur may derive from input_reference. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected.",
+                      "pattern": "^https://",
+                      "maxLength": 4096
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "artifact_id": {
+                          "type": "string",
+                          "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "sha256": {
+                          "type": "string",
+                          "description": "SHA-256 of the exact uploaded bytes.",
+                          "pattern": "^[0-9a-f]{64}$"
+                        },
+                        "size_bytes": {
+                          "type": "integer",
+                          "description": "Exact uploaded byte count.",
+                          "minimum": 0
+                        },
+                        "media_type": {
+                          "type": "string",
+                          "description": "Media type of the uploaded bytes.",
+                          "enum": [
+                            "image/jpeg",
+                            "image/png",
+                            "image/webp",
+                            "video/mp4",
+                            "application/mp4"
+                          ]
+                        },
+                        "compression": {
+                          "const": "none",
+                          "default": "none",
+                          "description": "Artifact input must be stored without transport compression."
+                        }
+                      },
+                      "required": [
+                        "artifact_id",
+                        "sha256",
+                        "size_bytes",
+                        "media_type",
+                        "compression"
+                      ],
+                      "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                    }
+                  ],
+                  "description": "Optional control image/video. Required for depth, segmentation and WSM; edge/blur may derive from input_reference. Use the final immutable HTTPS URL; redirects and customer-local paths are rejected. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+                  "x-fs2-artifact-materialization": "data-url",
+                  "x-fs2-artifact-max-bytes": 134217728,
+                  "x-fs2-artifact-media-types": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "video/mp4",
+                    "application/mp4"
+                  ]
+                },
+                "control_weight": {
+                  "type": "number",
+                  "description": "Nonnegative relative control weight; at least one selected control must be positive.",
+                  "minimum": 0,
+                  "maximum": 100,
+                  "default": 1
+                },
+                "edge_threshold": {
+                  "type": "string",
+                  "description": "Edge extraction preset; valid only for edge control.",
+                  "enum": [
+                    "none",
+                    "very_low",
+                    "low",
+                    "medium",
+                    "high",
+                    "very_high"
+                  ]
+                },
+                "blur_strength": {
+                  "type": "string",
+                  "description": "Blur extraction preset; valid only for blur control.",
+                  "enum": [
+                    "none",
+                    "very_low",
+                    "low",
+                    "medium",
+                    "high",
+                    "very_high"
+                  ]
+                }
+              },
+              "required": [
+                "control_type"
+              ],
+              "description": "One typed transfer control. Control types may not repeat in a request.",
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "control_type": {
+                        "enum": [
+                          "depth",
+                          "seg",
+                          "wsm"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "control_type"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "reference"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "control_type": {
+                        "not": {
+                          "const": "edge"
+                        }
+                      }
+                    },
+                    "required": [
+                      "control_type"
+                    ]
+                  },
+                  "then": {
+                    "not": {
+                      "required": [
+                        "edge_threshold"
+                      ]
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "control_type": {
+                        "not": {
+                          "const": "blur"
+                        }
+                      }
+                    },
+                    "required": [
+                      "control_type"
+                    ]
+                  },
+                  "then": {
+                    "not": {
+                      "required": [
+                        "blur_strength"
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 5
+          },
+          "resolution": {
+            "type": "integer",
+            "description": "Legacy transfer resolution hint retained for compatibility. The hosted runtime uses explicit size for output dimensions (448x256 when omitted); this hint does not preserve source aspect ratio.",
+            "enum": [
+              256,
+              480,
+              704,
+              720
+            ],
+            "default": 480
+          },
+          "control_guidance": {
+            "type": "number",
+            "description": "Transfer control guidance strength.",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 1.5
+          },
+          "control_guidance_interval": {
+            "type": "array",
+            "description": "Ordered [start,end] transfer-guidance interval.",
+            "items": {
+              "type": "number",
+              "description": "Inclusive denoising fraction.",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "num_video_frames_per_chunk": {
+            "type": "integer",
+            "description": "Transfer chunk size.",
+            "minimum": 5,
+            "maximum": 400,
+            "default": 93
+          },
+          "num_conditional_frames": {
+            "type": "integer",
+            "description": "Conditional frames per transfer chunk.",
+            "minimum": 1,
+            "maximum": 16,
+            "default": 1
+          },
+          "num_first_chunk_conditional_frames": {
+            "type": "integer",
+            "description": "Additional first-chunk conditional frames.",
+            "minimum": 0,
+            "maximum": 16,
+            "default": 0
+          },
+          "share_vision_temporal_positions": {
+            "type": "boolean",
+            "description": "Share control/target temporal positions in transfer mode.",
+            "default": true
+          },
+          "emphasize_control_in_prompt": {
+            "type": "boolean",
+            "description": "Append the pinned control-adherence directive in transfer mode.",
+            "default": true
+          },
+          "idempotency_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 8,
+            "maxLength": 200,
+            "description": "Reuse this key when retrying the same submission to avoid duplicate work."
+          },
+          "wait_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 30,
+            "default": 0,
+            "description": "Wait briefly for completion; otherwise poll get_operation using the returned operation ID."
+          }
+        },
+        "required": [
+          "prompt",
+          "controls"
+        ],
+        "description": "Typed transfer-video inputs for the pinned Cosmos3 Nano runtime.",
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "input_reference",
+                "vision_path"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
