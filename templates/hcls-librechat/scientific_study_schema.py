@@ -173,7 +173,7 @@ PHASE_OUTPUTS = {
     'proteinmpnn-input': (['input.json', 'backbone.pdb', 'provenance.json', 'report.md'], []),
     'esmfold2-fast-input': (['input.json', 'parameters.json', 'selected.fasta', 'backbone.pdb', 'provenance.json', 'report.md'], []),
     'design-refold-correspondence': (['reference.pdb', 'prediction.structure', 'prediction-result.json', 'residue-map.json', 'provenance.json', 'report.md'], []),
-    'structure': (['metrics.json', 'residue-mapping.json', 'report.md', 'methods.md'], ['prediction.pdb OR prediction.cif according to the actual selected coordinates.']),
+    'structure': (['metrics.json', 'residue-mapping.json', 'report.md', 'methods.md', 'prediction.structure'], ['prediction.structure is a verified logical file key resolving to the original prediction.pdb OR prediction.cif path according to the selected coordinate bytes; no conversion or filename/MIME relabeling. Use the stable key for future inputs and deliverables. Legacy format-specific files remain available once materialized.']),
     'docking': (['metrics.json', 'rows.csv', 'report.md'], []),
     'docking-batch': (['metrics.json', 'rows.csv', 'report.md'], []),
     'aging': (['metrics.json', 'rows.csv', 'report.md'], []),
@@ -207,6 +207,10 @@ PHASE_OUTPUT_ALTERNATIVES = {
     'evo2-continuation': ['helper-input.json'],
 }
 PHASE_OUTPUT_PATTERNS = {'batch': [r'output-(?:[0-9]{2}|[1-9][0-9]{2,})\.artifact']}
+# Only these conditional names have a guaranteed, byte-preserving logical key.
+# Other dynamic/conditional helper contracts are deliberately unchanged.
+PHASE_STABLE_OUTPUT_REFERENCES = {'structure': {
+    'prediction.pdb': 'prediction.structure', 'prediction.cif': 'prediction.structure'}}
 
 
 def output_contract_name(step):
@@ -247,6 +251,8 @@ def describe_workflow(methods=None):
         'phases': {name: {'step_schema': contracts[name],
                          'always_on_success': PHASE_OUTPUTS[name][0], 'conditional': PHASE_OUTPUTS[name][1],
                          'directories_not_deliverable_files': PHASE_OUTPUT_DIRECTORIES.get(name, []),
+                         **({'future_file_references': PHASE_STABLE_OUTPUT_REFERENCES[name]}
+                            if name in PHASE_STABLE_OUTPUT_REFERENCES else {}),
                          **({'possible_exact_files': PHASE_OUTPUTS[name][0] + PHASE_OUTPUT_ALTERNATIVES[name]}
                             if name in PHASE_OUTPUT_ALTERNATIVES else {}),
                          **({'possible_filename_fullmatch_patterns': PHASE_OUTPUT_PATTERNS[name]}

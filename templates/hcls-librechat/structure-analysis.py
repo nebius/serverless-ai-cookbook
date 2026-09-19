@@ -453,10 +453,12 @@ def main():
         metrics['confidence_binding'] = {'status': 'unavailable_no_structure_bound_evidence',
             'scope': 'Any inline native result confidence is retained separately; no selected sample association is inferred.'}
     request_bytes = args.request_file.read_bytes() if args.request_file else None
+    prediction_format = 'mmcif' if is_mmcif(prediction_text) else 'pdb'
     metrics['sampling_provenance'] = sampling_provenance(request_bytes, args.structure_index)
     metrics['provenance'] = {'reference_file': str(args.reference),
                              'reference_sha256': hashlib.sha256(reference_bytes).hexdigest(),
                              'prediction_sha256': hashlib.sha256(prediction_text.encode()).hexdigest(),
+                             'prediction_format': prediction_format,
                              'result_file': str(args.result) if args.result else None,
                              'result_sha256': hashlib.sha256(result_bytes).hexdigest() if result_bytes is not None else None,
                              'confidence_result_file': str(confidence_path) if confidence_path else None,
@@ -469,7 +471,7 @@ def main():
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for filename, data in [('metrics.json', metrics), ('residue-mapping.json', mapping)]:
         (args.output_dir / filename).write_text(json.dumps(data, indent=2, allow_nan=False) + '\n')
-    suffix = 'cif' if is_mmcif(prediction_text) else 'pdb'
+    suffix = 'cif' if prediction_format == 'mmcif' else 'pdb'
     (args.output_dir / ('prediction.' + suffix)).write_bytes(prediction_text.encode('utf-8'))
     (args.output_dir / 'report.md').write_text(report_markdown(metrics), encoding='utf-8')
     correspondence_method = (

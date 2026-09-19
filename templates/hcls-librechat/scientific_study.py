@@ -120,9 +120,17 @@ def known_output_reference(value, steps):
     """Reject known impossible names before any model admission; never rename."""
     if not isinstance(value, dict):
         return
-    from scientific_study_schema import known_output_files, output_contract_name, PHASE_OUTPUT_PATTERNS
+    from scientific_study_schema import (known_output_files, output_contract_name,
+        PHASE_OUTPUT_PATTERNS, PHASE_STABLE_OUTPUT_REFERENCES)
     source = steps[value['step']]
     contract = output_contract_name(source)
+    stable = PHASE_STABLE_OUTPUT_REFERENCES.get(contract, {}).get(value['file'])
+    if stable:
+        raise ValueError(
+            f"Step {value['step']} ({contract}) publishes {value['file']!r} only for its actual coordinate format. "
+            f"For a required future input or deliverable use file:{stable!r}; it resolves to the verified "
+            'original coordinate path and format without converting or renaming bytes. '
+            'Already materialized files remain valid literal inputs; no study has been admitted.')
     possible = known_output_files(source)
     patterns = PHASE_OUTPUT_PATTERNS.get(contract, [])
     if (possible is not None and value['file'] not in possible
@@ -714,6 +722,20 @@ def run_local(step, record):
                 files[name] = persist_local_file(source, generation / name)
         if not files:
             raise RuntimeError('Deterministic phase produced no files.')
+        if method == 'structure':
+            selected = [name for name in ('prediction.pdb', 'prediction.cif') if name in files]
+            if len(selected) != 1:
+                raise ValueError('Structural comparison must publish one actual coordinate format.')
+            original = selected[0]
+            coordinate_format = 'mmcif' if original.endswith('.cif') else 'pdb'
+            provenance = json.loads(Path(files['metrics.json']['path']).read_bytes())['provenance']
+            if (provenance.get('prediction_sha256') != files[original]['sha256']
+                    or provenance.get('prediction_format') != coordinate_format):
+                raise ValueError('Structural output format/hash differs from its measured provenance.')
+            # A logical key, not another file: downstream resolution, downloads
+            # and viewers keep the original .pdb/.cif path and exact bytes.
+            files['prediction.structure'] = {**files[original], 'coordinate_format': coordinate_format,
+                                             'original_file': original}
         result = {'state': 'completed', 'files': files, 'method': method,
                   'helper_sha256': file_measurement(HELPERS[method])[1] if method in HELPERS else file_measurement(HERE / 'scientific_preparation.py')[1]}
         if method == 'design-refold-correspondence':
