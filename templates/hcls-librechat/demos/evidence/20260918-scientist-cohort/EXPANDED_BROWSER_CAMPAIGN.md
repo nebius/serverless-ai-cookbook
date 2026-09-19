@@ -1,11 +1,39 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 03:56 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 04:05 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### Backend179 targeted discovery verified independently
+
+Authenticated read-only MCP checks under scientist10 at04:01UTC confirm the
+new selectors are present in the live tool schema. Canonical compact JSON
+sizes (not the earlier chat wrapper's serialized sizes) are:
+
+| Model | Full response | Summary | Exact selected response |
+| --- | ---: | ---: | ---: |
+| Cosmos3 Nano | 55,820 B / six contracts | 795 B | 9,022 B / transfer-video only |
+| Cosmos3 LeRobot | 15,232 B / one contract | 185 B | 15,232 B / unchanged single contract |
+
+The selected contract is exactly equal to its full-response sibling. Shared
+artifact policies and active-runtime metadata remain unchanged; summaries
+omit input schemas. Fresh tools/list before and after returns61 tools with
+identical canonical SHA256
+`8ac1f0def16d9f6150d103605dc10d48d17d6eedc871118286508bfd6141d215`.
+Full protected responses, sizes, hashes and equality assertions are retained
+in`Q/browser-evidence/mcp-discovery-r179`. This checks discovery, not model
+inference, planner completion or v41 deployment.
+
+One separately authorized **scripted API/MCP** LeRobot cohort is now pending,
+using the immutable v41 helper with recorded sourceSHA1721d401… and the prior
+whole-sequence edge-transfer controls: episodes0/1, high camera only,
+wrist/actions preserved, seed20260919,35steps. Evidence is retained under
+`Q/browser-evidence/scientist-10-scripted-lerobot-r179`. It cannot satisfy the
+blocked natural LibreChat/v41 acceptance gate. The frozen natural prompt has
+not changed or been submitted; Serverless deployment is still blocked below.
 
 ### v41 immutable candidate: deployment blocked, not accepted
 
