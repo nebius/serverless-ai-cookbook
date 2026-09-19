@@ -1,5 +1,7 @@
 # Fenced workspace-file links: v44 candidate
 
+Subsequent live gate: **failed**. The actual Markdown highlighter supplied span children, so no links appeared. Preserve the offline results below as their original bounded evidence, not a live pass. See the [failed browser gate](../20260919-workspace-fenced-links-v44-live/README.md) and [highlight-aware v45 successor](../20260919-workspace-fenced-links-v45/README.md).
+
 As of 2026-09-19 05:45:57 UTC. This is a narrowly tested UI repair, not a new model or scientific qualification. Live authenticated-browser acceptance is a separate deployment gate owned by the workbench lane.
 
 ## Customer failure and change
