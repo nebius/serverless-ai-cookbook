@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 01:06 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 01:21 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -70,8 +70,27 @@ file links by normalizing to the existing authenticated bucket-relative route;
 it does not change ownership, server path containment, permissions or budgets.
 Thirty-one focused tests pass, including exact Unicode filenames, canonical and
 mount-path links, missing files and traversal not resolving to an allowed file.
-Actual failed-link replay on its immutable preview remains required; no planner
-change or further planner experiment is planned.
+Published v34 source `d68e4c2b21ff2f7e0e1b35b86dac8cc79c0039f8`, index digest
+`sha256:9ca7f991832528b4ebe32fac3333d14caed796cee0eaec70a3c768eda84f5b87`,
+passed actual failed-link replay on isolated06 `aiendpoint-e00gzbknh87ykz32by`:
+the exact original query now downloads the unchanged9,255-byte report/hash.
+This closes the link defect, not its unsupported prose or script failures.
+All15 captured active-context events included the assembler among44 tools;
+its nonuse is not explained by missing deployment. No planner change or further
+planner experiment is planned.
+
+Fresh v34 integrated02 heteromer and07 aging studies are assigned to this lane.
+Their original natural prompts differ only in fresh output directories; the
+frozen source inputs are13 files/545,899 bytes and4 files/10,700,249 bytes.
+New preview creation hit repeated provider `Internal` errors before admission;
+the provider does not expose an image/configuration update method. This is an
+unclassified cloud setup failure, **not a proven quota boundary**. Parent
+explicitly approved replacing only two obsolete campaign previews after exact
+configuration/history backups: `aiendpoint-e00zt59r50kqej7p0v` and
+`aiendpoint-e00ghb271316bkv64f`. Each has zero conversations with exhausted cursor;
+49/224 visible operations are terminal. Deletion is in progress; buckets,
+secrets, newer evidence-bearing previews and production are untouched. Protected
+backup receipts include restoration configuration. No limits are raised.
 
 ### Latest release gate: v31 raw results correct, combined report malformed
 
