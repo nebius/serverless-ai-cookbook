@@ -282,3 +282,56 @@ including remaining BoltzGen protocol/RFdiffusion motif gaps, Proteina public
 variant failures and MolMIM finite-search exhaustion. Source coverage refresh is
 not a requalification of every release. Existing MSA/refold campaigns and other
 customer work continue; the review deadline remains06:04UTC.
+
+## Checkpoint at approximately 00:44 UTC, 19 September
+
+- Fresh scientist07 v30 completed the four-call aging study in one natural
+  chat turn,00:10:22.873–00:12:31.704UTC. Downloaded input/result byte hashes,
+  every exported CSV row and reference recomputation agree:32 PhenoAge rows
+  within3.02e-14years and17 AltumAge rows within1.553e-5years. The actual report
+  correctly separates modalities, declares the one overlapping sample and
+  avoids a clinical-validity claim. This narrow workflow passes; no general
+  agent or all-scientist qualification follows from it.
+- Fresh scientist06 v31 completed its five intended model operations in
+  99.387s from first admission to last completion with no MCP observation
+  timeout. All16 pose metrics and16 molecular-property rows were independently
+  verified. It needed one continuation and wrote a malformed summary table.
+  A subsequent v32 read-only recovery still rewrote tables/narrative incorrectly.
+  The new deterministic report assembler is separately verified live against
+  source bytes; natural adoption and a matched planner-model comparison remain
+  in progress. These are not clean end-to-end passes.
+- Strict ordinary Cosmos snapshot requests passed on new physical H100s:
+  original accepted-to-complete64.303s (ready48.325s,inference15.939s), held-out
+  shape43.162s, and recorded LeRobot parent174.54s. Restoration actually used
+  the exact warmed snapshot with fresh-load fallback forbidden. Original
+  CRIU29.390s+CUDA5.314s is a restore-phase measurement, not total cold start.
+  The dataset preserved all6,144 non-video values,128 frames,two episodes and
+  two cameras; motion/appearance correctness remains a separate unmet gate.
+- Nine dedicated native Cosmos cases decode successfully across T2I,T2V,I2V,
+  V2V,two geometries/frame rates and generated audio. These output-contract
+  checks do not establish action-aligned robotics augmentation.
+- Source3466eb493 contains the repaired Proteina runtime selection, explicit
+  transfer size and complete LeRobot schema/example. Imageaf687f0860cc was
+  deployed to healthy serving replicas during Helm171, but the observer
+  DaemonSet stalled on another already-deleting Pod on a STOPPED node.
+  The unchanged10-minute deadline expired.172 automatic rollback is in progress.
+  The node returned and removed its obsolete observer naturally before any
+  requested force-removal approval/action. Do not describe171 as settled.
+- BoltzGen's new small-molecule protocol completed all eight public stages in
+  1,210.64s and retained exact ligand heavy-atom identity/basic structure checks.
+  A peptide case completed764.68s; its first independent verdict was wrong
+  because the fixture expected unresolved terminal residues that pinned
+  upstream explicitly removes. A separately labelled, source-backed evaluation
+  correction preserves the original manifest/result/failed verdict, without
+  a repeated model call. Neither case establishes binding efficacy.
+
+| ID | Additional observation | Classification and current action |
+| --- | --- | --- |
+| Q54 | Identical DiffDock request bytes/seed19 gave substantially different poses on the same live Pod and GPU. | Request seeds reached Torch/NumPy but not RDKit ETKDG preprocessing. Candidate6302f8eb9 explicitly propagates the seed, retaining retry count and weights. Isolated24-call/12-pair H100 test makes all preprocessing repeats byte-identical;6/12 GPU pairs still exceed the predeclared0.01Å/0.001confidence numerical thresholds (largest coordinate difference0.0352Å). Results preserved; c49c8567a selects deterministic CUDA kernels and is awaiting matched GPU replay. Live runtime unchanged; no old snapshot qualification inherited. |
+| Q55 | LeRobot edge-transfer coordinator omitted exact size and silently resized returned448x256 video to640x480. Dataset readback alone concealed the lower-resolution model result. | Raw child artifacts and exact old coordinator prove the defect. A new coordinator preserves size and rejects unrequested dimension/FPS/frame-count changes without resizing.48 focused and29 reader tests pass; exact-image replay/public successor qualification pending. Historical format-only passes are not silently relabelled full acceptance. |
+| Q56 | Default V2V keeps only first-frame conditioning; generated robot motion can diverge although actions/timestamps remain numerically unchanged. | Real decoded-frame inspection and pinned upstream semantics confirm this is not full-clip action-aligned augmentation. Full-video transfer preserves motion better in exploratory flow measurements, but old geometry distortion and altered objects prevent policy-readiness claims. Truthful tool/provenance descriptions and a bounded exact-size transfer quality comparison are underway. |
+
+No quotas, customer concurrency, transport deadlines, reasoning/output budgets
+or rollout limits were raised. The first completed isolated DiffDock Pod and
+ConfigMap were removed normally after all logs, outputs and hashes were saved;
+the test is reproducible from the retained immutable image and manifest.
