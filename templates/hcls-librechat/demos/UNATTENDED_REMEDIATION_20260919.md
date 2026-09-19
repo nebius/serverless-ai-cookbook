@@ -58,6 +58,53 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 In progress. This is not a final readiness claim.
 
+### 19:49 UTC — all five v56 replacements deployed; delivery defects isolated
+
+All five affected test users now have separate, configured v56 instances with
+the exact published image and verified tenant bucket. Provider Internal errors
+were reconciled against exact-name inventory before bounded explicit retries;
+their cause is not proven. The five replaced v54 endpoints are confirmed absent.
+Archives and buckets remain; endpoint IDs and local databases are not recoverable.
+The other five v54 test instances and Rene's original instance remain unchanged.
+
+The current v56 results are deliberately separated from model-call success:
+
+| Scientist | Current evidence | Remaining issue |
+| --- | --- | --- |
+|02 structures|All four model calls and four independently recomputed structure analyses succeeded; 21 retained partial files downloaded in UI|Final publication promised a nonexistent native `input.json`; the Study failed|
+|03 design|Proteina succeeded; BoltzGen was still running at the latest observation|Terminal design analysis and downloads pending|
+|06 genomics|Complete 14-phase Study, 12 exact Evo2 cases, independently verified arithmetic, five actual UI downloads, completion after browser close|Passed this exact release/workflow only|
+|08 clinical|All five phases completed; exact WER/source-selection checks; eight final and 20 separately navigated phase downloads verified|Final downloads omitted drafts/transcripts/review files and outcome summaries lacked measured coverage|
+|10 robotics|Saved old cancellation automatically reconciled, queue unblocked, no new cancellation/model requests|The new r8 Study failed with an ExceptionGroup before recorded steps; diagnosis pending|
+
+The genomics Study took403.874 seconds accepted-to-finished, not a cold-start
+measurement. Clinical literal source selection is not evidence of medical
+completeness or validated clinical adequacy. Poor structure agreement is retained,
+including approximately17 Å Protenix global RMSD and no recovered reference
+contacts in these two cases.
+
+The clinical source fix is committed as `d28ecd3`: measured outcomes and an
+explicit verified customer-artifact registration contract. Shared publication,
+known native/batch output contracts, and confidence/request provenance are being
+combined in one successor; none is counted as deployed yet. The robotics
+failure remains unchanged for diagnosis. Its initial launcher failed before any
+submission because an observer refreshed a cached browser cookie; after fresh
+state loading, exactly one original prompt was sent. No disconnect proof is
+claimed for that already-terminal Study.
+
+Four expired disposable test keys were replaced through the supported API with
+unchanged identity, grants, concurrency and budgets, completing a separate
+ten-user successor credential manifest. Old identities/history remain distinct.
+All five successful v54 archives are now prepared; four require explicitly
+operator-only original-key ledger/local-owner evidence because the expired
+upstream key also blocks their Study/workshop read APIs. This is not a customer
+history or transparent key-rotation pass. No customer credentials changed.
+
+One combined successor and its unchanged-release ten-user customer cohorts are
+next. No additional v56 instances will be launched for the other five users.
+Rene's cloud migration remains held until the final candidate qualifies; local
+migration evidence alone does not authorize a customer-ready claim.
+
 ### 19:14 UTC — combined v56 tested; replacement creation errors
 
 The complete v54/r7 cohort is terminal:01,04,05,07,09 delivered independently
