@@ -26,6 +26,39 @@ def test_packaged_helper_and_skill_use_one_canonical_batch_implementation():
     assert 'workbench_get_operation_result' in skill
 
 
+def test_uploaded_bundle_placeholder_uses_verified_reference_without_mutating_input():
+    parameters = {'source': {'kind': 'uploaded-bundle'}, 'augmentation': {'mode': 'transfer'}}
+    artifact = {'artifact_id': 'verified-source', 'sha256': 'a' * 64,
+                'size_bytes': 1234, 'media_type': 'application/x-tar', 'compression': 'zstd'}
+    bound = client.bind_uploaded_source(parameters, artifact)
+    assert bound['source'] == {'kind': 'uploaded-bundle', **artifact}
+    assert bound['augmentation'] == parameters['augmentation']
+    assert parameters['source'] == {'kind': 'uploaded-bundle'}
+    # A stale supplied ID is never preferred over the hash-verified source.
+    stale = {**parameters, 'source': {'kind': 'uploaded-bundle', 'artifact_id': 'old'}}
+    assert client.bind_uploaded_source(stale, artifact)['source']['artifact_id'] == 'verified-source'
+    reference_source = {'source': {'kind': 'huggingface', 'repo_id': 'public/data'}}
+    assert client.bind_uploaded_source(reference_source, artifact) is reference_source
+    assert client.bind_uploaded_source({'seed': 7}, artifact) == {'seed': 7}
+
+
+def test_uploaded_bundle_help_and_typed_schema_explain_existing_binding():
+    import subprocess
+    help_text = subprocess.check_output([sys.executable, str(ROOT / 'scripts/scientific-batch-acceptance.py'), '--help'], text=True)
+    assert 'uploaded-bundle' in help_text and 'injects' in help_text
+    execution_spec = importlib.util.spec_from_file_location('binding_execution', ROOT / 'execution-mcp.py')
+    execution = importlib.util.module_from_spec(execution_spec)
+    execution_spec.loader.exec_module(execution)
+    description = execution.BATCH_STEP_SCHEMA['properties']['parameters_file']['description']
+    assert 'uploaded-bundle' in description and 'finalized source_file' in description
+    instructions = (ROOT.parents[1] / 'life-science/bionemo-librechat/scientific-agent-instructions.md').read_text()
+    assert 'pass `tool_name`' in instructions
+    skill = (ROOT.parents[1] / 'life-science/bionemo-librechat/skills/generative-media/SKILL.md').read_text()
+    assert 'tool_name="cosmos3_nano_transfer_video"' in skill
+    assert 'submit_cosmos3_lerobot_augmentation' in skill
+    assert 'run_scientific_workflow' in skill
+
+
 def test_batch_upload_hashes_and_verifies_exact_compressed_file():
     data = b'bounded exact scientific bundle fixture\x00\xff'
     calls = []

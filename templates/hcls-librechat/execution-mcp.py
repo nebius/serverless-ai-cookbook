@@ -39,7 +39,7 @@ BATCH_STEP_SCHEMA = {'type': 'object', 'additionalProperties': False, 'required'
     'properties': {**STEP_COMMON, **{name: TEXT for name in BATCH_REQUIRED + BATCH_OPTIONAL},
         'kind': {'const': 'batch'},
         'source_file': {**TEXT, 'description': 'Existing source file: absolute /workspace/... or relative to /workspace, NOT output_directory.'},
-        'parameters_file': {**TEXT, 'description': 'Existing JSON parameter file using the selected live contract: absolute /workspace/... or relative to /workspace, NOT output_directory.'},
+        'parameters_file': {**TEXT, 'description': 'Existing JSON parameter file using the selected live contract: absolute /workspace/... or relative to /workspace, NOT output_directory. For uploaded-bundle set source={"kind":"uploaded-bundle"}; the client fills the exact finalized source_file artifact fields before validation/submission. Do not invent artifact IDs or read helper implementation to construct them.'},
         'entry_name': {**TEXT, 'description': 'Exact logical name from get_model_schema.input_artifact_contract, NOT a filename or run ID. Select entry, operation-specific entry or source_kinds entry as published.'},
         'semantic_type': {**TEXT, 'description': 'Exact semantic_type in the published input_artifact_contract; never construct one from a model name.'},
         'media_type': {**TEXT, 'description': 'Published media type of source_file bytes, for example application/json. NOT the outer scientific-manifest media type.'},

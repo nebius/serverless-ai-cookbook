@@ -1,11 +1,63 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 03:24 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 03:53 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### v39 robotics preparation failure and bounded source repairs
+
+After backend178/Q64 activation, the original natural robotics prompt (only
+output path changed, SHA256 b923f6c8f50dd196e933faa7c620f4e927b06f10710b5ca3e836ce424709f64e)
+was submitted to frozen v39/DeepSeek0813. Conversation
+ab2e9c75-e5c2-52d6-b506-9baae154e0fe, first turn03:33:31.013–03:35:50.144,
+24 tool calls, correctly selected whole-sequence transfer for both legs but
+ended before any upload/inference. It inspected helper implementations to learn
+whether source artifact fields were injected. Native Cosmos discovery alone
+returned107,385 serialized bytes across six sibling contracts; LeRobot27,628.
+Two invalid short-name tool calls self-corrected. These are preparation/agent
+usability failures, not capacity waits or a completed scientific result.
+
+An ordinary continuation03:37:11.111–03:38:27.442 made seven read-only calls
+mostly inspecting older v36/v37 receipts and ended without a usable answer.
+The UI visibly marks it incomplete and points to Runs; the saved message has
+unfinished=true. No v39 output directory or new operation exists. Optional
+provider response-size diagnostics were not enabled on this preview, so
+finish_reason/usage are unavailable; endpoint logs show no corresponding
+provider exception. Do not invent a token-limit cause. Both full turns and logs
+remain in Q/browser-evidence/scientist-10-v39-{first,second}-turn.
+
+Source16b906a changes only the existing scientific artifact download transport:
+1MiB raw-byte chunks, exact declared-size/SHA256 bounds, local spool, exclusive
+atomic hardlink publication on POSIX or verified streamed copy on unsupported
+Object Storage mounts. Bucket publication is explicitly not called atomic.
+Existing files are never overwritten; interrupted network/hash/size failures
+leave no verified deliverable, and cleanup failure retains the original error
+plus the partial-file location.39 focused tests/Ruff pass, including actual
+HTTPX compressed raw encoding and a >64MiB transfer with <8MiB traced heap.
+The same public authenticated route downloaded the retained1,988,267B bundle
+SHA69d6569f14e8e8c942fb02293a9c8a3d091933acc421aaab9abe60c410b5d04b
+and reused it in1.536s, peak5,450,046 traced bytes, without new inference.
+This is source/local-public-route proof, not a deployed-bucket proof. v39
+remains unchanged. A bounded help/typed-schema repair documents the existing
+uploaded-bundle source placeholder; the next candidate will enable existing
+provider telemetry and use exact-contract discovery without raising budgets.
+
+Scientist02's additional explicit methodological review completed without new
+inference. Preserved original report now has a separate7,088B corrected version
+SHA5cc2512fe3f1a120aba2ac58714ee88ea9d16139b21261048c7fc2b72563056c,
+verified through the browser. Boltz requests have no seed field; Protenix uses7.
+Numeric results are unchanged. This required technical review is distinct from
+the earlier ordinary continuation, and is not a clean first-pass result.
+
+Independent retained v37 video checks agree with all reported RGB channel
+means, MAEs and changed-frame counts using the same FFmpeg decoding method.
+However, the report's mean_luma is actually an unweighted RGB channel mean,
+not decoded luminance. The original report remains unchanged; the corrected
+verification explicitly labels that quantity. Color averages do not establish
+lighting-only changes, temporal fidelity or visual-action alignment.
 
 ### Independently verified v37 deliverables and v39 successor
 

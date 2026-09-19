@@ -340,6 +340,18 @@ async def recover_completed(args) -> dict:
                 return receipt
 
 
+def bind_uploaded_source(parameters: dict, artifact: dict) -> dict:
+    """Resolve the documented uploaded-bundle placeholder, without editing input files.
+
+    Callers write source={kind: uploaded-bundle} in their parameter JSON. The
+    verified source upload/reuse supplies every artifact field; filenames and
+    guessed artifact IDs are never required in the parameter file.
+    """
+    if parameters.get('source', {}).get('kind') != 'uploaded-bundle':
+        return parameters
+    return {**parameters, 'source': {'kind': 'uploaded-bundle', **artifact}}
+
+
 async def run(args) -> dict:
     endpoint = os.environ["SCIENTIFIC_MODELS_MCP_URL"]
     key = os.environ["SCIENTIFIC_MODELS_API_KEY"]
@@ -396,9 +408,7 @@ async def run(args) -> dict:
                             args.idempotency_key + "-source")
                         save(receipt_path, receipt)
                     receipt['source_artifact'] = validate_source_reference(receipt['source_artifact'], source, args)
-                    if parameters.get("source", {}).get("kind") == "uploaded-bundle":
-                        parameters = {**parameters, "source": {
-                            "kind": "uploaded-bundle", **receipt["source_artifact"]}}
+                    parameters = bind_uploaded_source(parameters, receipt['source_artifact'])
                     manifest = {"schema": "fs2-serve.nebius.ai/scientific-artifact-manifest/v1",
                                 "manifest_id": receipt["manifest_id"], "entries": [{
                                     "name": args.entry_name, "semantic_type": args.semantic_type,
@@ -482,7 +492,8 @@ def main() -> None:
     parser.add_argument("--compression", choices=("none", "gzip", "zstd"), default="none")
     parser.add_argument("--entry-name", required=True)
     parser.add_argument("--semantic-type", required=True)
-    parser.add_argument("--parameters", required=True, type=Path)
+    parser.add_argument("--parameters", required=True, type=Path,
+                        help='Existing JSON parameter file. For an uploaded-bundle source, set source to {"kind":"uploaded-bundle"}; the client injects the exact finalized --source upload/reference before validation and submission. Do not invent artifact fields. Other source kinds retain their published contract.')
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--idempotency-key", required=True)
     parser.add_argument("--display-name", required=True)

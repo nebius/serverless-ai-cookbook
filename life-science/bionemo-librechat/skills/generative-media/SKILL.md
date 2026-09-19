@@ -47,6 +47,12 @@ continuation when full-clip preservation was requested. Explain a missing
 control mode before spending the customer's inference request. Do not invent
 depth/segmentation controls if those data were not supplied or validly derived.
 
+The published specialized native transfer tool is `cosmos3_nano_transfer_video`.
+Request `get_model_schema(model_id="cosmos3-nano", tool_name="cosmos3_nano_transfer_video")`
+to inspect that exact contract without every sibling mode. The file-based native
+client uses its generic `mode: transfer-video` representation outside chat;
+the specialized direct tool already selects its mode. Follow each live schema.
+
 For `cosmos3-lerobot-augmentation`, read its scientific schema and artifact
 contract. The current recorded-video path is `augmentation.mode: transfer`
 with supported `augmentation.conditioning.controls`, for example `edge`.
@@ -54,6 +60,16 @@ Select actual episodes/cameras, retain the original actions and state, and use
 the existing file-based batch helper with the exact published artifact roles.
 The native Cosmos transfer request has its own typed control-input fields;
 do not copy the LeRobot parameter shape into the native request.
+
+Use the existing typed `run_scientific_workflow` batch step with source_file
+pointing to the actual archive and parameters_file containing the scientific
+settings plus `"source":{"kind":"uploaded-bundle"}`. The client uploads the
+source and injects its verified artifact reference; do not invent an ID or read
+its implementation. For LeRobot, select the exact published
+`submit_cosmos3_lerobot_augmentation` contract. Native media inputs needing an
+artifact use the typed `upload_workspace_files` first, then the returned small
+reference in the native input_file. These are separate interfaces; do not
+pre-upload every scientific-batch source unnecessarily.
 
 Measure frame count, dimensions, FPS, episode/timestamp integrity, selected
 and unselected cameras, and exact non-video values. Inspect same-index frames
