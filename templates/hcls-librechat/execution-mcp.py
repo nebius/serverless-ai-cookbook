@@ -504,7 +504,8 @@ def main():
                 try:
                     value = handler(params.get('arguments', {}))
                     result = {'content': [{'type': 'text', 'text': json.dumps(value)}],
-                              'isError': value.get('status') in ('failed', 'timed_out', 'interrupted')}
+                              'isError': value.get('status') in ('failed', 'timed_out', 'interrupted') or
+                                  (params['name'] == 'compose_scientific_workflow' and value.get('validation_error') is not None)}
                 except (ValueError, KeyError, OSError) as error:
                     result = {'isError': True, 'content': [{'type': 'text', 'text': str(error)}]}
             else:

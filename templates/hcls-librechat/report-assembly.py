@@ -289,6 +289,44 @@ def publish_bundle(manifest_file, output_dir):
         'completion_manifest_sha256': digest(files['completion-manifest.json'])}
 
 
+def load_mindeval_records(records, base_directory):
+    """Shared read-only semantic preflight and renderer input; no publication.
+
+    Keep the exact native shape and score validator in one place. Compact
+    summaries cannot substitute for retained state/config/full transcript.
+    """
+    if not isinstance(records, list) or not records:
+        raise ValueError('MindEval records must be a nonempty list of full record files.')
+    loaded = []
+    for index, filename in enumerate(records):
+        if not isinstance(filename, str) or not filename:
+            raise ValueError('MindEval record paths must be nonempty strings.')
+        path = Path(filename)
+        path = path if path.is_absolute() else Path(base_directory) / path
+        label = f'MindEval records[{index}] ({path}): '
+        try:
+            raw = path.read_bytes()
+            run = json.loads(raw)
+        except (OSError, ValueError) as error:
+            raise ValueError(label + 'readable full native run JSON is required; select the saved record file, not a directory or summary.') from error
+        state = run.get('state') if isinstance(run, dict) else None
+        if not isinstance(state, dict) or not isinstance(state.get('config'), dict):
+            raise ValueError(label + 'requires full retained run.state/config, not a compact summary. Select the full saved native record with state.config and state.transcript; do not reconstruct it or submit new consultations.')
+        transcript = state.get('transcript')
+        if not isinstance(transcript, list) or not transcript:
+            raise ValueError(label + 'full record must retain its nonempty transcript. Select the original complete saved record, not a summary.')
+        if any(not isinstance(message, dict) or not isinstance(message.get('content'), str)
+               or not isinstance(message.get('role'), str) for message in transcript):
+            raise ValueError(label + 'transcript messages need literal content and role strings.')
+        judgment = {} if state.get('judgment') is None else state['judgment']
+        if not isinstance(judgment, dict):
+            raise ValueError(label + 'judgment envelope must be an object or absent; keep native state.judgment.judgment.')
+        loaded.append({'path': path, 'raw': raw, 'run': run})
+    payload = (json.dumps({'data': [item['run'] for item in loaded]}, ensure_ascii=False, allow_nan=False) + '\n').encode()
+    _, measurements = measurement_section('mindeval-runs', payload)  # Existing validation/algorithm.
+    return loaded, payload, measurements
+
+
 def publish_mindeval(plan_file, output_dir):
     """Collect frozen full records, reusing the existing measured-score renderer.
 
@@ -300,29 +338,13 @@ def publish_mindeval(plan_file, output_dir):
     plan = json.loads(plan_bytes)
     if not isinstance(plan, dict) or set(plan) != {'title', 'records'}:
         raise ValueError('MindEval plan requires exactly title and records.')
-    if not isinstance(plan['records'], list) or not plan['records']:
-        raise ValueError('MindEval records must be a nonempty list of full record files.')
+    loaded, payload, measurements = load_mindeval_records(plan['records'], plan_file.parent)
     runs, sources, extras, run_rows = [], [], {}, []
-    for index, filename in enumerate(plan['records']):
-        if not isinstance(filename, str) or not filename:
-            raise ValueError('MindEval record paths must be nonempty strings.')
-        path = Path(filename)
-        path = path if path.is_absolute() else plan_file.parent / path
-        raw = path.read_bytes()
-        run = json.loads(raw)
-        state = run.get('state') if isinstance(run, dict) else None
-        if not isinstance(state, dict) or not isinstance(state.get('config'), dict):
-            raise ValueError('MindEval requires full retained run.state/config, not a compact summary.')
-        transcript = state.get('transcript')
-        if not isinstance(transcript, list) or not transcript:
-            raise ValueError('MindEval full record must retain its nonempty transcript.')
-        if any(not isinstance(message, dict) or not isinstance(message.get('content'), str)
-               or not isinstance(message.get('role'), str) for message in transcript):
-            raise ValueError('MindEval transcript messages need literal content and role strings.')
-        config = state['config']
+    for index, item in enumerate(loaded):
+        path, raw, run = item['path'], item['raw'], item['run']
+        state = run['state']
+        config, transcript = state['config'], state['transcript']
         judgment = {} if state.get('judgment') is None else state['judgment']
-        if not isinstance(judgment, dict):
-            raise ValueError('MindEval judgment envelope must be an object or absent.')
         raw_name, text_name = f'records/{index:03d}.json', f'transcripts/{index:03d}.txt'
         extras[raw_name] = raw
         extras[text_name] = ''.join(f'[{number + 1}] {message["role"]}\n{message["content"]}\n\n'
@@ -336,8 +358,6 @@ def publish_mindeval(plan_file, output_dir):
             'judgment_state': 'supplied' if judgment.get('judgment') is not None else 'unavailable',
             'intervened': state.get('intervened'), 'record_file': raw_name, 'transcript_file': text_name})
         runs.append(run)
-    payload = (json.dumps({'data': runs}, ensure_ascii=False, allow_nan=False) + '\n').encode()
-    _, measurements = measurement_section('mindeval-runs', payload)  # Existing validation/algorithm.
     criteria = sorted({criterion for run in runs for criterion in
                        ((run['state'].get('judgment') or {}).get('judgment') or {})})
     score_rows = []

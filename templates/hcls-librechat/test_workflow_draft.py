@@ -321,7 +321,7 @@ def test_native_mindeval_plan_needs_two_small_calls_not_custom_program(mounted):
     records = []
     for number in range(6):
         path = mounted / f'record-{number}.json'
-        path.write_text(json.dumps({'state': {'config': {}, 'transcript': [{'role': 'patient', 'content': 'Retained'}],
+        path.write_text(json.dumps({'id': f'run-{number}', 'state': {'config': {}, 'transcript': [{'role': 'patient', 'content': 'Retained'}],
                                                   'judgment': {'judgment': {'criterion': 4}}}}))
         records.append(str(path))
     plan = {'schema': study.SCHEMA, 'title': 'Retained consultation analysis',

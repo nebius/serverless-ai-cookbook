@@ -154,7 +154,7 @@ def input_references(step):
 
 def validate(plan):
     from jsonschema import Draft202012Validator
-    from scientific_study_schema import STUDY_SCHEMA
+    from scientific_study_schema import STUDY_SCHEMA, PHASE_OUTPUT_DIRECTORIES
     problem = next(Draft202012Validator(STUDY_SCHEMA).iter_errors(plan), None)
     if problem:
         location = '.'.join(str(item) for item in problem.absolute_path) or 'study'
@@ -207,6 +207,22 @@ def validate(plan):
             if isinstance(value, str):
                 path = path_in_workspace(value)
                 inputs[str(path)] = measure(path)
+        if step.get('method') == 'mindeval':
+            # Existing files can be checked now; exact earlier-step outputs are
+            # checked by this same helper when they exist. Never guess bytes.
+            paths = [str(path_in_workspace(value)) for value in step['arguments']['records'] if isinstance(value, str)]
+            if paths:
+                spec = importlib.util.spec_from_file_location('study_mindeval_report', HELPERS['mindeval'])
+                helper = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(helper)
+                try:
+                    checked, _, _ = helper.load_mindeval_records(paths, workspace())
+                except ValueError as error:
+                    raise ValueError(f'Step {identifier}: {error}') from error
+                for item in checked:
+                    expected = inputs[str(item['path'])]
+                    if len(item['raw']) != expected['size_bytes'] or helper.digest(item['raw']) != expected['sha256']:
+                        raise ValueError(f'Step {identifier}: MindEval input changed during preflight; no study admitted.')
         earlier.add(identifier)
     deliverables = plan.get('deliverables')
     if not isinstance(deliverables, list) or not deliverables:
@@ -215,8 +231,16 @@ def validate(plan):
     for item in deliverables:
         if not isinstance(item, dict) or set(item) != {'name', 'role', 'source'} or not isinstance(item['name'], str) or not item['name'] or item['name'] in labels:
             raise ValueError('Deliverables need unique name, role and source file reference.')
+        if isinstance(item['source'], str) and path_in_workspace(item['source']).is_dir():
+            raise ValueError(f'Deliverable {item["name"]!r} is a directory, not a file; declare its concrete files separately.')
         file_reference(item['source'], earlier)
-        if not isinstance(item['source'], dict):
+        if isinstance(item['source'], dict):
+            source_step = next(step for step in plan['steps'] if step['id'] == item['source']['step'])
+            source_name = Path(item['source']['file']).as_posix()
+            known_directories = PHASE_OUTPUT_DIRECTORIES.get(source_step.get('method'), [])
+            if source_name == '.' or source_name in known_directories or item['source']['file'].endswith('/'):
+                raise ValueError(f'Deliverable {item["name"]!r} refers to output directory {item["source"]["file"]!r}, not a file. Declare concrete published files (for example records/000.json), not whole helper directories.')
+        else:
             path = path_in_workspace(item['source'])
             inputs[str(path)] = measure(path)
         labels.add(item['name'])

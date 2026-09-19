@@ -118,6 +118,9 @@ PHASE_OUTPUTS = {
                  ['records/NNN.json and transcripts/NNN.txt retain every full supplied record and transcript.']),
     'clinical-study': (['report.md', 'measurement.json', 'completion-manifest.json'], ['Per-case measurements and preserved input files follow the helper completion-manifest.']),
 }
+# Exact directory names published by these helpers, never downloadable files.
+# Unknown/dynamic outputs are not inferred from prose or forbidden here.
+PHASE_OUTPUT_DIRECTORIES = {'mindeval': ['records', 'transcripts'], 'report': ['sources']}
 
 
 def describe_workflow(methods=None):
@@ -131,7 +134,8 @@ def describe_workflow(methods=None):
         raise ValueError('Select each phase contract only once.')
     return {'schema': 'scientific-workflow-discovery/v1', 'study_schema': 'scientific-workflow/v2',
         'phases': {name: {'step_schema': contracts[name],
-                         'always_on_success': PHASE_OUTPUTS[name][0], 'conditional': PHASE_OUTPUTS[name][1]} for name in methods},
+                         'always_on_success': PHASE_OUTPUTS[name][0], 'conditional': PHASE_OUTPUTS[name][1],
+                         'directories_not_deliverable_files': PHASE_OUTPUT_DIRECTORIES.get(name, [])} for name in methods},
         'submission': {'tool': 'run_scientific_workflow_mcp_environment-execution',
                        'arguments': {'plan_file': '/workspace/research/plan.json', 'output_directory': '/workspace/research/final'}},
         'draft_composer': {'tool': 'compose_scientific_workflow_mcp_environment-execution',
