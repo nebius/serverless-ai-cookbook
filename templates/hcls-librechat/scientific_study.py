@@ -103,7 +103,28 @@ def file_reference(value, earlier):
             raise ValueError('Referenced output filename must be relative and cannot escape its step.')
         return
     if not path_in_workspace(value).is_file():
-        raise ValueError(f'Input file does not exist before admission: {value}')
+        raise ValueError(
+            f'Input file does not exist before admission: {value}. '
+            'Future outputs require an exact earlier-step reference {"step":"predict-a","file":"result.json"}, '
+            'not a predicted worker path or a steps directory. For Python analysis, declare one named input '
+            'per required file using inputs:[{"name":"result_a","file":{"step":"predict-a","file":"result.json"}}]; '
+            'use your actual step IDs and published filenames. Correct the saved draft through the composer; '
+            'do not edit immutable admitted plans.')
+
+
+def known_output_reference(value, steps):
+    """Reject known impossible names before any model admission; never rename."""
+    if not isinstance(value, dict):
+        return
+    from scientific_study_schema import known_output_files
+    source = steps[value['step']]
+    possible = known_output_files(source)
+    if possible is not None and value['file'] not in possible:
+        raise ValueError(
+            f"Step {value['step']} ({source['method']}) cannot publish {value['file']!r}. "
+            f"Use an exact published filename: {', '.join(sorted(possible))}. "
+            'Conditional coordinate formats are not guaranteed before their result exists; '
+            'no output has been renamed and no study has been admitted.')
 
 
 def input_references(step):
@@ -168,7 +189,7 @@ def validate(plan):
         raise ValueError('Give this study a meaningful title.')
     if not isinstance(plan.get('steps'), list) or not plan['steps']:
         raise ValueError('A study needs ordered preparation/model/analysis steps.')
-    earlier, inputs = set(), {}
+    earlier, inputs, by_id = set(), {}, {}
     workflow = workflow_module() if any(step.get('kind') in MODEL_KINDS for step in plan['steps']) else None
     for step in plan['steps']:
         identifier = step.get('id') if isinstance(step, dict) else None
@@ -204,6 +225,7 @@ def validate(plan):
             raise ValueError(f'Step {identifier}: kind must be preparation, native, batch, clinical or analysis.')
         for value in input_references(step):
             file_reference(value, earlier)
+            known_output_reference(value, by_id)
             if isinstance(value, str):
                 path = path_in_workspace(value)
                 inputs[str(path)] = measure(path)
@@ -232,6 +254,7 @@ def validate(plan):
                     if len(item['raw']) != expected['size_bytes'] or helper.digest(item['raw']) != expected['sha256']:
                         raise ValueError(f'Step {identifier}: MindEval input changed during preflight; no study admitted.')
         earlier.add(identifier)
+        by_id[identifier] = step
     deliverables = plan.get('deliverables')
     if not isinstance(deliverables, list) or not deliverables:
         raise ValueError('Declare the final files and report; inference completion alone is not whole-study completion.')
@@ -242,6 +265,7 @@ def validate(plan):
         if isinstance(item['source'], str) and path_in_workspace(item['source']).is_dir():
             raise ValueError(f'Deliverable {item["name"]!r} is a directory, not a file; declare its concrete files separately.')
         file_reference(item['source'], earlier)
+        known_output_reference(item['source'], by_id)
         if isinstance(item['source'], dict):
             source_step = next(step for step in plan['steps'] if step['id'] == item['source']['step'])
             source_name = Path(item['source']['file']).as_posix()

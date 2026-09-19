@@ -4,7 +4,7 @@ REPORT_HEADING = {**TEXT, 'pattern': r'\S', 'not': {'pattern': r'[\r\n]'},
     'description': 'Meaningful nonblank one-line heading without CR/LF. No arbitrary character-length cap; preserved verbatim.'}
 FILE = {'oneOf': [TEXT, {'type': 'object', 'additionalProperties': False,
     'required': ['step', 'file'], 'properties': {'step': TEXT, 'file': TEXT}}],
-    'description': 'Existing workspace path or exact earlier-step published file reference {step,file}; paths do not transform data.'}
+    'description': 'Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}.'}
 
 
 def object_schema(properties, required=None):
@@ -124,6 +124,34 @@ PHASE_OUTPUTS = {
 # Unknown/dynamic outputs are not inferred from prose or forbidden here.
 PHASE_OUTPUT_DIRECTORIES = {'mindeval': ['records', 'transcripts'], 'report': ['sources']}
 
+# Only helpers with an exhaustive output contract belong here. Model,
+# clinical and manifest-driven helper outputs remain dynamic, not guessed.
+PHASE_OUTPUT_ALTERNATIVES = {
+    'structure': ['prediction.pdb', 'prediction.cif'],
+    'proteinmpnn-input': [], 'esmfold2-fast-input': [],
+    'design-refold-correspondence': [],
+}
+
+
+def known_output_files(step):
+    """Possible exact files when the helper or saved plan determines them.
+
+    Possible is not guaranteed: structure emits one coordinate format. None
+    means this preflight cannot know the complete output set, not an error.
+    """
+    method = step.get('method')
+    if method in PHASE_OUTPUT_ALTERNATIVES:
+        return set(PHASE_OUTPUTS[method][0] + PHASE_OUTPUT_ALTERNATIVES[method])
+    args = step.get('arguments', {})
+    if method == 'write-json':
+        return {args['filename']}
+    if method == 'python-script':
+        return set(PHASE_OUTPUTS[method][0]) | set(args['outputs'])
+    if method == 'parquet-export':
+        return set(PHASE_OUTPUTS[method][0]) | {
+            'data.' + {'hdf5': 'h5'}.get(kind, kind) for kind in args['formats']}
+    return None
+
 
 def describe_workflow(methods=None):
     contracts = {item['properties'].get('method', item['properties']['kind']).get('const'): item for item in STEPS}
@@ -137,7 +165,9 @@ def describe_workflow(methods=None):
     return {'schema': 'scientific-workflow-discovery/v1', 'study_schema': 'scientific-workflow/v2',
         'phases': {name: {'step_schema': contracts[name],
                          'always_on_success': PHASE_OUTPUTS[name][0], 'conditional': PHASE_OUTPUTS[name][1],
-                         'directories_not_deliverable_files': PHASE_OUTPUT_DIRECTORIES.get(name, [])} for name in methods},
+                         'directories_not_deliverable_files': PHASE_OUTPUT_DIRECTORIES.get(name, []),
+                         **({'possible_exact_files': PHASE_OUTPUTS[name][0] + PHASE_OUTPUT_ALTERNATIVES[name]}
+                            if name in PHASE_OUTPUT_ALTERNATIVES else {})} for name in methods},
         'submission': {'tool': 'run_scientific_workflow_mcp_environment-execution',
                        'arguments': {'plan_file': '/workspace/research/plan.json', 'output_directory': '/workspace/research/final'}},
         'draft_composer': {'tool': 'compose_scientific_workflow_mcp_environment-execution',
@@ -147,4 +177,4 @@ def describe_workflow(methods=None):
                 'title': 'Retained measurements', 'sections': [{'title': 'Measured rows', 'format': 'csv', 'file': '/workspace/research/measurements.csv'}]}}],
             'deliverables': [{'name': name, 'role': role, 'source': {'step': 'report', 'file': name}}
                              for name, role in [('report.md', 'report'), ('provenance.json', 'provenance')]]},
-        'guidance': 'Example paths are placeholders: use actual existing files and user-authorized phases. Prefer the draft composer for longer plans; save unsupported-science Python source in bounded logical pieces before referencing it. File references are paths, not automatic content conversion. Declare only guaranteed outputs. Read-only reuse needs no provider catalog. Current model input/settings still come from its exact live published schema.'}
+        'guidance': 'Example paths are placeholders: use actual existing files and user-authorized phases. Prefer the draft composer for longer plans; save unsupported-science Python source in bounded logical pieces before referencing it. Future generated files require exact {step,file} references, not predicted worker paths or directories; bind each required Python input separately. Correct saved drafts only through the composer, never alter immutable admitted plans. File references are paths, not automatic content conversion. Declare only guaranteed outputs. Read-only reuse needs no provider catalog. Current model input/settings still come from its exact live published schema.'}
