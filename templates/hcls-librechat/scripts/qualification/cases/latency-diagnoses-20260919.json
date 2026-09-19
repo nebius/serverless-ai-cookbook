@@ -1,0 +1,23 @@
+{
+  "schema": "fs2.campaign-retained-diagnoses/v1",
+  "scope": "Explicit reviewed historical diagnoses, not an exhaustive failure inventory. Do not distribute total latency to causes without interval evidence.",
+  "operations": {
+    "405cc84b-9a5e-4311-b8d3-8275f7a21c7f": {
+      "cause_group": "capacity_loss_with_software_misclassification",
+      "summary": "The preemptible node shut down before the container started; explicit DeletionByTaintManager evidence was classified as nonretryable workload failure. Capacity loss itself is not a model defect; the failed retry/recovery classification is a software defect. Original failed run is preserved independently of later successful exact-input replays.",
+      "sources": [
+        {
+          "path": "/home/tux/secure-handoff/scientific-qualification-20260918/esmfold-preemption-diagnosis/public-result.json",
+          "sha256": "c7e6fd3283121521fbe7e4f923f842ee7bd9f0ae04001cffd6e59b6d18b9aad0",
+          "proves": "Original operation identity, timestamps, nonretryable WORKLOAD_FAILED; node cause comes from the separately reviewed Q44 diagnosis."
+        },
+        {
+          "path": "templates/hcls-librechat/demos/QUALIFICATION_DEFECTS_20260918.md",
+          "sha256": "b452d6e672aa3463bd782dc04cfe8ae3d1ca7bbd5b4d2ed88638cf4244fc8556",
+          "section": "Q44",
+          "proves": "Recorded node disruption and software misclassification diagnosis; document may receive later additive updates."
+        }
+      ]
+    }
+  }
+}
