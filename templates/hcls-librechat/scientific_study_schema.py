@@ -1,5 +1,7 @@
 """Typed launch contract shared by the existing execution MCP and its validator."""
 TEXT = {'type': 'string', 'minLength': 1}
+REPORT_HEADING = {**TEXT, 'pattern': r'\S', 'not': {'pattern': r'[\r\n]'},
+    'description': 'Meaningful nonblank one-line heading without CR/LF. No arbitrary character-length cap; preserved verbatim.'}
 FILE = {'oneOf': [TEXT, {'type': 'object', 'additionalProperties': False,
     'required': ['step', 'file'], 'properties': {'step': TEXT, 'file': TEXT}}],
     'description': 'Existing workspace path or exact earlier-step published file reference {step,file}; paths do not transform data.'}
@@ -70,10 +72,10 @@ STEPS = [NATIVE, BATCH, CLINICAL,
     local('aging', object_schema({'model': {'enum': ['phenoage', 'altumage']}, 'cohorts': {'type': 'array',
         'minItems': 1, 'items': object_schema({'label': TEXT, 'input_file': FILE, 'result_file': FILE})},
         'coefficient_version': TEXT, 'reference_ages': FILE}, ['model', 'cohorts'])),
-    local('report', object_schema({'title': TEXT, 'sections': {'type': 'array', 'minItems': 1,
-        'items': object_schema({'title': TEXT, 'file': FILE, 'format': {'enum': ['markdown', 'csv', 'operation-timing', 'recorded-export', 'rgb-statistics', 'mindeval-runs']}})}})),
+    local('report', object_schema({'title': REPORT_HEADING, 'sections': {'type': 'array', 'minItems': 1, 'maxItems': 16,
+        'items': object_schema({'title': REPORT_HEADING, 'file': FILE, 'format': {'enum': ['markdown', 'csv', 'operation-timing', 'recorded-export', 'rgb-statistics', 'mindeval-runs']}})}})),
     local('clinical-study', object_schema({'plan_file': FILE})),
-    local('mindeval', object_schema({'title': TEXT, 'records': {'type': 'array', 'minItems': 1,
+    local('mindeval', object_schema({'title': REPORT_HEADING, 'records': {'type': 'array', 'minItems': 1,
         'items': FILE, 'description': 'Full native saved run JSON: state.config, state.transcript[{role,content,...}], and optional state.judgment.judgment mapping criterion names to scores. This nested native judgment shape is directly supported: do NOT transform it into judgment.scores or write a custom parser. Preserves original records/transcripts, identities, supplied criterion rows, descriptive within-profile pairing, missing cells and judge-family limitations. No catalog/model calls.'}})),
 ]
 DELIVERABLE = object_schema({'name': TEXT,

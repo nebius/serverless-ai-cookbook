@@ -207,14 +207,22 @@ def validate(plan):
             if isinstance(value, str):
                 path = path_in_workspace(value)
                 inputs[str(path)] = measure(path)
+        if step.get('method') in {'report', 'mindeval'}:
+            spec = importlib.util.spec_from_file_location('study_report', HELPERS[step['method']])
+            helper = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(helper)
+            try:
+                if step['method'] == 'report':
+                    helper.validate_report_metadata(step['arguments']['title'], step['arguments']['sections'])
+                else:
+                    helper.validate_report_metadata(step['arguments']['title'])
+            except ValueError as error:
+                raise ValueError(f'Step {identifier}: {error}') from error
         if step.get('method') == 'mindeval':
             # Existing files can be checked now; exact earlier-step outputs are
             # checked by this same helper when they exist. Never guess bytes.
             paths = [str(path_in_workspace(value)) for value in step['arguments']['records'] if isinstance(value, str)]
             if paths:
-                spec = importlib.util.spec_from_file_location('study_mindeval_report', HELPERS['mindeval'])
-                helper = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(helper)
                 try:
                     checked, _, _ = helper.load_mindeval_records(paths, workspace())
                 except ValueError as error:

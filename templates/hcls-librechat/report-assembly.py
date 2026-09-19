@@ -186,17 +186,28 @@ def measurement_section(kind, data):
                            'measurements': rows, 'limitations': limits}
 
 
+_NO_SECTIONS = object()
+
+
+def validate_report_metadata(title, sections=_NO_SECTIONS):
+    """Shared formatting preflight; heading length is not a scientific limit."""
+    def heading(value, label):
+        if not isinstance(value, str) or not value.strip() or '\n' in value or '\r' in value:
+            raise ValueError(f'Use a nonempty one-line {label} title (no CR/LF).')
+    heading(title, 'document')
+    if sections is not _NO_SECTIONS:
+        if not isinstance(sections, list) or not 1 <= len(sections) <= 16:
+            raise ValueError('Provide one to sixteen existing report sections.')
+        for section in sections:
+            heading(section.get('title') if isinstance(section, dict) else None, 'section')
+
+
 def assemble(title, sections, *, source_data=None):
-    if not isinstance(title, str) or not title.strip() or len(title) > 160 or '\n' in title:
-        raise ValueError('Use a nonempty one-line document title of at most160 characters.')
-    if not isinstance(sections, list) or not 1 <= len(sections) <= 16:
-        raise ValueError('Provide one to sixteen existing Markdown or CSV sections.')
+    validate_report_metadata(title, sections)
     parts = [f'# {title}\n\n']
     provenance = []
     for index, section in enumerate(sections):
         label = section.get('title')
-        if not isinstance(label, str) or not label.strip() or len(label) > 160 or '\n' in label:
-            raise ValueError('Every section needs a nonempty one-line title.')
         source = Path(section['file'])
         data = source.read_bytes() if source_data is None else source_data[index]
         text = data.decode('utf-8')
@@ -250,8 +261,7 @@ def publish_bundle(manifest_file, output_dir):
     if not isinstance(manifest, dict) or set(manifest) != {'title', 'sections'}:
         raise ValueError('Report manifest must contain exactly title and sections.')
     sections = manifest['sections']
-    if not isinstance(sections, list) or not 1 <= len(sections) <= 16:
-        raise ValueError('Provide one to sixteen existing Markdown or CSV sections.')
+    validate_report_metadata(manifest['title'], sections)
     resolved, inputs = [], []
     for section in sections:
         if not isinstance(section, dict) or set(section) != {'title', 'format', 'file'}:
@@ -338,6 +348,7 @@ def publish_mindeval(plan_file, output_dir):
     plan = json.loads(plan_bytes)
     if not isinstance(plan, dict) or set(plan) != {'title', 'records'}:
         raise ValueError('MindEval plan requires exactly title and records.')
+    validate_report_metadata(plan['title'])
     loaded, payload, measurements = load_mindeval_records(plan['records'], plan_file.parent)
     runs, sources, extras, run_rows = [], [], {}, []
     for index, item in enumerate(loaded):
