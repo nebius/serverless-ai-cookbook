@@ -8,6 +8,7 @@ import argparse
 import asyncio
 import copy
 import ctypes
+from contextlib import ExitStack
 import hashlib
 import importlib.util
 import json
@@ -160,7 +161,7 @@ def input_references(step):
     if method == 'design-refold-correspondence':
         return [args[key] for key in ('design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction')]
     if method in {'structure', 'docking'}:
-        return [args[key] for key in ('reference', 'prediction', 'result', 'residue_map', 'request_file') if key in args]
+        return [args[key] for key in ('reference', 'prediction', 'result', 'residue_map', 'request_file', 'confidence_result') if key in args]
     if method == 'genmol':
         return [args['input_file'], args['result_file']]
     if method == 'protein-design-analysis':
@@ -306,7 +307,7 @@ def validate_local_arguments(method, args):
         'proteinmpnn-input': ({'backbone', 'structure_index', 'chain', 'num_sequences', 'seed', 'sampling_temp', 'omit_aas'}, set()),
         'esmfold2-fast-input': ({'design_input', 'design_result', 'design_index', 'seed'}, set()),
         'design-refold-correspondence': ({'design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction', 'design_index', 'structure_index', 'prediction_chain'}, set()),
-        'structure': ({'reference'}, {'chain_map', 'prediction', 'result', 'structure_index', 'residue_map', 'request_file'}),
+        'structure': ({'reference'}, {'chain_map', 'prediction', 'result', 'structure_index', 'residue_map', 'request_file', 'confidence_result'}),
         'docking': ({'reference', 'same_coordinate_frame'}, {'prediction', 'result', 'threshold_queries'}),
         'docking-batch': ({'runs', 'same_coordinate_frame'}, {'threshold_queries'}),
         'genmol': ({'input_file', 'result_file'}, set()),
@@ -367,6 +368,14 @@ def workflow_module():
     return module
 
 
+def existing_submission(record, fingerprint):
+    """An accepted immutable identity is observable without the phase lock."""
+    if record['identity'] != fingerprint or record['caller_fingerprint'] != caller_fingerprint():
+        raise ValueError('Study identity/caller changed; original operation receipts are retained.')
+    return {**view(record), 'study_admission': 'accepted',
+            'reused_existing_study': True, 'new_study_admitted': False}
+
+
 def submit(plan, output):
     if os.environ.get('SCIENTIFIC_STUDY_OWNER_MODE') not in {'first-instance', 'stopped-predecessor'}:
         raise ValueError('The operator must confirm one active dedicated-user supervisor before enabling durable studies; see the stop-first deployment preflight.')
@@ -375,13 +384,34 @@ def submit(plan, output):
     fingerprint = hashlib.sha256(canonical({'plan': plan, 'output': str(output), 'owner': owner_identity()})).hexdigest()
     identifier = str(uuid.uuid5(uuid.NAMESPACE_URL, fingerprint))
     root = directory(identifier)
+    # advance() holds receipt_lock for a complete phase. Loading its verified
+    # publication is independently synchronized and must remain a read-only
+    # idempotent replay, not an EAGAIN that looks like rejected admission.
+    previous = load(root / 'receipt.json')
+    if previous:
+        return existing_submission(previous, fingerprint)
     root.mkdir(parents=True, exist_ok=True)
-    with receipt_lock(root):
+    with ExitStack() as locks:
+        try:
+            locks.enter_context(receipt_lock(root))
+        except BlockingIOError:
+            # The first admission may have persisted between our read and
+            # lock attempt. Never restart it or claim that nothing was saved.
+            previous = load(root / 'receipt.json')
+            if previous:
+                return existing_submission(previous, fingerprint)
+            return {'id': identifier, 'job_id': identifier, 'status': 'admission_pending',
+                    'study_admission': 'unknown', 'new_study_admitted': False,
+                    'output_directory': str(output),
+                    'guidance': 'Another request holds this exact study admission lock. '
+                        'Its saved admission is not yet observable. Do not resubmit, change the plan/output, '
+                        'or claim that nothing was submitted. Observe this identity in Runs or read_execution.',
+                    'next_observation': {
+                        'registered_tool_name': 'read_execution_mcp_environment-execution',
+                        'tool_name': 'read_execution', 'arguments': {'job_id': identifier}}}
         previous = load(root / 'receipt.json')
         if previous:
-            if previous['identity'] != fingerprint or previous['caller_fingerprint'] != caller_fingerprint():
-                raise ValueError('Study identity/caller changed; original operation receipts are retained.')
-            return view(previous)
+            return existing_submission(previous, fingerprint)
         inputs = validate(plan)
         implementations = {}
         for step in plan['steps']:
@@ -424,7 +454,8 @@ def submit(plan, output):
                   'implementations': implementations,
                   'completed_steps': [], 'steps': {}, 'current_step': None, 'phase': 'queued'}
         save(root / 'receipt.json', record)
-        return view(record)
+        return {**view(record), 'study_admission': 'accepted',
+                'reused_existing_study': False, 'new_study_admitted': True}
 
 
 def resolve(value, record):
@@ -492,7 +523,7 @@ def local_command(method, args, scratch):
         manifest.write_bytes(canonical(data))
         command += [{'report': '--manifest', 'mindeval': '--mindeval-plan', 'aging': '--cohorts', 'docking-batch': '--runs'}[method], str(manifest)]
     if method in {'structure', 'docking'}:
-        for key in ('reference', 'prediction', 'result', 'structure_index', 'residue_map', 'request_file'):
+        for key in ('reference', 'prediction', 'result', 'structure_index', 'residue_map', 'request_file', 'confidence_result'):
             if key in args:
                 command += ['--' + key.replace('_', '-'), str(args[key])]
         if method == 'structure':
@@ -566,8 +597,33 @@ def run_python_script(args, scratch, generation):
     return {**files, 'script.py': source, 'input-bindings.json': bindings, 'script-provenance.json': provenance}
 
 
+def paired_structure_arguments(step, record):
+    """Carry only a producer-registered pair, never guess nearby filenames."""
+    args = step['arguments']
+    prediction = args.get('prediction')
+    if (step['method'] != 'structure' or 'confidence_result' in args
+            or not isinstance(prediction, dict) or set(prediction) != {'step', 'file'}):
+        return args
+    producer = record['steps'].get(prediction['step'], {})
+    binding = producer.get('structure_confidence_pairs', {}).get(prediction['file'])
+    if binding is None:
+        return args
+    if producer.get('state') != 'completed' or producer.get('method') != 'design-refold-correspondence':
+        raise ValueError('Structure confidence pair must come from its completed correspondence producer.')
+    files = producer['files']
+    coordinate, envelope = files.get(prediction['file']), files.get(binding.get('result_file'))
+    if (not coordinate or not envelope
+            or any(binding.get(key) != coordinate.get(key) for key in ('sha256', 'size_bytes'))
+            or binding.get('result_sha256') != envelope.get('sha256')
+            or Path(coordinate['path']).parent != Path(envelope['path']).parent):
+        raise ValueError('Registered structure/confidence pair does not match the same recorded generation.')
+    # resolve() verifies both exact registered file hashes; the structure helper
+    # then verifies equal coordinate bytes plus the unique manifest/sample row.
+    return {**args, 'confidence_result': {'step': prediction['step'], 'file': binding['result_file']}}
+
+
 def run_local(step, record):
-    method, args = step['method'], resolve(step['arguments'], record)
+    method, args = step['method'], resolve(paired_structure_arguments(step, record), record)
     for value in input_references({'kind': step['kind'], 'method': method, 'arguments': args}):
         # Literal paths and resolved generated files use the same mounted root.
         if isinstance(value, str):
@@ -604,8 +660,20 @@ def run_local(step, record):
                 files[name] = persist_local_file(source, generation / name)
         if not files:
             raise RuntimeError('Deterministic phase produced no files.')
-        return {'state': 'completed', 'files': files, 'method': method,
-                'helper_sha256': file_measurement(HELPERS[method])[1] if method in HELPERS else file_measurement(HERE / 'scientific_preparation.py')[1]}
+        result = {'state': 'completed', 'files': files, 'method': method,
+                  'helper_sha256': file_measurement(HELPERS[method])[1] if method in HELPERS else file_measurement(HERE / 'scientific_preparation.py')[1]}
+        if method == 'design-refold-correspondence':
+            coordinate, envelope = files['prediction.structure'], files['prediction-result.json']
+            retained = json.loads(Path(envelope['path']).read_bytes()).get('retained_source_result', {})
+            if isinstance(retained, dict) and 'manifest' in retained:
+                result['structure_confidence_pairs'] = {'prediction.structure': {
+                    'sha256': coordinate['sha256'], 'size_bytes': coordinate['size_bytes'],
+                    'result_file': 'prediction-result.json', 'result_sha256': envelope['sha256']}}
+        if method == 'mindeval':
+            filename = 'customer-summary.json'
+            result['customer_artifacts'] = {filename: {**files[filename], 'role': 'metrics'}}
+            result['customer_summary'] = filename
+        return result
 
 
 async def run_model(step, record):
@@ -905,6 +973,49 @@ async def advance(identifier, model_runner=None, local_runner=None, cancel_runne
         return view(record)
 
 
+def completion_summaries(record, artifacts):
+    """Small read-only projection of explicitly published, verified summaries.
+
+    The full file is always retained. The preview byte ceiling is a display
+    bound, never an execution/admission limit or silently truncated table.
+    Legacy studies without producer registration have no projection.
+    """
+    if record.get('state') != 'completed':
+        return []
+    summaries = []
+    for step_id, step in record.get('steps', {}).items():
+        filename = step.get('customer_summary')
+        if not filename:
+            continue
+        registered = step.get('files', {}).get(filename)
+        selected = step.get('customer_artifacts', {}).get(filename)
+        artifact = next((item for item in artifacts if registered and all(
+            item.get(key) == registered.get(key) for key in ('path', 'sha256', 'size_bytes'))), None)
+        entry = {'source_step': step_id, 'state': 'unavailable'}
+        if not registered or not selected or not artifact or step.get('state') != 'completed' or any(
+                selected.get(key) != registered.get(key) for key in ('path', 'sha256', 'size_bytes')):
+            entry['notice'] = 'Summary is not a verified published customer artifact; no measurements are projected.'
+        else:
+            entry.update(artifact_name=artifact['name'], sha256=artifact['sha256'], download_url=artifact['download_url'])
+            if artifact['size_bytes'] > 65536:
+                entry['notice'] = 'Summary exceeds the inline preview size; download the complete published file. No rows are truncated.'
+            else:
+                try:
+                    path = path_in_workspace(artifact['path'])
+                    with path.open('rb') as stream:
+                        raw = stream.read(65537)
+                    if len(raw) != artifact['size_bytes'] or hashlib.sha256(raw).hexdigest() != artifact['sha256']:
+                        raise ValueError('Summary bytes differ from publication.')
+                    value = json.loads(raw)
+                    if not isinstance(value, dict) or value.get('schema') != 'scientific-study-summary/v1' or not isinstance(value.get('text'), str):
+                        raise ValueError('Unsupported summary shape.')
+                    entry.update(state='verified', text=value['text'])
+                except (OSError, ValueError, TypeError):
+                    entry['notice'] = 'Published summary could not be verified; no measurements are projected. Saved study state is unchanged.'
+        summaries.append(entry)
+    return summaries
+
+
 def view(record):
     result = copy.deepcopy({key: record[key] for key in ('id', 'title', 'state', 'phase', 'current_step', 'completed_steps',
         'steps', 'created_at', 'updated_at', 'finished_at', 'failure', 'cancellation_failure', 'admission_unknown', 'cancellation_unknown', 'queue_blocked', 'manifest', 'artifacts') if key in record})
@@ -916,6 +1027,10 @@ def view(record):
     for artifact in result.get('artifacts', []):
         relative = Path(artifact['path']).relative_to(workspace())
         artifact['download_url'] = '/demos?' + urlencode({'tab': 'workspace', 'path': str(relative.parent), 'file': relative.name})
+    summaries = completion_summaries(record, result.get('artifacts', []))
+    if summaries:
+        result['completion_summaries'] = summaries
+        result['guidance'] += ' Quote verified completion_summaries text with its exact record identities and artifact links; do not recompute, transpose or invent summary numbers. Unavailable values stay unavailable.'
     return result
 
 

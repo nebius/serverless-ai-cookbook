@@ -93,6 +93,7 @@ STEPS = [NATIVE, BATCH, CLINICAL,
         'design_index': {'type': 'integer', 'minimum': 0}, 'structure_index': {'type': 'integer', 'minimum': 0},
         'prediction_chain': CHAIN})),
     local('structure', {**object_schema({'reference': FILE, 'prediction': FILE, 'result': FILE,
+        'confidence_result': {**FILE, 'description': FILE['description'] + ' Optional exact same-operation batch output-manifest.json or paired prediction-result.json. Confidence is joined only by matching structure bytes/SHA256 and a unique manifest/sample row; never by filenames or rank. Prefer correspondence prediction-result.json as result to retain confidence. A registered correspondence prediction.structure automatically carries its verified paired envelope; arbitrary coordinate files do not.'},
         'chain_map': {'type': 'array', 'minItems': 1, 'items': TEXT}, 'structure_index': {'type': 'integer', 'minimum': 0},
         'residue_map': FILE, 'request_file': {**FILE,
             'description': FILE['description'] + ' Bind the original native input or batch request.json whenever reporting requested seeds/sampling settings. Filenames, coordinate indices and report headings are not request provenance. Omission is recorded as unknown, not inferred from context.'}}, ['reference']), **PREDICTION,
@@ -166,8 +167,8 @@ PHASE_OUTPUTS = {
     'genmol': (['metrics.json', 'rows.csv', 'report.md', 'completion-manifest.json'], []),
     'protein-design-analysis': (['measurements.json', 'inventory.csv', 'report.md'], []),
     'report': (['report.md', 'provenance.json', 'assembly-plan.json', 'helper.py', 'completion-manifest.json'], ['sources/NNN.ext retains every exact supplied section.']),
-    'mindeval': (['report.md', 'methods.md', 'runs.csv', 'scores.csv', 'measurements.json', 'provenance.json', 'records.json', 'completion-manifest.json'],
-                 ['records/NNN.json and transcripts/NNN.txt retain every full supplied record and transcript.']),
+    'mindeval': (['report.md', 'methods.md', 'runs.csv', 'scores.csv', 'measurements.json', 'provenance.json', 'records.json', 'completion-manifest.json', 'customer-summary.json'],
+                 ['records/NNN.json and transcripts/NNN.txt retain every full supplied record and transcript. customer-summary.json is automatically published; stored overall_score stays bound to exact profile, clinician and run ID, unavailable stays unavailable. Completed Runs/read_execution expose its verified text; quote that instead of recomputing scores.']),
     'clinical-study': (['report.md', 'measurement.json', 'completion-manifest.json'], ['Per-case measurements and preserved input files follow the helper completion-manifest.']),
 }
 # Exact directory names published by these helpers, never downloadable files.
