@@ -40,6 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends zstd \
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
 COPY templates/hcls-librechat/scientific-tool-options.cjs /opt/hcls-librechat/scientific-tool-options.cjs
 COPY templates/hcls-librechat/scientific-completion.cjs /opt/hcls-librechat/scientific-completion.cjs
+COPY templates/hcls-librechat/scientific-study-admission.cjs /opt/hcls-librechat/scientific-study-admission.cjs
 COPY templates/hcls-librechat/scientific-workflow.py /opt/bionemo/scientific-workflow.py
 COPY templates/hcls-librechat/scientific-context-audit.cjs /opt/hcls-librechat/scientific-context-audit.cjs
 COPY templates/hcls-librechat/scientific-token-count.cjs /opt/hcls-librechat/scientific-token-count.cjs

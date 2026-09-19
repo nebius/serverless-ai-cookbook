@@ -348,3 +348,155 @@ def test_correspondence_rejects_unproven_or_incomplete_mapping(tmp_path, change)
     with pytest.raises(ValueError):
         prepare('design-refold-correspondence', args, output)
     assert not (output / 'residue-map.json').exists()
+
+
+def direct_prediction_manifest_fixture(tmp_path):
+    args = correspondence_fixture(tmp_path)
+    prediction = json.loads(Path(args['prediction']).read_bytes())['structure'].encode()
+    direct = tmp_path / 'selected.pdb'
+    direct.write_bytes(prediction)
+    args['prediction'] = str(direct)
+    document = {'schema': 'fs2.nebius.ai/structure-confidence/v1', 'runtime_id': 'test-refold',
+        'model_revision': 'recorded-revision', 'input_identity': {'artifact_id': 'input-id', 'sha256': 'input-sha'},
+        'seeds': [19], 'samples_per_seed': 1, 'results': [{'seed': 19, 'sample_index': 0,
+            'structure': {'sha256': hashlib.sha256(prediction).hexdigest(), 'bytes': len(prediction)},
+            'metrics': {'plddt_mean': 0.7201, 'ptm': 0.4071, 'iptm': 0.0}}]}
+    # Another coordinate comes first: the manifest index must not change the
+    # caller's already selected direct structure or structure_index=0.
+    rows = [(backbone('B').encode(), 'protein-structure-pdb/v1', 'chemical/x-pdb'),
+            (prediction, 'protein-structure-pdb/v1', 'chemical/x-pdb'),
+            (json.dumps(document, indent=3).encode(), 'structure-confidence-json/v1', 'application/json')]
+    entries = []
+    for index, (raw, semantic, media) in enumerate(rows):
+        (tmp_path / f'output-{index:02d}.artifact').write_bytes(raw)
+        entries.append({'semantic_type': semantic, 'artifact': {'media_type': media,
+            'compression': 'none', 'sha256': hashlib.sha256(raw).hexdigest(), 'size_bytes': len(raw)}})
+    manifest = tmp_path / 'output-manifest.json'
+    manifest.write_text(json.dumps({'schema': 'fs2-serve.nebius.ai/scientific-artifact-manifest/v1',
+                                    'manifest_id': 'explicit-producer', 'entries': entries}))
+    return args, manifest, document
+
+
+def test_direct_correspondence_explicit_confidence_preserves_bytes_index_and_geometry(tmp_path):
+    args, manifest, document = direct_prediction_manifest_fixture(tmp_path)
+    before, after = tmp_path / 'before', tmp_path / 'after'
+    before.mkdir()
+    after.mkdir()
+    prepare('design-refold-correspondence', args, before)
+    metadata = prepare('design-refold-correspondence', {**args, 'confidence_result': str(manifest)}, after)
+    for name in ('reference.pdb', 'prediction.structure', 'residue-map.json'):
+        assert (before / name).read_bytes() == (after / name).read_bytes()
+    assert (after / 'prediction.structure').read_bytes() == Path(args['prediction']).read_bytes()
+    assert metadata['selection']['structure_index'] == 0
+    assert metadata['selection']['available_structures'] == 1
+    envelope = json.loads((after / 'prediction-result.json').read_bytes())
+    raw = (tmp_path / 'output-02.artifact').read_bytes()
+    retained = envelope['retained_source_result']
+    assert retained['confidence_artifact_sources'] == [{'manifest_entry_index': 2, 'raw_json': raw.decode()}]
+    fields, binding = structure_helper().bound_confidence(envelope, Path(args['prediction']).read_bytes())
+    assert fields == {f'confidence_artifacts[2].results[0].metrics.{key}': value
+                      for key, value in document['results'][0]['metrics'].items()}
+    assert binding == metadata['selection']['confidence_binding']
+    assert binding['seed'] == 19 and binding['sample_index'] == 0
+    assert binding['confidence_artifact_sha256'] == hashlib.sha256(raw).hexdigest()
+    assert metadata['inputs']['confidence_result']['sha256'] == hashlib.sha256(manifest.read_bytes()).hexdigest()
+    assert metadata['inputs']['paired_selected_artifact']['sha256'] == hashlib.sha256(Path(args['prediction']).read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize('change', ['wrong-coordinate', 'duplicate-coordinate', 'coordinate-bytes',
+                                  'confidence-bytes', 'duplicate-sample', 'wrong-sample-size',
+                                  'invalid-schema', 'wrong-media'])
+def test_direct_confidence_rejects_mismatch_or_ambiguity_without_publishing(tmp_path, change):
+    args, manifest, document = direct_prediction_manifest_fixture(tmp_path)
+    value = json.loads(manifest.read_bytes())
+    if change == 'wrong-coordinate':
+        value['entries'][1]['artifact']['sha256'] = '0' * 64
+    elif change == 'duplicate-coordinate':
+        value['entries'].append(value['entries'][1])
+    elif change == 'coordinate-bytes':
+        (tmp_path / 'output-01.artifact').write_bytes(b'changed')
+    elif change == 'confidence-bytes':
+        (tmp_path / 'output-02.artifact').write_bytes(b'changed')
+    elif change == 'wrong-media':
+        value['entries'][1]['artifact']['media_type'] = 'text/plain'
+    elif change == 'invalid-schema':
+        value['schema'] = 'untyped'
+    else:
+        if change == 'duplicate-sample':
+            document['results'].append(document['results'][0])
+        else:
+            document['results'][0]['structure']['bytes'] += 1
+        raw = json.dumps(document).encode()
+        (tmp_path / 'output-02.artifact').write_bytes(raw)
+        value['entries'][2]['artifact'].update(size_bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+    manifest.write_text(json.dumps(value))
+    output = tmp_path / 'out'
+    output.mkdir()
+    with pytest.raises((ValueError, RuntimeError)):
+        prepare('design-refold-correspondence', {**args, 'confidence_result': str(manifest)}, output)
+    assert not (output / 'prediction-result.json').exists()
+    assert not (output / 'residue-map.json').exists()
+
+
+def test_direct_manifest_without_confidence_remains_explicitly_unavailable(tmp_path):
+    args, manifest, _ = direct_prediction_manifest_fixture(tmp_path)
+    value = json.loads(manifest.read_bytes())
+    value['entries'] = value['entries'][:2]
+    manifest.write_text(json.dumps(value))
+    output = tmp_path / 'out'
+    output.mkdir()
+    metadata = prepare('design-refold-correspondence', {**args, 'confidence_result': str(manifest)}, output)
+    envelope = json.loads((output / 'prediction-result.json').read_bytes())
+    fields, binding = structure_helper().bound_confidence(envelope, Path(args['prediction']).read_bytes())
+    assert fields == {} and binding['status'] == 'unavailable_no_confidence_artifact'
+    assert metadata['selection']['confidence_binding'] == binding
+    assert (output / 'prediction.structure').read_bytes() == Path(args['prediction']).read_bytes()
+
+
+def test_direct_confidence_preserves_coordinate_line_endings(tmp_path):
+    args, manifest, document = direct_prediction_manifest_fixture(tmp_path)
+    raw = Path(args['prediction']).read_bytes().replace(b'\n', b'\r\n')
+    Path(args['prediction']).write_bytes(raw)
+    (tmp_path / 'output-01.artifact').write_bytes(raw)
+    document['results'][0]['structure'].update(sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw))
+    confidence = json.dumps(document).encode()
+    (tmp_path / 'output-02.artifact').write_bytes(confidence)
+    value = json.loads(manifest.read_bytes())
+    for index, content in [(1, raw), (2, confidence)]:
+        value['entries'][index]['artifact'].update(sha256=hashlib.sha256(content).hexdigest(), size_bytes=len(content))
+    manifest.write_text(json.dumps(value))
+    output = tmp_path / 'out'
+    output.mkdir()
+    prepare('design-refold-correspondence', {**args, 'confidence_result': str(manifest)}, output)
+    assert (output / 'prediction.structure').read_bytes() == raw
+    fields, _ = structure_helper().bound_confidence(json.loads((output / 'prediction-result.json').read_bytes()), raw)
+    assert fields['confidence_artifacts[2].results[0].metrics.iptm'] == 0
+
+
+def test_retained_v58_direct_coordinate_confidence_does_not_change_original_geometry(tmp_path):
+    import os
+    root = os.environ.get('SCIENTIFIC_RETAINED_V58_04')
+    if not root:
+        pytest.skip('Optional protected actual v58/04 final directory not mounted.')
+    final = Path(root)
+    assert final.is_dir()
+    originals = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in final.rglob('*') if path.is_file()}
+    correspondence, = (final / 'steps/correspondence').glob('generation-*')
+    actual = json.loads((correspondence / 'provenance.json').read_bytes())
+    live_root = Path('/workspace/scientist-04/unattended-20260919-r10/design-refold/final')
+    args = {key: str(final / Path(value).relative_to(live_root)) if isinstance(value, str) and value.startswith(str(live_root) + '/') else value
+            for key, value in actual['arguments'].items()}
+    assert Path(args['prediction']).name == 'output-00.artifact' and args['structure_index'] == 0
+    args['confidence_result'] = str(final / 'steps/esm-refold/operation/output-manifest.json')
+    metadata = prepare('design-refold-correspondence', args, tmp_path)
+    for name in ('reference.pdb', 'prediction.structure', 'residue-map.json'):
+        assert (tmp_path / name).read_bytes() == (correspondence / name).read_bytes()
+    envelope = json.loads((tmp_path / 'prediction-result.json').read_bytes())
+    fields, binding = structure_helper().bound_confidence(envelope, (tmp_path / 'prediction.structure').read_bytes())
+    raw = (final / 'steps/esm-refold/operation/output-01.artifact').read_bytes()
+    native = json.loads(raw)['results'][0]
+    assert fields == {f'confidence_artifacts[1].results[0].metrics.{key}': value for key, value in native['metrics'].items()}
+    assert binding['confidence_artifact_sha256'] == hashlib.sha256(raw).hexdigest()
+    assert binding['seed'] == native['seed'] and binding['sample_index'] == native['sample_index']
+    assert metadata['selection']['confidence_binding'] == binding
+    assert all(hashlib.sha256(path.read_bytes()).hexdigest() == digest for path, digest in originals.items())

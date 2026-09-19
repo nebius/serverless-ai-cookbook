@@ -78,7 +78,7 @@ def complete_chain(pdb, chain):
 
 def coordinate_input(path, index, inputs, measurements, *, allow_mmcif=False):
     """Read coordinates from the existing verified batch layout or inline result."""
-    raw = path.read_text()
+    raw = path.read_bytes().decode('utf-8')
     try:
         value = unwrap(json.loads(raw))
     except json.JSONDecodeError:
@@ -114,7 +114,7 @@ def coordinate_input(path, index, inputs, measurements, *, allow_mmcif=False):
                 raw = file.read_bytes()
                 confidence.append(json.loads(raw))
                 confidence_sources.append({'manifest_entry_index': position, 'raw_json': raw.decode('utf-8')})
-        return selected.read_text(), len(candidates), {'manifest': value, 'confidence_artifacts': confidence,
+        return selected.read_bytes().decode('utf-8'), len(candidates), {'manifest': value, 'confidence_artifacts': confidence,
             'confidence_artifact_sources': confidence_sources}
     candidates = structure_helper().structures(value)
     if index >= len(candidates):
@@ -122,9 +122,43 @@ def coordinate_input(path, index, inputs, measurements, *, allow_mmcif=False):
     return candidates[index], len(candidates), value
 
 
+def confidence_manifest_source(path, prediction_text, inputs, measurements):
+    """Retain explicit manifest evidence without changing selected coordinates.
+
+    The Study adapter owns same-producer provenance. Here the supplied manifest
+    must independently identify the exact selected bytes once; structure_index
+    is never used to substitute a different prediction from that manifest.
+    """
+    value = json.loads(path.read_bytes())
+    if not isinstance(value, dict) or value.get('schema') != 'fs2-serve.nebius.ai/scientific-artifact-manifest/v1':
+        raise ValueError('Correspondence confidence_result requires an explicit published output manifest.')
+    raw = prediction_text.encode('utf-8')
+    checksum = hashlib.sha256(raw).hexdigest()
+    candidates = [entry for entry in value.get('entries', [])
+                  if entry.get('semantic_type') in {'protein-structure-pdb/v1', 'protein-structure-mmcif/v1'}]
+    matches = [index for index, entry in enumerate(candidates)
+               if entry.get('artifact', {}).get('sha256') == checksum
+               and entry['artifact'].get('size_bytes') == len(raw)]
+    if len(matches) != 1:
+        raise ValueError('Confidence manifest must contain exactly one selected coordinate SHA256/size match.')
+    paired_inputs, paired_measurements = {}, {}
+    selected, _, retained = coordinate_input(path, matches[0], paired_inputs, paired_measurements, allow_mmcif=True)
+    if selected.encode('utf-8') != raw:
+        raise ValueError('Confidence manifest coordinates differ from the already selected prediction.')
+    # Reuse the evaluator's versioned, finite-number, exact sample/hash join;
+    # no confidence artifact is explicitly unavailable, never an invented zero.
+    _, binding = structure_helper().bound_confidence(
+        {'structure': prediction_text, 'retained_source_result': retained}, raw)
+    inputs.update({'paired_' + key: value for key, value in paired_inputs.items()})
+    measurements.update({'paired_' + key: value for key, value in paired_measurements.items()})
+    return retained, binding
+
+
 def design_correspondence(args, output):
     """Prove a full query-position map; never align only unchanged amino acids."""
     inputs = {name: Path(args[name]) for name in ('design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction')}
+    if 'confidence_result' in args:
+        inputs['confidence_result'] = Path(args['confidence_result'])
     measurements = {name: {'path': str(path), 'size_bytes': file_measurement(path)[0], 'sha256': file_measurement(path)[1]}
                     for name, path in inputs.items()}
     parameters = json.loads(inputs['refold_parameters'].read_bytes())
@@ -144,6 +178,10 @@ def design_correspondence(args, output):
         reference_text = (scratch / 'backbone.pdb').read_text()
     selection = prepared['selection']
     predicted_text, available, source_result = coordinate_input(inputs['prediction'], args['structure_index'], inputs, measurements, allow_mmcif=True)
+    confidence_binding = None
+    if 'confidence_result' in inputs:
+        source_result, confidence_binding = confidence_manifest_source(
+            inputs['confidence_result'], predicted_text, inputs, measurements)
     helper = structure_helper()
     reference = helper.load_structure(reference_text)
     prediction = helper.load_structure(predicted_text)
@@ -174,6 +212,8 @@ def design_correspondence(args, output):
             'structure_index': args['structure_index'], 'available_structures': available,
             'mapped_residues': len(pairs), 'mapping_method': 'explicit-query-position-provenance'},
         'arguments': args, 'inference_submitted': False, 'scientific_validity_claim': False}
+    if confidence_binding is not None:
+        metadata['selection']['confidence_binding'] = confidence_binding
     (output / 'reference.pdb').write_text(reference_text)
     (output / 'prediction.structure').write_text(predicted_text)
     (output / 'prediction-result.json').write_bytes(canonical({'structure': predicted_text, 'retained_source_result': source_result}) + b'\n')

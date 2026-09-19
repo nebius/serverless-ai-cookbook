@@ -1,4 +1,5 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import studyAdmissionAcknowledgement from './scientific-study-admission.cjs';
 const path = '/app/api/server/services/ToolService.js';
 let source = await readFile(path, 'utf8');
 const anchor = '  const filteredTools = agent.tools?.filter((tool) => {';
@@ -52,6 +53,7 @@ const responseAuditAnchor = 'const responseMessage = result.messages?.[0];';
 if (!graphSource.includes(responseAuditAnchor)) throw new Error('Unsupported pinned provider diagnostics');
 graphSource = graphSource.replace(responseAuditAnchor,
   `${responseAuditAnchor}\n\t\t\trequire('/opt/hcls-librechat/scientific-context-audit.cjs').response(responseMessage, agentContext);`);
+graphSource = studyAdmissionAcknowledgement.patchGraph(graphSource);
 await writeFile(graphPath, graphSource);
 
 const apiPath = '/app/packages/api/dist/index.cjs';

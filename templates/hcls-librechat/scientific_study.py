@@ -159,7 +159,7 @@ def input_references(step):
     if method == 'esmfold2-fast-input':
         return [args['design_input'], args['design_result']]
     if method == 'design-refold-correspondence':
-        return [args[key] for key in ('design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction')]
+        return [args[key] for key in ('design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction', 'confidence_result') if key in args]
     if method in {'structure', 'docking'}:
         return [args[key] for key in ('reference', 'prediction', 'result', 'residue_map', 'request_file', 'confidence_result') if key in args]
     if method == 'genmol':
@@ -306,7 +306,7 @@ def validate_local_arguments(method, args):
         'parquet-export': ({'source', 'formats'}, set()),
         'proteinmpnn-input': ({'backbone', 'structure_index', 'chain', 'num_sequences', 'seed', 'sampling_temp', 'omit_aas'}, set()),
         'esmfold2-fast-input': ({'design_input', 'design_result', 'design_index', 'seed'}, set()),
-        'design-refold-correspondence': ({'design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction', 'design_index', 'structure_index', 'prediction_chain'}, set()),
+        'design-refold-correspondence': ({'design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction', 'design_index', 'structure_index', 'prediction_chain'}, {'confidence_result'}),
         'structure': ({'reference'}, {'chain_map', 'prediction', 'result', 'structure_index', 'residue_map', 'request_file', 'confidence_result'}),
         'docking': ({'reference', 'same_coordinate_frame'}, {'prediction', 'result', 'threshold_queries'}),
         'docking-batch': ({'runs', 'same_coordinate_frame'}, {'threshold_queries'}),
@@ -597,17 +597,46 @@ def run_python_script(args, scratch, generation):
     return {**files, 'script.py': source, 'input-bindings.json': bindings, 'script-provenance.json': provenance}
 
 
+def batch_coordinate_manifest(prediction, producer):
+    """Find metadata in the recorded producer, not in neighboring directories.
+
+    A direct batch coordinate reference must retain the same operation's
+    published confidence evidence. The selected coordinate is never replaced.
+    """
+    files = producer.get('files', {})
+    manifest = files.get('output-manifest.json')
+    if manifest is None or prediction['file'] == 'output-manifest.json':
+        return None
+    if producer.get('state') != 'completed' or not producer.get('operation_id'):
+        raise ValueError('Coordinate metadata requires its completed recorded model operation.')
+    coordinate = files.get(prediction['file'])
+    if not coordinate or Path(coordinate['path']).parent != Path(manifest['path']).parent:
+        raise ValueError('Coordinate and manifest must belong to the same recorded operation directory.')
+    for item in (coordinate, manifest):
+        verify_file(path_in_workspace(item['path']), item)
+    body = json.loads(Path(manifest['path']).read_bytes())
+    if body.get('schema') != 'fs2-serve.nebius.ai/scientific-artifact-manifest/v1':
+        raise ValueError('Recorded coordinate metadata is not a scientific artifact manifest.')
+    matches = [index for index, entry in enumerate(body['entries'])
+               if entry.get('semantic_type') in {'protein-structure-pdb/v1', 'protein-structure-mmcif/v1'}
+               and all(entry.get('artifact', {}).get(key) == coordinate[key] for key in ('sha256', 'size_bytes'))]
+    if len(matches) != 1 or Path(coordinate['path']).name != f'output-{matches[0]:02d}.artifact':
+        raise ValueError('Selected coordinates need one exact matching entry in their recorded operation manifest.')
+    return {'step': prediction['step'], 'file': 'output-manifest.json'}
+
+
 def paired_structure_arguments(step, record):
-    """Carry only a producer-registered pair, never guess nearby filenames."""
+    """Carry producer-registered metadata without changing scientific selection."""
     args = step['arguments']
     prediction = args.get('prediction')
-    if (step['method'] != 'structure' or 'confidence_result' in args
+    if (step['method'] not in {'structure', 'design-refold-correspondence'} or 'confidence_result' in args
             or not isinstance(prediction, dict) or set(prediction) != {'step', 'file'}):
         return args
     producer = record['steps'].get(prediction['step'], {})
     binding = producer.get('structure_confidence_pairs', {}).get(prediction['file'])
     if binding is None:
-        return args
+        manifest = batch_coordinate_manifest(prediction, producer)
+        return {**args, 'confidence_result': manifest} if manifest else args
     if producer.get('state') != 'completed' or producer.get('method') != 'design-refold-correspondence':
         raise ValueError('Structure confidence pair must come from its completed correspondence producer.')
     files = producer['files']
@@ -639,7 +668,7 @@ def run_local(step, record):
             export_parquet(path_in_workspace(args['source']), scratch, args['formats'])
         elif method in PROTEIN_METHODS:
             from scientific_protein_preparation import prepare
-            prepare(method, {key: str(path_in_workspace(value)) if key in {'backbone', 'design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction'} else value
+            prepare(method, {key: str(path_in_workspace(value)) if key in {'backbone', 'design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction', 'confidence_result'} else value
                              for key, value in args.items()}, scratch)
         elif method == 'python-script':
             selected_files = run_python_script(args, scratch, generation)

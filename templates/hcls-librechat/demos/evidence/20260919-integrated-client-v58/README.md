@@ -4,6 +4,11 @@ This is an immutable built-and-tested candidate, not a completed customer rollou
 Each user retains a dedicated LibreChat instance; a tenant bucket may be shared.
 Backend release 190 remains deployed and unchanged.
 
+The subsequent [customer-path result](customer-path.md) records four completed
+studies, two reporting/narrative failures, the Cosmos interpretation limits and
+six provider-blocked user deployments. It supersedes the preparation-only state
+below, not the immutable build/local-test identities.
+
 | Identity | Value |
 | --- | --- |
 | Source | `43957f6fa8a9bc023c193bc7a712adb94a0dfb92` |
