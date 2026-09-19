@@ -45,6 +45,9 @@ router.post('/runs', wrap(async (req, res) => res.status(201).json(await service
 router.get('/runs/:id', wrap(async (req, res) => res.json(await service.track(req.user.id, await key(req), req.params.id, { source: 'panel' }))));
 router.get('/runs/:id/result', wrap(async (req, res) => res.json(await service.operationResult(await key(req), req.params.id))));
 router.post('/runs/:id/cancel', wrap(async (req, res) => res.json(await service.platform(await key(req), 'POST', `/v1/operations/${req.params.id}:cancel`))));
+router.get('/studies', wrap(async (req, res) => res.json(await service.studies(await key(req)))));
+router.get('/studies/:id', wrap(async (req, res) => res.json(await service.studies(await key(req), 'status', req.params.id))));
+router.post('/studies/:id/cancel', wrap(async (req, res) => res.json(await service.studies(await key(req), 'cancel', req.params.id))));
 router.get('/workspace', wrap(async (req, res) => res.json(await service.workspaceList(await key(req), req.query.path || ''))));
 router.post('/workspace', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) throw service.failure('Attach one file.');

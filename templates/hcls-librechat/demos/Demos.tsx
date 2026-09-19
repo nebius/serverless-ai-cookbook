@@ -21,6 +21,10 @@ type RunRow = { id: string; model_id?: string; protocol?: string; status?: strin
     activation_started_at?: string; ready_at?: string; started_at?: string; completed_at?: string;
     cold_start_seconds?: number; attempt?: number; max_attempts?: number } };
 type RunPage = { data: RunRow[]; next_cursor?: string; history_available?: boolean; history_notice?: string };
+type Study = { id: string; title: string; state: string; phase: string; current_step?: string;
+  completed_steps: string[]; step_count: number; queue_blocked?: boolean;
+  created_at: number; finished_at?: number; failure?: { message: string };
+  artifacts?: { name: string; role: string; path: string; size_bytes: number; sha256: string; download_url: string }[] };
 type WorkspaceEntry = { name: string; path: string; kind: 'directory' | 'file'; size_bytes?: number; updated_at: string };
 const BASE = '/api/scientific-demos';
 const field = 'rounded-lg border border-border-medium bg-surface-primary p-2 text-text-primary';
@@ -90,6 +94,7 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
   const apps = useQuery(['scientific-demos', 'apps'], () => request.get<{ data: AppRow[] }>(`${BASE}/apps`), { enabled: enabled && tab === 'apps', retry: false });
   const runCursor = runPages[runPages.length - 1];
   const runs = useQuery(['scientific-demos', 'runs', runCursor], () => request.get<RunPage>(`${BASE}/runs${runCursor ? `?cursor=${encodeURIComponent(runCursor)}` : ''}`), { enabled: enabled && tab === 'runs', retry: false, refetchInterval: tab === 'runs' ? 5000 : false });
+  const studies = useQuery(['scientific-demos', 'studies'], () => request.get<{ data: Study[]; engine?: { configured: boolean; alive: boolean } }>(`${BASE}/studies`), { enabled: enabled && tab === 'runs', retry: false, refetchInterval: tab === 'runs' ? 5000 : false });
   const workspace = useQuery(['scientific-demos', 'workspace', workspacePath], () => request.get<{ info: Record<string, unknown>; prefix: string; data: WorkspaceEntry[] }>(`${BASE}/workspace?path=${encodeURIComponent(workspacePath)}`), { enabled: enabled && tab === 'workspace', retry: false });
   async function act(work: () => Promise<void>) {
     setBusy(true); setError('');
@@ -102,7 +107,7 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
     const response = await request.getResponse<Blob>(`${BASE}/workspace/file?path=${encodeURIComponent(entry.path)}`, { responseType: 'blob' });
     download(entry.name, response.data, response.headers['content-type'] || 'application/octet-stream');
   });
-  const sessionError = [settings.error, apps.error, runs.error, workspace.error].find(Boolean);
+  const sessionError = [settings.error, apps.error, runs.error, studies.error, workspace.error].find(Boolean);
   return <main className="mx-auto h-full w-full max-w-6xl overflow-y-auto p-4 text-text-primary sm:p-8">
     <WorkbenchHeader tab={tab} choose={choose} />
     <details open={!enabled} className="mb-5 rounded-xl border border-border-medium p-4">
@@ -134,6 +139,20 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
     </section>}
     {tab === 'runs' && <section>
       <h2 className="text-xl font-semibold">Runs</h2><p className="my-2 text-sm text-text-secondary">Your model operations and input uploads from chat and API appear automatically. Reconnect to follow their actual status without submitting duplicate work.</p>
+      <section aria-label="Whole studies" className="my-5 rounded-xl border border-border-medium p-4">
+        <h3 className="font-semibold">Whole studies</h3>
+        <p className="my-2 text-sm text-text-secondary">Saved preparation, model work, analysis and publication continue independently of chat. Completion means the declared files were verified, not clinical or scientific validation.</p>
+        {studies.data?.engine && !studies.data.engine.alive && <p role="status" className="my-2 text-sm">{studies.data.engine.configured ? 'The study supervisor is currently unavailable. Saved work is retained; do not submit another copy.' : 'The operator must enable this dedicated user’s single study supervisor before whole studies can run.'}</p>}
+        {(studies.data?.data || []).map((study) => <article key={study.id} className="border-t border-border-light py-3">
+          <div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{study.title}</strong><p className="text-sm">{study.state} · {study.phase}{study.current_step ? ` · ${study.current_step}` : ''} · {study.completed_steps.length}/{study.step_count} phases</p><code className="text-xs">{study.id}</code></div>
+            {(!['completed', 'failed', 'cancelled', 'needs_attention'].includes(study.state) || study.queue_blocked) && <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { await request.post(`${BASE}/studies/${study.id}/cancel`); })}>Cancel remaining study</Button>}
+          </div>
+          {study.queue_blocked && <p role="status" className="mt-2 text-sm">A previous admission needs inspection. Later studies are held to avoid duplicate or overlapping model work.</p>}
+          {study.failure && <p role="alert" className="mt-2 text-sm">{study.failure.message}</p>}
+          <ul className="mt-2 space-y-1">{(study.artifacts || []).map((artifact) => <li key={artifact.name}><Link className="underline" to={artifact.download_url}>{artifact.name}</Link><span className="ml-2 text-xs text-text-secondary">{artifact.role} · {artifact.size_bytes.toLocaleString()} bytes · SHA256 {artifact.sha256}</span></li>)}</ul>
+        </article>)}
+        {!studies.isLoading && !studies.error && !studies.data?.data.length && <p className="text-sm">No saved whole studies yet. Ask the agent to prepare and launch a complete study plan.</p>}
+      </section>
       {runs.data?.history_notice && <p role="status" className="my-3 rounded border border-border-medium p-3 text-sm">{runs.data.history_notice}</p>}
       <form className="mb-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); void act(async () => {
         const value = await request.post<RunRow>(`${BASE}/runs`, { operation_id: operationId }); setSelectedRun(value.id); setOperationId('');

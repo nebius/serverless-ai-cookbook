@@ -306,6 +306,17 @@ def main():
     if args.wait_seconds < 0 or args.poll_seconds < 1:
         parser.error('wait-seconds must be nonnegative and poll-seconds at least 1.')
     plan = json.loads(args.plan.read_text())
+    if plan.get('schema') == 'scientific-workflow/v2':
+        import scientific_study
+        if args.validate_only:
+            print(json.dumps({'schema': plan['schema'], 'steps': len(plan['steps']),
+                              'files': list(scientific_study.validate(plan).values()), 'inference_submitted': False}))
+            return
+        result = scientific_study.submit(plan, args.output)
+        print(json.dumps(result))
+        # The dedicated supervisor owns execution. CLI acceptance is not
+        # completion and must not trigger a misleading shell && chain.
+        raise SystemExit(0 if result['state'] == 'completed' else 75)
     preflight = validate_files(plan)
     if args.validate_only:
         print(json.dumps(preflight))

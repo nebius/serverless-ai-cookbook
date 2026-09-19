@@ -8,6 +8,14 @@ set -euo pipefail
 : "${TAVILY_SECRET_SELECTOR:?Set TAVILY_SECRET_SELECTOR to a MysteryBox secret whose payload key is TAVILY_API_KEY}"
 : "${IMAGE:?Set IMAGE to the tested release tag or digest}"
 
+# One user-owned supervisor, not a distributed lock on an S3 mount.
+case "${SCIENTIFIC_STUDY_OWNER_MODE:-}" in
+  first-instance|stopped-predecessor) ;;
+  *) printf '%s\n' 'Set SCIENTIFIC_STUDY_OWNER_MODE=first-instance only after confirming no active supervisor for this user, or stopped-predecessor after stopping its exact previous instance. Preserve bucket/receipts. Overlapping same-user supervisors are unsupported.' >&2; exit 2 ;;
+esac
+: "${SEED_DEFAULT_USER_EMAIL:?Durable studies require one configured dedicated user}"
+: "${TEAM_BUCKET_NAME:?Durable studies require a persistent customer bucket mount}"
+
 ENDPOINT_NAME="${ENDPOINT_NAME:-nebius-scientific-ai-agent}"
 SCIENTIFIC_MODELS_API_BASE_URL="${SCIENTIFIC_MODELS_API_BASE_URL:-https://89.169.99.188/v1}"
 SCIENTIFIC_MODELS_MCP_URL="${SCIENTIFIC_MODELS_MCP_URL:-https://89.169.99.188/mcp}"
@@ -26,6 +34,7 @@ CREATE_CMD=(
   --subnet-id "$NEBIUS_SUBNET_ID"
   --env "SCIENTIFIC_MODELS_API_BASE_URL=$SCIENTIFIC_MODELS_API_BASE_URL"
   --env "SCIENTIFIC_MODELS_MCP_URL=$SCIENTIFIC_MODELS_MCP_URL"
+  --env "SCIENTIFIC_STUDY_OWNER_MODE=$SCIENTIFIC_STUDY_OWNER_MODE"
   --env "SCIENTIFIC_DEDICATED_CHAT_ENABLED=${SCIENTIFIC_DEDICATED_CHAT_ENABLED:-true}"
   --env "SCIENTIFIC_CHAT_MODEL=${SCIENTIFIC_CHAT_MODEL:-Qwen/Qwen3-235B-A22B-Instruct-2507}"
   --env "SCIENTIFIC_CHAT_REASONING_EFFORT=${SCIENTIFIC_CHAT_REASONING_EFFORT:-}"

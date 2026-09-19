@@ -355,6 +355,43 @@ async function runs(owner, key, { cursor, limit = 50 } = {}) {
   return { data: history.data.map((operation) => runEntry(operation, byId.get(operation.id), { source: 'platform' })),
     next_cursor: history.next_cursor || null, history_available: true };
 }
+async function studies(key, action = 'list', id) {
+  privateKey(key);
+  const configured = process.env.SCIENTIFIC_MODELS_API_KEY;
+  if (!configured || !crypto.timingSafeEqual(Buffer.from(hash(key)), Buffer.from(hash(configured)))) {
+    throw failure('Whole studies belong to this dedicated user instance and its configured platform key. Use that original key; another account does not share its queue.', 403);
+  }
+  if (!['list', 'status', 'cancel'].includes(action) || (action !== 'list' && !RUN_ID.test(id || ''))) {
+    throw failure('Invalid whole-study operation.');
+  }
+  // A saved local identifier does not substitute for the ordinary platform
+  // key. workspaceInfo's mounted-folder shortcut is not a revocation check.
+  await platform(key, 'GET', '/v1/storage');
+  const command = process.env.SCIENTIFIC_CLIENT_PYTHON || '/opt/scientific-client/bin/python';
+  const script = process.env.SCIENTIFIC_STUDY_SCRIPT || '/opt/bionemo/scientific_study.py';
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, [script, `--${action}`, ...(action === 'list' ? [] : [id])],
+      { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
+    const chunks = []; let bytes = 0; let settled = false;
+    const fail = (message, status = 503) => { if (!settled) { settled = true; reject(failure(message, status)); } };
+    const timer = setTimeout(() => { child.kill('SIGTERM'); fail('Study storage observation timed out. The saved study continues; do not resubmit.'); }, 25000);
+    child.stdout.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > 4 * 1024 * 1024) { child.kill('SIGTERM'); fail('Study status is too large to display. Saved receipts and files are unchanged.'); }
+      else chunks.push(chunk);
+    });
+    // Raw tracebacks and environment details are never exposed to the browser.
+    child.stderr.resume();
+    child.once('error', () => { clearTimeout(timer); fail('Study observer is unavailable. Existing studies and their receipts are unchanged.'); });
+    child.once('close', (code) => {
+      clearTimeout(timer);
+      if (settled) return;
+      if (code !== 0) return fail('Study could not be observed for this user. Check its saved status; do not submit another copy.');
+      try { const result = JSON.parse(Buffer.concat(chunks).toString('utf8')); settled = true; resolve(result); }
+      catch { fail('Study observer returned an invalid status; original work is unchanged.'); }
+    });
+  });
+}
 async function trackedRuns(owner, key, existing) {
   const pending = [...existing.data].sort((a, b) => (b.accepted_at || b.first_seen_at || '')
     .localeCompare(a.accepted_at || a.first_seen_at || ''));
@@ -563,5 +600,5 @@ async function analyzeWorkspace(kind, key, args) {
     : kind === 'docking-batch' ? analysis.dockingBatch(key, args, { workspaceGet, retainWorkspaceBytes })
     : analysis.compare(kind, key, args, { workspaceGet, retainWorkspaceBytes });
 }
-module.exports = { platform, listApps, operationResult, workshopRun, summarizeResult, clinical, clinicalFromWorkspace, status, list, start, output, clinicalOutput, analyzeWorkspace, track, waitOperation, runs, workspaceInfo, workspaceList,
+module.exports = { platform, listApps, operationResult, workshopRun, summarizeResult, clinical, clinicalFromWorkspace, status, list, start, output, clinicalOutput, analyzeWorkspace, track, waitOperation, runs, studies, workspaceInfo, workspaceList,
   workspacePut, workspaceGet, save, read, failure, publicError, FILES, REPORT_MODEL };

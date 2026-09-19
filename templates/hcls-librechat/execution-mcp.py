@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import uuid
+from scientific_study_schema import STUDY_SCHEMA
 
 ROOT = Path(os.environ.get('SCIENTIFIC_EXECUTION_DIR', '/data/hcls-execution'))
 WORKSPACE = os.environ.get('SCIENTIFIC_WORKSPACE', '/workspace')
@@ -122,6 +123,12 @@ def bounded_number(args, name, default, maximum):
 
 def read_job(args):
     job_id = str(uuid.UUID(args['job_id']))
+    if os.environ.get('SCIENTIFIC_MODELS_API_KEY') and (os.environ.get('SCIENTIFIC_STUDY_OWNER') or os.environ.get('SEED_DEFAULT_USER_EMAIL')):
+        import scientific_study
+        if (scientific_study.directory(job_id) / 'receipt.json').exists():
+            # The supervisor progresses this job independently; this is one
+            # observation, never another launch or a mechanical chat loop.
+            return scientific_study.get(job_id)
     directory = ROOT / job_id
     if not (directory / 'request.json').is_file():
         raise ValueError('Unknown execution job ID.')
@@ -198,6 +205,11 @@ def run_scientific_workflow(args):
     """Typed launch of the existing durable client, not a new model transport."""
     workspace = Path(WORKSPACE).resolve()
     output = workspace_path(args.get('output_directory'), 'output_directory')
+    if 'study' in args:
+        if 'steps' in args or 'plan_file' in args or args.get('resume'):
+            raise ValueError('Whole studies use one immutable study plan; no separate steps, plan_file or manual resume.')
+        import scientific_study
+        return scientific_study.submit(args['study'], output)
     if ('steps' in args) == ('plan_file' in args):
         raise ValueError('Supply typed steps OR an existing plan_file, not both.')
     index_dir = ROOT / 'workflow-index'
@@ -211,6 +223,10 @@ def run_scientific_workflow(args):
         if not plan_path.is_file():
             raise ValueError('plan_file does not exist: ' + str(plan_path))
         plan_bytes = plan_path.read_bytes()
+        parsed = json.loads(plan_bytes)
+        if parsed.get('schema') == 'scientific-workflow/v2':
+            import scientific_study
+            return scientific_study.submit(parsed, output)
     resume = args.get('resume', False)
     if not isinstance(resume, bool):
         raise ValueError('resume must be a boolean.')
@@ -414,11 +430,13 @@ TOOLS = [
                     'media_type': {**TEXT, 'description': 'Actual source MIME accepted by the live model contract.'},
                     'idempotency_key': {'type': 'string', 'minLength': 8, 'maxLength': 200}}}}}}},
     {'name': 'run_scientific_workflow',
-     'description': 'Preferred launch for a prepared scientific study: supply typed steps with input_file (native) or source_file plus parameters_file (batch), all real workspace paths, and output_directory. The tool constructs the canonical plan; do not invent a plan wrapper or put JSON data into path fields. Existing plan_file mode remains for recovery. Validates every source/input/parameter file before any admission and uses existing clients sequentially under unchanged caller policy. Native JSON input files can contain large arrays outside chat. Returns one saved execution job after up to10 seconds; poll read_execution, never launch again. Repeated calls reuse the job; resume=true is only for inspected interruptions, preserving original operation IDs/keys. Preflight is not scientific validation.',
+     'description': 'Preferred whole-study launch: supply study (scientific-workflow/v2) with ordered preparation, native/batch, deterministic analysis and declared final deliverables, plus output_directory. File inputs are existing workspace paths or {step,file} references to an earlier phase. A dedicated persistent worker performs all phases after chat disconnect or process restart, serializes admission, and publishes a verified final manifest. Final reports come from installed deterministic helpers, not a later chat calculation. Runs shows study status/files; do NOT ask the user to continue merely to wait or run declared analysis. No agent loop or increased model/tool budgets. Repeating the same plan/output returns the same study. Unknown admissions stop for inspection, never automatic resubmission. Legacy native/batch-only steps or plan_file remain compatible but are not whole-study completion. Preflight and completion are not scientific validation.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
      'inputSchema': {'type': 'object', 'additionalProperties': False,
-        'required': ['output_directory'], 'oneOf': [{'required': ['steps'], 'not': {'required': ['plan_file']}},
-                                                   {'required': ['plan_file'], 'not': {'required': ['steps']}}], 'properties': {
+        'required': ['output_directory'], 'oneOf': [{'required': ['steps'], 'not': {'anyOf': [{'required': ['plan_file']}, {'required': ['study']}]}},
+            {'required': ['plan_file'], 'not': {'anyOf': [{'required': ['steps']}, {'required': ['study']}]}},
+            {'required': ['study'], 'not': {'anyOf': [{'required': ['steps']}, {'required': ['plan_file']}]}}], 'properties': {
+            'study': STUDY_SCHEMA,
             'plan_file': {'type': 'string'}, 'output_directory': {'type': 'string'},
             'steps': {'type': 'array', 'minItems': 1, 'items': {'oneOf': [NATIVE_STEP_SCHEMA, BATCH_STEP_SCHEMA]}},
             'resume': {'type': 'boolean', 'default': False}}}},
@@ -432,7 +450,7 @@ TOOLS = [
                 'default': EXECUTE_WAIT_DEFAULT_SECONDS,
                 'description': 'Launch-response wait only: 0 to 10 seconds, default 5. Omit for a normal launch. This is not the command timeout or read_execution observation wait. Longer work continues under its saved job_id; call read_execution, never launch it again.'}}}},
     {'name': 'read_execution',
-     'description': 'Observe the same command by its job_id, including after reconnecting. For a running scientific workflow request wait_seconds=30 (default 15, maximum 30); effective observation is at most 25 seconds to reserve 5 seconds inside the unchanged 30-second MCP deadline. Returns early on completion/failure/interruption and never extends command deadlines or submits model work. Returns actual wait metadata, status, exit code and bounded output. Pass next_offset to avoid rereading prior logs. Running is not completed analysis; retain this job and original operation IDs. Receipts survive MCP restarts; running processes do not survive container restart.',
+     'description': 'Observe the same saved job_id, including after reconnecting. Whole-study v2 jobs return durable phase status and verified final artifacts; their supervisor resumes across process restart without a chat continuation. Generic commands and legacy workflows remain process-bound: their receipts survive but their process does not survive container restart. For ordinary command observations wait_seconds max30 (default15) has effective max25 inside the unchanged30-second MCP deadline. Never relaunch merely to poll or call pending inference completed analysis.',
      'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
      'inputSchema': {'type': 'object', 'additionalProperties': False, 'required': ['job_id'],
         'properties': {'job_id': {'type': 'string'}, 'offset': {'type': 'integer', 'minimum': 0},

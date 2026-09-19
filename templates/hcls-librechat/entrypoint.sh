@@ -46,4 +46,4 @@ if [ -n "${SEED_DEFAULT_USER_EMAIL:-}" ] && [ -n "${SEED_DEFAULT_USER_PASSWORD:-
   node /app/seed-user.js
 fi
 
-exec node /app/api/server/index.js
+exec /opt/scientific-client/bin/python /opt/bionemo/scientific-study-worker.py -- node /app/api/server/index.js

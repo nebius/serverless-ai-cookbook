@@ -301,6 +301,28 @@ def bind_uploaded_source(parameters: dict, artifact: dict) -> dict:
     return {**parameters, 'source': {'kind': 'uploaded-bundle', **artifact}}
 
 
+def recover_saved_admission(args, receipt):
+    """Recover an exact acceptance saved just before the operation receipt.
+
+    No admission is replayed. Missing or mismatched responses remain ambiguous.
+    """
+    if receipt.get('operation_id') or receipt.get('state') not in {'submitting', 'admission_unknown'}:
+        return receipt
+    path = args.output / 'submission.json'
+    accepted = json.loads(path.read_bytes()) if path.is_file() else {}
+    operation = accepted.get('operation', accepted)
+    if (not isinstance(operation, dict) or operation.get('model_id') != args.model
+            or operation.get('idempotency_key') != args.idempotency_key
+            or operation.get('protocol') != 'scientific-batch-v1'
+            or operation.get('operation') != args.operation
+            or operation.get('status') not in {'queued', 'activating', 'running', 'succeeded', 'failed', 'cancelled', 'expired', 'preempted'}):
+        raise RuntimeError('Previous admission is ambiguous; no matching retained acceptance response exists.')
+    operation_id = str(UUID(operation['id']))
+    receipt.update(operation_id=operation_id, state=operation['status'], recovered_saved_admission=True)
+    save(args.output / 'receipt.json', receipt)
+    return receipt
+
+
 async def run(args) -> dict:
     endpoint = os.environ["SCIENTIFIC_MODELS_MCP_URL"]
     key = os.environ["SCIENTIFIC_MODELS_API_KEY"]
@@ -319,20 +341,21 @@ async def run(args) -> dict:
         raise ValueError("Output directory belongs to a different request.")
     if receipt.get("state") == "verified":
         return receipt
+    receipt = recover_saved_admission(args, receipt)
     save(receipt_path, receipt)
     headers = {"authorization": "Bearer " + key}
     async with httpx2.AsyncClient(base_url=origin, headers=headers, timeout=180,
                                   trust_env=False, follow_redirects=False) as http:
         async with httpx2.AsyncClient(headers=headers, timeout=180, trust_env=False) as mcp_http:
             async with Client(streamable_http_client(endpoint, http_client=mcp_http)) as client:
-                tools = (await client.list_tools()).tools
-                tool = next((item for item in tools if item.name == args.tool), None)
-                if tool is None:
-                    raise RuntimeError("Requested scientific-batch tool is unavailable.")
-                save(args.output / "contract.json", tool.model_dump(mode="json", by_alias=True))
                 if not receipt.get("operation_id"):
                     if receipt["state"] in {"submitting", "admission_unknown"}:
                         raise RuntimeError("Previous admission is ambiguous; inspect evidence before retrying.")
+                    tools = (await client.list_tools()).tools
+                    tool = next((item for item in tools if item.name == args.tool), None)
+                    if tool is None:
+                        raise RuntimeError("Requested scientific-batch tool is unavailable.")
+                    save(args.output / "contract.json", tool.model_dump(mode="json", by_alias=True))
                     discovery = await call(client, 'get_model_schema', {'model_id': args.model,
                                                                        'protocol': 'scientific-batch-v1'})
                     save(args.output / 'model-contract.json', discovery)
