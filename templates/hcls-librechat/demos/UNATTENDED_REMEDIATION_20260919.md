@@ -58,6 +58,48 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 In progress. This is not a final readiness claim.
 
+### 18:22 UTC — four delivered workflows; remaining six continue
+
+Four v54/r7 studies completed after witnessed browser closure and delivered
+independently checked reports through actual UI downloads:
+
+| Scientist | Outcome | Accepted to finished | UI downloads |
+| --- | --- | --- | --- |
+| 01 OpenFold2 | New prediction; 76-residue fit/confidence independently recomputed | 38.740 s | 8 |
+| 05 chemistry | Four docking calls/16 poses and GenMol/16 unique valid molecules; poor results retained | 165.909 s | 8 |
+| 07 aging | 32 PhenoAge and 17 AltumAge outputs; exactly one matched-sample overlap | 145.991 s | 7 |
+| 09 retained MindEval | Six full records, 126 messages and 30 scores; no new consultations or judging | 4.836 s | 22 |
+
+These are complete-study timings, **not cold-start benchmarks**. The09 disconnect
+witness is only0.676 s; the other witnesses were35.929/160.611/140.694 s before
+completion. Source reports: [OpenFold2](evidence/20260919-openfold2-natural-v54/README.md),
+[chemistry and aging](evidence/20260919-chemistry-aging-natural-v54/README.md),
+[retained MindEval](evidence/20260919-mindeval-natural-v54/README.md).
+
+The aging interim chat incorrectly called its inputs the same sample. Its final
+deterministic report correctly describes1 versus16 samples and one overlap;
+retain this wording defect rather than claiming error-free conversation.
+
+The temporary credentials expired at18:13 UTC after these four studies finished.
+Asking the user to approve routine disposable-test credential maintenance was
+unnecessary; that question was withdrawn and corrected in the same Slack thread.
+Existing API policy rejects expiry updates/rotation after expiration. Six new
+test keys were therefore issued through the supported API for02/03/04/06/08/10,
+with exactly the same tenant/principal, grants, concurrency1 and other budgets,
+expiring at the previous expiry plus24 h. No customer key or quota was changed.
+The original private manifest and four completed clients remain unchanged; the
+separate successor manifest is retained under
+`remaining-scientist-key-renewal/scientists-private.json` in the protected run root.
+
+A new key has a different backend history identity and Study fingerprint.
+Installed-v54 verification confirms that fresh same-user instances can execute
+new r7 studies while old receipts remain unchanged and excluded; it does **not**
+claim transparent key rotation/history continuity. Settings PUT alone does not
+reload environment-bound MCP/worker credentials. This limitation is documented,
+not bypassed by database edits or widened operation access. New dedicated clients
+02/03/04/08 are provisioning;06/10 follow. Remaining natural qualification and
+Rene's state-preserving upgrade are still outstanding.
+
 ### 18:00 UTC — preview address reuse and credential boundary
 
 Stopping v52 previews did not release public addresses. Four v54 create attempts
