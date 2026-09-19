@@ -59,6 +59,40 @@ JSON WER values are ratios; the report's percent column is explicitly converted.
 No cross-language/cross-source ranking, semantic-omission judgment, medical
 correctness or completeness is inferred.
 
+## Final assembly and cross-domain measurements
+
+The existing `report-assembly.py --manifest PLAN.json --output-dir OUTPUT_DIR`
+keeps its `{title, sections:[{title,file,format}]}` contract and existing limits.
+Relative files resolve beside the plan. Empty sections and malformed tables
+fail before publication. Markdown and CSV still retain original content/order;
+they do **not** confer scientific validation on arbitrary narrative.
+
+Four additive deterministic section formats render source-schema measurements:
+
+| Format | Retained input | What is fixed |
+| --- | --- | --- |
+| `operation-timing` | Native result/operation JSON, optionally `structuredContent` | `elapsed_ms` stays ms and has an explicitly divided-by-1000 seconds field; timestamp intervals and reported GPU reservations remain separate. Missing fields are unavailable. Admission/activation delay is not labelled cold start. |
+| `recorded-export` | `scientific-recorded-export/v1` comparison.json | Validates every field's dtype/shape/scalar count and total; reports all, floating, integer and boolean values separately. Metadata arithmetic is separate from the exporter's raw readback. |
+| `rgb-statistics` | Producer results with unique roles and `mean_rgb_float64` RGB24 channel triples | Renders each retained channel mean, unweighted RGB mean and optional explicitly supplied weighted proxy. None is called physical luminance or proof of action-label validity. This does not decode the video again. |
+| `mindeval-runs` | Saved `{data:[run...]}` records | Counts unique consultations, observed criterion keys, profiles, clinicians and observed profile×criterion cells separately. Missing judgments remain unavailable; duplicate IDs and invalid scores fail. No clinical winner is inferred. |
+
+The assembled report bundle contains exact source copies, original plan, helper,
+report, source-bound provenance (including typed measured rows), and a
+`scientific-ai/report-artifacts/v1` completion manifest written last. Every
+artifact is published through the existing closed-file/readback mechanism.
+Identical completed/partial publication is resumable; differing prior bytes are
+preserved and cause failure, not overwrite. The durable worker independently
+verifies and publishes the whole study after its local stages succeed. Each
+user still has their own instance; no new multiuser storage service is added.
+
+For retained evidence, these adapters distinguish 2,951.319835 ms from
+2.951319835 s; 6,144 total values from 5,504 floats, 512 integers and128 booleans;
+and five observed MindEval criteria from ten profile×criterion cells across
+two profiles and three clinicians. These are replay findings, **not defaults or
+hardcoded campaign expectations**. Tests cover different counts and missing
+data. A natural customer must obtain the measured report and complete manifest
+without being told these answers or receiving an operator's method correction.
+
 ## Customer-path acceptance recipe
 
 ### Structure comparisons
