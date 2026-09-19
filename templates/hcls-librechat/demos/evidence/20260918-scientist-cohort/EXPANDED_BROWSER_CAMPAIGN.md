@@ -1,11 +1,59 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 03:16 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 03:24 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### Independently verified v37 deliverables and v39 successor
+
+Scientist02's two-turn recovery produced a4,927-byte report and row-level
+metrics, downloaded through the browser with SHA256
+`6f376f5bfcbff64bd9c1db03bcdcb4175c8d178866ac1f1679c0a2fe639a8f83`.
+Independent Gemmi/sequence correspondence/Kabsch evaluation verifies all four
+structures, all contact counts and RMSDs within2.2e-7Å. Poor Protenix no-MSA
+outputs remain explicitly reported: whole-complex RMSD18.508/18.023Å and zero
+native contacts; the two preserved Boltz2 predictions measure1.324/0.442Å.
+Three failed analysis scripts self-corrected. One ordinary continuation after
+durable model completion was needed, not a manual input/algorithm repair.
+However, the report's blanket single-seed7 wording is unsupported for Boltz2:
+its exact saved requests have no seed field. An explicitly recorded additional
+read-only methodological review is active; original report stays intact.
+The chat also mistyped the report checksum; actual file hash above is authoritative.
+
+Scientist05's unchanged natural study completed five model calls and produced
+a15,020-byte assembled report, actual browser-download SHA256
+`33ebb92d9f64165e0e465173d742eb78bda5f7efdcae0e1856a53b0a161a2178`.
+All16 docking RMSDs/confidences and16 molecule QED/size/uniqueness rows verify
+independently from exact raw outputs. Estradiol predictions remain poor
+(best15.787/17.283Å), while benzamidine best poses measure0.237/0.527Å;
+16/16 generated molecules are valid/unique,12–23 heavy atoms, mean18.8125.
+The two user turns took172.936s and108.593s respectively; intervening reviewer
+idle time is not attributed to model or platform latency. One ad hoc report
+script used a wrong file path and self-corrected; all actual verified final
+files remain. One ordinary continuation was needed; no manual numerical
+repair, no repeated inference. The original final prose rounds15.787 to15.8
+in a strict-looking lower-bound sentence; exact numerical tables are retained.
+This is scoped numerical/file acceptance, not molecular efficacy.
+
+Combined v39 source `5dc3e66`, index
+`sha256:6d6564e60f252404a5975d35157cb601733802757aced5ebd3df81174300fd0b`
+adds complete-before-write NumPy analysis export to v38 recovery.7 new export
+tests and11 unchanged receipt tests pass. Fresh immutable image verifies the
+same original LeRobot operation/bundle/all9 extracted file hashes in8.613s,
+including same-operation resume and installed NumPy-export/nonfinite rejection.
+No runtime package installation or inference. Exact approved obsolete10
+`aiendpoint-e00ghph4850jh6kjg5` was deleted after full one-chat/config/bucket/
+177-terminal-operation backup; an initial providerInternal error was retained
+and one same-target retry finished03:20:04. Currentv36/v37 are untouched.
+Successor10 `aiendpoint-e00hq3500nvwc43nm7` is provisioning, with unchanged
+DeepSeek0813 budgets. Frozen natural robotics prompt changes only outputpath,
+SHA256 `b923f6c8f50dd196e933faa7c620f4e927b06f10710b5ca3e836ce424709f64e`.
+New inference waits parent Q64 backend promotion; no latest-image acceptance
+is inherited from v37 deliverables. Tracking card: Q65
+`fs2-workbench-complete-result-recovery-r20260919`.
 
 ### v37 natural recovery and v38 retained-artifact gate
 
