@@ -1,0 +1,286 @@
+{
+  "schema": "fs2.campaign-portable-counts/v1",
+  "as_of": "2026-09-19T06:04:00Z",
+  "scan_finished_at": "2026-09-19T06:04:22.775185Z",
+  "scope": "Retained evidence, not all provider activity; workshop responses are separate from durable serving/scientific operations.",
+  "counts": {
+    "cause_classification": {
+      "bounded_generation_exhaustion": 28,
+      "not_classified": 1960,
+      "unknown_cause": 86
+    },
+    "child_independent_checks": {
+      "not_linked": 12
+    },
+    "child_service_states": {
+      "succeeded": 12
+    },
+    "durable_operation_ids": 2074,
+    "independent_checks": {
+      "fail": 59,
+      "mixed_retained_verdicts": 1,
+      "not_linked": 234,
+      "pass": 1780
+    },
+    "observed_stage_attempts": 780,
+    "operation_kinds": {
+      "child_inference": 12,
+      "top_level_scientific_batch": 367,
+      "top_level_serving": 1695
+    },
+    "operations_with_any_retained_failed_check": 134,
+    "runtime_comparison": {
+      "different_or_historical_identity": 25,
+      "exact_current_identity": 326,
+      "unknown": 1723
+    },
+    "service_states": {
+      "cancelled": 1,
+      "failed": 113,
+      "succeeded": 1895,
+      "succeeded_receipt_only": 65
+    },
+    "service_states_scope": "all durable IDs, including child operations; not the top-level request denominator",
+    "serving_execution_started_witnesses": 1636,
+    "stage_attempt_states": {
+      "active": 3,
+      "failed": 4,
+      "succeeded": 773
+    },
+    "top_level_independent_checks": {
+      "fail": 59,
+      "mixed_retained_verdicts": 1,
+      "not_linked": 222,
+      "pass": 1780
+    },
+    "top_level_inference_request_ids": 2062,
+    "top_level_service_states": {
+      "cancelled": 1,
+      "failed": 113,
+      "succeeded": 1883,
+      "succeeded_receipt_only": 65
+    }
+  },
+  "acceptance_timestamps": {
+    "scope": "Top-level requests with at least one retained parseable acceptance timestamp",
+    "known": 1996,
+    "unknown": 66
+  },
+  "scan": {
+    "admission_receipt_files": 2484,
+    "artifact_receipts_excluded": 26,
+    "errors": [],
+    "joined_retained_status_observations": 27,
+    "non_admission_receipts_excluded": 356,
+    "receipt_history_directories_excluded": 54
+  },
+  "separate_workshop": {
+    "summary": {
+      "completed_model_responses": 1386,
+      "consultation_states": {
+        "completed": 66
+      },
+      "consultations": 66,
+      "exact_configured_model_turn_count_completed": 66,
+      "failed_history_retained": 0,
+      "human_turns_not_calls": 0,
+      "judgments_with_five_finite_1_to_6_scores": 66,
+      "reported_retry_attempts_not_deduplicated_provider_calls": 0,
+      "responses_by_model": {
+        "Qwen/Qwen3-235B-A22B-Instruct-2507": 220,
+        "Qwen/Qwen3-30B-A3B-Instruct-2507": 660,
+        "google/gemma-3-27b-it": 66,
+        "openai/gpt-oss-120b": 220,
+        "zai-org/GLM-5.1": 220
+      },
+      "responses_by_role": {
+        "clinician": 660,
+        "judge": 66,
+        "patient": 660
+      },
+      "seeded_greetings_not_calls": 66,
+      "token_usage_missing_responses": 0,
+      "token_usage_observed": {
+        "completion_tokens": 529374,
+        "prompt_tokens": 7459136,
+        "total_tokens": 7988510
+      },
+      "unidentified_model_completions": 0
+    },
+    "by_cohort": {
+      "full20-r1": {
+        "completed_model_responses": 1260,
+        "consultation_states": {
+          "completed": 60
+        },
+        "consultations": 60,
+        "exact_configured_model_turn_count_completed": 60,
+        "failed_history_retained": 0,
+        "human_turns_not_calls": 0,
+        "judgments_with_five_finite_1_to_6_scores": 60,
+        "reported_retry_attempts_not_deduplicated_provider_calls": 0,
+        "responses_by_model": {
+          "Qwen/Qwen3-235B-A22B-Instruct-2507": 200,
+          "Qwen/Qwen3-30B-A3B-Instruct-2507": 600,
+          "google/gemma-3-27b-it": 60,
+          "openai/gpt-oss-120b": 200,
+          "zai-org/GLM-5.1": 200
+        },
+        "responses_by_role": {
+          "clinician": 600,
+          "judge": 60,
+          "patient": 600
+        },
+        "seeded_greetings_not_calls": 60,
+        "token_usage_missing_responses": 0,
+        "token_usage_observed": {
+          "completion_tokens": 477168,
+          "prompt_tokens": 6726846,
+          "total_tokens": 7204014
+        },
+        "unidentified_model_completions": 0
+      }
+    },
+    "issues": []
+  },
+  "source_reports": {
+    "campaign": {
+      "path": "campaign-reports/final-0604Z/aggregate.json",
+      "sha256": "43ff4ea8033b98f10952e53642f5c2ada8e12698676e784d3fe68d086ce0a0b0"
+    },
+    "workshop": {
+      "path": "campaign-reports/workshop-final-0604Z/workshop.json",
+      "sha256": "0e667a29fd9194a6d870a8a97c2630b7e93dda7f81355365bcb5c7cadb96d18e"
+    },
+    "latency": {
+      "path": "campaign-reports/latency-final-0604Z/latency.json",
+      "sha256": "3be4f50bc80eebac48565a1aef11cbfdd164378466696c97edeefed98e43942c"
+    }
+  },
+  "source_helpers": {
+    "repository_head_at_generation": "56c38286e46bc6ab3adb44105a1f814e81856711",
+    "helpers": {
+      "aggregate_campaign.py": {
+        "path": "templates/hcls-librechat/scripts/qualification/aggregate_campaign.py",
+        "last_change_commit": "9e77deeb411804b874c26aa46c846634fe37b8aa",
+        "sha256": "a479ac9e421260c5a4aec3ba1e70a75ab0a50b8e0d73b26f0d536340067954af"
+      },
+      "campaign_latency.py": {
+        "path": "templates/hcls-librechat/scripts/qualification/campaign_latency.py",
+        "last_change_commit": "b39a0e59bf6b5e67dc6954d679dc3e3e62c3652d",
+        "sha256": "85b1ebeda7d7ade656555657edd54748a178d766cf88abdf9f80c66b5bc5ac66"
+      },
+      "aggregate_workshop.py": {
+        "path": "templates/hcls-librechat/scripts/qualification/aggregate_workshop.py",
+        "last_change_commit": "bde96391fa938471ef6089c6d4bcbf2f65b5d1fe",
+        "sha256": "d94fb115f387d43f853da5ac71460592f71ac7a42fb2e808a63ae33121ffa3f7"
+      }
+    }
+  },
+  "inputs": {
+    "runtime_baseline": {
+      "path": "backend-baseline182/configmaps.json",
+      "sha256": "873cba6673ad29dd9ddc235f939162a5b8842b9bd14bb266ef93d571fea4a9a3"
+    },
+    "defect_ledger": {
+      "path": "templates/hcls-librechat/demos/QUALIFICATION_DEFECTS_20260918.md",
+      "sha256": "eb11b0e746a8c4e8676dff8a6d9061a4ab0072b7ae517675fa6da7de32090317"
+    }
+  },
+  "limitations": [
+    "Service completion, artifact checks, natural-client delivery and scientific/clinical validity are separate.",
+    "Timestamp-less evidence remains unknown, not backdated. No GPU occupancy or billing total is inferred.",
+    "Retained active stage-attempt rows are historical observations, not a live workload inventory.",
+    "Workshop retries lack distinct provider-attempt identities; seeded greetings and human turns are not calls.",
+    "Five finite workshop scores validate shape only; no calibrated clinician quality or independent-axis significance claim."
+  ],
+  "latency": {
+    "all_top_level": {
+      "cause_groups": {
+        "bounded_generation_exhaustion": 28,
+        "not_classified": 1948,
+        "unknown_cause": 86
+      },
+      "client_elapsed_seconds": {
+        "max": 8416.079505,
+        "median": 11.202035,
+        "min": 1.818642,
+        "observed": 1950,
+        "p95_nearest_rank": 127.596523,
+        "unknown_or_invalid": 112
+      },
+      "invalid_phase_rows": 0,
+      "operations": 2062,
+      "service_states": {
+        "cancelled": 1,
+        "failed": 113,
+        "succeeded": 1883,
+        "succeeded_receipt_only": 65
+      },
+      "timings_seconds": {
+        "accepted_to_ready": {
+          "max": 447.048278,
+          "median": 0.6120215,
+          "min": 0.173245,
+          "observed": 1624,
+          "p95_nearest_rank": 3.292835,
+          "unknown_or_invalid": 438
+        },
+        "activation_worker_span": {
+          "max": 446.745691,
+          "median": 0.5288904999999999,
+          "min": 0.134435,
+          "observed": 1624,
+          "p95_nearest_rank": 3.199971,
+          "unknown_or_invalid": 438
+        },
+        "end_to_end": {
+          "max": 8395.248121,
+          "median": 4.037338500000001,
+          "min": 0.472472,
+          "observed": 1996,
+          "p95_nearest_rank": 120.608685,
+          "unknown_or_invalid": 66
+        },
+        "execution_span": {
+          "max": 8394.530931,
+          "median": 2.6903705,
+          "min": 0.183214,
+          "observed": 1986,
+          "p95_nearest_rank": 108.192276,
+          "unknown_or_invalid": 76
+        },
+        "pre_execution_wait": {
+          "max": 447.108209,
+          "median": 0.5571375000000001,
+          "min": 0.075655,
+          "observed": 1986,
+          "p95_nearest_rank": 2.449462,
+          "unknown_or_invalid": 76
+        },
+        "queue_before_activation": {
+          "max": 0.656194,
+          "median": 0.052021,
+          "min": 0.006732,
+          "observed": 1624,
+          "p95_nearest_rank": 0.202341,
+          "unknown_or_invalid": 438
+        },
+        "ready_to_execution": {
+          "max": 1.208561,
+          "median": 0.0097085,
+          "min": 0.002299,
+          "observed": 1624,
+          "p95_nearest_rank": 0.13264,
+          "unknown_or_invalid": 438
+        }
+      },
+      "worker_state": {
+        "ready_worker_before_acceptance": 605,
+        "unknown": 1457
+      }
+    },
+    "changed_source_rows": 0,
+    "portable_markdown_sha256": "4ebe1e4a861e3ec15adeb85042022a6f8041fa5d99e7781f48b4bd5027f127d9"
+  }
+}
