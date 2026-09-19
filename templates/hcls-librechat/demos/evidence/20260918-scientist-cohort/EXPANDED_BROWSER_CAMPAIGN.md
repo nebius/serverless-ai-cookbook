@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 01:21 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 01:31 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -88,9 +88,21 @@ unclassified cloud setup failure, **not a proven quota boundary**. Parent
 explicitly approved replacing only two obsolete campaign previews after exact
 configuration/history backups: `aiendpoint-e00zt59r50kqej7p0v` and
 `aiendpoint-e00ghb271316bkv64f`. Each has zero conversations with exhausted cursor;
-49/224 visible operations are terminal. Deletion is in progress; buckets,
-secrets, newer evidence-bearing previews and production are untouched. Protected
-backup receipts include restoration configuration. No limits are raised.
+49/224 visible operations are terminal. Both exact approved endpoints were
+deleted, with ID/name absence verified; buckets, secrets, newer evidence-bearing
+previews and production are untouched. Protected backup receipts include
+restoration configuration. No limits are raised.
+
+Fresh studies began concurrently through the browser at01:29:23 UTC, without
+tool hints or expected-number coaching.02 endpoint `aiendpoint-e00zz34eams2z1ta21`,
+conversation `0e24a291-0a7c-5bdf-ae0a-a60bd119ad7f`;07 endpoint
+`aiendpoint-e00k784ghdqcwc950t`, conversation `6dc14b44-d3b7-50f9-b20d-7fb7c5001c8d`.
+Both use frozen v34, original identities/buckets and unchanged limits. Prompt
+hashes are `639ea1e211c2561be001bd0979d7cb0f96a13a6248d4215acdea11b584e15aac`
+and `67d9b3b24e75570f8697311bcb28939881569a699583ddbcd5f209d8650dbd6d`.
+All earlier failures remain retained; previous07 numerical acceptance is only
+a regression baseline, not inherited by this release. Reports, raw model bytes,
+independent calculations and actual browser downloads remain to be qualified.
 
 ### Latest release gate: v31 raw results correct, combined report malformed
 
