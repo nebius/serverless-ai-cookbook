@@ -108,6 +108,26 @@ def worker_logs(pod):
     return output
 
 
+def worker_node(pod):
+    """Read the actual scheduled node, without treating package labels as NVML."""
+    node_name = pod['spec'].get('nodeName')
+    if not node_name:
+        return None
+    started_at = now()
+    try:
+        node = kube('get', 'node', node_name)
+    except (RuntimeError, subprocess.SubprocessError) as error:
+        return {'pod_uid': pod['metadata']['uid'], 'node_name': node_name,
+                'read_started_at': started_at, 'observed_at': now(),
+                'available': False, 'error_type': type(error).__name__}
+    if node['metadata']['name'] != node_name:
+        raise ValueError('Node observation differs from the owned worker placement.')
+    return {'pod_uid': pod['metadata']['uid'], 'node_name': node_name, 'available': True,
+            'read_started_at': started_at, 'observed_at': now(),
+            'driver_evidence': 'Kubernetes node labels, not an in-container NVML/driver query; package suffixes are retained verbatim.',
+            'node': node}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scientists", required=True, type=Path)
@@ -169,6 +189,13 @@ def main():
             pods = kube("-n", receipt["namespace"], "get", "pods", "-l",
                         LABEL + "operation-id=" + receipt["operation_id"])
             save(args.output / "observations" / f"{index:05d}-pods.json", pods)
+            if args.capture_worker_logs:
+                for pod in pods['items']:
+                    if pod['metadata'].get('labels', {}).get(LABEL + 'stage-id') != args.stage:
+                        continue
+                    path = args.output / 'worker-nodes' / (pod['metadata']['uid'] + '.json')
+                    if pod['spec'].get('nodeName') and not path.exists():
+                        save(path, worker_node(pod))
             if args.capture_worker_logs and time.monotonic() >= next_log_capture:
                 for pod in pods["items"]:
                     if pod["metadata"].get("labels", {}).get(LABEL + "stage-id") == args.stage:

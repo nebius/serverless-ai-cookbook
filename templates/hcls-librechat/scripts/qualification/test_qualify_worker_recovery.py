@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from qualify_worker_recovery import LABEL, eviction_body, request_identity, recovery_verified
+import qualify_worker_recovery as recovery
 
 
 def fixture():
@@ -87,3 +88,31 @@ def test_recovery_requires_exact_bounded_attempt_lineage_and_resource_release():
         assert not recovery_verified(changed, {"attempt_id": "first"})
     assert not recovery_verified(attempts[:1], {"attempt_id": "first"})
     assert not recovery_verified(attempts, None)
+
+
+def test_node_capture_is_read_only_uid_bound_and_keeps_driver_package_suffix(monkeypatch):
+    pod, _ = fixture()
+    calls = []
+    def read(*args):
+        calls.append(args)
+        return {'metadata': {'name': 'test-node', 'uid': 'node-uid',
+            'labels': {'nebius.com/nvidia_driver_version': '580.159.04-1ubuntu1'}}}
+    monkeypatch.setattr(recovery, 'kube', read)
+    value = recovery.worker_node(pod)
+    assert calls == [('get', 'node', 'test-node')]
+    assert value['pod_uid'] == pod['metadata']['uid']
+    assert value['node']['metadata']['labels']['nebius.com/nvidia_driver_version'] == '580.159.04-1ubuntu1'
+    assert 'not an in-container' in value['driver_evidence']
+    assert value['available']
+    pod['spec'].pop('nodeName')
+    assert recovery.worker_node(pod) is None
+    assert len(calls) == 1
+
+
+def test_unavailable_node_observation_does_not_cancel_admitted_model(monkeypatch):
+    pod, _ = fixture()
+    def unavailable(*args):
+        raise RuntimeError('Diagnostic read unavailable')
+    monkeypatch.setattr(recovery, 'kube', unavailable)
+    value = recovery.worker_node(pod)
+    assert value['available'] is False and value['error_type'] == 'RuntimeError'
