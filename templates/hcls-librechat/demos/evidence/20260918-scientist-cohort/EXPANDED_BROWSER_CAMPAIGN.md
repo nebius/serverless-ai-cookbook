@@ -1,11 +1,113 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 01:50 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 02:48 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### v36 outcomes and explicit planner withdrawal
+
+- Scientist01 completed one original natural turn in46.709s: OpenFold2
+  `0462e6ec-6180-4e4c-957b-96ea2065f790`, independent structural/confidence
+  checks and actual browser download passed.76residue CA RMSD3.14401678Å;
+  report1411B SHA256`100150c3319561ef3b53594f197ea8576531f5c102c9cf9f216428be6fb358a7`.
+  Two execute wait30 schema rejections self-corrected; preserved, not erased.
+- Scientist08 completed four ASRs and one exact6817B full-transcript draft,
+  but needed two continuations. The31770B final report was browser-downloaded
+  and independently matched S3 SHA256`68a819714ade3958be9fddb50b44f5fd7688f2df144e4b598d097dd467257745`.
+  The clinicalv5 medication-classification bypass is **not accepted**. A model
+  normalized an uncertain medication name while marking it non-medication;
+  literal source grounding was bypassed. Original draft/review/report retained.
+  Independent existing scorer retains words inside uncertain tags:1419 English
+  reference words, WER17.829%,21.635%,23.679%; German12%. The agent's1345-word
+  policy deletes entire uncertain spans, so those figures are not equivalent.
+  WER and heuristic fact matching do not establish clinical correctness.
+- Scientist10 native`5740a1e9-2ec8-4e42-9c38-6197c43a2b72` and LeRobot
+  parent`4e333485-573f-42ac-af81-a919cdf20913` completed. Children
+  `3a1e3e9e-8e38-474d-b569-6fd5c6369f85` and
+  `ac59ce1d-86aa-48da-8a87-7403920fe1a4` report two different real ready
+  GPU Pods. This supports attribution, not augmentation fidelity. The planner
+  chose prefixV2V instead of whole-trajectory transfer; physical intent remains
+  partial/unaccepted, and final analysis was interrupted as described below.
+- Fresh05 chemistry,02 complex recovery and10 analysis-continuation produced
+  **no new scientific calls**: the previously working planner
+  `zai-org/GLM-5.3` disappeared from Token Factory. Same deployed key, fresh
+  authenticated catalog missing that ID, then direct HTTP404 at02:33:25UTC,
+  request`c829dd6106cd9c9b4d0a9abc9e80af73`: model does not exist. The initial
+  localgate/8ms hypothesis was wrong; message persistence times were not
+  whole-request latency. Workbench's startup catalog still contained GLM.
+  User-facing provider-unavailable message was truthful; failed turns remain.
+
+Protected evidence is under`browser-evidence/scientist-{01,08,10}-v36-*`,
+`model-validation-0233`, and original02/05failed chat captures. Three obsolete
+campaign previews are separately approved for replacement; currentv36GLM
+endpoints/agents/chats stay untouched. Full backups02:40UTC show zero active
+operations, with all chats/config/bucket bindings preserved. Public seeded
+agent duplication returned403; no permission bypass or changes were made.
+
+An **explicit new planner cohort**, not silent fallback, is prepared with
+`deepseek-ai/DeepSeek-V4-Pro-0813`. Two synthetic tool/result rounds passed
+using the same8192output budget/low reasoning. Verbose live catalog lists
+tools/reasoning and979000context, but client stays at131072context with the
+existing round/concurrency settings. These two toy calls do not establish
+scientific quality. Source candidate includes sequential typed file uploads
+`b1ec4c3` (65tests), precise wait guidance`97c3df1`, final clinical source
+changes, and whole-sequence robotics guidance`3d16625` (22config/guidance tests).
+The combined immutable v37 is now published from
+`559864690b98c4c4a6475e750dddf0fea13a799e` as
+`cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0918-v37-5598646`, index
+`sha256:7d9ba8997a55b00a52403719362c7ed99f0801dc0b1cd374309001a8b2d5f86a`,
+amd64 `sha256:979331dcd38103508a7720e07d4e4427230c4540ecd2f16e1d40a3c94515421a`.
+Sixty combined focused tests pass. Clinical document v11 renders full cited
+context beside selected phrases; it is not a claim of clinical readiness.
+Fresh02:45 backup receipts authorize replacement only of obsolete endpoints
+`aiendpoint-e00qxhsvpcc8xg47gg`, `aiendpoint-e00s0n7rzvtd8e43d3`, and
+`aiendpoint-e00qkt8t8n29r0ndeq`. Their deletion is in progress; original v36
+GLM instances remain. Natural v37 recovery is not yet accepted or complete.
+
+Independent v36 robotics verification downloaded and hashed native media and
+the actual generated LeRobot bundle. Native video is64frames/640×480/25fps;
+the full LeRobot0.6.1 reader verifies128 dataset rows/two cameras and6,144
+non-video values exactly. However, the writer re-encoded the **unselected**
+wrist camera: pixels are not bit-exact (episode mean pixel MAE1.2984/1.2629).
+The original customer request's strict unchanged-camera requirement is not
+met. The validator's6-pixel tolerance is not substituted for that request.
+Physical-action alignment also remains unproved. Protected receipts are in
+`browser-evidence/scientist-10-v36-independent`; the read-only v37 recovery
+prompt is frozen with SHA256
+`9674f2c392c3cff1227df3d59b58a269efdc79dd6fe5b16acaa9489f821c7ec9`.
+
+### v36 integrated candidate and bounded resource replacement
+
+Source `2d3df0697d0f539b86ba25164fc3bcbd5a4c1352`, image
+`cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0918-v36-2d3df06`, index
+`sha256:5a852cd5d991f0630068098f3834b4caf30d40c5724f1581f8d7a2db9eb96b9f`
+combines literal clinical source grounding, same-workspace inline-code links,
+explicit chain-map diagnostics and generic scientific artifact preflight.
+The helper now preserves top-level discovery policies when selecting the batch
+contract and validates fixed, operation-selected and source-kind input roles
+before upload. It does not relabel caller bytes or change limits.51 focused
+client tests and actual backend-generated contracts for11 Apps/15 descriptor
+variants passed. Live natural acceptance remains pending.
+
+The manager approved replacement of exactly four obsolete campaign previews:
+`aiendpoint-e00xjd9qc394vdd68d`, `aiendpoint-e00kybfyqbh5e47d0z`,
+`aiendpoint-e00dfwyf2k0na0ppfz`, `aiendpoint-e00vptkmkecp86kfv0`.
+Fresh full paginated histories verified zero active operations on each key;
+configuration, completed chats and workspace bindings were backed up under
+`browser-evidence/v36-replacement-preflight-0156`.01/05/08 deletions completed;
+10 deletion is still in progress at this checkpoint. No bucket, credential,
+secret, newer baseline or customer production endpoint is removed. Restoration
+configuration and exact delete receipts are retained privately.
+
+The unchanged natural01/05/08/10 study prompts were frozen with fresh output
+directories and all original input bytes/hashes before execution.01/08 wait for
+backend175 readiness;05 additionally waits for the seeded DiffDock successor,
+and10 waits for the Cosmos owner-template/attribution acceptance. These gates
+prevent isolated candidate evidence from being attributed to an older public
+runtime. Existing failed customer journeys remain unchanged.
 
 ### v32 matched planner comparison and report mechanism
 
