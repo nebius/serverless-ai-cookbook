@@ -68,7 +68,10 @@ def bundle(files):
     stream = io.BytesIO()
     with tarfile.open(fileobj=stream, mode="w", format=tarfile.USTAR_FORMAT) as archive:
         for name, raw in sorted(files.items()):
-            info = tarfile.TarInfo("design-specs/" + name)
+            # Hosted materialization resolves the design YAML's paths from the
+            # archive root, not from the YAML's own design-specs/ directory.
+            # Nested pinned scaffold YAMLs and their CIFs share that root.
+            info = tarfile.TarInfo("design-specs/" + name if name == "protocol.yaml" else name)
             info.size, info.mode, info.mtime = len(raw), 0o644, 0
             archive.addfile(info, io.BytesIO(raw))
     return gzip.compress(stream.getvalue(), mtime=0)

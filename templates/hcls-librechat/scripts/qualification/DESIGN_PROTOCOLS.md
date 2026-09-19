@@ -55,3 +55,10 @@ Retain existing server filters and requested limits. No winner is an honest
 finite-search outcome. A suspected protocol-specific output-validator mismatch
 requires an exact legitimate upstream-output reproduction before changing the
 validator; do not weaken thresholds to manufacture a pass.
+
+Hosted BoltzGen archives put the selected YAML at `design-specs/<shard>.yaml`
+and resolve that YAML's relative paths against the **archive root**. Keep target
+CIF/PDB files at the root; pinned nested scaffold YAMLs and their CIF files may
+share the root. The original v1 peptide attempt failed in input materialization
+because the acceptance builder placed dependencies under `design-specs/`.
+That request/failure is retained; v2 corrects packaging, not model behavior.

@@ -66,7 +66,7 @@ class DesignProtocolTests(unittest.TestCase):
         raw = bundle({"protocol.yaml": b"entities: []\n", "target.pdb": b"END\n"})
         self.assertEqual(raw, bundle({"target.pdb": b"END\n", "protocol.yaml": b"entities: []\n"}))
         with tarfile.open(fileobj=io.BytesIO(raw), mode="r:gz") as archive:
-            self.assertEqual(archive.getnames(), ["design-specs/protocol.yaml", "design-specs/target.pdb"])
+            self.assertEqual(archive.getnames(), ["design-specs/protocol.yaml", "target.pdb"])
 
 
 if __name__ == "__main__":
