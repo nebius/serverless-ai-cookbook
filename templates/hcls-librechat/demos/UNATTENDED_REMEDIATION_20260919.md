@@ -56,7 +56,39 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 ## Implementation status
 
-In progress as of 19 September, 14:51 UTC. This is not a final readiness claim.
+In progress as of 19 September, 15:26 UTC. This is not a final readiness claim.
+
+Latest integration update (the dated evidence below remains historical):
+
+- Combined backend188 restored the accounting/fit changes while retaining the
+  separate Cellpose/scVI onboarding. Two retained-history reads still returned
+  503 during slow overlapping metrics reads. Candidate189, source
+  `bbcec4d515d7d53cabc10d185d48adb4ddb6435e`, coalesces only concurrent identical
+  metrics collections and adds request-correlated history phase diagnostics.
+  It does not cache old metrics or increase pools/timeouts. Its immutable index
+  is `sha256:2e72e6d90e76acdd051e6148a0bb562720cedb8e57744e60d88402a75df71a19`;
+  rollout and bounded live contention regression are in progress.
+- The v48 installed helper tests passed, but the two attempted natural
+  conversations did not admit durable studies. The first fell back to a
+  process-bound OpenFold2 job, which completed; that is not unattended-study
+  acceptance. The other eight natural prompts were not submitted. Investigation
+  found that the actual MCP child omitted owner/clinical environment bindings
+  and used the system Python rather than the packaged scientific interpreter.
+  The second conversation ended before attempting admission; that failure must
+  be retested rather than assumed explained by this fix.
+- Candidate v49, source `4bd45eaafb6112ec2cae5df253c2403d07d792c3`, repairs that
+  exact process boundary. Immutable image index
+  `sha256:202b76200becd455cbed9a402e3b9b12d6d03f8da692f787e5a12d0471c3824f`
+  passed ten installed LibreChat environment-substitution/SDK transport cases.
+  Two CPU studies completed after disconnect and their eight final files were
+  independently read back. This does not replace the fresh browser cohort,
+  whose dedicated per-user instances are now being deployed.
+- A public IPv4 quota blocked six v48 endpoint creations. No quota was raised.
+  Twelve superseded test previews were archived, checked for terminal work, then
+  deleted to reclaim addresses. Their endpoint IDs/local test databases cannot
+  be restored; configuration, conversation evidence and output files are retained,
+  and tenant buckets/customer endpoints were untouched. No v48 owner remains
+  active. Rene's original client is still unchanged pending final qualification.
 
 - Backend Helm184 is deployed from `3dccbdc878225fb7b26fa79fd5295f5c646d71a8`:
   gateway/controller image index `sha256:be36dc7cf85618de274a50b08ff890261c70596e0b531d7681c8e368c1f5d089`,
