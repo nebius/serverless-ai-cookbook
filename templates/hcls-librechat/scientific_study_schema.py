@@ -91,6 +91,12 @@ STEPS = [NATIVE, BATCH, CLINICAL,
     local('genmol', object_schema({'input_file': {**FILE,
         'description': FILE['description'] + ' Original raw GenMol request JSON, with smiles and num_molecules; preserves actual scoring/defaults.'},
         'result_file': {**FILE, 'description': FILE['description'] + ' Raw GenMol result JSON with molecules:[{smiles,score}]. Deterministically measures validity, unique/duplicate/returned counts, QED and Crippen LogP, underfill and unavailable scores; no new inference or recursive envelope guessing.'}})),
+    local('protein-design-analysis', {**object_schema({
+        'manifest_file': {**FILE, 'description': FILE['description'] + ' Exact batch output-manifest.json; verified output-NN.artifact siblings are read from the same directory in manifest order using declared media types, not filename extensions. Measures all artifacts; no new inference or efficacy claim.'},
+        'binder_chain': TEXT, 'binder_length_min': {'type': 'integer', 'minimum': 1},
+        'binder_length_max': {'type': 'integer', 'minimum': 1},
+        'target_reference': FILE, 'target_chain': TEXT}, ['manifest_file']),
+        'dependentRequired': {'target_reference': ['target_chain'], 'target_chain': ['target_reference']}}),
     local('report', object_schema({'title': REPORT_HEADING, 'sections': {'type': 'array', 'minItems': 1, 'maxItems': 16,
         'items': object_schema({'title': REPORT_HEADING, 'file': FILE, 'format': {'enum': ['markdown', 'csv', 'operation-timing', 'recorded-export', 'rgb-statistics', 'mindeval-runs']}})}})),
     local('clinical-study', object_schema({'plan_file': FILE})),
@@ -135,6 +141,7 @@ PHASE_OUTPUTS = {
     'docking-batch': (['metrics.json', 'rows.csv', 'report.md'], []),
     'aging': (['metrics.json', 'rows.csv', 'report.md'], []),
     'genmol': (['metrics.json', 'rows.csv', 'report.md', 'completion-manifest.json'], []),
+    'protein-design-analysis': (['measurements.json', 'inventory.csv', 'report.md'], []),
     'report': (['report.md', 'provenance.json', 'assembly-plan.json', 'helper.py', 'completion-manifest.json'], ['sources/NNN.ext retains every exact supplied section.']),
     'mindeval': (['report.md', 'methods.md', 'runs.csv', 'scores.csv', 'measurements.json', 'provenance.json', 'records.json', 'completion-manifest.json'],
                  ['records/NNN.json and transcripts/NNN.txt retain every full supplied record and transcript.']),
@@ -151,6 +158,7 @@ PHASE_OUTPUT_ALTERNATIVES = {
     'proteinmpnn-input': [], 'esmfold2-fast-input': [],
     'design-refold-correspondence': [],
     'genmol': [],
+    'protein-design-analysis': [],
 }
 
 

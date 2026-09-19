@@ -69,3 +69,26 @@ biological validation. Geometry is a coarse C-alpha measurement, not all-atom
 physical validity, affinity, experimental efficacy or a cross-model ranking.
 Missing coordinate positions are not invented. New source deployment and a new
 ordinary-client acceptance remain separate gates.
+# Durable typed integration
+
+The existing study runner exposes `protein-design-analysis` with a `manifest_file`
+file reference. It resolves a prior batch's `output-manifest.json` and reads the
+hash-verified sibling artifacts, rather than requiring a predicted directory.
+Optional binder and target constraints remain explicit; a target reference and
+its chain must be supplied together. There are no scientific defaults or new
+model calls. The helper and shared evaluator are both hash-frozen at admission.
+The exact published files are `measurements.json`, `inventory.csv`, and `report.md`.
+The image adds the helper and pins the existing evaluator's CIF dependency to
+`gemmi==0.7.3`.
+
+The typed gate passed **48 tests** in 1.62 s, including CPU study admission,
+idempotent reuse, three-file final publication, declared constraints, altered
+artifact rejection, and CLI/dependent-reference contracts. Tests ran against
+read-only successor source in the existing v52 scientific environment, with
+network disabled and no inference; this is not an installed successor image or
+natural-customer acceptance claim. JUnit is retained privately under
+`U/output-preflight-successor.yprh5I/junit-design-typed-final.xml`, SHA-256
+`3761c0579183659637da8b6ffd1c92b84add6ba4bf886a043f0aef7581490e57`.
+The first gate's test-only assertion expected `error` instead of the actual
+`failure.message`; its failed receipt remains retained. The runtime correctly
+rejected modified bytes in both runs. Ruff and diff checks pass.

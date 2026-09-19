@@ -30,7 +30,7 @@ SCHEMA = 'scientific-workflow/v2'
 FINAL = {'completed', 'failed', 'cancelled', 'needs_attention'}
 MODEL_KINDS = {'native', 'batch'}
 PROTEIN_METHODS = {'proteinmpnn-input', 'esmfold2-fast-input', 'design-refold-correspondence'}
-LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'docking', 'docking-batch', 'genmol', 'aging', 'report', 'mindeval', 'clinical-study'} | PROTEIN_METHODS
+LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'protein-design-analysis', 'docking', 'docking-batch', 'genmol', 'aging', 'report', 'mindeval', 'clinical-study'} | PROTEIN_METHODS
 HELPERS = {name: HERE / filename for name, filename in {
     'structure': 'structure-analysis.py', 'docking': 'molecule-analysis.py',
     'docking-batch': 'molecule-analysis.py', 'genmol': 'molecule-analysis.py', 'aging': 'aging-analysis.py', 'report': 'report-assembly.py',
@@ -39,6 +39,7 @@ HELPERS['clinical-study'] = Path(os.environ.get('SCIENTIFIC_CLINICAL_REPORT_HELP
     '/app/skill/clinical-documentation/scripts/study_report.py'))
 HELPERS.update({name: HERE / 'scientific_protein_preparation.py' for name in PROTEIN_METHODS})
 HELPERS['python-script'] = HERE / 'scientific_study.py'
+HELPERS['protein-design-analysis'] = HERE / 'design-artifact-analysis.py'
 
 
 def workspace():
@@ -155,6 +156,8 @@ def input_references(step):
         return [args[key] for key in ('reference', 'prediction', 'result', 'residue_map', 'request_file') if key in args]
     if method == 'genmol':
         return [args['input_file'], args['result_file']]
+    if method == 'protein-design-analysis':
+        return [args[key] for key in ('manifest_file', 'target_reference') if key in args]
     if method == 'docking-batch':
         return [run[key] for run in args['runs'] for key in ('reference_file', 'prediction_file', 'result_file') if key in run]
     if method == 'aging':
@@ -295,6 +298,7 @@ def validate_local_arguments(method, args):
         'docking': ({'reference', 'same_coordinate_frame'}, {'prediction', 'result', 'threshold_queries'}),
         'docking-batch': ({'runs', 'same_coordinate_frame'}, {'threshold_queries'}),
         'genmol': ({'input_file', 'result_file'}, set()),
+        'protein-design-analysis': ({'manifest_file'}, {'binder_chain', 'binder_length_min', 'binder_length_max', 'target_reference', 'target_chain'}),
         'aging': ({'model', 'cohorts'}, {'coefficient_version', 'reference_ages'}),
         'report': ({'title', 'sections'}, set()), 'mindeval': ({'title', 'records'}, set()),
         'clinical-study': ({'plan_file'}, set()),
@@ -306,6 +310,11 @@ def validate_local_arguments(method, args):
         raise ValueError(f'{method} needs exactly one result or prediction file.')
     if method.startswith('docking') and args['same_coordinate_frame'] is not True:
         raise ValueError('Docking analysis requires an explicit unchanged receptor coordinate frame.')
+    if method == 'protein-design-analysis':
+        if ('target_reference' in args) != ('target_chain' in args):
+            raise ValueError('Protein-design target comparison requires both target_reference and its exact target_chain.')
+        if args.get('binder_length_min', 0) > args.get('binder_length_max', float('inf')):
+            raise ValueError('Protein-design binder minimum length exceeds maximum.')
     if method == 'write-json' and (not isinstance(args['filename'], str) or Path(args['filename']).name != args['filename'] or not args['filename'].endswith('.json')):
         raise ValueError('write-json filename must be a JSON basename.')
     if method == 'python-script':
@@ -375,6 +384,11 @@ def submit(plan, output):
                 implementations[step['method']] = measure(helper)
                 if step['method'] in PROTEIN_METHODS:
                     implementations['protein-structure-reader'] = measure(HERE / 'structure-analysis.py')
+                if step['method'] == 'protein-design-analysis':
+                    evaluator = HERE / 'qualification_evaluators.py'
+                    if not evaluator.is_file():
+                        evaluator = HERE / 'scripts/qualification/evaluators.py'
+                    implementations['protein-design-evaluator'] = measure(evaluator)
         output.mkdir(parents=True, exist_ok=True)
         # The output binding is durable and exclusive across plans/owner queues.
         binding = output / 'study-binding.json'
@@ -434,6 +448,12 @@ def local_command(method, args, scratch):
     if method == 'genmol':
         return command + ['--request', args['input_file'], '--genmol-result', args['result_file'],
                           '--output', str(scratch / 'metrics.json')]
+    if method == 'protein-design-analysis':
+        command += ['--manifest', args['manifest_file'], '--output-dir', str(scratch)]
+        for key in ('binder_chain', 'binder_length_min', 'binder_length_max', 'target_reference', 'target_chain'):
+            if key in args:
+                command += ['--' + key.replace('_', '-'), str(args[key])]
+        return command
     if method in {'report', 'mindeval', 'aging', 'docking-batch'}:
         data = args if method in {'report', 'mindeval'} else args['cohorts'] if method == 'aging' else args['runs']
         manifest = scratch / 'helper-input.json'

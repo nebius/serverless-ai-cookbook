@@ -61,13 +61,14 @@ COPY templates/hcls-librechat/upload-artifact.py /opt/bionemo/upload-artifact.py
 COPY templates/hcls-librechat/scripts/scientific-batch-acceptance.py /opt/bionemo/invoke-scientific-batch.py
 COPY templates/hcls-librechat/structure-analysis.py /opt/bionemo/structure-analysis.py
 COPY templates/hcls-librechat/molecule-analysis.py /opt/bionemo/molecule-analysis.py
+COPY templates/hcls-librechat/design-artifact-analysis.py /opt/bionemo/design-artifact-analysis.py
 COPY templates/hcls-librechat/report-assembly.py /opt/bionemo/report-assembly.py
 COPY templates/hcls-librechat/aging-analysis.py /opt/bionemo/aging-analysis.py
 COPY templates/hcls-librechat/scientific_study.py templates/hcls-librechat/scientific_study_schema.py templates/hcls-librechat/scientific_workflow_draft.py templates/hcls-librechat/scientific_preparation.py templates/hcls-librechat/scientific_protein_preparation.py templates/hcls-librechat/scientific_clinical.py templates/hcls-librechat/scientific-study-worker.py /opt/bionemo/
 COPY templates/hcls-librechat/scripts/qualification/evaluators.py /opt/bionemo/qualification_evaluators.py
 COPY --from=aging-reference /opt/aging-reference /opt/bionemo/aging-reference
 RUN python3 -m venv /opt/scientific-client \
- && /opt/scientific-client/bin/pip install --no-cache-dir mcp==2.2.0 httpx2==2.12.0 httpx==0.28.1 jsonschema==4.26.0 numpy==2.2.6 biopython==1.85 rdkit==2025.3.6 h5py==3.13.0 pyarrow==21.0.0 pandas==2.2.3
+ && /opt/scientific-client/bin/pip install --no-cache-dir mcp==2.2.0 httpx2==2.12.0 httpx==0.28.1 jsonschema==4.26.0 numpy==2.2.6 biopython==1.85 gemmi==0.7.3 rdkit==2025.3.6 h5py==3.13.0 pyarrow==21.0.0 pandas==2.2.3
 COPY life-science/bionemo-librechat/viewer-mcp.py /opt/bionemo/viewer-mcp.py
 COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 RUN node /opt/hcls-librechat/patch-server.mjs
