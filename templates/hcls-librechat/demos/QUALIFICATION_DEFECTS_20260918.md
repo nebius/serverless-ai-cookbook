@@ -376,3 +376,50 @@ contract, not clinical correctness, completeness or fitness for doctors.
 
 The new combined workbenchv36 is built, not yet deployed. No overall
 customer-ready verdict follows from these narrower fixes.
+
+### 19 September, 02:50 UTC — public repeatability and real-client regressions
+
+- Releases175,176 and177 settled;177 runs control-plane source55fa9d930.
+  Model profiles and scheduling limits were preserved. The earlier01:50
+  deployment state above is historical, not the current status.
+- Q54: two public12-case cohorts on the seeded DiffDock runtime returned24
+  verified outputs. Across public repeats, maximum coordinate difference is
+  0.000400000000013Å and confidence difference0.0002570152283, within the
+  unchanged0.01Å/0.001 thresholds. Scientific quality remains6/12 distinct
+  complex-seeds below2Å top-ranked RMSD; the approximately705.87Å outlier remains.
+  All24 public operations lack runtime identity; this is Q63, not evidence of
+  zero GPU use. Isolated-process qualification and public operation counts
+  remain separate.
+- Q57: all11 public scientific descriptors now expose exact input roles.
+  The retained malformed Protenix request is rejected before admission with
+  actionable invalid-argument detail. Natural scientist02 recovery onv36 did
+  not reach a model tool because the planner provider returned404 (Q62).
+- Q58: the new Cosmos response identity is proven with two simultaneously
+  Ready Pods, both using CUDA/CRIU restore. Natural LeRobot child operations
+  3a1e3e9e… andac59ce1d… identify different actual serving Pod UIDs and GPUs.
+  Historical unknown identity stays unknown. This closes the narrow
+  multi-replica attribution defect, not Q56 robotic action alignment.
+- Natural scientist01 completed its structure study and downloaded the report
+  onv36; two rejected overlong wait arguments and automatic recovery remain
+  in the chat. Scientist08 completed four ASR calls but produced an unsupported
+  medication name in the report. Scientist10's returned dataset preserves128
+  rows and6,144 non-video values, but prefix-conditioned generation does not
+  fulfill the original full-trajectory intent, and unselected video changes
+  through re-encoding (Q64). Successful artifacts do not erase these failures.
+- A new13-case held-out batch across BindCraft, Mosaic and RFdiffusion uses
+  the frozen dataset manifest, new seeds/lengths, four existing identities and
+  unchanged one-operation-per-key limits. Existing196-case design-to-refold
+  work continues separately. None is counted complete while still pending.
+
+| ID | Observation | Classification and action |
+| --- | --- | --- |
+| Q59 | Real admin scientific-run detail returned503 under the existing2s database budget. The query computed latest lifecycle rollups globally before filtering the requested subjects. | Sourcec48a567 uses indexed per-subject latest-row lookup, with unchanged semantics and timeout. Deployed177:24/24 real reads returned200, median0.415s/max1.284s. The original503 and retry remain retained; this is sequential bounded acceptance, not arbitrary-load capacity proof. |
+| Q60 | A GPU observer was OOMKilled at its unchanged128Mi limit because its entrypoint imported the full gateway/controller stack. | Source55fa9d930 isolates dependency-light startup. Deployed177:15/15 observers Ready with0 restarts,32–35Mi observed; new BindCraft/Mosaic GPU Pods receive real allocation annotations. The same-node canary had0 restarts and was normally removed after evidence retention. Long-soak and stopped-node cleanup are separate. |
+| Q61 | Clinicalv5 allowed invented “Dioralyte” from literal “dire light” because both model-produced medication flags werefalse and anchors empty. | Exact-source-phrase extraction and deterministic span validation replace reliance on flags. Frozen5598646 additionally displays complete cited context beside every selected phrase, preserving dose/return conditions. Retained source replay has22 selected facts/32 phrases but only16/20 segments covered. Missing details and all negative candidates remain documented; not clinical readiness/completeness. |
+| Q62 | Token Factory stopped listing/serving the configuredGLM5.3 planner midcampaign. A direct request returned404 model_not_found; current client startup catalog remained stale. | Provider model availability, not authentication or proven shared-cache corruption. Original02/05/10 failed chats are retained. Explicitly selected DeepSeek-V4-Pro-0813 passes bounded tool-capability checks. Newv37 previews use that declared planner with unchanged context/output/tool budgets; no silent fallback or readiness claim before natural replay. |
+| Q63 | Every request in the two public DiffDock repeatability cohorts returned unknown Pod/node/GPU identity during multi-replica serving. | Generic HTTP wrapper omitted the response-identity protocol. Source7e8c0f0f8 adds verified same-GPU-container identity; wrapper-only successor0c717984… preserves model code/weights. Real-GPU regression, promotion and multi-replica public attribution remain pending. |
+| Q64 | Unselected LeRobot wrist-camera pixels change because the whole dataset is decoded and re-encoded; the original task requested unchanged camera bytes. | Mean pixel differences approximately1.3 show that reader tolerance is insufficient for this requirement. Preserve the original passing structural check and separate failed exact-preservation verdict. A pinned-layout-aware media preservation repair is being investigated. |
+
+Evidence is under the protected campaign directory, with portable summaries
+and exact source references in linked task cards. No budget, quota, concurrency,
+context, output, tool-round or rollout-timeout limits were raised.
