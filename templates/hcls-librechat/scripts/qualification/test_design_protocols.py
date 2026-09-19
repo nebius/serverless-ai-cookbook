@@ -7,7 +7,7 @@ import unittest
 
 import numpy as np
 
-from design_protocol_cases import bundle, framework_pattern
+from design_protocol_cases import bundle, framework_pattern, trim_terminal_unresolved
 from design_protocol_metrics import aligned_rmsd, distinct_pattern_assignment, measure_structure
 from evaluators import evaluate
 
@@ -24,6 +24,13 @@ def pdb(length, translation=0, mutate=None):
 
 
 class DesignProtocolTests(unittest.TestCase):
+    def test_target_trims_only_unresolved_termini_not_internal_positions(self):
+        self.assertEqual(trim_terminal_unresolved("ACDEFGH", [2, 3, 6]), "CDEFG")
+        self.assertEqual(trim_terminal_unresolved("ACDEFGH", [1, 7]), "ACDEFGH")
+        for positions in ([], [0, 7], [1, 8], [None]):
+            with self.assertRaises(ValueError):
+                trim_terminal_unresolved("ACDEFGH", positions)
+
     def test_framework_exclusion_insertion_and_fixed_residues(self):
         config = {"include": [{"chain": {"id": "A", "res_index": "1..6"}}],
                   "design": [{"chain": {"id": "A", "res_index": "2..4"}}],

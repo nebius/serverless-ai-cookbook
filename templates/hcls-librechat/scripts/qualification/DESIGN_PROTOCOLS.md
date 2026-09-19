@@ -62,3 +62,13 @@ CIF/PDB files at the root; pinned nested scaffold YAMLs and their CIF files may
 share the root. The original v1 peptide attempt failed in input materialization
 because the acceptance builder placed dependencies under `design-specs/`.
 That request/failure is retained; v2 corrects packaging, not model behavior.
+
+Target sequence expectations follow pinned BoltzGen's terminal missing-mask
+(`data/parse/schema.py`, revision above): leading/trailing unresolved residues
+are omitted, while internal unresolved sequence positions remain required.
+The retained PD-L1 entity has 144 residues, but its resolved label-sequence
+coverage is 17–143, so the unchanged target output has 127 residues. The first
+v2 peptide evaluation incorrectly compared against the entire entity. Preserve
+that failed evaluation and its request/output hashes; report the source-backed
+correction separately without another model call. This does not permit arbitrary
+sequence truncation, target mutations, or removal of internal gaps.

@@ -61,6 +61,8 @@ def measure_structure(text, expected, root):
         measured.update(target_sequence_exact=target_ok, assigned_designed_chains=designed,
                         fixed_framework_and_length_match=designed is not None,
                         constraints_pass=target_ok and designed is not None)
+        if "target_sequence_coverage" in expected:
+            measured["target_sequence_coverage"] = expected["target_sequence_coverage"]
         if expected.get("fixed_reference") and designed is not None:
             reference = parse_chain((root / expected["fixed_reference"]).read_text(), expected["fixed_chain"])
             positions = [p - 1 for p in expected["fixed_positions_1based"]]

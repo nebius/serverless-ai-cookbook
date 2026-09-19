@@ -45,6 +45,32 @@ def polymer_sequence(path, label_chain):
     return sequence
 
 
+def trim_terminal_unresolved(sequence, resolved_positions):
+    """Pinned BoltzGen removes absent termini, never internal sequence gaps."""
+    positions = set(resolved_positions)
+    if not positions or any(type(p) is not int or not 1 <= p <= len(sequence) for p in positions):
+        raise ValueError("Target needs valid resolved polymer sequence positions")
+    return sequence[min(positions) - 1:max(positions)]
+
+
+def target_sequence(path, label_chain):
+    sequence = polymer_sequence(path, label_chain)
+    structure = gemmi.read_structure(str(path))
+    residues = [r for chain in structure[0] for r in chain if r.subchain == label_chain and len(r)]
+    positions = [r.label_seq for r in residues]
+    trimmed = trim_terminal_unresolved(sequence, positions)
+    for residue in residues:
+        if gemmi.find_tabulated_residue(residue.name).one_letter_code != sequence[residue.label_seq - 1]:
+            raise ValueError("Target coordinate sequence differs from polymer entity")
+    return trimmed, {
+        "basis": "Pinned BoltzGen parse/schema.py terminal missing-mask; internal unresolved positions retained",
+        "polymer_entity_residues": len(sequence),
+        "first_resolved_label_seq_id": min(positions),
+        "last_resolved_label_seq_id": max(positions),
+        "resolved_positions": sorted(set(positions)),
+    }
+
+
 def framework_pattern(sequence, config, chain):
     """Independent mask/insertions interpretation of pinned upstream YAML."""
     def selected(key, fallback):
@@ -98,12 +124,13 @@ def prepare(backend, upstream, output):
                    "https://files.rcsb.org/download/1UBQ.pdb")
     if digest(ubq) != "d4a6812d8951cf6594e6a0763f089e35f5a80b62acb3c117b2c5565228a7b161":
         raise ValueError("Retained motif fixture differs from its pinned identity")
-    target_sequence = polymer_sequence(source / "5J89-chain-A.cif", "A")
+    target_expected, target_coverage = target_sequence(source / "5J89-chain-A.cif", "A")
     target = {"path": "5J89-chain-A.cif", "include": [{"chain": {"id": "A"}}]}
     definitions = []
     definitions.append(("peptide-anything", {"entities": [{"protein": {"id": "C", "sequence": "12..20"}},
         {"file": copy.deepcopy(target)}]}, {"5J89-chain-A.cif": pdl1},
-        {"target_sequence": target_sequence, "designed_patterns": [AA + "{12,20}"]}))
+        {"target_sequence": target_expected, "target_sequence_coverage": target_coverage,
+         "designed_patterns": [AA + "{12,20}"]}))
     small_path = "example/protein_binding_small_molecule/chorismite.yaml"
     small_raw = retained(upstream / small_path, "chorismite.yaml", "https://raw.githubusercontent.com/HannesStark/boltzgen/" + REVISION + "/" + small_path)
     ccd_raw, ccd_provenance = fetch("https://files.rcsb.org/ligands/download/TSA.cif", source / "TSA.cif")
@@ -123,7 +150,8 @@ def prepare(backend, upstream, output):
         scaffold = yaml.safe_load(files[f"{stem}.yaml"])
         patterns = [framework_pattern(polymer_sequence(source / f"{stem}.cif", chain), scaffold, chain) for chain in chains]
         definitions.append((protocol, {"entities": [{"file": copy.deepcopy(target)}, {"file": {"path": f"{stem}.yaml"}}]},
-                            files, {"target_sequence": target_sequence, "designed_patterns": patterns,
+                            files, {"target_sequence": target_expected, "target_sequence_coverage": target_coverage,
+                                    "designed_patterns": patterns,
                                     "framework_source": f"sources/{stem}.cif"}))
     sequence = parse_chain(ubq.decode(), "A")["sequence"]
     redesign = {"path": "1UBQ.pdb", "include": [{"chain": {"id": "A"}}],
