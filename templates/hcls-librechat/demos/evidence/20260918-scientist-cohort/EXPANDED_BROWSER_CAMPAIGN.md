@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 01:39 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 01:50 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -129,6 +129,29 @@ reference:prediction mapping, then speculated about auth/label chain IDs. No
 RMSD was fabricated; reference comparison/report remain incomplete. A proposed
 diagnostic makes actual chain IDs and direction explicit without autoswapping.
 This is distinct from legitimate batch waiting and required user continuation.
+
+Root diagnosis subsequently proved the Protenix rejection was **invalid caller
+artifact metadata masked by backend classification**, not unavailable compute.
+The agent invented a filename-like entry/semantic type and used the outer
+manifest MIME for raw JSON. Client discovery lacked a model-specific descriptor;
+additionally `scientific_contract()` discarded shared top-level artifact policy
+fields, so earlier Cosmos preflight tests used the wrong nesting. Both defects
+remain in the historical evidence. Parent owns authoritative discovery/error
+repair. The generic client successor merges top-level policies and validates
+fixed entry, operation-selected and source-kind descriptors before any upload,
+without silently correcting bytes/metadata. Existing accepted/unknown receipts
+remain protected.51 transport/workflow/execution tests pass; actual backend
+adapter projections qualify11 Apps/15 descriptor/compression variants offline.
+
+v35 `ff1aa14`, index
+`sha256:c30901bf08ae4858910f88cf7e7df42496b68f863165b84d9aa417e88a092bbb`,
+contains the bounded same-workspace code-link renderer, explicit actual chain
+IDs/direction in mapping errors and sibling clinical-v5 source grounding. It is
+published but not deployed, held for the above successor.8 link,13 structure,
+27 service/adapter tests pass; exact pinned frontend patch applies and compiles.
+Future campaign preview replacements are individually approved only with fresh
+zero-active checks and preserved chats/configuration/buckets. No production or
+Rene endpoint change, new permissions, planner change or raised limit.
 
 ### Latest release gate: v31 raw results correct, combined report malformed
 

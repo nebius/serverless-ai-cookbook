@@ -83,7 +83,13 @@ async def call(client, name: str, arguments: dict):
 
 def scientific_contract(discovery: dict) -> dict:
     contracts = discovery.get('contracts', [discovery])
-    return next((item for item in contracts if item.get('protocol') == 'scientific-batch-v1'), {})
+    contract = next((item for item in contracts if item.get('protocol') == 'scientific-batch-v1'), {})
+    # The real get_model_schema response publishes shared artifact policies at
+    # its top level, alongside contracts; do not discard them while selecting a
+    # transport. Keep older nested responses compatible without mutating either.
+    published = {field: discovery[field] for field in
+                 ('artifact_manifest_schema', 'input_artifact_contract') if field in discovery}
+    return {**contract, **published} if published else contract
 
 
 def preflight_source(contract: dict, parameters: dict, args, size: int) -> None:
@@ -91,19 +97,41 @@ def preflight_source(contract: dict, parameters: dict, args, size: int) -> None:
     policy = contract.get('input_artifact_contract')
     if not policy:
         return  # Older servers still validate the final request themselves.
-    value = {'parameters': parameters}
-    for part in policy.get('source_kind_parameter', 'parameters.source.kind').split('.'):
-        value = value.get(part) if isinstance(value, dict) else None
-    source = policy.get('source_kinds', {}).get(value)
-    if not source:
-        raise ValueError('Input source kind is not in the published input_artifact_contract.')
+    context = {'operation': getattr(args, 'operation', None), 'parameters': parameters}
+    if 'entry' in policy:
+        source, selection = policy['entry'], 'the published input entry'
+    else:
+        selector = policy.get('operation_parameter') or policy.get('source_kind_parameter', 'parameters.source.kind')
+        value = context
+        for part in selector.split('.'):
+            value = value.get(part) if isinstance(value, dict) else None
+        alternatives = policy.get('operations') if 'operation_parameter' in policy else policy.get('source_kinds')
+        source = alternatives.get(value) if isinstance(alternatives, dict) else None
+        selection = f'{selector}={value!r}'
+    if not isinstance(source, dict) or not source:
+        raise ValueError(f'Input selector {selection} is not in the published input_artifact_contract; no upload was submitted.')
+    mismatches = []
     for argument, field in [('entry_name', 'name'), ('semantic_type', 'semantic_type'),
-                            ('media_type', 'media_type'), ('compression', 'compression')]:
+                            ('media_type', 'media_type')]:
         if field in source and getattr(args, argument) != source[field]:
-            raise ValueError(f'Input manifest {field} must be {source[field]!r} for source kind {value!r}; '
-                             'this is a semantic role, not the local filename. No upload or inference was submitted.')
+            mismatches.append(f'{field} must be {source[field]!r}, received {getattr(args, argument)!r}')
+    allowed_compressions = source.get('allowed_compressions')
+    if allowed_compressions is not None:
+        if not isinstance(allowed_compressions, list) or not allowed_compressions:
+            raise ValueError('Published allowed_compressions must be a nonempty list.')
+        if args.compression not in allowed_compressions:
+            mismatches.append(f'compression must be one of {allowed_compressions!r}, received {args.compression!r}')
+    elif 'compression' in source and args.compression != source['compression']:
+        mismatches.append(f'compression must be {source["compression"]!r}, received {args.compression!r}')
     if source.get('maximum_bytes') is not None and size > source['maximum_bytes']:
-        raise ValueError('Input bytes exceed the published source maximum_bytes; no upload was submitted.')
+        mismatches.append('input bytes exceed the published source maximum_bytes')
+    if size < 1:
+        mismatches.append('source_file must contain at least one byte')
+    if mismatches:
+        raise ValueError(f'Input artifact metadata for {selection}: ' + '; '.join(mismatches) +
+                         '. The entry name is a semantic role, not the local filename. '
+                         'The source media type describes the actual bytes, not the outer manifest. '
+                         'No upload or inference was submitted.')
 
 
 def source_reference(path: Path, data: bytes, args) -> dict:

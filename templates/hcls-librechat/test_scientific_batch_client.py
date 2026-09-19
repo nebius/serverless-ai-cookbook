@@ -113,3 +113,94 @@ def test_reused_finalized_source_must_match_bytes_and_format(tmp_path):
 
 def test_old_schema_without_manifest_policy_retains_existing_transport():
     client.preflight_source({}, {}, argparse.Namespace(), 100)
+
+
+def test_real_top_level_discovery_preserves_manifest_and_fixed_entry_policy():
+    entry = {'name': 'protenix-input', 'semantic_type': 'protenix-input-json/v1',
+             'media_type': 'application/json', 'compression': 'none', 'maximum_bytes': 4096}
+    selected = {'protocol': 'scientific-batch-v1', 'input_schema': {}}
+    discovery = {'model_id': 'protenix-v2', 'contracts': [selected],
+                 'input_artifact_contract': {'exactly_one_entry': True, 'entry': entry},
+                 'artifact_manifest_schema': {'type': 'object', 'required': ['entries']}}
+    contract = client.scientific_contract(discovery)
+    assert contract['artifact_manifest_schema'] == discovery['artifact_manifest_schema']
+    assert 'input_artifact_contract' not in selected
+    args = argparse.Namespace(entry_name='protenix-v2-1acb-heteromer-s1', semantic_type='fs2.protenix-v2-input/v1',
+                              media_type='application/vnd.fs2.scientific-manifest+json', compression='none')
+    with pytest.raises(ValueError) as error:
+        client.preflight_source(contract, {}, args, 596)
+    assert all(word in str(error.value) for word in ['name must', 'semantic_type must', 'media_type must', 'No upload'])
+    args.entry_name, args.semantic_type, args.media_type = entry['name'], entry['semantic_type'], entry['media_type']
+    client.preflight_source(contract, {}, args, 596)
+    assert args.entry_name == 'protenix-input'  # No automatic caller correction.
+
+
+def test_operation_selected_roles_and_compression_alternatives_are_generic():
+    policy = {'exactly_one_entry': True, 'operation_parameter': 'operation', 'operations': {
+        'design-backbone': {'name': 'design-spec', 'semantic_type': 'design-json/v1', 'media_type': 'application/json',
+                            'compression': 'none', 'allowed_compressions': ['none', 'gzip'], 'maximum_bytes': 512},
+        'scaffold-motif': {'name': 'motif-pdb', 'semantic_type': 'motif-pdb/v1', 'media_type': 'chemical/x-pdb',
+                           'compression': 'none', 'allowed_compressions': ['none'], 'maximum_bytes': 1024}}}
+    contract = client.scientific_contract({'contracts': [{'protocol': 'scientific-batch-v1'}], 'input_artifact_contract': policy})
+    args = argparse.Namespace(operation='design-backbone', entry_name='design-spec', semantic_type='design-json/v1',
+                              media_type='application/json', compression='gzip')
+    client.preflight_source(contract, {}, args, 512)
+    with pytest.raises(ValueError, match='maximum_bytes'):
+        client.preflight_source(contract, {}, args, 513)
+    args.operation = 'scaffold-motif'
+    with pytest.raises(ValueError, match='motif-pdb'):
+        client.preflight_source(contract, {}, args, 512)
+    args.operation = 'undeclared-mode'
+    with pytest.raises(ValueError, match='not in the published'):
+        client.preflight_source(contract, {}, args, 512)
+
+
+def test_top_level_source_kind_policy_is_enforced_for_existing_cosmos_shape():
+    contract = client.scientific_contract({'contracts': [{'protocol': 'scientific-batch-v1'}],
+        'input_artifact_contract': {'source_kind_parameter': 'parameters.source.kind', 'source_kinds': {
+            'uploaded-bundle': {'name': 'lerobot-dataset', 'semantic_type': 'lerobot-v3-bundle/v1',
+                                'media_type': 'application/x-tar', 'compression': 'zstd'}}}})
+    args = argparse.Namespace(entry_name='recorded.tar.zst', semantic_type='lerobot-bundle',
+                              media_type='application/x-tar', compression='zstd')
+    with pytest.raises(ValueError, match='lerobot-dataset'):
+        client.preflight_source(contract, {'source': {'kind': 'uploaded-bundle'}}, args, 100)
+
+
+def test_run_rejects_published_role_mismatch_before_any_upload_or_admission(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    calls = []
+    class Context:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return False
+    class MCP(Context):
+        async def list_tools(self):
+            tool = SimpleNamespace(name='submit_fixture', model_dump=lambda **kwargs: {'name': 'submit_fixture'})
+            return SimpleNamespace(tools=[tool])
+    async def discovered(connection, name, arguments):
+        calls.append(name)
+        assert name == 'get_model_schema'
+        return {'contracts': [{'protocol': 'scientific-batch-v1'}], 'input_artifact_contract': {
+            'entry': {'name': 'model-input', 'semantic_type': 'model-json/v1',
+                      'media_type': 'application/json', 'compression': 'none'}}}
+    async def forbidden_upload(*args, **kwargs):
+        calls.append('upload')
+        raise AssertionError('Preflight must finish before reserving storage or submitting inference')
+    monkeypatch.setenv('SCIENTIFIC_MODELS_MCP_URL', 'https://fixture.invalid/mcp')
+    monkeypatch.setenv('SCIENTIFIC_MODELS_API_KEY', 'test-only-key')
+    monkeypatch.setattr(client.httpx2, 'AsyncClient', lambda **kwargs: Context())
+    monkeypatch.setattr(client, 'streamable_http_client', lambda *args, **kwargs: None)
+    monkeypatch.setattr(client, 'Client', lambda *args, **kwargs: MCP())
+    monkeypatch.setattr(client, 'call', discovered)
+    monkeypatch.setattr(client, 'upload', forbidden_upload)
+    source, params = tmp_path/'source.json', tmp_path/'params.json'
+    source.write_text('{}')
+    params.write_text('{}')
+    args = argparse.Namespace(source=source, parameters=params, model='fixture', output=tmp_path/'run',
+        idempotency_key='unchanged-fixture', tool='submit_fixture', operation='predict',
+        entry_name='invented-file.json', semantic_type='invented/v1',
+        media_type='application/vnd.fs2.scientific-manifest+json', compression='none')
+    with pytest.raises(ValueError, match='No upload or inference'):
+        asyncio.run(client.run(args))
+    assert calls == ['get_model_schema']
+    receipt = client.load_receipt(args.output/'receipt.json')
+    assert receipt['state'] == 'prepared' and 'operation_id' not in receipt

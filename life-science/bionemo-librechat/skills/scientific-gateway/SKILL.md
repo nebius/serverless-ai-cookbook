@@ -92,6 +92,17 @@ output directory/idempotency key and resume it after a bounded wait. Inspect all
 promised output artifacts and scientific constraints; transport verification is
 not scientific validation.
 
+Read the **top-level** `get_model_schema.input_artifact_contract` for exact
+source entry name, semantic type, media type and compression. An `entry` is a
+fixed source role; `operations` selects a role by the published operation;
+`source_kinds` selects by the source kind. Do not use a filename/run ID as the
+entry name or invent a semantic type from a model name. The source media type
+describes its actual bytes (such as `application/json`); the helper creates the
+outer `application/vnd.fs2.scientific-manifest+json` artifact separately. Missing
+contract metadata is not permission to guess. Keep rejected receipts unchanged;
+an explicitly corrected request has new metadata/identity and must not replace
+an accepted or unknown admission.
+
 For sequential native, batch or mixed multi-App work use the packaged
 `/opt/scientific-client/bin/python /opt/bionemo/scientific-workflow.py --help`.
 It delegates to the existing clients and advances only after a verified
