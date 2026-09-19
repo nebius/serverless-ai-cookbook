@@ -373,22 +373,22 @@ async function studies(key, action = 'list', id) {
     const child = spawn(command, [script, `--${action}`, ...(action === 'list' ? [] : [id])],
       { env: process.env, stdio: ['ignore', 'pipe', 'pipe'] });
     const chunks = []; let bytes = 0; let settled = false;
-    const fail = (message, status = 503) => { if (!settled) { settled = true; reject(failure(message, status)); } };
-    const timer = setTimeout(() => { child.kill('SIGTERM'); fail('Study storage observation timed out. The saved study continues; do not resubmit.'); }, 25000);
+    const fail = (message, code) => { if (!settled) { settled = true; reject(Object.assign(failure(message, 503), { code })); } };
+    const timer = setTimeout(() => { child.kill('SIGTERM'); fail('Study storage observation timed out. The saved study continues; do not resubmit.', 'STUDY_OBSERVER_TIMEOUT'); }, 25000);
     child.stdout.on('data', (chunk) => {
       bytes += chunk.length;
-      if (bytes > 4 * 1024 * 1024) { child.kill('SIGTERM'); fail('Study status is too large to display. Saved receipts and files are unchanged.'); }
+      if (bytes > 4 * 1024 * 1024) { child.kill('SIGTERM'); fail('Study status is too large to display. Saved receipts and files are unchanged.', 'STUDY_OBSERVER_OUTPUT_LIMIT'); }
       else chunks.push(chunk);
     });
     // Raw tracebacks and environment details are never exposed to the browser.
     child.stderr.resume();
-    child.once('error', () => { clearTimeout(timer); fail('Study observer is unavailable. Existing studies and their receipts are unchanged.'); });
+    child.once('error', () => { clearTimeout(timer); fail('Study observer is unavailable. Existing studies and their receipts are unchanged.', 'STUDY_OBSERVER_UNAVAILABLE'); });
     child.once('close', (code) => {
       clearTimeout(timer);
       if (settled) return;
-      if (code !== 0) return fail('Study could not be observed for this user. Check its saved status; do not submit another copy.');
+      if (code !== 0) return fail('Study could not be observed for this user. Check its saved status; do not submit another copy.', 'STUDY_OBSERVER_EXIT');
       try { const result = JSON.parse(Buffer.concat(chunks).toString('utf8')); settled = true; resolve(result); }
-      catch { fail('Study observer returned an invalid status; original work is unchanged.'); }
+      catch { fail('Study observer returned an invalid status; original work is unchanged.', 'STUDY_OBSERVER_INVALID_RESPONSE'); }
     });
   });
 }
