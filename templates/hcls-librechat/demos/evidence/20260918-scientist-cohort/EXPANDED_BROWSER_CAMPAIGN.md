@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 03:53 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 03:44 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -23,11 +23,19 @@ usability failures, not capacity waits or a completed scientific result.
 An ordinary continuation03:37:11.111–03:38:27.442 made seven read-only calls
 mostly inspecting older v36/v37 receipts and ended without a usable answer.
 The UI visibly marks it incomplete and points to Runs; the saved message has
-unfinished=true. No v39 output directory or new operation exists. Optional
-provider response-size diagnostics were not enabled on this preview, so
-finish_reason/usage are unavailable; endpoint logs show no corresponding
-provider exception. Do not invent a token-limit cause. Both full turns and logs
-remain in Q/browser-evidence/scientist-10-v39-{first,second}-turn.
+unfinished=true. No v39 output directory or new operation exists. The initial
+claim that optional diagnostics were disabled was wrong: the evidence fetch
+used a file prefix in a directory-only downloader. Exact provider configuration
+and127 retained `.jsonl.events/` records prove diagnostics were enabled.
+First turn ended with finish_reason=stop after14 tool-call rounds and3,895B
+final content; second ended03:38:27.273 with finish_reason=length and0 content
+bytes/tool calls. Provider usage fields are empty; no token totals are inferred.
+Both full turns/logs and the corrected event retrieval remain in
+Q/browser-evidence/scientist-10-v39-{first-turn,second-turn,context-events}.
+Exact-name tool searches also fuzzy-imported five sibling tools at a time,
+growing active tool definitions44,440→106,989B (counted13,250→34,905tokens).
+This is independent from discovery-response duplication; actual provider usage
+is not equated with those local counts.
 
 Source16b906a changes only the existing scientific artifact download transport:
 1MiB raw-byte chunks, exact declared-size/SHA256 bounds, local spool, exclusive
@@ -42,8 +50,8 @@ SHA69d6569f14e8e8c942fb02293a9c8a3d091933acc421aaab9abe60c410b5d04b
 and reused it in1.536s, peak5,450,046 traced bytes, without new inference.
 This is source/local-public-route proof, not a deployed-bucket proof. v39
 remains unchanged. A bounded help/typed-schema repair documents the existing
-uploaded-bundle source placeholder; the next candidate will enable existing
-provider telemetry and use exact-contract discovery without raising budgets.
+uploaded-bundle source placeholder; the next candidate retains existing
+provider telemetry and uses exact-contract discovery without raising budgets.
 
 Scientist02's additional explicit methodological review completed without new
 inference. Preserved original report now has a separate7,088B corrected version

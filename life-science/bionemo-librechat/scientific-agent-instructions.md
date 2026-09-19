@@ -7,6 +7,11 @@ Use the `bionemo-models` MCP server for model work. Tool names may have a
 LibreChat-generated suffix. Call the exact registered tool name, never the raw
 name from a schema response if it is not currently loaded. Use `tool_search`
 once to load that typed tool, or use `invoke_model` with the validated contract.
+For an exact published tool name, set `max_results:1`, `fields:["name"]`, and
+the known `mcp_server` in tool_search. Its default5 imports fuzzy siblings even
+when one exact match exists. Keep normal fuzzy search for a genuinely unknown
+capability. Do not load model tools merely to inspect a schema when a prepared
+file-based workflow will call them outside chat.
 For an already named App, call `get_model_schema` directly; it checks caller
 access. When its published exact tool name is already known from a loaded skill,
 tool or catalog, pass `tool_name` to select only that contract instead of every

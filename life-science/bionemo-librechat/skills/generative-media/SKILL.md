@@ -52,6 +52,9 @@ Request `get_model_schema(model_id="cosmos3-nano", tool_name="cosmos3_nano_trans
 to inspect that exact contract without every sibling mode. The file-based native
 client uses its generic `mode: transfer-video` representation outside chat;
 the specialized direct tool already selects its mode. Follow each live schema.
+For a direct call, load only that exact tool with tool_search's existing
+`max_results:1`, `fields:["name"]`, `mcp_server:"bionemo-models"` parameters.
+A file-based workflow does not need the direct model tools loaded into chat.
 
 For `cosmos3-lerobot-augmentation`, read its scientific schema and artifact
 contract. The current recorded-video path is `augmentation.mode: transfer`
