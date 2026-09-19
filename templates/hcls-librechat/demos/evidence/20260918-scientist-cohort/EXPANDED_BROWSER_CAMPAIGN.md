@@ -1,13 +1,54 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 02:48 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 03:16 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
 
-### v36 outcomes and explicit planner withdrawal
+### v37 natural recovery and v38 retained-artifact gate
+
+The explicit DeepSeek0813 cohort did not change limits or silently replace
+the retained GLM sessions. Scientist02 naturally used the repaired published
+Protenix input contract and completed its two missing seed7 runs, preserving
+the two original Boltz2 outputs. Scientist05 completed four DiffDock runs
+(two public complexes × seeds7/11) and16-molecule GenMol generation using the
+sequential durable runner. Both first turns returned honest in-progress
+receipts; one ordinary read-only continuation per scientist is now producing
+the final analysis. In-progress batch handoff is not itself a software defect;
+final reports still require independent verification.
+
+Scientist10 v37 completed a read-only recovery only after a user continuation.
+The6,410-byte report was downloaded through the actual browser and matches
+SHA256 `ac2f4192ade39610603f591614f32c5c08e001ac3c77846dd4c798f9856501ea`.
+It honestly records camera changes and unverified motion, but does not perform
+the originally requested temporal comparison. Its supporting
+`verification-results.json` is truncated after an actual NumPy float32 JSON
+serialization failure; this is retained, not a complete machine-readable
+analysis pass. Prefix-conditioned V2V visibly changes later robot motion;
+data-array equality does not establish action-label alignment. Missing zstd
+also caused unnecessary ad hoc package installation and extra tool calls.
+
+Immutable v38 source `25d4a6e1200c664b2e31077f0aa0699901b53089`, index
+`sha256:a811c6a225befac6321a24e2640ffaa6a381dfc4df503ca9e5cf21fa5cb12ccb`,
+amd64 `sha256:0adc1cbadf48de5f49a1a3f235ef047b789fe34f58aa56113646cc383181ddf8`
+packages zstd and exposes completed-result recovery through one seeded typed
+tool backed by the existing batch client. It neither resubmits inference nor
+adds a new transport.69 focused tests pass. A fresh container from this exact
+image recovered original operation `4e333485-573f-42ac-af81-a919cdf20913` in
+8.154s, verified the1,988,267-byte bundle SHA256
+`69d6569f14e8e8c942fb02293a9c8a3d091933acc421aaab9abe60c410b5d04b`,
+extracted all9 files byte-identical to independent retained data, and resumed
+the same operation without inference. zstd1.5.4 was preinstalled; no test-time
+package installation. Protected receipt:
+`browser-evidence/workbench-v38-fresh-image-r3/summary.json`.
+Two earlier qualification-harness mistakes (import path and a Python-version
+specific tar argument) are retained separately, not reported as product
+failures. No v38 preview has yet been created; natural tool adoption remains
+unqualified and all v37 chats/endpoints remain intact.
+
+### v36 outcomes and transient planner unavailability
 
 - Scientist01 completed one original natural turn in46.709s: OpenFold2
   `0462e6ec-6180-4e4c-957b-96ea2065f790`, independent structural/confidence
@@ -33,12 +74,17 @@ tracked separately; do not count their requests as natural browser interactions.
   partial/unaccepted, and final analysis was interrupted as described below.
 - Fresh05 chemistry,02 complex recovery and10 analysis-continuation produced
   **no new scientific calls**: the previously working planner
-  `zai-org/GLM-5.3` disappeared from Token Factory. Same deployed key, fresh
+  `zai-org/GLM-5.3` was temporarily unavailable in this provider/key context. Same deployed key, fresh
   authenticated catalog missing that ID, then direct HTTP404 at02:33:25UTC,
   request`c829dd6106cd9c9b4d0a9abc9e80af73`: model does not exist. The initial
   localgate/8ms hypothesis was wrong; message persistence times were not
   whole-request latency. Workbench's startup catalog still contained GLM.
   User-facing provider-unavailable message was truthful; failed turns remain.
+  At02:56 the **same** workbench credential again received24 catalog entries
+  includingGLM5.3. No additional GLM inference was requested. Thus this does
+  not establish permanent withdrawal or global provider availability. Both
+  observations and the original404 are retained. The explicitly selected
+  DeepSeek replacement cohort stays unchanged for traceable comparison.
 
 Protected evidence is under`browser-evidence/scientist-{01,08,10}-v36-*`,
 `model-validation-0233`, and original02/05failed chat captures. Three obsolete
@@ -64,8 +110,15 @@ Sixty combined focused tests pass. Clinical document v11 renders full cited
 context beside selected phrases; it is not a claim of clinical readiness.
 Fresh02:45 backup receipts authorize replacement only of obsolete endpoints
 `aiendpoint-e00qxhsvpcc8xg47gg`, `aiendpoint-e00s0n7rzvtd8e43d3`, and
-`aiendpoint-e00qkt8t8n29r0ndeq`. Their deletion is in progress; original v36
-GLM instances remain. Natural v37 recovery is not yet accepted or complete.
+`aiendpoint-e00qkt8t8n29r0ndeq`. All three deletions are confirmed;10 required
+read-only NotFound reconciliation after the client's180s wait expired, not a
+second delete. Original v36 GLM instances remain. v37 successors02/05/10 now
+pass login,32-App discovery and bucket checks.05's first create returned
+providerInternal; exact-name absence was verified and one approved retry
+succeeded. Actual agent readback confirms DeepSeek0813,131072context,
+8192output,low reasoning and30 seeded tools.02 frozen recovery started02:54:24,
+10 read-only recovery02:54:51, and05's unchanged chemistry study02:55:52.
+Natural v37 acceptance remains open.
 
 Independent v36 robotics verification downloaded and hashed native media and
 the actual generated LeRobot bundle. Native video is64frames/640×480/25fps;
