@@ -91,6 +91,17 @@ The personal login option disables open registration. Setting
 `SCIENTIFIC_DEDICATED_CHAT_ENABLED=false` removes event-only deployments from the
 picker and makes a public Token Factory model the default.
 
+`SERVERLESS_PUBLIC_IP` defaults to `true` for backward compatibility. Set it to
+`false` to request a private-IP endpoint with its managed public HTTPS URL.
+Unset `SSH_PUBLIC_KEY_FILE` (and omit the setup manifest's `ssh_public_key_file`)
+as well for a private-only deployment: requesting SSH
+access can allocate a public IP even when `SERVERLESS_PUBLIC_IP=false`; the
+deployment script warns about this combination but preserves the explicit SSH
+request. The scientist setup helper exits immediately on provider state `ERROR`
+and retains the endpoint ID, exact provider status and a protected
+`endpoint-terminal-error.json`; it does not retry creation or infer the cause
+of an image-pull failure.
+
 After first login, configure the same personal Scientific AI key in
 `/demos?tab=apps` (encrypted per-user credential store). This is separate
 from the server-managed key used by the legacy workbench. The bucket is available

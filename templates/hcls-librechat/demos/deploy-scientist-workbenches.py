@@ -188,6 +188,14 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
             endpoint = cloud(cli, ["ai", "endpoint", "get", state["endpoint_id"]], folder, "endpoint-get")
             urls = endpoint.get("status", {}).get("public_endpoints", [])
             state["endpoint_state"] = endpoint.get("status", {}).get("state")
+            if state["endpoint_state"] == "ERROR":
+                error_path = folder / "endpoint-terminal-error.json"
+                save(error_path, endpoint)
+                state.update(state="endpoint_error", provider_status=endpoint["status"],
+                             provider_error_receipt=str(error_path))
+                save(state_path, state)
+                raise RuntimeError("Endpoint entered terminal ERROR; inspect its protected provider receipt. "
+                                   "No automatic retry or application setup was attempted.")
             url = next((value for value in urls if value.startswith("https://")), None)
             if url:
                 state["url"] = url

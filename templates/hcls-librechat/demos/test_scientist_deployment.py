@@ -88,3 +88,72 @@ def test_comparison_model_is_pinned_and_not_silently_replaced(tmp_path, monkeypa
     args.chat_model = 'provider/different-candidate'
     with pytest.raises(RuntimeError, match='Recorded chat model differs'):
         module.deploy(manifest, person, args)
+
+
+def existing_endpoint(tmp_path):
+    manifest, person, args, source, _ = fixture(tmp_path)
+    args.wait_seconds = 1800
+    state = {**source, 'image': args.image, 'endpoint_id': 'endpoint-fixture',
+             'endpoint_name': args.name_prefix + '-' + person['id'], 'state': 'endpoint_created'}
+    path = args.output / person['id'] / 'deployment.json'
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(state))
+    return manifest, person, args, path
+
+
+@pytest.mark.parametrize('with_url', [False, True])
+def test_terminal_provider_error_is_preserved_before_login_or_wait(tmp_path, monkeypatch, with_url):
+    manifest, person, args, path = existing_endpoint(tmp_path)
+    endpoint = {'metadata': {'id': 'endpoint-fixture'}, 'status': {
+        'state': 'ERROR', 'reason': 'StartFailed', 'details': {'message': 'Could not pull image'},
+        'public_endpoints': ['https://fixture.invalid'] if with_url else []}}
+    calls = []
+    def cloud(cli, arguments, *rest, **kwargs):
+        calls.append(arguments)
+        return endpoint
+    monkeypatch.setattr(module, 'cloud', cloud)
+    monkeypatch.setattr(module, 'deploy_command', lambda *a: pytest.fail('No create retry allowed'))
+    monkeypatch.setattr(module.httpx, 'Client', lambda *a, **k: pytest.fail('No login after terminal ERROR'))
+    monkeypatch.setattr(module.time, 'sleep', lambda *a: pytest.fail('No wait after terminal ERROR'))
+    with pytest.raises(RuntimeError, match='terminal ERROR'):
+        module.deploy(manifest, person, args)
+    assert calls == [['ai', 'endpoint', 'get', 'endpoint-fixture']]
+    state = json.loads(path.read_text())
+    assert state['state'] == 'endpoint_error' and state['endpoint_state'] == 'ERROR'
+    assert state['endpoint_id'] == 'endpoint-fixture'
+    assert state['provider_status'] == endpoint['status']
+    receipt = Path(state['provider_error_receipt'])
+    assert json.loads(receipt.read_text()) == endpoint
+    assert receipt.stat().st_mode & 0o777 == 0o600
+    assert path.stat().st_mode & 0o777 == 0o600
+
+
+def test_starting_provider_still_uses_existing_wait_budget(tmp_path, monkeypatch):
+    manifest, person, args, path = existing_endpoint(tmp_path)
+    monkeypatch.setattr(module, 'cloud', lambda *a, **k: {'status': {'state': 'STARTING'}})
+    moments = iter([0, 0, 1801])
+    monkeypatch.setattr(module.time, 'monotonic', lambda: next(moments))
+    sleeps = []
+    monkeypatch.setattr(module.time, 'sleep', sleeps.append)
+    with pytest.raises(RuntimeError, match='not ready before setup deadline'):
+        module.deploy(manifest, person, args)
+    assert sleeps == [10]
+    state = json.loads(path.read_text())
+    assert state['state'] == 'endpoint_created' and state['endpoint_state'] == 'STARTING'
+    assert not (path.parent / 'endpoint-terminal-error.json').exists()
+
+
+@pytest.mark.parametrize('public_ip', ['true', 'false'])
+def test_deploy_helper_preserves_explicit_network_setting_without_implicit_ssh(tmp_path, monkeypatch, public_ip):
+    manifest, person, args, _, _ = fixture(tmp_path)
+    monkeypatch.setenv('SERVERLESS_PUBLIC_IP', public_ip)
+    monkeypatch.delenv('SSH_PUBLIC_KEY_FILE', raising=False)
+    monkeypatch.setattr(module, 'cloud', lambda *args, **kwargs: {
+        'metadata': {'id': 'secret-existing', 'parent_id': manifest['project_id']}})
+    def command(command, environment):
+        assert environment['SERVERLESS_PUBLIC_IP'] == public_ip
+        assert 'SSH_PUBLIC_KEY_FILE' not in environment
+        raise RuntimeError('fixture-stopped-before-cloud')
+    monkeypatch.setattr(module, 'deploy_command', command)
+    with pytest.raises(RuntimeError, match='fixture-stopped'):
+        module.deploy(manifest, person, args)

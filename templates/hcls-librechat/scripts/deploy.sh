@@ -16,6 +16,11 @@ esac
 : "${SEED_DEFAULT_USER_EMAIL:?Durable studies require one configured dedicated user}"
 : "${TEAM_BUCKET_NAME:?Durable studies require a persistent customer bucket mount}"
 
+case "${SERVERLESS_PUBLIC_IP:-true}" in
+  true|false) ;;
+  *) printf '%s\n' 'SERVERLESS_PUBLIC_IP must be true or false.' >&2; exit 2 ;;
+esac
+
 ENDPOINT_NAME="${ENDPOINT_NAME:-nebius-scientific-ai-agent}"
 SCIENTIFIC_MODELS_API_BASE_URL="${SCIENTIFIC_MODELS_API_BASE_URL:-https://89.169.99.188/v1}"
 SCIENTIFIC_MODELS_MCP_URL="${SCIENTIFIC_MODELS_MCP_URL:-https://89.169.99.188/mcp}"
@@ -44,9 +49,13 @@ CREATE_CMD=(
   --env-secret "NEBIUS_API_KEY=$TOKEN_FACTORY_SECRET_SELECTOR"
   --env-secret "TAVILY_API_KEY=$TAVILY_SECRET_SELECTOR"
   --auth none
-  --public
   --format json
 )
+if [[ "${SERVERLESS_PUBLIC_IP:-true}" == true ]]; then
+  CREATE_CMD+=(--public)
+else
+  CREATE_CMD+=(--public=false)
+fi
 
 # Mount only user files on Object Storage. Mongo and credential encryption state
 # remain on the endpoint disk; they must never use the S3/FUSE mount.
@@ -64,6 +73,9 @@ if [[ -n "${SEED_DEFAULT_USER_EMAIL:-}" ]]; then
     --env "ALLOW_REGISTRATION=false")
 fi
 if [[ -n "${SSH_PUBLIC_KEY_FILE:-}" ]]; then
+  if [[ "${SERVERLESS_PUBLIC_IP:-true}" == false ]]; then
+    printf '%s\n' 'SSH_PUBLIC_KEY_FILE is set: SSH access can allocate a public IP even with SERVERLESS_PUBLIC_IP=false. Unset SSH_PUBLIC_KEY_FILE for a private-only deployment.' >&2
+  fi
   CREATE_CMD+=(--ssh-key "$(<"$SSH_PUBLIC_KEY_FILE")")
 fi
 
