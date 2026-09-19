@@ -42,6 +42,15 @@ class DesignProtocolTests(unittest.TestCase):
         self.assertIsNone(re.fullmatch(pattern, "AWYYYFG"))
         self.assertIsNone(re.fullmatch(pattern, "CWYYFG"))
 
+    def test_framework_terminal_mask_applies_after_selection_and_keeps_internal_gaps(self):
+        pattern = framework_pattern("ACDEFGH", {}, "A", resolved_positions=[2, 6])
+        self.assertEqual(pattern, "CDEFG")
+        self.assertIsNone(re.fullmatch(pattern, "CG"))
+        config = {"include": [{"chain": {"id": "A", "res_index": "2..4"}}]}
+        self.assertEqual(framework_pattern("ACDEFGH", config, "A", resolved_positions=[2, 6]), "C")
+        with self.assertRaises(ValueError):
+            framework_pattern("ACDEFGH", config, "A", resolved_positions=[1, 6])
+
     def test_antibody_requires_distinct_framework_chains(self):
         self.assertIsNone(distinct_pattern_assignment({"A": {"sequence": "ACD"}}, ["ACD", "ACD"]))
         self.assertEqual(distinct_pattern_assignment({"A": {"sequence": "ACD"}, "B": {"sequence": "ACD"}}, ["ACD", "ACD"]), ["A", "B"])

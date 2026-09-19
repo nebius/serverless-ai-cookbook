@@ -72,3 +72,10 @@ v2 peptide evaluation incorrectly compared against the entire entity. Preserve
 that failed evaluation and its request/output hashes; report the source-backed
 correction separately without another model call. This does not permit arbitrary
 sequence truncation, target mutations, or removal of internal gaps.
+
+The same mask applies to scaffold chains after their include/exclude selection.
+For pinned 7xl0, positions 122–130 (`AAAHHHHHH`) are unresolved terminal tags,
+not required fixed framework in the output. Preserve internal unresolved
+positions and all included fixed residues; do not strip tags or shorten arbitrary
+sequences by inspecting generated output. Nanobody's original v2 failed verdict
+and its separately corrected assessment are retained under this same rule.

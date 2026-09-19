@@ -71,13 +71,19 @@ def target_sequence(path, label_chain):
     }
 
 
-def framework_pattern(sequence, config, chain):
+def framework_pattern(sequence, config, chain, *, resolved_positions=None):
     """Independent mask/insertions interpretation of pinned upstream YAML."""
     def selected(key, fallback):
         rows = [i["chain"] for i in config.get(key, []) if i["chain"]["id"] == chain]
         return set().union(*(indices(r.get("res_index", "all"), len(sequence)) for r in rows)) if rows else fallback
     included = selected("include", set(range(1, len(sequence) + 1)))
     excluded, designed = selected("exclude", set()), selected("design", set())
+    if resolved_positions is not None:
+        trim_terminal_unresolved(sequence, resolved_positions)  # validate label positions
+        present = (included - excluded) & set(resolved_positions)
+        if not present:
+            raise ValueError("Included framework has no resolved residue")
+        included &= set(range(min(present), max(present) + 1))
     insertions = {r["insertion"]["res_index"]: r["insertion"]["num_residues"]
                   for r in config.get("design_insertions", []) if r["insertion"]["id"] == chain}
     pieces = []
@@ -148,10 +154,12 @@ def prepare(backend, upstream, output):
             files[f"{stem}.{extension}"] = retained(upstream / relative, f"{stem}.{extension}",
                 "https://raw.githubusercontent.com/HannesStark/boltzgen/" + REVISION + "/" + relative)
         scaffold = yaml.safe_load(files[f"{stem}.yaml"])
-        patterns = [framework_pattern(polymer_sequence(source / f"{stem}.cif", chain), scaffold, chain) for chain in chains]
+        coverage = {chain: target_sequence(source / f"{stem}.cif", chain)[1] for chain in chains}
+        patterns = [framework_pattern(polymer_sequence(source / f"{stem}.cif", chain), scaffold, chain,
+                    resolved_positions=coverage[chain]["resolved_positions"]) for chain in chains]
         definitions.append((protocol, {"entities": [{"file": copy.deepcopy(target)}, {"file": {"path": f"{stem}.yaml"}}]},
                             files, {"target_sequence": target_expected, "target_sequence_coverage": target_coverage,
-                                    "designed_patterns": patterns,
+                                    "designed_patterns": patterns, "framework_terminal_coverage": coverage,
                                     "framework_source": f"sources/{stem}.cif"}))
     sequence = parse_chain(ubq.decode(), "A")["sequence"]
     redesign = {"path": "1UBQ.pdb", "include": [{"chain": {"id": "A"}}],
