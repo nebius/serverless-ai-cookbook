@@ -1,0 +1,219 @@
+{
+  "schema": "scientific-unattended-natural-acceptance/v1",
+  "state": "prepared_not_executed",
+  "prepared_at": "2026-09-19T13:52:41Z",
+  "client_candidate": "Bind the actually deployed immutable image before execution; these files do not qualify an image.",
+  "architecture": "one dedicated LibreChat instance per user; intentional tenant bucket sharing is allowed; no shared-instance multiplexing",
+  "operator_only": "Only each referenced prompt file is submitted to the scientist agent. Do not feed the checks, expected values, previous corrections or helper selection instructions to it.",
+  "global_limits": {
+    "scientists": 10,
+    "maximum_new_top_level_model_operations": 33,
+    "maximum_new_clinical_draft_attempts": 3,
+    "maximum_new_workshop_consultations": 0,
+    "asr_calls": 0,
+    "existing_limits_unchanged": true,
+    "note": "These are intent bounds, not promised successes. Internal scientific stages, LeRobot children, provider draft calls, polls and uploads have separate populations. No new model calls were made by preparing this manifest."
+  },
+  "common_acceptance": [
+    "Resolve the existing user's identity, bucket and owner namespace. Stop a predecessor study supervisor before its successor; never infer a distributed lease from local flock.",
+    "Verify the required source objects and freeze size/SHA-256 inventories before submission. Missing required inputs are a preparation blocker, not a silent substitute or a model failure.",
+    "Submit the frozen natural prompt in a new actual browser conversation. Capture the resulting complete study plan, exact request identities and actual App contracts.",
+    "A schema rejection or missing analysis phase is a retained failure; do not supply a prewritten execution plan to turn it into a clean pass.",
+    "Close the browser only after an accepted durable whole-study identity is observed. Reopen the same instance and observe Runs without sending a continue message or recreating the study.",
+    "Record the absence of a durable accepted study as a failure of this gate, even if unmanaged shell work or a later assisted run succeeds.",
+    "On completion, click the actual final download links and independently compare bytes, hashes, sizes and promised file formats. An accepted model call alone is not whole-study delivery.",
+    "Distinguish service success, unassisted study completion, measured scientific checks and biological/clinical validity. Preserve all original failures and separate reassessments.",
+    "Measure waiting and phases from actual evidence. Capacity deferral is not software failure; disappearing work, misleading success, duplicate admissions and need for continuation remain defects.",
+    "Any exact-instance restart or worker fault is separately authorized and timestamped by the manager on test-owned resources, not implicit permission to interrupt other users."
+  ],
+  "studies": [
+    {
+      "scientist": "scientist-01",
+      "prompt": "prompts/scientist-01.txt",
+      "prompt_sha256": "50a7a68132b1d6ecbb2e46fbe332e7a6c50ad5dfb105f3622fd30500ffa7b143",
+      "output_directory": "/workspace/scientist-01/unattended-20260919/ubiquitin",
+      "origin": "Original scientist-01-structure-v36 public ubiquitin study; new output and browser-disconnect intent.",
+      "new_model_operations_max": 1,
+      "required_inputs": ["https://files.rcsb.org/download/1UBQ.pdb", "Exact 76-residue sequence embedded in the frozen prompt"],
+      "reuse": "Reference only; prediction must be new, not recovered from the prior 1UBQ operation.",
+      "checks": [
+        "Exactly one new OpenFold2 operation with immutable input and accepted identity; no extra prediction to improve RMSD.",
+        "Parse actual returned structure; establish 76-residue/chain-A correspondence against experimental 1UBQ, preserving missing coordinates explicitly.",
+        "Recompute proper-rotation C-alpha RMSD and coverage independently. Do not use historical 3.1440 Angstrom as an expected new prediction value.",
+        "Confidence is not accuracy; retain raw output, reference, alignment definition, units and complete report provenance."
+      ]
+    },
+    {
+      "scientist": "scientist-02",
+      "prompt": "prompts/scientist-02.txt",
+      "prompt_sha256": "5a60116df0f5dae23c72c28de459fef357bedcbd7c61676035cb7b0a769317b4",
+      "output_directory": "/workspace/scientist-02/unattended-20260919/complexes",
+      "origin": "Original natural v34 1ACB/2PTC query-only complex study; no corrective recovery prompt supplied.",
+      "new_model_operations_max": 4,
+      "required_inputs": ["/workspace/scientist-02/complex-study-v24-inputs"],
+      "reuse": "Original biological inputs/reference files only; four new predictions are requested.",
+      "checks": [
+        "Two complexes times Boltz2/Protenix v2, at most four new operations; preserve actual supported sampling fields, not a false universal seed7 claim.",
+        "Verify chain/entity mapping and residue correspondence from actual source and predicted bytes; report full-complex and separately fitted per-chain metrics.",
+        "Independently recover reference contacts with a declared cutoff and mapping. Preserve zero recovered contacts and poor RMSD instead of equating confidence with binding.",
+        "The report must bind each metric to its source/prediction hash and operation, distinguish query-only limitations and preserve all four raw results."
+      ]
+    },
+    {
+      "scientist": "scientist-03",
+      "prompt": "prompts/scientist-03.txt",
+      "prompt_sha256": "9a4786b78bbb75cb9f40caf9d3a53fa5c1af2efc8dea99c98673b2a0a340bf55",
+      "output_directory": "/workspace/scientist-03/unattended-20260919/pdl1",
+      "origin": "Original v16 PD-L1 comparison, retained four-sample Proteina and at-most20 BoltzGen budgets; explicit scientific role distinction without target-ID coaching.",
+      "new_model_operations_max": 2,
+      "required_inputs": ["/workspace/scientist-03/study-inputs"],
+      "reuse": "Public target bundles/provenance only; prior design outputs do not count as fresh acceptance.",
+      "checks": [
+        "Choose an actually supported matching target configuration from the frozen bundle and contract; ambiguous constructs require an honest clarification, not automatic target-ID substitution.",
+        "Preserve requested sample count, best-of-N search replica count and actual output yield separately. Do not label four samples times two search replicas as eight independent requested samples.",
+        "Bind raw-generated/refolded roles and metric rows to artifact names, generation IDs and sequence hashes; no positional CSV matching.",
+        "Recheck target/chain/length constraints and gross geometry on actual outputs; preserve filter failures and low quality. Empty scientific yield is not automatically a transport error.",
+        "No filter relaxation, silent extra designs, cross-model score equivalence or experimental binding claim."
+      ]
+    },
+    {
+      "scientist": "scientist-04",
+      "prompt": "prompts/scientist-04.txt",
+      "prompt_sha256": "907b7c69baf55e4d11970959f247b0b9bd3b1dabd6459ba3437983a6f0988d23",
+      "output_directory": "/workspace/scientist-04/unattended-20260919/design-refold",
+      "origin": "Bounded representative successor of original v18/v23 design funnel; one fresh dependent chain, explicitly reused Mosaic/BindCraft context.",
+      "new_model_operations_max": 3,
+      "required_inputs": ["/workspace/scientist-04/design-funnel-v18"],
+      "reuse": "Mosaic and BindCraft are optional historical context only; RFdiffusion, ProteinMPNN and one refold are new.",
+      "checks": [
+        "Exactly one 48-residue RFdiffusion backbone; one ProteinMPNN call for four generated sequences at seed7/temp0.1; one ESMFold2-Fast refold of the first generated sequence at seed1.",
+        "ProteinMPNN input bytes originate in the actual returned backbone, and refold input originates in the actual selected generated FASTA row; source/input FASTA entries cannot count as generated designs.",
+        "Verify residue numbering and complete N/CA/C/O correspondence. A poly-glycine design placeholder must not force a false sequence-identity alignment; any explicit positional map needs real provenance.",
+        "Recompute proper-rotation design/refold fit with mapped versus identical residue counts separate; no invented optimized TM-score.",
+        "Dependent phases and final analysis/publication must advance without another LLM user turn. Reused historical Apps do not become newly qualified."
+      ]
+    },
+    {
+      "scientist": "scientist-05",
+      "prompt": "prompts/scientist-05.txt",
+      "prompt_sha256": "0f0a58bb99e20be7ce52e340b373f235c38ca617bbb12bb8fb452f6bbf3f3af3",
+      "output_directory": "/workspace/scientist-05/unattended-20260919/chemistry",
+      "origin": "Original v36/v37 frozen docking+GenMol study, with identical four-request docking and one-request generation bounds.",
+      "new_model_operations_max": 5,
+      "required_inputs": ["/workspace/scientist-05/study-inputs-v22"],
+      "reuse": "Receptors, ligand identities and experimental reference coordinates only; no fresh MolMIM request.",
+      "checks": [
+        "Two receptor/ligand pairs times seeds7/11 with four poses each: four operations and sixteen poses if complete; generation is one separate operation for sixteen unique molecules.",
+        "Verify exact ligand chemistry and coordinate-frame provenance; independently calculate symmetry-aware heavy-atom RMSD without a free ligand-only fit.",
+        "Report every pose, including outliers, top-ranked and best-of-sample metrics; strict threshold tables must compare unrounded values with declared inequalities.",
+        "Independently parse generated molecules, canonical uniqueness, heavy-atom counts and QED. Mask20-30 is not a promise of20-30 heavy atoms.",
+        "Same seed does not establish cross-replica byte identity. Preserve measured variation and confidence/geometry disagreement."
+      ]
+    },
+    {
+      "scientist": "scientist-06",
+      "prompt": "prompts/scientist-06.txt",
+      "prompt_sha256": "09aafb10139422cb93412960877d184a75a52336186cafdaf35a319931cf6695",
+      "output_directory": "/workspace/scientist-06/unattended-20260919/chloroplast",
+      "origin": "Original v23 public-plant generation study with unchanged six starts, two seeds and256+64 base sizes.",
+      "new_model_operations_max": 12,
+      "required_inputs": ["/workspace/scientist-06/study-inputs-v22"],
+      "reuse": "Pinned public Arabidopsis NC_000932.1 source and request defaults only; twelve new continuations.",
+      "checks": [
+        "Verify six zero-based reference starts1000/15000/35000/60000/90000/120000, prefix256, suffix64, seeds1/7; no coordinate off-by-one or mismatched source FASTA.",
+        "Measure generated suffix rather than full prefix+suffix, alphabet, length, GC fraction, pairwise seed differences and reference agreement independently.",
+        "Use actual response-unit provenance: time_in_ms divided by1000 becomes seconds, not an unchanged value relabelled seconds. Missing time remains unavailable.",
+        "Generation is not likelihood or variant-effect scoring; reference-identical suffixes do not prove generalization or exclude training overlap.",
+        "Do not execute a second twelve-case batch if accepted IDs already exist; disconnect recovery must retain the same intended operations."
+      ]
+    },
+    {
+      "scientist": "scientist-07",
+      "prompt": "prompts/scientist-07.txt",
+      "prompt_sha256": "edd3cf18ce945b56baf87b2b1192a2481f81337864b3335c3b89aacde75c30eb",
+      "output_directory": "/workspace/scientist-07/unattended-20260919/aging",
+      "origin": "Original v34 NHANES/AltumAge numerical reproducibility study; explicitly bounded four calls, no extra malformed probe.",
+      "new_model_operations_max": 4,
+      "required_inputs": ["/workspace/scientist-07/study-inputs"],
+      "reuse": "Public input rows and reference feature map only; two fresh PhenoAge and two fresh AltumAge operations.",
+      "checks": [
+        "All32 NHANES row IDs appear exactly once across two16-row batches. Verify declared age/biomarker units, coefficient version and missingness policy.",
+        "Independently reproduce PhenoAge with the exact declared coefficients; do not swap a nearby coefficient variant to fit outputs.",
+        "Match AltumAge named features and sample identifiers across original/reversed-order inputs; distinguish total predictions from matched samples.",
+        "Measured deterministic agreement is not mortality discrimination, calibration, clinical accuracy or cohort-wide aging validity."
+      ]
+    },
+    {
+      "scientist": "scientist-08",
+      "prompt": "prompts/scientist-08.txt",
+      "prompt_sha256": "0645c97fbe2d7d4d24108c29d8a87caa8e490d955933462d6f5d7a0d887df338",
+      "output_directory": "/workspace/scientist-08/unattended-20260919/medical-documentation",
+      "origin": "Bounded drafting/reporting successor of full v42 English, full German and short negative cohorts; new drafts, explicitly reused ASR.",
+      "new_model_operations_max": 0,
+      "new_clinical_draft_attempts_max": 3,
+      "required_inputs": [
+        "/workspace/scientist-08/medical-nlp-study-v42/clinical/transcript.txt",
+        "/workspace/scientist-08/herzrasen-inputs-v39-r1/transcript.txt",
+        "/workspace/scientist-08/herzrasen-inputs-v39-r1/study-sources.json",
+        "/workspace/scientist-08/medical-nlp-study-v42/transcripts",
+        "/workspace/scientist-08/study-inputs-v22"
+      ],
+      "frozen_source_hashes": {
+        "/workspace/scientist-08/medical-nlp-study-v42/clinical/transcript.txt": "e511be3353a9cdad1d2d2f10e7000ec7b9f2986e01ed3785f10723d99e3ffbee",
+        "/workspace/scientist-08/herzrasen-inputs-v39-r1/transcript.txt": "c0c0aeebaef6383955d8fb4e98d34820d0a90c675302ec6bbb522bab4bb729e8"
+      },
+      "reuse": "All four earlier ASR transcripts/human references are reused; full EN/DE drafting and short no-report attempt are new. No fresh ASR acceptance claim.",
+      "checks": [
+        "Full source sizes/hashes must match before drafting: English6817 bytes, full German4798 bytes; no slicing or cleaning to simplify extraction.",
+        "Count accepted facts from the actual typed result, not an assumed field or fixed historical32. Verify literal source offsets, associated context/conditions and complete publication manifest.",
+        "Compare prose counts/coverage with deterministic measurements. No zero-fact claim when actual facts exist, no unsupported medication normalization, and no false omission when the meaning is present.",
+        "Short-source attempt returns an explicit no_supported_clinical_facts/no-report outcome without fabricated report. Preserve source/review and treat this expected negative separately from the two positive drafts.",
+        "With identical retained transcript/reference hashes and unchanged declared scorer normalization, prior four error/reference-word counts are262/1412,315/1412,341/1412,3/25. Recompute and bind method, not copy those values without evaluation.",
+        "No full German human reference means no Herzrasen WER. Source coverage/segment counts are not clinical completeness, speaker correctness or medical qualification.",
+        "Never attribute WER deletions to case/punctuation differences removed by the declared normalization. No extra provider/model attempts to repair an unfavorable draft."
+      ]
+    },
+    {
+      "scientist": "scientist-09",
+      "prompt": "prompts/scientist-09.txt",
+      "prompt_sha256": "55085cefbc0c5300644c930a9a2d1aca42b7aabf58f5bd899c8739daac042433",
+      "output_directory": "/workspace/scientist-09/unattended-20260919/mindeval-report",
+      "origin": "Original v19/v22 six-consultation study, narrowed explicitly to reused-record analysis to test the observed counting/report defect.",
+      "new_model_operations_max": 0,
+      "new_workshop_consultations_max": 0,
+      "required_inputs": ["/workspace/scientist-09/mindeval-study-v19"],
+      "reuse": "Six existing complete consultation/judgment records only; no fresh workshop or clinical inference.",
+      "explicit_gap": "Durable v2 has no separate MindEval/workshop admission stage. Ordinary native-App support must not be presented as fresh workshop or restart qualification.",
+      "checks": [
+        "Recover all six21-message records and126 original message contents from the frozen study; verify exact hashes/content without confusing shortened report excerpts with full transcripts.",
+        "Derive actual profiles, clinician identities, criteria and profile-by-criterion cells from schema. For the unchanged retained cohort there are two profiles, three clinicians, five criteria and ten profile/criterion cells, not twelve axes.",
+        "Preserve missing judgments and exact provider/patient/judge provenance. No fixed presumed criterion count for arbitrary future schemas.",
+        "No significance/winner claim from treating criteria as independent replicates, and no new calls or private Sword access."
+      ]
+    },
+    {
+      "scientist": "scientist-10",
+      "prompt": "prompts/scientist-10.txt",
+      "prompt_sha256": "c89652f21949a0a731be7ef5416d1fa872249e6ea29765105c10619bc27f29e6",
+      "output_directory": "/workspace/scientist-10/unattended-20260919/robotics",
+      "origin": "Original v42 recorded ALOHA augmentation study plus requested v43 numerical exports; new bounded outputs, not synthetic imagery.",
+      "new_model_operations_max": 2,
+      "required_inputs": [
+        "/workspace/scientist-10/study-inputs/recorded-aloha-v2.json",
+        "/workspace/scientist-10/study-inputs/supplementary/qualification-source-provenance.json",
+        "/workspace/scientist-10/study-inputs/supplementary/recorded-episode-0-cam_high.mp4",
+        "/workspace/scientist-10/study-inputs/supplementary/aloha-coffee-two-recorded-segments.tar.zst"
+      ],
+      "reuse": "Recorded public input assets only; one new native augmentation and one new logical dataset augmentation. Dataset native children are counted separately.",
+      "checks": [
+        "Use recorded ALOHA input and whole-video transfer where trajectory preservation is requested; first-frame/prefix-conditioned generation is not silently relabelled whole-trajectory augmentation.",
+        "Verify selected high-camera dimensions, FPS, frames, durations and requested transformation against actual input/output media, preserving unexpected artifacts.",
+        "Independently compare all128 rows/nine numeric fields:6144 scalar values total, consisting of5504 floating,512 integer and128 boolean values for this exact input.5504 is not the complete count.",
+        "Untouched wrist video bytes remain identical, and all action/state/boolean/index/timestamp values and episode relationships survive unchanged.",
+        "Reopen NPZ, HDF5, ZIP/CSV and standalone SQLite downloaded bytes and compare all original fields, not only archive existence or selected floats.",
+        "RGB arithmetic channel mean must be labelled RGB mean/intensity, not luminance. No trajectory/contact/physical-validity claim from numeric preservation or pixel similarity alone.",
+        "Report actual cold/warm/restore mechanism only with runtime evidence. Admission/activation time is not pure GPU inference or guaranteed cold start."
+      ]
+    }
+  ]
+}
