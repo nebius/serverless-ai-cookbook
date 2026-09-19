@@ -1,8 +1,8 @@
 # Scientific AI: twelve-hour qualification checkpoint
 
-**Draft in progress.** The agreed campaign window is 18 September 2026,
-18:04 UTC to 19 September, 06:04 UTC. Final accounting below will be frozen
-after the observation window closes. This is not a customer-readiness certificate.
+The agreed campaign window was 18 September 2026, 18:04 UTC to
+19 September, **06:04 UTC**. The test/fix window is complete and the evidence
+is ready for review. This is not a customer-readiness certificate.
 
 ## Outcome and scope
 
@@ -29,11 +29,31 @@ models, deliberately excluded GLM-5.2 and two disabled clones. It retains its
 
 ## Measured workload
 
-Final deduplicated counts and source hashes: **pending the 06:04 freeze**.
+Final deduplicated counts and exact source hashes are in [counts.json](counts.json).
 Historical failures remain in the denominator. Polls, uploads, seeded greetings,
 offline rescoring, unit tests and retries without independent attempt identities
 are not additional model calls. Serving/scientific model requests and Token
 Factory conversation completions are reported separately.
+
+| Retained population | Count / outcome |
+|---|---|
+| Top-level platform inference requests | **2,062**: 1,695 serving + 367 scientific batch |
+| Latest retained service outcomes for those requests | 1,883 observed successes; 65 success receipts without an independent status join; 113 failures; one cancellation |
+| Independent output-check results | 1,780 pass; 59 fail; one mixed retained verdict; 222 unlinked |
+| Actual nested inference children | 12, separate from top-level requests and artifact uploads |
+| Separate MindEval population | 66 completed consultations; **1,386** completed model responses, including 66 judgments |
+
+Of the top-level requests, 1,996 have explicit accepted timestamps within the
+campaign window; 66 have no retained accepted timestamp. They are identified
+request receipts, not extra calls reconstructed from polling. No ongoing
+top-level operation remains in the retained population. Historical failures,
+later repairs and changed runtimes must not be combined into a purported
+final-release success percentage.
+
+[Per-App observed waiting and timing](latency.md) includes sample counts,
+success/failure distinctions and exact/unknown runtime strata. These are varied
+customer requests, not normalized cross-model speed comparisons or universal
+cold-start measurements. Missing phase/thermal evidence remains unknown.
 
 These are mixed-release diagnostic and repair cohorts, not a homogeneous
 pass-rate benchmark for the final release. Service success, independently
@@ -92,6 +112,19 @@ candidates, rollbacks, original failures and operator interventions.
   two-episode dataset outputs delivered after two ordinary continuations;
   128 rows, 6,144 non-video values and untouched wrist media independently
   preserved. Correct files do not establish physical/action alignment.
+- [Natural scientific export v43](../20260919-natural-seekable-export-v43/README.md):
+  all 6,144 recorded values preserved in NPZ, HDF5, ZIP and closed SQLite;
+  seven real browser downloads verified. One continuation, five preparation
+  execution errors and inaccurate prose counts remain. The separate
+  [v45 renderer regression](../20260919-workspace-fenced-links-v45-live/README.md)
+  rendered 13 links and verified all seven final-group downloads by actual
+  clicks; it did not repeat inference or qualify a new natural journey.
+- [MindEval 20-profile comparison](mindeval.md): all 60 consultations and their
+  reports completed, with 1,200 conversation responses plus 60 judge responses.
+  All twenty profiles are paired across three clinicians; 7,204,014 reported
+  tokens and complete usage receipts are retained. This unchanged one-worker
+  batch took approximately 172 minutes including queueing. It is an uncalibrated
+  descriptive pilot, not a clinical assessment or a fifty-attendee event test.
 
 ## Waiting, elasticity and snapshots
 
@@ -133,12 +166,20 @@ reads, six per-Pod reads and 32 browser admin GETs, all HTTP 200. The 21 model
 specifications and 33 generated Pod templates remained unchanged.
 See [exact release verification](../20260919-admin-apps-reliability/README.md).
 
-Client v43 is deployed to isolated scientist10 endpoint
-`aiendpoint-e00s62sznpcf4h066c`; runtime source
-`31ea81371b31a06cc9b7366963dcbcc9f72d7453`, image index
-`sha256:6b03912b411c32c66bc22bdd1e0962f5c6e168962a5fd8077eae4f1cb0ada554`.
-[Installed-image evidence](../20260919-integrated-client-v43/README.md) is
-separate from its still-running natural export check. The existing Rene endpoint
+The latest isolated client preview is **v45**, endpoint
+`aiendpoint-e00xhmyjzgndgdzgnk`, source
+`f25b35fe5a91f8ed9b1a775b2cb97054a4ebedba`, image index
+`sha256:135139167e96ec05ec483307b578cbfacad1180f85db44d22b16d9a7314c6fb5`.
+It runs at
+`https://port3080-hrjz381eef0jgq9.tunnel.applications.eu-north1.nebius.cloud`.
+Its actual-browser renderer/download regression passes; the original v44
+integration failure is preserved. Syntax highlighting had split plain strings
+into React spans, a shape missing from the earlier offline test. The successor
+test exercises the actual pinned Markdown/highlighter pipeline.
+
+Earlier [v43 installed-image evidence](../20260919-integrated-client-v43/README.md)
+and its natural export study are separate from that v45 renderer-only gate.
+There was no new hosted inference in either export/renderer task. The existing Rene endpoint
 `aiendpoint-e00hf15nz04eqt6b9q` was **not** silently replaced by a test build.
 Preview credentials remain in protected deployment receipts, never this repo.
 
@@ -152,9 +193,11 @@ artifacts and any already-admitted durable work are retained for review.
    omitted-source/coverage reasoning and unsupported metric interpretations.
    Eliminate remaining substantive method coaching in the design/complex
    journeys. Re-run unchanged customer-shaped tasks on one frozen client/backend.
-2. **Complete artifact UX.** Close ordinary scientific export verification and
-   direct clickable-download handling. Preserve the first failures; require
-   byte checks through the actual browser, not only storage/API reads.
+2. **Smooth scientific preparation and artifact UX.** The bounded four-format
+   export and fenced-link fixes now have live evidence. Missing scientific
+   Python prerequisites, incorrect data-library calls and inaccurate narrative
+   counts still caused avoidable friction. Broader natural studies must verify
+   complete correct deliverables, not inherit a pass from these narrow fixes.
 3. **Customer identity and lifecycle.** Qualify true shared-instance multiuser
    execution/bucket bindings if that is the intended deployment; separately
    qualify bounded automatic recovery with task-owned capacity-loss evidence.
@@ -185,7 +228,8 @@ platform-wide “done”, “all models optimized” or 10/10 claim is justified
   or signed object URLs. Published summaries contain scoped findings and hashes.
 - Backend rollout/baseline: `Q/backend-release182`, `Q/backend-baseline182`.
   Client deployments: `Q/workbenches-v42-deepseek0813`,
-  `Q/workbenches-v42-clinical`, `Q/workbenches-v43-deepseek0813`.
+  `Q/workbenches-v42-clinical`, `Q/workbenches-v43-deepseek0813`,
+  `Q/workbenches-v44-deepseek0813`, `Q/workbenches-v45-deepseek0813`.
 - Continue existing durable operations by their recorded IDs/idempotency keys.
   Do not resubmit completed science to collect the same artifact. Read actual
   latest status before resuming observers. A process exit is not cancellation

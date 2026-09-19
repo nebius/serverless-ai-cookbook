@@ -505,3 +505,29 @@ children, joins exact retained terminal status captures without inventing
 admissions, and treats persistence-history directories as directories rather
 than corrupt JSON files. Thirty-four aggregation/latency/workshop tests pass.
 Those are measurement repairs, not additional model calls or product passes.
+
+### Final UI regression: retain the failed integration test
+
+The v44 component tests passed but the actual authenticated browser rendered
+zero download links. Real React fiber inspection showed that syntax highlighting
+interleaved strings with `span.hljs-number` nodes. The original helper accepted
+only strings; merely retesting it directly would have missed this failure again.
+
+Successor `f25b35f` is deployed in isolated v45 preview
+`aiendpoint-e00xhmyjzgndgdzgnk`, index `135139167e96ec05ec483307b578cbfacad1180f85db44d22b16d9a7314c6fb5`.
+Thirteen tests include the actual pinned Markdown/highlighter pipeline. The live
+browser now renders the original two groups of six/seven links while preserving
+both original response texts and highlighted code blocks. All seven final-group
+links were actually clicked/downloaded (zero first-group clicks); their 153,693
+bytes match independent storage reads. Anonymous direct download returns 401.
+No hosted inference, extra natural turn, runtime patch or Rene endpoint mutation
+was performed. This closes the narrow link-rendering defect, not the retained
+v43 preparation/reporting errors or broad scientific-workbench readiness.
+
+Portable acceptance:
+`demos/evidence/20260919-workspace-fenced-links-v45-live/README.md`;
+protected acceptance receipt SHA256
+`da5b3ac4326b96cc4cd366edd5411b1916f2a3cc2fff3c376ed9d31c02bf8e93`.
+The prior v44 failed gate remains separately published. Final aggregation,
+latency and complete MindEval cohort helpers together pass 49 focused tests;
+old unrelated temporary-PostgreSQL cleanup permission warnings are retained.
