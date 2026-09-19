@@ -58,6 +58,60 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 In progress. This is not a final readiness claim.
 
+### 18:00 UTC — preview address reuse and credential boundary
+
+Stopping v52 previews did not release public addresses. Four v54 create attempts
+were rejected by the existing IPv4 quota, with no matching resource created.
+The ten exact archived/stopped v52 endpoints were then deleted and confirmed
+NotFound, without a quota increase. Their local instances cannot be recovered;
+captured transcripts/configuration/output evidence and persistent buckets remain.
+Two v54 successors are provisioning; two additional provider-Internal rejections
+were reconciled absent before a single explicit operator retry. No natural v54
+study has been admitted at this checkpoint.
+
+The unchanged r7 fixture/observer preparation passed25 offline tests. Eight
+additional02/03 verification regressions reject missing case pairs and the old
+empty protein-design report. These are not live customer passes. Rene's v54
+migration helper is prepared only, with six binding tests; his existing client
+has not been changed. The test-key renewal decision is outstanding; one blocker
+DM was sent to Rene at17:57UTC. Keys/permissions/limits remain unchanged.
+
+### 17:55 UTC — recovery deployed; exact client candidate verified
+
+Backend Helm190 is deployed from `c154d77654a16b5cfdf732f505467ac981b6479f`
+with three ready gateways and two ready controllers. A fresh, separately labelled
+RFdiffusion48-residue/seed1 operation survived an exact owned-worker eviction:
+the durable Job retained `DisruptionTarget`, attempt2 completed within the existing
+two-attempt policy, reservations were released, and result hashes plus48-residue
+structure integrity passed independent checks. This qualifies maintenance-worker
+eviction, not whole-node loss, actual provider preemption or the complete failed
+v52 RF→ProteinMPNN→ESMFold study. The earlier failed study remains failed.
+See the solutions-library `acceptance/worker-disruption-20260919/README.md`.
+
+The ten v52 test clients are archived and **stopped, not deleted**. Separate
+per-user successors are deploying. Rene's existing client, other customers and
+tenant buckets are unchanged. No request, quota, retry, execution or token limits
+were increased.
+
+Client v53 passed installed tests but was never deployed. Its successor v54,
+source `12fb896b4dd6c3b856b4b07da903bad08546a0ec`, additionally synchronizes
+same-user receipt publication/observation with a short local reader/writer lock.
+It does not fall back to stale receipts or hide a partial journal after a crash.
+The source race was reproduced; the original live503's exact cause is still
+unproven because its underlying exception was not retained.
+
+Published v54 index:
+`sha256:c5d01a265447b6d89c155c6266acdad18e158b78eba8888fa2586b41234d421a`.
+Exact installed tests passed ten runtime hash checks, eleven SDK cases, five CPU
+Studies with30 nonempty independently verified final files, and ten receipt
+publication/crash regressions. Tests used no network/model calls or replacement
+runtime files. Receipt SHA256:
+`c0907518eb8e8637fbd778c1c2fd79cea751895f24920705a94b0087b2a38db2`.
+These tests do not replace the unchanged natural scientist cohort or a qualified
+Rene migration. Temporary test keys expire around18:13UTC; a24-hour extension
+was requested from the user and has **not** been applied. Do not admit known long
+studies across that expiry while authorization is unresolved.
+
 ### 17:30 UTC — v52 outcomes and observed-defect repairs
 
 All ten dedicated v52 instances received one unchanged scientific prompt, with
