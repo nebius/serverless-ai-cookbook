@@ -72,8 +72,22 @@ Do not sum the parent and child intervals as independent GPU use, and do not
 call the generic parent running interval GPU compute. Both child operations
 attribute to the same1GPU preemptible Pod
 `7a744583-f8b8-47b8-9f17-5cd03c3afbce`; this cohort is not a multi-Pod witness.
-Independent operator-side coordinator-image/strict-snapshot attestation is
-recorded separately by the parent; timing alone does not prove restore.
+Independent operator-side witnesses confirm the actual same GPU Pod's native
+image `5e2680aa1f8332413638ec1bc962c3796a79a314c1c84f5456d32aa916839e32`,
+zero container restarts, and04:05:04.707392 log event
+`serving_snapshot_runtime` with mechanism`cuda-criu-restored`. The active
+owner cache policy is`Require`, with CUDA checkpoint bundle
+`573bf6acacb90461ca0cc06f850f550dc48e34579d79f866da2b1691097ff120`.
+The legacy fastStart.level=Off field is not substituted for actual cache policy.
+
+Coordinator Pod`dfacf2ee-cd87-4165-a0d8-bed50e01643b` is observed during the
+run with actual imageID
+`69fe161d370fac4cc9517d24ecfee7b025bb569a935ffadab8eb31e49c783a11`,
+zero restarts, and the179 collector. Public terminal result binds that exact
+image, attempt and Pod. Minute observations at04:03:59/04:04:59/04:05:59 and
+`Q/robotics-api-r179/cosmos-runtime-logs.json` preserve the witnesses. The GPU
+Pod subsequently scaled to zero normally; absence from the after-capture is
+not an execution failure. Timing alone is not used to infer snapshot restore.
 
 ## Scientific limits remain
 
