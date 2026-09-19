@@ -5,10 +5,11 @@ import json
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 import scientific_study as study
 import scientific_workflow_draft as draft
-from scientific_study_schema import PHASE_OUTPUTS, describe_workflow, known_output_files
+from scientific_study_schema import JSON_BASENAME, PHASE_OUTPUTS, describe_workflow, known_output_files
 from test_structure_analysis import COORDS, pdb
 
 
@@ -139,3 +140,41 @@ def test_future_worker_path_or_directory_has_actionable_named_reference_hint(mou
 def test_dynamic_output_contracts_remain_deferred_not_forbidden(step):
     assert known_output_files(step) is None
     study.known_output_reference({'step': 'dynamic', 'file': 'contract-dependent.ext'}, {'dynamic': step})
+
+
+@pytest.mark.parametrize('filename', ['data.json', '.json', 'data values.json', 'line\nbreak.json',
+    'limitations.md', 'nested/data.json', '/data.json', 'data.json\n', 'data.json\r', '', 'data.JSON'])
+def test_write_json_schema_matches_existing_basename_validator(filename):
+    typed = Draft202012Validator(JSON_BASENAME).is_valid(filename)
+    try:
+        study.validate_local_arguments('write-json', {'filename': filename, 'value': {}})
+        accepted = True
+    except ValueError:
+        accepted = False
+    assert typed == accepted
+    assert describe_workflow(['write-json'])['phases']['write-json']['step_schema'][
+        'properties']['arguments']['properties']['filename'] is JSON_BASENAME
+
+
+def test_python_cli_example_reads_real_bindings_file_through_existing_runner(mounted):
+    descriptor = describe_workflow(['python-script'])['phases']['python-script']
+    source = mounted / 'actual-result.json'
+    source.write_text('{"measured":7}\n')
+    script = mounted / 'analysis.py'
+    script.write_text(descriptor['cli_example'] +
+                      "(output_directory / 'measurement.json').write_text(json.dumps({'observed': result['measured'], 'scale': parameters['scale']}))\n")
+    value = {'schema': study.SCHEMA, 'title': 'Bindings ABI', 'steps': [{
+        'id': 'measure', 'kind': 'analysis', 'method': 'python-script', 'arguments': {
+            'script': str(script), 'inputs': [{'name': 'result_a', 'file': str(source)}],
+            'parameters': {'scale': 2}, 'outputs': ['measurement.json']}}],
+        'deliverables': [{'name': 'measurement.json', 'role': 'report',
+                          'source': {'step': 'measure', 'file': 'measurement.json'}}]}
+    accepted = study.submit(value, mounted / 'complete')
+    asyncio.run(study.advance(accepted['id']))
+    completed = asyncio.run(study.advance(accepted['id']))
+    assert completed['state'] == 'completed', completed
+    output = completed['artifacts'][0]
+    assert json.loads(Path(output['path']).read_bytes()) == {'observed': 7, 'scale': 2}
+    frozen = completed['steps']['measure']['files']
+    assert Path(frozen['script.py']['path']).read_bytes() == script.read_bytes()
+    assert json.loads(Path(frozen['input-bindings.json']['path']).read_bytes())['inputs']['result_a'] == str(source)

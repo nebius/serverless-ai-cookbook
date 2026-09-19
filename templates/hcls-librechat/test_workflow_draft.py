@@ -304,8 +304,8 @@ def test_grouped_plan_reduces_peak_arguments_without_one_call_per_step(mounted, 
 
 def test_dependency_order_uses_existing_validator_without_reordering(mounted):
     first = {'id': 'prepare', 'kind': 'preparation', 'method': 'write-json',
-             'arguments': {'filename': 'rows.csv', 'value': {'measured': 1}}}
-    final = report_step({'step': 'prepare', 'file': 'rows.csv'})
+             'arguments': {'filename': 'rows.json', 'value': {'measured': 1}}}
+    final = report_step({'step': 'prepare', 'file': 'rows.json'})
     args = {'draft_directory': str(mounted / 'draft'), 'title': 'Ordering stays explicit',
             'steps': [final, first], 'deliverables': deliverables(), 'finalize': True}
     result = draft.compose(args)

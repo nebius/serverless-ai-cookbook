@@ -30,10 +30,10 @@ SCHEMA = 'scientific-workflow/v2'
 FINAL = {'completed', 'failed', 'cancelled', 'needs_attention'}
 MODEL_KINDS = {'native', 'batch'}
 PROTEIN_METHODS = {'proteinmpnn-input', 'esmfold2-fast-input', 'design-refold-correspondence'}
-LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'docking', 'docking-batch', 'aging', 'report', 'mindeval', 'clinical-study'} | PROTEIN_METHODS
+LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'docking', 'docking-batch', 'genmol', 'aging', 'report', 'mindeval', 'clinical-study'} | PROTEIN_METHODS
 HELPERS = {name: HERE / filename for name, filename in {
     'structure': 'structure-analysis.py', 'docking': 'molecule-analysis.py',
-    'docking-batch': 'molecule-analysis.py', 'aging': 'aging-analysis.py', 'report': 'report-assembly.py',
+    'docking-batch': 'molecule-analysis.py', 'genmol': 'molecule-analysis.py', 'aging': 'aging-analysis.py', 'report': 'report-assembly.py',
     'mindeval': 'report-assembly.py'}.items()}
 HELPERS['clinical-study'] = Path(os.environ.get('SCIENTIFIC_CLINICAL_REPORT_HELPER',
     '/app/skill/clinical-documentation/scripts/study_report.py'))
@@ -153,6 +153,8 @@ def input_references(step):
         return [args[key] for key in ('design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction')]
     if method in {'structure', 'docking'}:
         return [args[key] for key in ('reference', 'prediction', 'result', 'residue_map', 'request_file') if key in args]
+    if method == 'genmol':
+        return [args['input_file'], args['result_file']]
     if method == 'docking-batch':
         return [run[key] for run in args['runs'] for key in ('reference_file', 'prediction_file', 'result_file') if key in run]
     if method == 'aging':
@@ -292,6 +294,7 @@ def validate_local_arguments(method, args):
         'structure': ({'reference'}, {'chain_map', 'prediction', 'result', 'structure_index', 'residue_map', 'request_file'}),
         'docking': ({'reference', 'same_coordinate_frame'}, {'prediction', 'result', 'threshold_queries'}),
         'docking-batch': ({'runs', 'same_coordinate_frame'}, {'threshold_queries'}),
+        'genmol': ({'input_file', 'result_file'}, set()),
         'aging': ({'model', 'cohorts'}, {'coefficient_version', 'reference_ages'}),
         'report': ({'title', 'sections'}, set()), 'mindeval': ({'title', 'records'}, set()),
         'clinical-study': ({'plan_file'}, set()),
@@ -428,6 +431,9 @@ def local_command(method, args, scratch):
     command = [sys.executable, str(helper)]
     if method == 'clinical-study':
         return command + ['assemble', '--plan', args['plan_file'], '--output', str(scratch)]
+    if method == 'genmol':
+        return command + ['--request', args['input_file'], '--genmol-result', args['result_file'],
+                          '--output', str(scratch / 'metrics.json')]
     if method in {'report', 'mindeval', 'aging', 'docking-batch'}:
         data = args if method in {'report', 'mindeval'} else args['cohorts'] if method == 'aging' else args['runs']
         manifest = scratch / 'helper-input.json'

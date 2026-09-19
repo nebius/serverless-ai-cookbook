@@ -59,3 +59,43 @@ Protected evidence:
 
 Root owns any combined image, installed successor gate and fresh natural
 qualification. These retained failed journeys do not inherit a pass.
+
+## Additional observed contract clarifications
+
+The same successor schema now exposes `write-json.filename` as the JSON
+basename it has always required. It cannot write `limitations.md`. Pattern
+tests match the existing validator rather than weakening its behavior. An
+older dependency-order fixture used an invalid `.csv` filename; it now uses a
+valid `.json` name so it continues testing dependency order independently.
+
+Selected Python-stage discovery includes a short executable CLI example:
+parse `--inputs` and `--output-dir`, load the bindings **file**, then read each
+verified source path from `bindings['inputs'][name]`. It does not parse an
+argv flag/path as JSON. The exact example is exercised through the existing
+runner against real synthetic saved files. No arbitrary customer program is
+executed against guessed future data during admission.
+
+Batch parameter-file guidance also states that the file contains the exact
+submit tool's `properties.parameters` object, not a full scientific-run
+envelope. The separately owned batch-client fix validates that schema before
+uploads and never unwraps caller data silently.
+
+The focused ABI/discovery/composer run passes 65 tests in 1.62 seconds,
+including 12 additional filename/CLI-example cases. Protected receipt:
+`U/output-preflight-successor.yprh5I/junit-abi-final.xml`, SHA256
+`9eeea01513fb930e64d1f699e670973efff56ed902c7e32274d611878b3fd492`.
+The original fixture failure remains in `junit-abi.xml`. This is source-only
+evidence; live v52 messages, scripts and studies remain unchanged.
+
+The separately tested deterministic GenMol saved-result helper is wired as
+`method: genmol` with exactly `input_file` and `result_file` bindings. It reuses
+the existing molecule helper, environment, closed-file publisher and four-file
+output contract. Its typed phase does not require a generated custom analysis
+program. Two integration tests complete a dependent CPU-only plan, preserve
+raw rows and hashes, retain invalid/duplicate/underfilled outcomes and absent
+scores, and verify that no model transport is invoked. The final focused
+schema/discovery/composer/integration run passes 67 tests in 1.98 seconds:
+`U/output-preflight-successor.yprh5I/junit-integration.xml`, SHA256
+`5968ace077f308b38598aa2feb251ce9aef272ce92fe49da2563f4146a391e44`.
+Scientific descriptor qualification remains the separate GenMol helper
+evidence; none of these source checks repairs or passes the failed live study.

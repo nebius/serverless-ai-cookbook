@@ -2,6 +2,21 @@
 TEXT = {'type': 'string', 'minLength': 1}
 REPORT_HEADING = {**TEXT, 'pattern': r'\S', 'not': {'pattern': r'[\r\n]'},
     'description': 'Meaningful nonblank one-line heading without CR/LF. No arbitrary character-length cap; preserved verbatim.'}
+JSON_BASENAME = {**TEXT, 'pattern': r'^[^/]*\.json$', 'not': {'pattern': r'\n$'},
+    'description': 'Exact JSON basename ending .json, without directory components. This helper writes JSON, not Markdown; use a declared saved Python-script output or report helper for Markdown.'}
+PYTHON_SCRIPT_CLI_EXAMPLE = '''import argparse, json
+from pathlib import Path
+parser = argparse.ArgumentParser()
+parser.add_argument('--inputs', required=True)
+parser.add_argument('--output-dir', required=True)
+args = parser.parse_args()
+bindings = json.loads(Path(args.inputs).read_text())
+result_file = Path(bindings['inputs']['result_a'])
+result = json.loads(result_file.read_text())
+parameters = bindings['parameters']
+output_directory = Path(args.output_dir)
+# Write exactly your declared output filenames here; close them before exit.
+'''
 FILE = {'oneOf': [TEXT, {'type': 'object', 'additionalProperties': False,
     'required': ['step', 'file'], 'properties': {'step': TEXT, 'file': TEXT}}],
     'description': 'Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}.'}
@@ -23,7 +38,8 @@ NATIVE = object_schema({'id': TEXT, 'kind': {'const': 'native'}, 'model': TEXT,
                        'input': FILE, 'idempotency_key': TEXT})
 BATCH_FIELDS = {'id': TEXT, 'kind': {'const': 'batch'}, **{key: TEXT for key in (
     'model', 'tool', 'operation', 'media_type', 'entry_name', 'semantic_type', 'idempotency_key', 'display_name')},
-    'source': FILE, 'parameters': FILE}
+    'source': FILE, 'parameters': {**FILE,
+        'description': FILE['description'] + ' The parameters JSON file contains only the model parameters object from submit-tool input_schema.properties.parameters, never a full scientific-run envelope; the batch client validates before uploads and does not unwrap it.'}}
 BATCH = object_schema({**BATCH_FIELDS, 'compression': TEXT, 'service_class': TEXT,
                        'source_artifact': FILE}, list(BATCH_FIELDS))
 PREDICTION = {'oneOf': [{'required': ['result'], 'not': {'required': ['prediction']}},
@@ -36,8 +52,8 @@ CLINICAL = object_schema({'id': TEXT, 'kind': {'const': 'clinical'}, 'source': F
     'asr_model': {'enum': ['nemotron-speech-en-0-6b', 'nemotron-speech-multilingual-0-6b']}},
     ['id', 'kind', 'source', 'source_type', 'language', 'report_model'])
 STEPS = [NATIVE, BATCH, CLINICAL,
-    local('write-json', object_schema({'filename': TEXT, 'value': {}})),
-    local('python-script', object_schema({'script': {**TEXT, 'description': 'Existing workspace Python source, hash-frozen before admission; not a generated later-step file.'},
+    local('write-json', object_schema({'filename': JSON_BASENAME, 'value': {}})),
+    local('python-script', object_schema({'script': {**TEXT, 'description': 'Existing workspace Python source, hash-frozen before admission; not a generated later-step file. CLI receives --inputs <bindings.json path> --output-dir <private directory>; parse arguments, then json.loads(Path(args.inputs).read_text()). Read source paths from bindings["inputs"][name], not JSON from argv itself. Discovery includes the exact CLI example.'},
         'inputs': {'type': 'array', 'items': object_schema({'name': TEXT, 'file': FILE})},
         'parameters': {'type': 'object', 'description': 'Immutable scientific parameters supplied in the saved bindings JSON.'},
         'outputs': {'type': 'array', 'minItems': 1, 'uniqueItems': True, 'items': TEXT}},
@@ -72,6 +88,9 @@ STEPS = [NATIVE, BATCH, CLINICAL,
     local('aging', object_schema({'model': {'enum': ['phenoage', 'altumage']}, 'cohorts': {'type': 'array',
         'minItems': 1, 'items': object_schema({'label': TEXT, 'input_file': FILE, 'result_file': FILE})},
         'coefficient_version': TEXT, 'reference_ages': FILE}, ['model', 'cohorts'])),
+    local('genmol', object_schema({'input_file': {**FILE,
+        'description': FILE['description'] + ' Original raw GenMol request JSON, with smiles and num_molecules; preserves actual scoring/defaults.'},
+        'result_file': {**FILE, 'description': FILE['description'] + ' Raw GenMol result JSON with molecules:[{smiles,score}]. Deterministically measures validity, unique/duplicate/returned counts, QED and Crippen LogP, underfill and unavailable scores; no new inference or recursive envelope guessing.'}})),
     local('report', object_schema({'title': REPORT_HEADING, 'sections': {'type': 'array', 'minItems': 1, 'maxItems': 16,
         'items': object_schema({'title': REPORT_HEADING, 'file': FILE, 'format': {'enum': ['markdown', 'csv', 'operation-timing', 'recorded-export', 'rgb-statistics', 'mindeval-runs']}})}})),
     local('clinical-study', object_schema({'plan_file': FILE})),
@@ -115,6 +134,7 @@ PHASE_OUTPUTS = {
     'docking': (['metrics.json', 'rows.csv', 'report.md'], []),
     'docking-batch': (['metrics.json', 'rows.csv', 'report.md'], []),
     'aging': (['metrics.json', 'rows.csv', 'report.md'], []),
+    'genmol': (['metrics.json', 'rows.csv', 'report.md', 'completion-manifest.json'], []),
     'report': (['report.md', 'provenance.json', 'assembly-plan.json', 'helper.py', 'completion-manifest.json'], ['sources/NNN.ext retains every exact supplied section.']),
     'mindeval': (['report.md', 'methods.md', 'runs.csv', 'scores.csv', 'measurements.json', 'provenance.json', 'records.json', 'completion-manifest.json'],
                  ['records/NNN.json and transcripts/NNN.txt retain every full supplied record and transcript.']),
@@ -130,6 +150,7 @@ PHASE_OUTPUT_ALTERNATIVES = {
     'structure': ['prediction.pdb', 'prediction.cif'],
     'proteinmpnn-input': [], 'esmfold2-fast-input': [],
     'design-refold-correspondence': [],
+    'genmol': [],
 }
 
 
@@ -167,7 +188,12 @@ def describe_workflow(methods=None):
                          'always_on_success': PHASE_OUTPUTS[name][0], 'conditional': PHASE_OUTPUTS[name][1],
                          'directories_not_deliverable_files': PHASE_OUTPUT_DIRECTORIES.get(name, []),
                          **({'possible_exact_files': PHASE_OUTPUTS[name][0] + PHASE_OUTPUT_ALTERNATIVES[name]}
-                            if name in PHASE_OUTPUT_ALTERNATIVES else {})} for name in methods},
+                            if name in PHASE_OUTPUT_ALTERNATIVES else {}),
+                         **({'cli_example': PYTHON_SCRIPT_CLI_EXAMPLE,
+                             'bindings_schema': {'schema': 'scientific-python-bindings/v1',
+                                                 'inputs': {'result_a': '<resolved verified file path>'},
+                                                 'parameters': '<exact saved parameters object>'}}
+                            if name == 'python-script' else {})} for name in methods},
         'submission': {'tool': 'run_scientific_workflow_mcp_environment-execution',
                        'arguments': {'plan_file': '/workspace/research/plan.json', 'output_directory': '/workspace/research/final'}},
         'draft_composer': {'tool': 'compose_scientific_workflow_mcp_environment-execution',
