@@ -214,6 +214,9 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     assert "Runs automatically discovers" in general['instructions']
     assert "Do not launch parallel CLI processes" in general['instructions']
     assert "prefer run_scientific_workflow with its typed native/batch steps" in general['instructions']
+    assert "Do not rewrite existing numerical tables in an ad hoc Python renderer" in general['instructions']
+    assert "analysis into another" not in general['instructions']
+    assert "workspace_url" in general['instructions']
 
 
 def test_genmol_skill_distinguishes_tokens_from_atom_measurements() -> None:

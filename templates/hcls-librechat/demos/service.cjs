@@ -113,6 +113,12 @@ async function retainResult(key, operationId, bytes) {
   return retainWorkspaceBytes(key, `.scientific-runs/${operationId}/result.json`, bytes);
 }
 
+function workspaceUrl(relative) {
+  const directory = path.posix.dirname(relative);
+  return '/demos?' + new URLSearchParams({ tab: 'workspace',
+    path: directory === '.' ? '' : directory, file: relative }).toString();
+}
+
 async function retainWorkspaceBytes(key, relativePath, bytes) {
   if (!(await workspaceInfo(key)).mounted) return { saved: false, reason: 'No mounted workspace; use the authenticated panel download.' };
   const target = workspacePath(relativePath);
@@ -122,7 +128,8 @@ async function retainWorkspaceBytes(key, relativePath, bytes) {
   catch (error) { if (error.code !== 'EEXIST') throw error; }
   const actual = await fileHash(target.absolute);
   if (actual !== expected) throw failure('Saved result differs from the verified platform output; existing file was not overwritten.', 409);
-  return { saved: true, path: target.absolute, relative_path: target.normalized, size_bytes: bytes.length, sha256: actual };
+  return { saved: true, path: target.absolute, relative_path: target.normalized,
+    workspace_url: workspaceUrl(target.normalized), size_bytes: bytes.length, sha256: actual };
 }
 
 async function workshopRun(key, runId) {
@@ -409,7 +416,8 @@ async function workspacePut(key, relative, localPath) {
     await fs.unlink(target.absolute).catch(() => {});
     throw failure('Workspace upload verification failed; the incomplete object was removed.', 503);
   }
-  return { path: target.normalized, size_bytes: stat.size, sha256: actual, updated_at: stat.mtime.toISOString() };
+  return { path: target.normalized, workspace_url: workspaceUrl(target.normalized),
+    size_bytes: stat.size, sha256: actual, updated_at: stat.mtime.toISOString() };
 }
 async function workspaceGet(key, relative) {
   const info = await workspaceInfo(key);

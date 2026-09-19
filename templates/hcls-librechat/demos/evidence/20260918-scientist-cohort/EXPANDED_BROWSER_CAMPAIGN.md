@@ -1,11 +1,51 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 00:30 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 00:54 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### v32 matched planner comparison and report mechanism
+
+Exact v32 image sourcef043caf/digest29b0404c ran two fresh read-only natural
+recovery conversations on byte-identical copies of112 original study files
+(1,446,809 bytes), excluding prior corrections. GLM5.3-low and KimiK3 used the
+same29-tool seed and37,692-character instructions,8192 output-token budget,
+131072 context ceiling, existing round policy and scientist06 identity. Prompts
+were identical apart from input/output prefixes; Kimi native reasoning versus
+GLM low is an explicit remaining comparison difference.
+
+Both produced16 exact pose rows,4 exact per-run rows and16 exact molecule rows;
+all CSV/Markdown widths and numerical values match the independently verified
+source. GLM took129.644s/14 tool calls with one self-recovered failed shell exit
+and an unsupported S3 in-place edit that damaged newly generated scripts before
+repair. Kimi took61.092s/13 calls with no failed exits. Neither used the available
+assembler. Both still use unsupported pass/fail language; GLM falsely attributes
+reproducible report generation to a retained script that only loads JSON, while
+Kimi invents truncation of the original file from an incomplete tool window.
+Neither report is accepted; one paired case does not justify a planner switch.
+Protected machine-readable evidence: `planner-ab-v32-independent-verification.json`,
+`planner-ab-v32-controls.json`, frozen input receipt and complete conversations.
+
+An explicit separate browser call to `workbench_assemble_report` did qualify
+the mechanism on actual Object Storage:6,537-byte report SHA256
+`3b9834699a1768e28c9052a580618ad92cdee4609c212dd83d4b3a1c4b0b2bc4`
+exactly equals an independent local assembly, preserving16 molecule rows and
+the deterministic docking report, with no inference. This is not natural adoption.
+
+The preceding initial v32 recovery report retained literal template placeholders
+and a false seed comparison. An initial inspector claim that its Markdown
+delimiter widths were inconsistent was **wrong**: programmatic parsing verifies
+consistent6/9/11 columns. That allegation is withdrawn; original report and
+other failures remain retained.
+
+v33 candidate removes contradictory Python-report-rendering guidance and adds
+authenticated Workspace deep-links to exact retained files. It changes no model,
+compute, context or token policy. The capture helper also stops storing its
+failed direct status/tool probes as evidence; actual persisted messages and
+workspace bytes remain authoritative. Preview/download qualification pending.
 
 ### Latest release gate: v31 raw results correct, combined report malformed
 

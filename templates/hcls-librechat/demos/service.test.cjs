@@ -113,6 +113,11 @@ test('mounted workspace stays inside its root and round-trips files', async () =
   await fs.writeFile(source, 'workspace fixture');
   const receipt = await service.workspacePut('fixture-key', 'papers/result.txt', source);
   assert.equal(receipt.path, 'papers/result.txt');
+  const link = new URL(receipt.workspace_url, 'https://workbench.invalid');
+  assert.equal(link.pathname, '/demos');
+  assert.equal(link.searchParams.get('tab'), 'workspace');
+  assert.equal(link.searchParams.get('path'), 'papers');
+  assert.equal(link.searchParams.get('file'), 'papers/result.txt');
   assert.match(receipt.sha256, /^[a-f0-9]{64}$/);
   await assert.rejects(service.workspacePut('fixture-key', 'papers/result.txt', source), /already exists/);
   const listing = await service.workspaceList('fixture-key', 'papers');
@@ -121,6 +126,8 @@ test('mounted workspace stays inside its root and round-trips files', async () =
   const downloaded = await service.workspaceGet('fixture-key', 'papers/result.txt');
   assert.equal(await fs.readFile(downloaded.absolute, 'utf8'), 'workspace fixture');
   await assert.rejects(service.workspaceGet('fixture-key', '../request.json'), /escape/);
+  const unicode = await service.workspacePut('fixture-key', 'papers/Å & table.csv', source);
+  assert.equal(new URL(unicode.workspace_url, 'https://workbench.invalid').searchParams.get('file'), 'papers/Å & table.csv');
 });
 test('artifact-backed operation results are verified and compacted for the agent', async () => {
   const service = await setup;
@@ -186,6 +193,9 @@ test('inline output is compacted, saved losslessly and never overwrites differen
     const output = await service.operationResult('fixture-key', id);
     assert.equal(output.result.structures[0].pdb.type, 'long-string');
     assert.deepEqual(JSON.parse(await fs.readFile(output.workspace_file.path, 'utf8')), result);
+    const link = new URL(output.workspace_file.workspace_url, 'https://workbench.invalid');
+    assert.equal(link.searchParams.get('file'), `.scientific-runs/${id}/result.json`);
+    assert.equal(link.searchParams.get('path'), `.scientific-runs/${id}`);
     result.structures[0].confidence = 0.9;
     await assert.rejects(service.operationResult('fixture-key', id), /not overwritten/);
     assert.equal(JSON.parse(await fs.readFile(output.workspace_file.path, 'utf8')).structures[0].confidence, 0.75);

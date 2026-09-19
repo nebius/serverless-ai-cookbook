@@ -37,9 +37,12 @@ def main():
         summary = {"scientist_id": args.scientist, "conversation_id": args.conversation,
                    "endpoint_id": deployment["endpoint_id"], "image": deployment["image"], "files": {}}
         endpoints = {
+            # Completed assistant messages include their persisted tool calls.
+            # This capture client's former direct tools/calls and chat/status
+            # probes returned IllegalRequest with HTTP200. Do not record that
+            # response as status or tool-execution evidence. The browser's
+            # request contract is separate; this does not claim no route exists.
             "messages": "/api/messages/" + args.conversation,
-            "tool-calls": "/api/agents/tools/calls?conversationId=" + args.conversation,
-            "chat-status": "/api/agents/chat/status/" + args.conversation,
         }
         if args.runs:
             endpoints.update({'runs': '/api/scientific-demos/runs',
