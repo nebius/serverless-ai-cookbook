@@ -28,7 +28,18 @@ tool-budget notice. Details and retained original failures:
 - [Coordinate role preflight](../20260919-coordinate-preflight-v59/README.md).
 - [Real ToolNode/Run boundary](../20260919-admission-budget-boundary-v60/README.md).
 
-## Live qualification
+## Local state-preservation rehearsal
+
+The exact image preserves the retained original Rene fixture: 49 collections,
+81 documents, 334 index definitions, two state files and eight seeded agent
+identities. Actual original-password login and the retained conversation/two
+messages passed before and after restart. The local container was stopped and
+its data retained. Protected receipt `rene-replacement/v60-local-acceptance.json`
+has SHA256 `3186d5bf71dedb673068a1008068282fc065b2c38104f091c0128291140fd97c`.
+This network-disabled rehearsal is not live cutover evidence; empty custom-agent
+and upload categories are not positive migration coverage.
+
+## Live qualification and deployment blocker
 
 Pending. These installed tests do not establish that a natural customer prompt
 will produce a valid study or that the public client delivers its final files.
@@ -36,7 +47,23 @@ The v59 scientist04 Study remains failed; its successful model calls and raw
 downloads are not final scientific completion. No manual repair or continuation
 is used to turn that failure into a pass.
 
-Rene's current endpoint is unchanged. A local exact-image state-preservation
-rehearsal and fresh dedicated-instance acceptance precede a customer cutover.
+The exact v59 disposable predecessor was checked for inactive Studies, chat and
+caller operations, stopped once, and reconciled as STOPPED. Its endpoint record,
+bucket and original failed evidence were not deleted; no complete local-disk
+backup claim is made. An initial pre-stop observation omitted the normal client
+User-Agent and received a retained `Illegal request` SSE response. The corrected
+observation used the existing fresh bearer and normal header, without another
+scientific request.
+
+Root attempted one v60 scientist04 endpoint creation with explicit SSH public-key
+configuration, unchanged user/key/bucket and unchanged limits. Serverless returned
+`Internal`, request `f2569300-9663-445f-be88-41b39d1df4d3`, trace
+`af483a2696aaa486f1046a38ae37ce38`. The subsequent complete 91-item inventory has
+no matching endpoint. No v60 natural prompt was sent, and the launch binding
+remains held. The observed tenant IPv4 usage was 247/250; no explicit quota error
+was returned, so the cause is not inferred. No quota was changed or create retried.
+
+Rene's current endpoint is unchanged. Fresh dedicated-instance acceptance and
+fresh state capture still precede a customer cutover.
 The full unchanged-release cohorts remain required. No limits, model settings,
 scientific inputs or per-user architecture have changed.
