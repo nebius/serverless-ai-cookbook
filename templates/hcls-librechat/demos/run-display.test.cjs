@@ -25,3 +25,25 @@ test('ordinary inference preserves status, preemption and result availability', 
   assert.equal(exported.runDisplay({ status: 'preempted' }).terminal, true);
   assert.equal(exported.runDisplay({ status: 'queued' }).description, 'Accepted; execution has not started');
 });
+test('batch orchestration does not masquerade as admitted GPU execution', () => {
+  for (const shape of [{ protocol: 'scientific-batch-v1' }, { operation: { protocol: 'scientific-batch-v1' } }]) {
+    const active = exported.runDisplay({ ...shape, status: 'running' });
+    assert.equal(active.status, 'Workflow active');
+    assert.equal(active.showComputeTiming, false);
+    assert.match(active.description, /queued, loading or computing/);
+    assert.match(active.description, /Details/);
+    for (const status of ['succeeded', 'failed', 'cancelled', 'preempted', 'expired']) {
+      const terminal = exported.runDisplay({ ...shape, status });
+      assert.equal(terminal.status, status);
+      assert.equal(terminal.terminal, true);
+      assert.equal(terminal.showComputeTiming, false);
+      assert.equal(terminal.description, '');
+    }
+  }
+});
+test('legacy cold_start_seconds label includes queue instead of claiming activation time', () => {
+  const display = exported.runDisplay({ protocol: 'openai-chat', status: 'succeeded' });
+  assert.equal(display.showComputeTiming, true);
+  assert.equal(display.readyTimingLabel, 'Accepted → ready (includes queue)');
+  assert.match(fs.readFileSync(`${__dirname}/Demos.tsx`, 'utf8'), /display\.readyTimingLabel/);
+});
