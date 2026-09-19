@@ -1,0 +1,2595 @@
+{
+  "schema": "fs2.qualification-coverage-overlay/v1",
+  "as_of": "2026-09-19T04:37:11.014231+00:00",
+  "verdict": "not_a_readiness_decision",
+  "scope": "Retained-evidence coverage, not request aggregation or a new qualification run",
+  "historical_as_of": "2026-09-18T23:50:00Z",
+  "captured_inventory_generated_at": "2026-09-19T03:59:52.162583Z",
+  "inventory_model_rows": 33,
+  "inventory_app_instances": 35,
+  "shared_limitations": [
+    "This overlay is a dated coverage index, not the parent campaign's request counter or final readiness verdict.",
+    "All claims retain their actual runtime, release, client and input scope; a current179 configuration capture does not relabel old operations as179 tests.",
+    "Scientific correctness means independently checked quantities where stated, never blanket biological efficacy, clinical suitability, paper reproduction or customer readiness.",
+    "Capacity/preemption waits, software errors, client/report errors and evaluator corrections remain distinct; pending work is not a pass.",
+    "Historical files and original failures are not rewritten. Source-backed reassessments are separate records and not additional model calls.",
+    "Most Apps still lack exact-current-runtime, customer-client clean cohorts for every advertised cold/warm, burst, retry, queue, batch and snapshot mode.",
+    "Disabled cloned App instances have separate public identities; canonical-model evidence must not automatically qualify those clones.",
+    "Mutable original evidence is pinned by SHA256 and retained as exact-byte protected copies. Portable output contains only reviewed summaries/identities, not credentials or raw customer payloads.",
+    "The separate ten-persona customer-journey assessment is timestamped04:32; this App overlay does not count scripted helper calls as natural LibreChat completion."
+  ],
+  "historical_corrections": [
+    {
+      "model_id": "openfold3-openbind",
+      "correction": "coverage-v1 attached openfold3-inline-r168 to native openfold3. Its actual receipt model_id is openfold3-openbind; this overlay attributes the inline-loader repair only to that scientific-batch App.",
+      "evidence": [
+        "openbind"
+      ]
+    },
+    {
+      "model_id": "proteina-complexa",
+      "correction": "Ligand/AME public repair is no longer merely pending:173 public variant study and174 sensitivity exist, preserving original failures and raw-versus-refolded quality distinctions.",
+      "evidence": [
+        "proteina_variants",
+        "proteina_geometry"
+      ]
+    },
+    {
+      "model_id": "boltzgen",
+      "correction": "Five additional advertised protocols now have explicit tested/reassessed evidence across releases; they were not all rerun on174.",
+      "evidence": [
+        "design_protocols",
+        "boltz_successor",
+        "peptide_reassessment",
+        "nanobody_reassessment",
+        "small_molecule"
+      ]
+    },
+    {
+      "model_id": "rfdiffusion",
+      "correction": "Motif-preservation fixture has now executed; downstream196-design study is separate from still-running RFdiffusion followups.",
+      "evidence": [
+        "motif",
+        "design_refolds"
+      ]
+    },
+    {
+      "model_id": "cosmos3-lerobot-augmentation",
+      "correction": "Old unselected-camera reencoding defect has a separate exact-byte-preserving179 scripted public replay. This is not natural LibreChat completion or physical action validity.",
+      "evidence": [
+        "lerobot179",
+        "lerobot_validation"
+      ]
+    },
+    {
+      "model_id": "diffdock",
+      "correction": "179 exact-image public replica attribution and paired numerical evidence supersede missing attribution for new calls only. Historical null identity and old-reference discrepancy remain.",
+      "evidence": [
+        "diffdock"
+      ]
+    }
+  ],
+  "evidence": {
+    "historical": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/scripts/qualification/cases/coverage-v1.json",
+      "sha256": "349d162c08885cbe7de9988fcb408237b01a2850db4504973c7661861d9001da",
+      "size_bytes": 27248,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/349d162c08885cbe7de9988fcb408237b01a2850db4504973c7661861d9001da"
+    },
+    "inventory": {
+      "root": "campaign",
+      "path": "baseline/20260919T035919Z/apps.json",
+      "sha256": "504f2f7ebf5c94b856c1d24b58b93f5d6aa659dc112510a374eb8c458f32759e",
+      "size_bytes": 32686,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/504f2f7ebf5c94b856c1d24b58b93f5d6aa659dc112510a374eb8c458f32759e"
+    },
+    "runtime179": {
+      "root": "campaign",
+      "path": "backend-baseline179/configmaps.json",
+      "sha256": "873cba6673ad29dd9ddc235f939162a5b8842b9bd14bb266ef93d571fea4a9a3",
+      "size_bytes": 1014377,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/873cba6673ad29dd9ddc235f939162a5b8842b9bd14bb266ef93d571fea4a9a3"
+    },
+    "capture179": {
+      "root": "campaign",
+      "path": "backend-baseline179/capture-receipt.json",
+      "sha256": "79bcb25ead5af71c164ac1802e52656f769e772f1c55c3e0180d5e277aae0f6b",
+      "size_bytes": 917,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/79bcb25ead5af71c164ac1802e52656f769e772f1c55c3e0180d5e277aae0f6b"
+    },
+    "aggregate": {
+      "root": "campaign",
+      "path": "campaign-reports/interim-20260919T0356Z/aggregate.json",
+      "sha256": "f94203b6ef600812cbb7f550b1e1886301ed609ead281078386311b871dee15b",
+      "size_bytes": 11688336,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/f94203b6ef600812cbb7f550b1e1886301ed609ead281078386311b871dee15b"
+    },
+    "browser": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/evidence/20260918-scientist-cohort/EXPANDED_BROWSER_CAMPAIGN.md",
+      "sha256": "2b739e1fec33e7cec6a91d667edc0fcf3e795eb3bf91f0cc06125bf00f62330d",
+      "size_bytes": 66898,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/2b739e1fec33e7cec6a91d667edc0fcf3e795eb3bf91f0cc06125bf00f62330d"
+    },
+    "defects": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/QUALIFICATION_DEFECTS_20260918.md",
+      "sha256": "a78abf5ba7f8b131943e250704b6c31090d090534817d677a19e832a3a6f6c3d",
+      "size_bytes": 52177,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/a78abf5ba7f8b131943e250704b6c31090d090534817d677a19e832a3a6f6c3d"
+    },
+    "native2": {
+      "root": "campaign",
+      "path": "cohorts/native-r2/summary.json",
+      "sha256": "62fbcf40d99c70af7375dbdc23d1da936a9a6de252e2121244611b3501f0fdca",
+      "size_bytes": 147741,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/62fbcf40d99c70af7375dbdc23d1da936a9a6de252e2121244611b3501f0fdca"
+    },
+    "native3": {
+      "root": "campaign",
+      "path": "cohorts/native-r3/summary.json",
+      "sha256": "10aa1d73b6eb6b44fcb53bf8c01d920723366756920fbed5ac68dd5a795ec75d",
+      "size_bytes": 444130,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/10aa1d73b6eb6b44fcb53bf8c01d920723366756920fbed5ac68dd5a795ec75d"
+    },
+    "batch2": {
+      "root": "campaign",
+      "path": "cohorts/batch-r2/summary.json",
+      "sha256": "a443fbeb0b0846c7819fb4669c9e2b0c11c312846815cd062a5960ae94820dd4",
+      "size_bytes": 9617,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/a443fbeb0b0846c7819fb4669c9e2b0c11c312846815cd062a5960ae94820dd4"
+    },
+    "batch3": {
+      "root": "campaign",
+      "path": "cohorts/batch-r3/summary.json",
+      "sha256": "0b051467f0cc9c3989d235097d128f51854078bca112af39d17e025d2e878a43",
+      "size_bytes": 42541,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/0b051467f0cc9c3989d235097d128f51854078bca112af39d17e025d2e878a43"
+    },
+    "complex": {
+      "root": "campaign",
+      "path": "cohorts/complex-r1/summary.json",
+      "sha256": "d38c9ad140f6a8478b93066c661f8ba424dc8fdf7a07f7b26d78881162d066fb",
+      "size_bytes": 45617,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/d38c9ad140f6a8478b93066c661f8ba424dc8fdf7a07f7b26d78881162d066fb"
+    },
+    "msa": {
+      "root": "campaign",
+      "path": "cohorts/msa-followups-r1/summary.json",
+      "sha256": "c1b6395ac3d3d8acfa96f8d257de268e7c577d357bad02e16cf1e885a9064d6d",
+      "size_bytes": 133946,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/c1b6395ac3d3d8acfa96f8d257de268e7c577d357bad02e16cf1e885a9064d6d"
+    },
+    "openbind": {
+      "root": "backend",
+      "path": "acceptance/openfold3-inline-20260918/public-r168.json",
+      "sha256": "02385b51d6d1afec8d74f5133fecd63a30c52f571bc019635f43cdb3567ecb3d",
+      "size_bytes": 10544,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/02385b51d6d1afec8d74f5133fecd63a30c52f571bc019635f43cdb3567ecb3d"
+    },
+    "esm_replay": {
+      "root": "campaign",
+      "path": "cohorts/esmfold-preemption-repaired-r1/summary.json",
+      "sha256": "da032b6e401dac270843f2b770f72c0232255c86748d25764ee7040ec7dae661",
+      "size_bytes": 1615,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/da032b6e401dac270843f2b770f72c0232255c86748d25764ee7040ec7dae661"
+    },
+    "esm_replay174": {
+      "root": "campaign",
+      "path": "cohorts/esmfold2-retained-replay-r174/summary.json",
+      "sha256": "3553f57bec5d0a78f07f38d242c8ef831fb38aedc1fd12e789e59c3256f07c25",
+      "size_bytes": 1613,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/3553f57bec5d0a78f07f38d242c8ef831fb38aedc1fd12e789e59c3256f07c25"
+    },
+    "design_refolds": {
+      "root": "campaign",
+      "path": "design-recovery-completed179/report.json",
+      "sha256": "2cc9667a0af063665bb5072ebb5f278e9e01094114e680edc623fd1b33f2ff38",
+      "size_bytes": 200537,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/2cc9667a0af063665bb5072ebb5f278e9e01094114e680edc623fd1b33f2ff38"
+    },
+    "design_heldout": {
+      "root": "campaign",
+      "path": "cohorts/design-heldout-r177/summary.json",
+      "sha256": "17ddb954a53fc17d9414310ae8b7ae911e71a4eafe70084debca03ba2f76c690",
+      "size_bytes": 20546,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/17ddb954a53fc17d9414310ae8b7ae911e71a4eafe70084debca03ba2f76c690"
+    },
+    "design_protocols": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r2/summary.json",
+      "sha256": "72757d43345b12a680a2f81771badfcd1ff06033b98955a557a6903e0bf9534c",
+      "size_bytes": 7957,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/72757d43345b12a680a2f81771badfcd1ff06033b98955a557a6903e0bf9534c"
+    },
+    "peptide_reassessment": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r2/scientist-09/boltzgen-peptide-anything-coverage-r1/evaluation-terminal-trim-reassessment.json",
+      "sha256": "1c46953b7ca0d20e702c66900ff0f6557f46497e59fa3f1f4ea9ad8b577b177e",
+      "size_bytes": 17046,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/1c46953b7ca0d20e702c66900ff0f6557f46497e59fa3f1f4ea9ad8b577b177e"
+    },
+    "nanobody_reassessment": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r2/scientist-09/boltzgen-nanobody-anything-coverage-r1/evaluation-terminal-trim-reassessment.json",
+      "sha256": "0c0ce96534a28f8c34cdaac5cb8a0a1c46183568055b1bb76ee6062e02046f00",
+      "size_bytes": 23172,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/0c0ce96534a28f8c34cdaac5cb8a0a1c46183568055b1bb76ee6062e02046f00"
+    },
+    "small_molecule": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r1/scientist-09/boltzgen-protein-small_molecule-coverage-r1/evaluation.json",
+      "sha256": "3560db059095818643eecdc9ba3cd4b2c1cf066968a652202fb1a83d3d0fdc2e",
+      "size_bytes": 12969,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/3560db059095818643eecdc9ba3cd4b2c1cf066968a652202fb1a83d3d0fdc2e"
+    },
+    "motif": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r2/scientist-09/rfdiffusion-ubiquitin-motif-s9100/evaluation.json",
+      "sha256": "8c7fb728707db36b503347678b50109b1261fee213a042b935cd7701759e6cc3",
+      "size_bytes": 1806,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/8c7fb728707db36b503347678b50109b1261fee213a042b935cd7701759e6cc3"
+    },
+    "boltz_protocols": {
+      "root": "backend",
+      "path": "models/cancer-immunotherapy/runtime-images/boltzgen/qualification/public-protocols-20260919.md",
+      "sha256": "fecc0a2ee6564cb26d97881d7d550f16c65ab2672d82f5a252c64c73173b7f47",
+      "size_bytes": 4327,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/fecc0a2ee6564cb26d97881d7d550f16c65ab2672d82f5a252c64c73173b7f47"
+    },
+    "boltz_successor": {
+      "root": "campaign",
+      "path": "cohorts/boltzgen-repaired-public-r174/public-successor-summary.json",
+      "sha256": "c88d4e32e1ebbd215ed3e36d5578c0663c25baaed83a13f3a4386c351a31c252",
+      "size_bytes": 1748,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/c88d4e32e1ebbd215ed3e36d5578c0663c25baaed83a13f3a4386c351a31c252"
+    },
+    "proteina_variants": {
+      "root": "backend",
+      "path": "models/cancer-immunotherapy/runtime-images/proteina-complexa/qualification/public-variants-20260919.md",
+      "sha256": "b6ae16c80b469e0c16a321968062b52bd51ecd0329e48466e70af9ed874e8657",
+      "size_bytes": 3953,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/b6ae16c80b469e0c16a321968062b52bd51ecd0329e48466e70af9ed874e8657"
+    },
+    "proteina_geometry": {
+      "root": "campaign",
+      "path": "cohorts/proteina-public-r173/raw-refolded-study-summary.json",
+      "sha256": "5af7b663207263cb56daf1df4eb3ac18d780cb1e767a88e7732f6296797270ce",
+      "size_bytes": 6866,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/5af7b663207263cb56daf1df4eb3ac18d780cb1e767a88e7732f6296797270ce"
+    },
+    "proteina_multisample": {
+      "root": "campaign",
+      "path": "cohorts/proteina-multisample-r178/summary.json",
+      "sha256": "72415c51f91bb97c2b4e1df1b8a6199182be270da247ac0f761303328bdc2b29",
+      "size_bytes": 4840,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/72415c51f91bb97c2b4e1df1b8a6199182be270da247ac0f761303328bdc2b29"
+    },
+    "molecular": {
+      "root": "campaign",
+      "path": "cohorts/molecular-repaired-r1/summary.json",
+      "sha256": "748eaa2b177642fe1d23613508d18c40768e49be5043cff4bb3240e1db888592",
+      "size_bytes": 211441,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/748eaa2b177642fe1d23613508d18c40768e49be5043cff4bb3240e1db888592"
+    },
+    "multichain": {
+      "root": "campaign",
+      "path": "cohorts/multichain-r1/summary.json",
+      "sha256": "e3d9652f1c542fec5bf978310c04006bda5bc96ba4f8216cd9a08e594131df32",
+      "size_bytes": 46647,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/e3d9652f1c542fec5bf978310c04006bda5bc96ba4f8216cd9a08e594131df32"
+    },
+    "molmim_qwen": {
+      "root": "campaign",
+      "path": "cohorts/molmim-qwen-repaired-r1/summary.json",
+      "sha256": "cdd937b3c5ce16f2d3e20ae43ad9d0fe8a0b75c825652e2274d49fa6935a3131",
+      "size_bytes": 114031,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/cdd937b3c5ce16f2d3e20ae43ad9d0fe8a0b75c825652e2274d49fa6935a3131"
+    },
+    "qwen": {
+      "root": "campaign",
+      "path": "cohorts/qwen-modes-repaired-r2/summary.json",
+      "sha256": "c62bb7b0a155d06fb5180ca37e4a4a4c901dcc3c4a0fcfd4a55a21874042851e",
+      "size_bytes": 59594,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/c62bb7b0a155d06fb5180ca37e4a4a4c901dcc3c4a0fcfd4a55a21874042851e"
+    },
+    "evo": {
+      "root": "campaign",
+      "path": "cohorts/evo2-repaired-r1/summary.json",
+      "sha256": "6b1e9544aa86c705a145614fe2da72794daf6dc47d6e0112cef3859914e51cf7",
+      "size_bytes": 31403,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/6b1e9544aa86c705a145614fe2da72794daf6dc47d6e0112cef3859914e51cf7"
+    },
+    "general": {
+      "root": "campaign",
+      "path": "cohorts/general-r1/summary.json",
+      "sha256": "4f740290f97372eb45f91464fe789248b8b9703939a4d382c555384a6415c160",
+      "size_bytes": 149260,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/4f740290f97372eb45f91464fe789248b8b9703939a4d382c555384a6415c160"
+    },
+    "ct": {
+      "root": "campaign",
+      "path": "cohorts/ct-repaired-r1/summary.json",
+      "sha256": "bf98e573ed6317b8a7e4b7ab38a803206db931f2683ac55804cd539a33e522c7",
+      "size_bytes": 35248,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/bf98e573ed6317b8a7e4b7ab38a803206db931f2683ac55804cd539a33e522c7"
+    },
+    "cxr": {
+      "root": "campaign",
+      "path": "cohorts/cxr-schema-attribution-repaired-r1/summary.json",
+      "sha256": "ee438f419610b17d171214c250b2af830ecdc002e35e900b437f5f3d0bd6fa77",
+      "size_bytes": 27541,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/ee438f419610b17d171214c250b2af830ecdc002e35e900b437f5f3d0bd6fa77"
+    },
+    "h100_placement": {
+      "root": "backend",
+      "path": "acceptance/h100-cxr-sdxl-placement-20260919/retained-public-proof.json",
+      "sha256": "be3bafbfe85efd7bcd33f6284f22dd7aa2ef01f83df1ae1833c13436dff5a2f2",
+      "size_bytes": 149472,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/be3bafbfe85efd7bcd33f6284f22dd7aa2ef01f83df1ae1833c13436dff5a2f2"
+    },
+    "diffdock": {
+      "root": "backend",
+      "path": "acceptance/open-runtime-attribution-20260919/public-qualified179.json",
+      "sha256": "1eb8c57127a10a22114b3f5c7ca9428832a2ab433ff5d4cfa2bb37eae1c78c1d",
+      "size_bytes": 38573,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/1eb8c57127a10a22114b3f5c7ca9428832a2ab433ff5d4cfa2bb37eae1c78c1d"
+    },
+    "diffdock_report": {
+      "root": "backend",
+      "path": "acceptance/open-runtime-attribution-20260919/PUBLIC_RESULTS_179.md",
+      "sha256": "53ff3728ac9abc167fc919b7cbf29633fc06c123365d3c4254c3b3259d44bae1",
+      "size_bytes": 4069,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/53ff3728ac9abc167fc919b7cbf29633fc06c123365d3c4254c3b3259d44bae1"
+    },
+    "cosmos_modes": {
+      "root": "backend",
+      "path": "acceptance/cosmos-recorded-video-repair-20260918/public-mode-matrix-summary.json",
+      "sha256": "5d1a7f4a6ed29d2b7429b128e79af23ef66a49e28f3f3bedca8332d8e456f8ac",
+      "size_bytes": 4666,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/5d1a7f4a6ed29d2b7429b128e79af23ef66a49e28f3f3bedca8332d8e456f8ac"
+    },
+    "cosmos_quality": {
+      "root": "backend",
+      "path": "acceptance/cosmos-recorded-video-repair-20260918/recorded-transfer-quality.md",
+      "sha256": "955e0f7f6427dacc942b0228b5756387cb953d5f3f2c68c612791f3ee1cb075d",
+      "size_bytes": 5506,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/955e0f7f6427dacc942b0228b5756387cb953d5f3f2c68c612791f3ee1cb075d"
+    },
+    "cosmos_controls": {
+      "root": "backend",
+      "path": "acceptance/cosmos-recorded-video-repair-20260918/official-transfer-controls.md",
+      "sha256": "160b107fb7d4bca12d3afde08c12c2427be4aedea106ef9f2b94788796b877b0",
+      "size_bytes": 4990,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/160b107fb7d4bca12d3afde08c12c2427be4aedea106ef9f2b94788796b877b0"
+    },
+    "lerobot179": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/evidence/20260919-lerobot-public-r179/README.md",
+      "sha256": "172b310943b2e3eb63433b0e160dda28b0030a5460dc2e886c1b5399b70f0420",
+      "size_bytes": 6129,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/172b310943b2e3eb63433b0e160dda28b0030a5460dc2e886c1b5399b70f0420"
+    },
+    "lerobot_validation": {
+      "root": "campaign",
+      "path": "browser-evidence/scientist-10-scripted-lerobot-r179/independent-validation-v2.json",
+      "sha256": "e2444f75ee55a4f5fed9f2b55e864131026605f3b03c02280a30bdc8d4079718",
+      "size_bytes": 10230,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/e2444f75ee55a4f5fed9f2b55e864131026605f3b03c02280a30bdc8d4079718"
+    },
+    "speech": {
+      "root": "campaign",
+      "path": "cohorts/speech-r1/summary.json",
+      "sha256": "479c704f82aa1e392c69a70553f8a4a44bbf254fedbc45ff64f0542903f56a77",
+      "size_bytes": 156226,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/479c704f82aa1e392c69a70553f8a4a44bbf254fedbc45ff64f0542903f56a77"
+    },
+    "voice": {
+      "root": "campaign",
+      "path": "cohorts/voice-coverage-r1/final-receipt.json",
+      "sha256": "04a841f486ec358e4fbf39060c43c9d250525c5ff8e0126f90f5d7d00b2f7b64",
+      "size_bytes": 3596,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/04a841f486ec358e4fbf39060c43c9d250525c5ff8e0126f90f5d7d00b2f7b64"
+    },
+    "german_clinical": {
+      "root": "campaign",
+      "path": "browser-evidence/scientist-08-herzrasen-v39-final/cohort-completion-receipt.json",
+      "sha256": "43fc5b4cc3bc7a774bc15f339f4662dc12780b798e33c6861f0586b7f266d912",
+      "size_bytes": 2659,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/43fc5b4cc3bc7a774bc15f339f4662dc12780b798e33c6861f0586b7f266d912"
+    },
+    "clinical_repro": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/evidence/20260919-clinical-reporting-reproducibility/README.md",
+      "sha256": "08c759f466e6022d1b666de3d93d79bdd314724666b85ddf7f381b82e55babf6",
+      "size_bytes": 6146,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/08c759f466e6022d1b666de3d93d79bdd314724666b85ddf7f381b82e55babf6"
+    },
+    "snapshot_history": {
+      "root": "backend",
+      "path": "acceptance/h100-fleet/snapshots/capabilities.json",
+      "sha256": "71605107315a629f7430a93679155c26a351a149a06d874633b90dafe05ed18e",
+      "size_bytes": 34441,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/71605107315a629f7430a93679155c26a351a149a06d874633b90dafe05ed18e"
+    },
+    "persona": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/evidence/20260919-persona-customer-experience/README.md",
+      "sha256": "1055eded70f174ff54fb02348295b0c18fbcbccd8adf8c689c2c5a4e7ec47964",
+      "size_bytes": 17190,
+      "frozen_copy": "/home/tux/secure-handoff/scientific-qualification-20260918/coverage-overlay-20260919T0435Z/evidence/1055eded70f174ff54fb02348295b0c18fbcbccd8adf8c689c2c5a4e7ec47964"
+    }
+  },
+  "models": [
+    {
+      "model_id": "alphafold3",
+      "historical_modes": [
+        "raw-protein-monomer",
+        "raw-complex"
+      ],
+      "historical_gaps_preserved": [
+        "Ligand/reference-data scenarios need separate evidence; academic license/access verified by parent"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "36ba1736-424b-593f-affe-8a994da5a0aa",
+          "public_model_id": "alphafold3",
+          "display_name": "AlphaFold 3 v3.0.4",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "641b0c1dc5102d0089d86815bd1c8a517a217cd2965174cb5289efb47fbc215b",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/alphafold3@sha256:ecc3e7352da7984e854f67d8024ed28fa6dbbbf7cfae39aa5a50f8a29eda85e7"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Query-only monomer/complex scientific batches returned structures after a harness CIF-recognition correction.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "complex",
+            "aggregate"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Reference-based structural checks exist; original false parser failures are preserved separately from reassessments.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "complex",
+            "aggregate"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Ligands, broader reference-data scenarios and clinical/experimental validity remain unqualified.",
+        "Academic access constraints remain part of the real grant contract."
+      ]
+    },
+    {
+      "model_id": "altumage",
+      "historical_modes": [
+        "complete-cpg-panel",
+        "explicit-reference-median-imputation"
+      ],
+      "historical_gaps_preserved": [
+        "Example cohort is not a held-out generalization study"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "197fa990-6f65-539d-a1d8-240877ce861b",
+          "public_model_id": "altumage",
+          "display_name": "AltumAge",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:ca6352f79ecd78928e13ecda55afaf01a5df1923291b7a56a7ba9a9770c484e1",
+        "model_revision": "696c477dac9b7641bf283c48af1cc9bb0a0803a3",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Complete CpG panels, reordered columns and explicit median-imputation cases completed.",
+          "evidence": [
+            "native3",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "bounded_natural_delivery",
+          "summary": "Scientist07's v30 and v34 natural aging studies delivered independently recomputed CSV/report outputs. Historical incorrect reference reconstruction and link-navigation problems remain documented.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Independent original H5 architecture/scaler recomputation agrees; published examples are not held-out population generalization.",
+          "evidence": [
+            "native3",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No clinical aging/patient fitness or generalization claim.",
+        "All imputation fractions/cohorts and new-runtime snapshots are not established."
+      ]
+    },
+    {
+      "model_id": "bindcraft",
+      "historical_modes": [
+        "soluble-mpnn",
+        "vanilla-mpnn"
+      ],
+      "historical_gaps_preserved": [
+        "No successful-design yield guarantee; scientific filter rejection must be presented honestly",
+        "Expand targets and binder lengths"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "d93c462b-8443-55e8-9c18-bdc0def0786e",
+          "public_model_id": "bindcraft",
+          "display_name": "BindCraft academic",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "1e7aabeac029b6ea9b5c0e3cd2677c6cc37ddd6d5e516c51897b74c18382230f",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/bindcraft@sha256:0d08bae1c8d7262bab513a10c93e51f7948e5f920b255efa5b44774b130daeb3"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "completed_subset_with_pending_item",
+          "summary": "Both soluble/vanilla MPNN lanes have bounded public design evidence; held-out campaign includes a still-pending item in the captured summary.",
+          "evidence": [
+            "batch3",
+            "design_heldout"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Output/sequence/basic structure checks do not guarantee scientifically accepted design yield; filter rejection must remain visible.",
+          "evidence": [
+            "batch3",
+            "design_heldout"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "One still-pending item is not a completed pass or proven software failure.",
+        "Expand target/length diversity and validate final accepted-design filtering and natural delivery."
+      ]
+    },
+    {
+      "model_id": "boltz2",
+      "historical_modes": [
+        "protein-monomer-query-only-msa",
+        "protein-complex-query-only-msa",
+        "protein-monomer-pdb70-msa"
+      ],
+      "historical_gaps_preserved": [
+        "Ligands/affinity absent from this hosted contract",
+        "Complexes with genuine paired homolog MSAs remain untested"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "f9733475-f841-5239-993c-8a91b8be4970",
+          "public_model_id": "boltz2",
+          "display_name": "Boltz2",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:93d5fae96d87dff930206cf331f170b73f2369067f0b32169e0008f0db320a90",
+        "model_revision": "6fdef46d763fee7fbb83ca5501ccceff43b85607",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Query-only monomers, experimental complexes and genuine PDB70-MSA followups have terminal public artifacts.",
+          "evidence": [
+            "native2",
+            "complex",
+            "msa",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_after_explicit_correction",
+          "summary": "Scientist02 v37 downloaded independently checked complex structures/report after an ordinary continuation. A separate explicit methodological correction removed unsupported Boltz seed claims; original report remains.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Independent sequence correspondence, CA geometry/RMSD and complex contact checks exist; query-only accuracy varies substantially.",
+          "evidence": [
+            "native2",
+            "complex",
+            "msa",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Complexes with genuine paired homolog MSAs remain untested.",
+        "No ligand/affinity capability is exposed by this hosted contract."
+      ]
+    },
+    {
+      "model_id": "boltzgen",
+      "historical_modes": [
+        "protein-anything",
+        "peptide-anything",
+        "protein-small_molecule",
+        "nanobody-anything",
+        "antibody-anything",
+        "protein-redesign"
+      ],
+      "historical_gaps_preserved": [
+        "Five additional advertised protocols need exact target/design archives and validators",
+        "Reuse-completed stage workflow not yet exercised"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "67ee1adf-4004-59ca-8b36-d79eff8f4eb9",
+          "public_model_id": "boltzgen",
+          "display_name": "BoltzGen v0.3.2",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "d07eea4259898300c5751643ab82f09d65d8eace03e227874a71596875aad50b",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/boltzgen@sha256:9c3230424e02d725dc145b8f21a18f283910e1beba1f37466598ee832813820e"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "All six named protocol lanes have public terminal evidence across historical and repaired releases, with original stage and evaluator failures retained.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "small_molecule",
+            "design_protocols",
+            "peptide_reassessment",
+            "nanobody_reassessment",
+            "boltz_protocols",
+            "boltz_successor"
+          ]
+        },
+        "natural_client": {
+          "state": "historical_natural_delivery",
+          "summary": "Scientist03 completed a Proteina/BoltzGen comparison with verified artifact/CSV roles on an earlier client/release. This is not a current-client all-variant or all-protocol acceptance.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Peptide/nanobody terminal-residue reassessments and antibody full-polymer/missing-coordinate reassessment are source-backed, separate verdicts. Redesign fixed-region geometry and ligand heavy-atom identity were checked.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "small_molecule",
+            "design_protocols",
+            "peptide_reassessment",
+            "nanobody_reassessment",
+            "boltz_protocols",
+            "boltz_successor"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Earlier four protocol results are not silently requalified as release174.",
+        "Reuse-completed staged workflow and all-protocol natural-client clean cohorts remain open.",
+        "Geometry/sequence constraints do not establish binding affinity, antibody developability or all-atom completeness."
+      ]
+    },
+    {
+      "model_id": "cosmos3-lerobot-augmentation",
+      "historical_modes": [
+        "lerobot-to-lerobot"
+      ],
+      "historical_gaps_preserved": [
+        "Actual LibreChat dataset replay, public batch/concurrency and unchanged-release clean cohorts remain pending",
+        "Preserved actions and broad video-motion similarity do not establish physically valid action labels, contact geometry or downstream policy-training value",
+        "Unselected cameras are reencoded, not pixel-bit-identical; native V2V is a generative continuation lane, not recorded-trajectory augmentation"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "668b3a1e-de45-5ad7-a382-6ff08bdbdbcd",
+          "public_model_id": "cosmos3-lerobot-augmentation",
+          "display_name": "NVIDIA Cosmos3-Nano LeRobot robotics augmentation",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "8a92680d991ff52e57de2188575cfc9748acf95f2684eb10f5fc2a561575acb2",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-platform/fs2-lerobot-augmentation@sha256:69fe161d370fac4cc9517d24ecfee7b025bb569a935ffadab8eb31e49c783a11"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Release179 scripted public transfer preserved128 rows/6144 nonvideo values, exact unselected wrist bytes/pixels, selected640×480/64-frame/25FPS raw outputs and episode timing.",
+          "evidence": [
+            "lerobot179",
+            "lerobot_validation",
+            "cosmos_quality"
+          ]
+        },
+        "natural_client": {
+          "state": "natural_delivery_incomplete",
+          "summary": "Prior natural robotics attempts returned artifacts but used the wrong continuation lane or failed preparation/reporting. v39 third recovery was still in flight at the reviewed checkpoint; scripted179 API success is not natural delivery.",
+          "evidence": [
+            "browser",
+            "lerobot179"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Integrity and broad motion measures are verified, but selected object/contact details can change. Physical action/policy-training fitness is unproved; aggregate-stat rounding remains explicit.",
+          "evidence": [
+            "lerobot179",
+            "lerobot_validation",
+            "cosmos_quality"
+          ]
+        },
+        "snapshot": {
+          "state": "strict_restore_observed_bounded",
+          "summary": "Exact native image5e2680… with bundle573bf6ac… restored CUDA/CRIU with Require/no fresh-load fallback, including release179 recorded transfer children. Coordinator is not itself the GPU snapshot. Image-pull/empty-node and all-option coverage are not inferred.",
+          "evidence": [
+            "lerobot179",
+            "cosmos_modes"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Natural v41 deployment blocked by providerInternal; v39 final natural completion remains pending in checkpoint.",
+        "No physical action-alignment or downstream robotics-policy qualification.",
+        "Scripted single-parent success is not concurrency/batch saturation acceptance."
+      ]
+    },
+    {
+      "model_id": "cosmos3-nano",
+      "historical_modes": [
+        "text-to-image",
+        "text-to-video",
+        "image-to-video",
+        "video-to-video",
+        "transfer-video"
+      ],
+      "historical_gaps_preserved": [
+        "Five of22 public mode operations have missing runtime attribution; media success does not prove their exact Pod/GPU identity or usage",
+        "Actual LibreChat path, public burst behavior and unchanged-release clean cohorts remain pending; nine core cases predate settled173",
+        "Warm-cache snapshot timing excludes cold image pull; fresh versus warmed outputs are not byte-identical for the same seed",
+        "Native V2V is continuation, not full recorded-trajectory preservation; edge/blur image-space improvements do not establish physical action-label validity"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "965e6399-8d98-5aca-a438-6c1a51ecaf98",
+          "public_model_id": "cosmos3-nano",
+          "display_name": "NVIDIA Cosmos 3 Nano",
+          "enabled": true,
+          "status": "Cold"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:5e2680aa1f8332413638ec1bc962c3796a79a314c1c84f5456d32aa916839e32",
+        "model_revision": "7a312c868bcce8e40b3eb40861300a9d0ba3fde1",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Five dedicated media modes plus edge/blur/depth/seg/WSM controls have decoded artifacts across mixed releases. Later replica attribution and release179 full-video children have exact witnesses.",
+          "evidence": [
+            "cosmos_modes",
+            "cosmos_quality",
+            "cosmos_controls",
+            "lerobot179"
+          ]
+        },
+        "natural_client": {
+          "state": "natural_delivery_incomplete",
+          "summary": "Prior natural robotics attempts returned artifacts but used the wrong continuation lane or failed preparation/reporting. v39 third recovery was still in flight at the reviewed checkpoint; scripted179 API success is not natural delivery.",
+          "evidence": [
+            "browser",
+            "lerobot179"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Dimensions/frames/FPS/audio and bounded flow/appearance measurements exist. V2V is prefix-conditioned continuation; transfer whole-clip conditioning is not proof of physical action-label validity.",
+          "evidence": [
+            "cosmos_modes",
+            "cosmos_quality",
+            "cosmos_controls",
+            "lerobot179"
+          ]
+        },
+        "snapshot": {
+          "state": "strict_restore_observed_bounded",
+          "summary": "Exact native image5e2680… with bundle573bf6ac… restored CUDA/CRIU with Require/no fresh-load fallback, including release179 recorded transfer children. Coordinator is not itself the GPU snapshot. Image-pull/empty-node and all-option coverage are not inferred.",
+          "evidence": [
+            "lerobot179",
+            "cosmos_modes"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Earlier five missing attribution records remain unknown.",
+        "All advertised modes need unchanged-current-release client/burst cohorts.",
+        "Lighting-only augmentation and contact/object fidelity remain unproved."
+      ]
+    },
+    {
+      "model_id": "diar-streaming-sortformer-4spk-v2-1",
+      "historical_modes": [
+        "speaker-diarization"
+      ],
+      "historical_gaps_preserved": [
+        "WER alone cannot evaluate speaker attribution; need DER/JER with declared collar"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "11d30b76-d104-5cef-9139-623517b74a5a",
+          "public_model_id": "diar-streaming-sortformer-4spk-v2-1",
+          "display_name": "Sortformer Streaming Four Speaker 2.1",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:ef54e92d54aa3f603c9aabdc129c3d3bfea017f8466c26fba87e8056e2e75253",
+        "model_revision": "fafaab5faa1617a0ca52d38dd3dc4bd636800d3d",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Native and streaming diarization returned bounded timestamps/speaker outputs in the voice study.",
+          "evidence": [
+            "voice",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Full-consultation DER19.68%/18.20% under explicit no-collar, overlap-included reference methodology; no perfect speaker identity or clinical reliability claim.",
+          "evidence": [
+            "voice",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Broader overlap/accent/speaker-count behavior and natural integrated voice session remain unqualified."
+      ],
+      "reviewed_mode_scope": [
+        "native-diarization",
+        "streaming-diarization"
+      ]
+    },
+    {
+      "model_id": "diffdock",
+      "historical_modes": [
+        "smiles-redocking"
+      ],
+      "historical_gaps_preserved": [
+        "Broader receptor size/ligand chemistry and cross-docking scenarios"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "5db934e0-233d-57b7-81aa-bbba4fbaffef",
+          "public_model_id": "diffdock",
+          "display_name": "DiffDock",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:0c717984c438bb3cac1a139297a06dc39c5fe7fc6ab387c130c0c464a48ba4f9",
+        "model_revision": "85c49b60d3e0b0182a59ee43a34a6d7036981284",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Release179 completed two unchanged12-case public cohorts with strict exact response attribution across two H100 replicas.",
+          "evidence": [
+            "diffdock",
+            "diffdock_report",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_with_continuation",
+          "summary": "Scientist05 v37 delivered a browser-downloaded report after one ordinary continuation. Independent checks match 16 poses and 16 molecules; an imprecise strict-bound rounding sentence remains documented.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Paired179 results pass unchanged0.01 Å/0.001-confidence tolerances. Both retain one old176 reference discrepancy; only half top-ranked poses are within2 Å, and the~705.87 Å outlier is preserved.",
+          "evidence": [
+            "diffdock",
+            "diffdock_report",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No all-history bitwise-determinism or broad docking-accuracy claim.",
+        "Current image has no inherited snapshot qualification; broader chemistry/cross-docking and cold/burst modes remain separate."
+      ]
+    },
+    {
+      "model_id": "esmfold2",
+      "historical_modes": [
+        "single-sequence",
+        "precomputed-msa"
+      ],
+      "historical_gaps_preserved": [
+        "Successful replay does not demonstrate another real node-eviction/retry cycle",
+        "Prepared 38-alignment manifest is not the same as 19 executed ESMFold2 followups"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "d90e3c9a-cad2-50f0-a060-f7dd414838b4",
+          "public_model_id": "esmfold2",
+          "display_name": "ESMFold2 v3.4.0 (Biohub esm)",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "c6ed03bab0aaba62d555f60e294046267d02243cd3f933722012ac59b375aa63",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/cancer-immunotherapy/esmfold2@sha256:b372dd7e34e464680a82456ca31b403b0ac0d0851511930d471b67041adbbde3"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Single-sequence and genuine precomputed-MSA paths completed. Original preemption/error-classification failures and separate exact-input replays remain distinct.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "msa",
+            "esm_replay",
+            "esm_replay174"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Sequence/reference alignment and structure metrics are available, not generalization or experimental-function validation.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "msa",
+            "esm_replay",
+            "esm_replay174"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "A successful replay does not prove a second actual node-loss recovery cycle.",
+        "Exact final-client MSA workflow delivery remains a separate gate."
+      ]
+    },
+    {
+      "model_id": "esmfold2-fast",
+      "historical_modes": [
+        "single-sequence"
+      ],
+      "historical_gaps_preserved": [],
+      "captured_app_instances": [
+        {
+          "app_id": "ca420edc-bd4e-52f5-afa8-942a42682ac9",
+          "public_model_id": "esmfold2-fast",
+          "display_name": "ESMFold2-Fast v3.4.0 (Biohub esm)",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "39261b4c8341a04d24dd5a5bf778cfae59203da9fdb3f15debf65892558d3dde",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/cancer-immunotherapy/esmfold2-fast@sha256:6eaf386a9bb4453d5048e16c28b8ca4236ae0f222185e33d5a7a49a1e1c8fa35"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Single-sequence scientific batches and the completed196-design refolding campaign have retained outputs.",
+          "evidence": [
+            "batch3",
+            "design_refolds"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Design recovery uses mapped sequences and positional RMSD/CA-lDDT; it is computational self-consistency, not experimental stability or binding.",
+          "evidence": [
+            "batch3",
+            "design_refolds"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "New RFdiffusion followups still running at review are not included as complete.",
+        "All-client clean-cohort and current-image snapshot gates are separate."
+      ]
+    },
+    {
+      "model_id": "evo2-40b",
+      "historical_modes": [
+        "DNA-generation"
+      ],
+      "historical_gaps_preserved": [
+        "Variant-effect scoring, log-likelihood and embeddings absent from hosted API; generation cannot reproduce those papers",
+        "Historical snapshot qualification is not inherited by the repaired runtime"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "9e7685ce-28de-51b4-8d6c-475cc48d830f",
+          "public_model_id": "evo2-40b",
+          "display_name": "Evo2-40B",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:8c1a5dca0c32b497e04afaf93215809499a5736666540f4eb5b344dd84b709ee",
+        "model_revision": "d529aa57c30771814217ad89baaeaf6e2315c7d7",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "The tiled-memory/threaded-health successor completed the full public32-case replay, including8192-base prefix/512-output cases.",
+          "evidence": [
+            "evo",
+            "defects",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "bounded_natural_delivery",
+          "summary": "A fresh natural genome study completed four unchanged inputs/report in one turn on v27; later client changes and other genomic tasks are not qualified by it.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Isolated original-versus-tiled states/logits/seeded outputs match; generated plant DNA/reference suffix checks do not establish biological function.",
+          "evidence": [
+            "evo",
+            "defects",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Variant-effect scoring/log-likelihood/embeddings are absent from this hosted generation API.",
+        "Changed runtime does not inherit snapshot proof."
+      ]
+    },
+    {
+      "model_id": "genmol",
+      "historical_modes": [
+        "denovo-QED",
+        "denovo-LogP"
+      ],
+      "historical_gaps_preserved": [
+        "Mask syntax is not a heavy-atom count guarantee",
+        "Chemical validity/property measurements do not establish synthesizability or efficacy",
+        "Snapshot qualification is not inherited from the predecessor runtime"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "ee1cbfe9-bc5a-54a0-b3ca-d9435a8cc542",
+          "public_model_id": "genmol",
+          "display_name": "GenMol",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:97c82cfacca3845ce3c9f50f430bb02b52747d97a76177294add531c42b26979",
+        "model_revision": "2acccbd6eee62f2a90334ccf14dc7d2b17ef9e80",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "The repaired finite-replenishment runtime completes exact requested valid/unique yields in the retained public cohort; original underfill remains.",
+          "evidence": [
+            "molecular",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_with_continuation",
+          "summary": "Scientist05 v37 delivered a browser-downloaded report after one ordinary continuation. Independent checks match 16 poses and 16 molecules; an imprecise strict-bound rounding sentence remains documented.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "RDKit validity, uniqueness and QED/LogP recomputation pass; mask token ranges are not promised heavy-atom counts.",
+          "evidence": [
+            "molecular",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No synthesizability/efficacy claim; exhaustion and broader input-space behavior need explicit coverage.",
+        "Changed runtime requires new snapshot qualification."
+      ]
+    },
+    {
+      "model_id": "glm-5-2-fp8",
+      "historical_modes": [],
+      "historical_gaps_preserved": [],
+      "captured_app_instances": [
+        {
+          "app_id": "2661da7e-0389-5457-b094-4f85cade1c6b",
+          "public_model_id": "glm-5-2-fp8",
+          "display_name": "GLM-5.2-FP8",
+          "enabled": false,
+          "status": "unavailable"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "not_projected_from_selected_maps",
+        "note": "Consult exact runtime evidence; absence here is not a disabled-route or unknown-image verdict."
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "excluded_disabled",
+          "summary": "Disabled/unavailable in the captured H100 inventory; intentionally excluded from the user-approved H100 campaign.",
+          "evidence": [
+            "inventory"
+          ]
+        },
+        "natural_client": {
+          "state": "out_of_scope",
+          "summary": "No natural H100 campaign for this disabled App.",
+          "evidence": [
+            "inventory"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "not_evaluated",
+          "summary": "No new GLM measurements or qualification in this campaign; historical B300 work is not transferred.",
+          "evidence": [
+            "inventory"
+          ]
+        },
+        "snapshot": {
+          "state": "out_of_scope",
+          "summary": "Historical B300 checkpoint work was not exercised or requalified in this H100 campaign.",
+          "evidence": [
+            "inventory"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Outside this H100 campaign; no readiness or capacity claim."
+      ],
+      "reviewed_mode_scope": []
+    },
+    {
+      "model_id": "magpie-tts-multilingual-357m",
+      "historical_modes": [
+        "multilingual-speech-synthesis"
+      ],
+      "historical_gaps_preserved": [],
+      "captured_app_instances": [
+        {
+          "app_id": "74bedb72-af8e-5a46-9161-d4afce204b66",
+          "public_model_id": "magpie-tts-multilingual-357m",
+          "display_name": "Magpie Multilingual TTS 357M",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:fc9db5fd5df87e819766297d90a4595664aec63e7dbfd6735b3f2053b4725ead",
+        "model_revision": "19806879b16d3f2ccf28fb112b1bcd16a3c7923e",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Five voice/language native TTS cases and English/German streaming synthesis yielded decoded audio.",
+          "evidence": [
+            "voice"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "ASR round-trip proxy error measures intelligibility only indirectly; no blinded human pronunciation/prosody/medical-dosage validation.",
+          "evidence": [
+            "voice"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "All voices/languages and actual natural voice-agent interruption sessions are untested."
+      ],
+      "reviewed_mode_scope": [
+        "native-tts-English/German",
+        "streaming-tts-English/German"
+      ]
+    },
+    {
+      "model_id": "molmim",
+      "historical_modes": [
+        "CMA-ES-QED-maximize",
+        "CMA-ES-QED-minimize"
+      ],
+      "historical_gaps_preserved": [
+        "28/48 repaired public requests exhausted their finite search without the requested yield; these remain failed scientific outcomes",
+        "Strict similarity and unchanged small default budgets limit usefulness",
+        "Guided search does not guarantee improvement, efficacy, synthesizability or snapshot compatibility"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "889cec44-742e-5213-8205-697a712faa83",
+          "public_model_id": "molmim",
+          "display_name": "MolMIM",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:9df0b25cd79c86746f564ca060328811cd39792ce9e6d66ff9f3e1de6547a4cb",
+        "model_revision": "9ba9b2c337917fc815ffbd5d99f78d9db7904493",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "mixed_success_and_search_exhaustion",
+          "summary": "Real CMA-ES and graph/tokenizer repairs are public, but28/48 repaired requests exhausted their unchanged finite search and remain failures.",
+          "evidence": [
+            "molmim_qwen",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "20 successful optimization requests do not excuse finite-search underfill/exhaustion or prove improvement for all targets/settings.",
+          "evidence": [
+            "molmim_qwen",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Strict similarity plus small budgets limits practical yield.",
+        "Not a universal optimizer or experimentally validated molecule generator.",
+        "No natural end-to-end MolMIM delivery or new exact-runtime snapshot qualification established."
+      ]
+    },
+    {
+      "model_id": "mosaic",
+      "historical_modes": [
+        "binder-design"
+      ],
+      "historical_gaps_preserved": [
+        "Expand beyond ubiquitin and compare computational interface/refolding outcomes"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "d0577e42-d6cd-527a-93fd-6f1fe7c5d1e3",
+          "public_model_id": "mosaic",
+          "display_name": "Mosaic protein design",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "549a8d19a6f03757d20e77eebd1ae2af9f7e22d899b18f09242e1997a8d31754",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/mosaic@sha256:853cb34b36e940303c126e11e9e66c7643efa15c4ab48861c73013018e477a92"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Ubiquitin binder design completed on multiple seeds/lengths; additional held-out cases and four retained downstream refolds are documented.",
+          "evidence": [
+            "batch3",
+            "design_heldout",
+            "design_refolds"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Generated/refolded correspondence and computational recovery are measured. No binding or experimental validation follows.",
+          "evidence": [
+            "batch3",
+            "design_heldout",
+            "design_refolds"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Target diversity beyond the tested ubiquitin setup remains limited.",
+        "No independently completed natural Mosaic report is established."
+      ]
+    },
+    {
+      "model_id": "msa-search-pdb70",
+      "historical_modes": [
+        "local-pdb70-a3m"
+      ],
+      "historical_gaps_preserved": [],
+      "captured_app_instances": [
+        {
+          "app_id": "ed3292cb-a516-5495-94dc-175a0c129f94",
+          "public_model_id": "msa-search-pdb70",
+          "display_name": "MSA Search PDB70",
+          "enabled": true,
+          "status": "available"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:8049b921688cd65c1c87cfbae38d3ec02db472e419ba762a6320766529a7663d",
+        "model_revision": "8cc5ce367b5638c4306c2d7cfc652dd099a4643f",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Local PDB70 A3M search results feed actual downstream Boltz2/OpenFold3/ESMFold2 runs.",
+          "evidence": [
+            "native3",
+            "msa"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "A3M/reference-source checks and downstream consumption are established; this is not proof of every paired-complex homology scenario.",
+          "evidence": [
+            "native3",
+            "msa"
+          ]
+        },
+        "snapshot": {
+          "state": "not_assessed_as_gpu_snapshot_target",
+          "summary": "This formula/reference-database workflow is not qualified here as a GPU-process snapshot target; no acceleration claim follows from its successful results.",
+          "evidence": [
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Paired-complex alignment workflows and independently delivered natural standalone search reports remain untested."
+      ]
+    },
+    {
+      "model_id": "nemotron-speech-en-0-6b",
+      "historical_modes": [
+        "english-transcription"
+      ],
+      "historical_gaps_preserved": [],
+      "captured_app_instances": [
+        {
+          "app_id": "63ab5085-89e5-5d20-959f-62b2e6d310df",
+          "public_model_id": "nemotron-speech-en-0-6b",
+          "display_name": "Nemotron Speech English 0.6B",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:288f6caf0c2feb3690c963969e4a26c45a38ca1338f4abe80570b24db91423d2",
+        "model_revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Full-duration English real acted consultations and quiet/band-limited variants returned transcripts.",
+          "evidence": [
+            "speech",
+            "defects",
+            "clinical_repro"
+          ]
+        },
+        "natural_client": {
+          "state": "draft_delivered_not_clinically_validated",
+          "summary": "Scientist08 completed real ASR-to-draft workflows. English source-grounding history, inconsistent WER narratives, omitted details and clinician-review requirements remain; German v39 excerpt delivery is not clinical completeness.",
+          "evidence": [
+            "browser",
+            "german_clinical",
+            "clinical_repro"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Weighted lexical WER17.11% in the retained study; two independent consultations, not six. Medical factual faithfulness and overlapping-speaker reference alignment remain separate.",
+          "evidence": [
+            "speech",
+            "defects",
+            "clinical_repro"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No German capability inferred.",
+        "Clinical report completeness/safety is not established by ASR or literal source anchors."
+      ]
+    },
+    {
+      "model_id": "nemotron-speech-multilingual-0-6b",
+      "historical_modes": [
+        "multilingual-transcription"
+      ],
+      "historical_gaps_preserved": [],
+      "captured_app_instances": [
+        {
+          "app_id": "2c21d3bf-e6e9-5492-842f-0e140b09ed53",
+          "public_model_id": "nemotron-speech-multilingual-0-6b",
+          "display_name": "Nemotron Speech Multilingual 0.6B",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:628c1ffdb68c6e510de5a691432b4da9a6f64941ce5f35c57213ad8cea8b7205",
+        "model_revision": "ea30d66debe3740a08b573244286791d423d6b3e",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "English and stratified German transcription, proxy/stream-related voice paths and natural German ASR→draft have retained results; one empty German study result remains.",
+          "evidence": [
+            "speech",
+            "voice",
+            "german_clinical",
+            "clinical_repro",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "draft_delivered_not_clinically_validated",
+          "summary": "Scientist08 completed real ASR-to-draft workflows. English source-grounding history, inconsistent WER narratives, omitted details and clinician-review requirements remain; German v39 excerpt delivery is not clinical completeness.",
+          "evidence": [
+            "browser",
+            "german_clinical",
+            "clinical_repro"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Study WER20.11% English/17.02% German; German v39 excerpts cover13/14 source segments, not clinical completeness. Source-faithfulness is distinct from transcript accuracy.",
+          "evidence": [
+            "speech",
+            "voice",
+            "german_clinical",
+            "clinical_repro",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Other advertised languages and streaming failure/recovery variations need evidence.",
+        "Narrative WER mismatch, missing medical details and clinician review remain explicit."
+      ]
+    },
+    {
+      "model_id": "nv-reason-cxr-3b",
+      "historical_modes": [
+        "chest-xray-image-chat"
+      ],
+      "historical_gaps_preserved": [
+        "Weak labels are not expert reference reports or clinical qualification",
+        "Mirror JPEG transformation differs from original DICOM; expert quality review remains distinct",
+        "Permissive JSON still fails formatting on 7/20 requests; exact-label schema does not improve diagnostic truth"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "0cdcb3fd-cf61-540a-a92b-e9a5157ea04b",
+          "public_model_id": "nv-reason-cxr-3b",
+          "display_name": "NV-Reason-CXR-3B",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "not_projected_from_selected_maps",
+        "note": "Consult exact runtime evidence; absence here is not a disabled-route or unknown-image verdict."
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Repaired exact-label JSON-Schema recipe has terminal public output and verified H100 placement evidence; free-form/JSON-object failures remain historical.",
+          "evidence": [
+            "cxr",
+            "h100_placement",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Weak-label exact match7/20 is poor and not a clinical reference standard. Constrained output validity is not diagnostic accuracy.",
+          "evidence": [
+            "cxr",
+            "h100_placement",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No physician/clinical validation or natural imaging-report workflow.",
+        "No L40S or other-GPU support inferred from H100 proof."
+      ]
+    },
+    {
+      "model_id": "nv-segment-ct",
+      "historical_modes": [
+        "anatomical-label-prompt",
+        "point-prompt",
+        "combined-label-point-prompt"
+      ],
+      "historical_gaps_preserved": [
+        "One additional 41.4MB source scan is explicitly blocked by 32MiB input contract",
+        "Point prompts use oracle expert-mask locations; separate assisted/automatic scores",
+        "Spleen training-data overlap is not held-out multi-organ clinical qualification",
+        "Snapshot qualification is not inherited from the prior runtime"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "8a35fd75-55c1-5c6d-a7fc-cfba563ce24d",
+          "public_model_id": "nv-segment-ct",
+          "display_name": "NV-Segment-CT",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:7018f64b933638412120b780ef9f45bd9239af3c45f27ab6885b55ee12c1b626",
+        "model_revision": "afb51518689f71e6abb367ee6301b2cd0225c66a",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "All three prompt modes completed on nine public volumes after coordinate/dependency repair.",
+          "evidence": [
+            "ct",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Expert-mask-derived point prompts and median Dice label0.96246/point0.95238/combined0.95691 are bounded reference overlap, not independent clinical validation.",
+          "evidence": [
+            "ct",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "New runtime does not inherit old snapshot evidence.",
+        "Broader anatomies/scans and natural clinician/scientist interaction remain unqualified."
+      ]
+    },
+    {
+      "model_id": "openfold2",
+      "historical_modes": [
+        "single-sequence-no-template"
+      ],
+      "historical_gaps_preserved": [
+        "No MSA/template/relaxation advertised in this hosted contract; do not imply upstream capability"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "ff44f0a8-c080-5a0a-a079-0acbbffa0694",
+          "public_model_id": "openfold2",
+          "display_name": "OpenFold2",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:9fc70e781b18f4f547da237e2eb81387df3c38d092bb44c46145db6347e7e164",
+        "model_revision": "6344b2a680cbbae20b8afdb7f154228cc5b0cb27",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Native single-sequence outputs and downstream design refolding completed through public MCP.",
+          "evidence": [
+            "native2",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_with_recovery",
+          "summary": "Scientist01 produced and downloaded a structure report through v36. Two rejected overlong execution waits and automatic recovery remain in its chat; this does not qualify every folding App or a clean first-pass journey.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Experimental-reference CA metrics are recorded; confidence is not accuracy. One RFdiffusion design refold has poor self-consistency despite high pLDDT.",
+          "evidence": [
+            "native2",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Current unchanged-client clean cohorts across all declared shapes remain unproved.",
+        "Hosted contract does not advertise arbitrary MSA/templates/relaxation."
+      ]
+    },
+    {
+      "model_id": "openfold3",
+      "historical_modes": [
+        "protein-monomer-no-msa",
+        "protein-complex-no-msa",
+        "protein-supplied-msa"
+      ],
+      "historical_gaps_preserved": [
+        "Fixed seed 42 and one sample; repeats are not independent seeds",
+        "Native and scientific-batch Apps/runtime paths require separate evidence",
+        "Complex execution succeeds but reference accuracy remains poor; no binding-prediction qualification"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "a332bc83-6d8c-5b96-af7c-b3b7f4155a62",
+          "public_model_id": "openfold3",
+          "display_name": "OpenFold3 Preview2",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:1e35247f0de8be59119ddf875c2631173a8c533c90f7b21e1c01ef70a069c00c",
+        "model_revision": "4a0eaeaeae8ca1d815d0a97d8eb45d639b91a47e",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Native monomer, complex and supplied-MSA public artifacts are retained; native parser reassessments are explicitly separate.",
+          "evidence": [
+            "native3",
+            "complex",
+            "msa"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Experimental-reference comparisons are descriptive; fixed seed42 repeats are not independent seed coverage.",
+          "evidence": [
+            "native3",
+            "complex",
+            "msa"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Do not attribute the separate OpenBind inline-loader repair to this native App.",
+        "Broader biological/ligand accuracy and clean natural-client completion are not established."
+      ]
+    },
+    {
+      "model_id": "openfold3-openbind",
+      "historical_modes": [
+        "no-msa-protein-monomer",
+        "no-msa-complex"
+      ],
+      "historical_gaps_preserved": [
+        "Independent App and runtime, not an AlphaFold3 substitute"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "7201b459-4453-5829-a3f4-fed7f847de2f",
+          "public_model_id": "openfold3-openbind",
+          "display_name": "OpenFold3 OpenBind v0.5.0",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "addfe43f1d98f84240da0dcc7249fbfdfd0630dbaba737fc77dd950061bcd3b6",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/cancer-immunotherapy/openfold3-upstream@sha256:6b883e916c8698195808e1dee0ff603c7db725c2bdb1d7c7b0b1eb1cc1c20743"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "The exact scientific-batch OpenBind inline-loader successor completed three previously hanging complexes; distinct from native OpenFold3.",
+          "evidence": [
+            "openbind",
+            "complex"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Whole-complex CA RMSDs approximately18.2/15.3/19.1 Å and low contact recovery remain poor despite service success.",
+          "evidence": [
+            "openbind",
+            "complex"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Native OpenFold3 evidence cannot qualify this independent App.",
+        "Ligands and natural full-workflow delivery are not established."
+      ]
+    },
+    {
+      "model_id": "parakeet-realtime-eou-120m-v1",
+      "historical_modes": [
+        "transcription-end-of-utterance"
+      ],
+      "historical_gaps_preserved": [
+        "Do not advertise streaming if the operation API exposes only completed responses"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "ffa98ebe-9d25-5966-9f55-c54af0a9ce6b",
+          "public_model_id": "parakeet-realtime-eou-120m-v1",
+          "display_name": "Parakeet Realtime EOU 120M",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:99c38f2fa6fc7ec267c8475cc25380a98ac6e2b0eb2141b5628569c8b45f98fa",
+        "model_revision": "a7e2b4629593dce0ec19f600e00e9904353fda2d",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "English full-duration consultation/perturbation transcripts complete through the exposed path.",
+          "evidence": [
+            "speech",
+            "defects",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "draft_delivered_not_clinically_validated",
+          "summary": "Scientist08 completed real ASR-to-draft workflows. English source-grounding history, inconsistent WER narratives, omitted details and clinician-review requirements remain; German v39 excerpt delivery is not clinical completeness.",
+          "evidence": [
+            "browser",
+            "german_clinical",
+            "clinical_repro"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Weighted lexical WER23.78% on two acted consultation sources with variants; no medical-suitability claim.",
+          "evidence": [
+            "speech",
+            "defects",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Realtime end-of-utterance latency/interruption under actual customer streaming is not established by file transcription.",
+        "No German language support inferred."
+      ]
+    },
+    {
+      "model_id": "phenoage",
+      "historical_modes": [
+        "clinical-biomarker-formula"
+      ],
+      "historical_gaps_preserved": [
+        "No mortality-model validation claim without followup outcomes and survey design",
+        "NHANES age 80 is top-coded"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "38aad847-9010-51d0-bed7-bcb404bc755d",
+          "public_model_id": "phenoage",
+          "display_name": "Clinical PhenoAge",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:b6c28820576b62972437787bd06fa37f8c10b6f51de31b0f4da3cc3873bb34f1",
+        "model_revision": "3a3dbe0fdb258579f9d4eb1b35a2d1525f5fc0d3",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Individual and batched NHANES clinical-biomarker formula requests completed.",
+          "evidence": [
+            "native3",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "bounded_natural_delivery",
+          "summary": "Scientist07's v30 and v34 natural aging studies delivered independently recomputed CSV/report outputs. Historical incorrect reference reconstruction and link-navigation problems remain documented.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Independent60-digit Decimal computation matches declared rounded coefficients; NHANES age80 is top-coded and mortality outcomes were not validated.",
+          "evidence": [
+            "native3",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_assessed_as_gpu_snapshot_target",
+          "summary": "This formula/reference-database workflow is not qualified here as a GPU-process snapshot target; no acceleration claim follows from its successful results.",
+          "evidence": [
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Formula agreement does not establish mortality-risk calibration or clinical suitability."
+      ]
+    },
+    {
+      "model_id": "proteina-complexa",
+      "historical_modes": [
+        "protein-target",
+        "ligand-target",
+        "ame"
+      ],
+      "historical_gaps_preserved": [
+        "Ligand-target and AME public repair/promotion remains pending; four original public requests failed",
+        "All eight raw candidate structures fail the basic CA-geometry check; all eight refolds pass only that limited check",
+        "Additional 400-step comparison remains pending; neither refolding nor service completion establishes affinity or catalytic function"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "323ceb84-7608-5f9e-9cff-5fa97b7a1df8",
+          "public_model_id": "proteina-complexa",
+          "display_name": "Proteina-Complexa",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "c230ea349544ecb0f340c7b97a0c6347c79357f2f599a17eedd78428121ed81e",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/proteina-complexa@sha256:e5e075237a680dc01ace45b97ecfcfb9f95f5897aa51f36164591a74778a9cd1"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Protein-target, ligand-target and AME completed publicly on e5e075…; three additional four-sample PDL1 runs completed on release178.",
+          "evidence": [
+            "proteina_variants",
+            "proteina_geometry",
+            "proteina_multisample"
+          ]
+        },
+        "natural_client": {
+          "state": "historical_natural_delivery",
+          "summary": "Scientist03 completed a Proteina/BoltzGen comparison with verified artifact/CSV roles on an earlier client/release. This is not a current-client all-variant or all-protocol acceptance.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Raw and self-refolded structures/metrics are distinct. Original173 study raw6/8 vs refold8/8 basic-geometry pass; separate400-step sensitivity cannot erase100-step failures.",
+          "evidence": [
+            "proteina_variants",
+            "proteina_geometry",
+            "proteina_multisample"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No affinity/catalytic/biological efficacy claim.",
+        "All variants need clean natural-client coverage; custom target configuration upload remains unsupported rather than inferred from a PDB filename."
+      ]
+    },
+    {
+      "model_id": "proteinmpnn",
+      "historical_modes": [
+        "single-chain-inverse-folding",
+        "multi-chain-inverse-folding"
+      ],
+      "historical_gaps_preserved": [
+        "Unresolved backbone X positions are explicit partial coverage, never invented or deleted residues",
+        "Expand refolding across targets; one downstream design workflow showed poor recovery",
+        "Sequence validity and omission-policy compliance do not establish stability or affinity"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "1a49e2de-f5fe-5cfd-9445-3c21cab52b89",
+          "public_model_id": "proteinmpnn",
+          "display_name": "ProteinMPNN",
+          "enabled": true,
+          "status": "Ready"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_serving_selection",
+        "runtime_image_digest": "sha256:81acc477690e8c020e7499f474cd13c1cf4e21f1d210d10cda57f65d3793e227",
+        "model_revision": "8907e6671bfbfc92303b5f79c4b5e6ce47cdef57",
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Repaired missing-backbone and multichain/chain-order/omission-policy cohorts completed publicly.",
+          "evidence": [
+            "molecular",
+            "multichain",
+            "design_refolds"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_after_correction",
+          "summary": "Scientist04 completed the design→ProteinMPNN→OpenFold2 chain and corrected report; original misleading narrative remains. Mapped RMSD8.03548 Å despite pLDDT82.465 is explicit.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Explicit unresolved X positions preserve partial coverage;192 designs from48 source requests were refolded against16 experimental backbones, with positional metrics rather than sequence-validity-only checks.",
+          "evidence": [
+            "molecular",
+            "multichain",
+            "design_refolds"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Computational refolding is not stability/affinity validation.",
+        "Do not silently remove/invent unresolved residues."
+      ]
+    },
+    {
+      "model_id": "protenix-v2",
+      "historical_modes": [
+        "no-msa-protein-monomer",
+        "no-msa-complex"
+      ],
+      "historical_gaps_preserved": [
+        "Ligand modes need separate representative references if advertised; no MSA lane exposed"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "3eea3bf2-8846-5e13-bba1-a0765cd12172",
+          "public_model_id": "protenix-v2",
+          "display_name": "Protenix v2.0.0",
+          "enabled": true,
+          "status": "open"
+        },
+        {
+          "app_id": "95943840-d2b1-4a65-b5cd-aa4717b2cdc3",
+          "public_model_id": "app-95943840d2b14a65b5cdaa4717b2cdc3",
+          "display_name": "apps-scientific-20260908-scientific-clone-r01",
+          "enabled": false,
+          "status": "paused"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "d940c2eacb2e17d95af139bdd2e34e1715630cbbb437bd6570f0f60da088af7a",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/cancer-immunotherapy/protenix-v2@sha256:ac8f7c2c35d2bc911281f9d4a8aa9779e2cb955cdb1c2c2d37eb31d89669980e"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Public protein monomer/complex batches complete; published input-role validation repairs reject malformed manifests before GPU admission.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "complex",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_after_explicit_correction",
+          "summary": "Scientist02 v37 downloaded independently checked complex structures/report after an ordinary continuation. A separate explicit methodological correction removed unsupported Boltz seed claims; original report remains.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Scientist02 independently checked poor no-MSA complex outcomes, including zero recovered native contacts; model completion is not accuracy.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "complex",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Ligand/reference-data scenarios need their own advertised-contract fixtures.",
+        "The disabled cloned App has no independent customer qualification."
+      ]
+    },
+    {
+      "model_id": "qwen3-8b",
+      "historical_modes": [
+        "chat",
+        "structured-output",
+        "tool-calling"
+      ],
+      "historical_gaps_preserved": [
+        "Exercise actual installed workbench agent separately from direct-model tests",
+        "Quantitative reasoning and broader context studies remain additional coverage",
+        "Thinking-plus-JSON semantic correctness is not universal; repaired parser is not a reasoning-quality guarantee"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "63e4fa62-39f9-58b1-a4cc-b7e73df8fbf2",
+          "public_model_id": "qwen3-8b",
+          "display_name": "Qwen3-8B",
+          "enabled": true,
+          "status": "Cold"
+        },
+        {
+          "app_id": "96c9e1e5-0d82-4532-a2e0-0218cd2a99e0",
+          "public_model_id": "app-96c9e1e50d824532a2e00218cd2a99e0",
+          "display_name": "trial-apps-20260908-serving-r01",
+          "enabled": false,
+          "status": "Cold"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "not_projected_from_selected_maps",
+        "note": "Consult exact runtime evidence; absence here is not a disabled-route or unknown-image verdict."
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Repaired chat, JSON-object and tool-calling recipes have two retained public60-case mode cohorts; original20 forced-tool failures and20 semantic failures remain.",
+          "evidence": [
+            "molmim_qwen",
+            "qwen",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Bounded structured extraction is verified; it does not establish reasoning/scientific correctness or replace the separate Token Factory planner/judge qualification.",
+          "evidence": [
+            "molmim_qwen",
+            "qwen",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Disabled cloned App is not qualified by the canonical App.",
+        "New parser configuration must not inherit unverified restored-process behavior.",
+        "This local App is distinct from workshop/planner Token Factory Qwen families."
+      ]
+    },
+    {
+      "model_id": "rfdiffusion",
+      "historical_modes": [
+        "design-backbone",
+        "scaffold-motif"
+      ],
+      "historical_gaps_preserved": [
+        "Scaffold-motif fixture/independent preservation study remains open",
+        "One completed design-to-refold chain does not establish general recovery or experimental function"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "f17ca410-9874-5448-9296-f444778eafb3",
+          "public_model_id": "rfdiffusion",
+          "display_name": "RFdiffusion v1.1.0",
+          "enabled": true,
+          "status": "open"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "captured_scientific_selection",
+        "execution_identity_sha256": "5e819d407d360d7cdc08ce3b984bc948e37182ef87c627b93b4e893c4348a082",
+        "stage_images": [
+          "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/rfdiffusion@sha256:f31902e0fbece8e7f823b36e47b79ec02fe0bc545a44131188f9194f13711f19"
+        ],
+        "qualification_inherited_by_overlay": false
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Unconditional backbones and the recorded ubiquitin motif scaffold completed; held-out lengths/seeds have additional public evidence.",
+          "evidence": [
+            "batch3",
+            "design_heldout",
+            "motif",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_after_correction",
+          "summary": "Scientist04 completed the design→ProteinMPNN→OpenFold2 chain and corrected report; original misleading narrative remains. Mapped RMSD8.03548 Å despite pLDDT82.465 is explicit.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Frozen motif preservation and sequence/geometry checks pass narrowly. Natural design→MPNN→OpenFold2 self-consistency can be poor; newer refolds in flight are not declared complete.",
+          "evidence": [
+            "batch3",
+            "design_heldout",
+            "motif",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Motif fixture does not establish all motif geometries or design function.",
+        "Await separately published RFdiffusion inverse-design/refold results."
+      ]
+    },
+    {
+      "model_id": "sdxl",
+      "historical_modes": [
+        "512px-text-to-image"
+      ],
+      "historical_gaps_preserved": [
+        "Generated illustrations are not scientific observations or anatomical ground truth",
+        "Automated integrity does not establish visual prompt adherence"
+      ],
+      "captured_app_instances": [
+        {
+          "app_id": "c7c302d7-fe46-5b87-9e52-6c4581bffd15",
+          "public_model_id": "sdxl",
+          "display_name": "Stable Diffusion XL",
+          "enabled": true,
+          "status": "Cold"
+        }
+      ],
+      "captured_runtime_configuration": {
+        "kind": "not_projected_from_selected_maps",
+        "note": "Consult exact runtime evidence; absence here is not a disabled-route or unknown-image verdict."
+      },
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Public seeded512px text-to-image cases decode, with exact H100 placement evidence for the tested image.",
+          "evidence": [
+            "general",
+            "h100_placement"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Image format/shape and bounded generation checks are not scientific image correctness, medical augmentation validity or prompt-fidelity qualification.",
+          "evidence": [
+            "general",
+            "h100_placement"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No L40S/other-GPU or clinical/scientific realism claim.",
+        "Natural image study, snapshot restore and broad prompt modes remain unqualified."
+      ]
+    }
+  ]
+}

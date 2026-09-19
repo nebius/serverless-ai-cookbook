@@ -1,0 +1,1638 @@
+{
+  "references": {
+    "historical": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/scripts/qualification/cases/coverage-v1.json"
+    },
+    "inventory": {
+      "root": "campaign",
+      "path": "baseline/20260919T035919Z/apps.json"
+    },
+    "runtime179": {
+      "root": "campaign",
+      "path": "backend-baseline179/configmaps.json"
+    },
+    "capture179": {
+      "root": "campaign",
+      "path": "backend-baseline179/capture-receipt.json"
+    },
+    "aggregate": {
+      "root": "campaign",
+      "path": "campaign-reports/interim-20260919T0356Z/aggregate.json"
+    },
+    "browser": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/evidence/20260918-scientist-cohort/EXPANDED_BROWSER_CAMPAIGN.md"
+    },
+    "defects": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/QUALIFICATION_DEFECTS_20260918.md"
+    },
+    "native2": {
+      "root": "campaign",
+      "path": "cohorts/native-r2/summary.json"
+    },
+    "native3": {
+      "root": "campaign",
+      "path": "cohorts/native-r3/summary.json"
+    },
+    "batch2": {
+      "root": "campaign",
+      "path": "cohorts/batch-r2/summary.json"
+    },
+    "batch3": {
+      "root": "campaign",
+      "path": "cohorts/batch-r3/summary.json"
+    },
+    "complex": {
+      "root": "campaign",
+      "path": "cohorts/complex-r1/summary.json"
+    },
+    "msa": {
+      "root": "campaign",
+      "path": "cohorts/msa-followups-r1/summary.json"
+    },
+    "openbind": {
+      "root": "backend",
+      "path": "acceptance/openfold3-inline-20260918/public-r168.json"
+    },
+    "esm_replay": {
+      "root": "campaign",
+      "path": "cohorts/esmfold-preemption-repaired-r1/summary.json"
+    },
+    "esm_replay174": {
+      "root": "campaign",
+      "path": "cohorts/esmfold2-retained-replay-r174/summary.json"
+    },
+    "design_refolds": {
+      "root": "campaign",
+      "path": "design-recovery-completed179/report.json"
+    },
+    "design_heldout": {
+      "root": "campaign",
+      "path": "cohorts/design-heldout-r177/summary.json"
+    },
+    "design_protocols": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r2/summary.json"
+    },
+    "peptide_reassessment": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r2/scientist-09/boltzgen-peptide-anything-coverage-r1/evaluation-terminal-trim-reassessment.json"
+    },
+    "nanobody_reassessment": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r2/scientist-09/boltzgen-nanobody-anything-coverage-r1/evaluation-terminal-trim-reassessment.json"
+    },
+    "small_molecule": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r1/scientist-09/boltzgen-protein-small_molecule-coverage-r1/evaluation.json"
+    },
+    "motif": {
+      "root": "campaign",
+      "path": "cohorts/design-protocols-r2/scientist-09/rfdiffusion-ubiquitin-motif-s9100/evaluation.json"
+    },
+    "boltz_protocols": {
+      "root": "backend",
+      "path": "models/cancer-immunotherapy/runtime-images/boltzgen/qualification/public-protocols-20260919.md"
+    },
+    "boltz_successor": {
+      "root": "campaign",
+      "path": "cohorts/boltzgen-repaired-public-r174/public-successor-summary.json"
+    },
+    "proteina_variants": {
+      "root": "backend",
+      "path": "models/cancer-immunotherapy/runtime-images/proteina-complexa/qualification/public-variants-20260919.md"
+    },
+    "proteina_geometry": {
+      "root": "campaign",
+      "path": "cohorts/proteina-public-r173/raw-refolded-study-summary.json"
+    },
+    "proteina_multisample": {
+      "root": "campaign",
+      "path": "cohorts/proteina-multisample-r178/summary.json"
+    },
+    "molecular": {
+      "root": "campaign",
+      "path": "cohorts/molecular-repaired-r1/summary.json"
+    },
+    "multichain": {
+      "root": "campaign",
+      "path": "cohorts/multichain-r1/summary.json"
+    },
+    "molmim_qwen": {
+      "root": "campaign",
+      "path": "cohorts/molmim-qwen-repaired-r1/summary.json"
+    },
+    "qwen": {
+      "root": "campaign",
+      "path": "cohorts/qwen-modes-repaired-r2/summary.json"
+    },
+    "evo": {
+      "root": "campaign",
+      "path": "cohorts/evo2-repaired-r1/summary.json"
+    },
+    "general": {
+      "root": "campaign",
+      "path": "cohorts/general-r1/summary.json"
+    },
+    "ct": {
+      "root": "campaign",
+      "path": "cohorts/ct-repaired-r1/summary.json"
+    },
+    "cxr": {
+      "root": "campaign",
+      "path": "cohorts/cxr-schema-attribution-repaired-r1/summary.json"
+    },
+    "h100_placement": {
+      "root": "backend",
+      "path": "acceptance/h100-cxr-sdxl-placement-20260919/retained-public-proof.json"
+    },
+    "diffdock": {
+      "root": "backend",
+      "path": "acceptance/open-runtime-attribution-20260919/public-qualified179.json"
+    },
+    "diffdock_report": {
+      "root": "backend",
+      "path": "acceptance/open-runtime-attribution-20260919/PUBLIC_RESULTS_179.md"
+    },
+    "cosmos_modes": {
+      "root": "backend",
+      "path": "acceptance/cosmos-recorded-video-repair-20260918/public-mode-matrix-summary.json"
+    },
+    "cosmos_quality": {
+      "root": "backend",
+      "path": "acceptance/cosmos-recorded-video-repair-20260918/recorded-transfer-quality.md"
+    },
+    "cosmos_controls": {
+      "root": "backend",
+      "path": "acceptance/cosmos-recorded-video-repair-20260918/official-transfer-controls.md"
+    },
+    "lerobot179": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/evidence/20260919-lerobot-public-r179/README.md"
+    },
+    "lerobot_validation": {
+      "root": "campaign",
+      "path": "browser-evidence/scientist-10-scripted-lerobot-r179/independent-validation-v2.json"
+    },
+    "speech": {
+      "root": "campaign",
+      "path": "cohorts/speech-r1/summary.json"
+    },
+    "voice": {
+      "root": "campaign",
+      "path": "cohorts/voice-coverage-r1/final-receipt.json"
+    },
+    "german_clinical": {
+      "root": "campaign",
+      "path": "browser-evidence/scientist-08-herzrasen-v39-final/cohort-completion-receipt.json"
+    },
+    "clinical_repro": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/evidence/20260919-clinical-reporting-reproducibility/README.md"
+    },
+    "snapshot_history": {
+      "root": "backend",
+      "path": "acceptance/h100-fleet/snapshots/capabilities.json"
+    },
+    "persona": {
+      "root": "workbench",
+      "path": "templates/hcls-librechat/demos/evidence/20260919-persona-customer-experience/README.md"
+    }
+  },
+  "shared_limitations": [
+    "This overlay is a dated coverage index, not the parent campaign's request counter or final readiness verdict.",
+    "All claims retain their actual runtime, release, client and input scope; a current179 configuration capture does not relabel old operations as179 tests.",
+    "Scientific correctness means independently checked quantities where stated, never blanket biological efficacy, clinical suitability, paper reproduction or customer readiness.",
+    "Capacity/preemption waits, software errors, client/report errors and evaluator corrections remain distinct; pending work is not a pass.",
+    "Historical files and original failures are not rewritten. Source-backed reassessments are separate records and not additional model calls.",
+    "Most Apps still lack exact-current-runtime, customer-client clean cohorts for every advertised cold/warm, burst, retry, queue, batch and snapshot mode.",
+    "Disabled cloned App instances have separate public identities; canonical-model evidence must not automatically qualify those clones.",
+    "Mutable original evidence is pinned by SHA256 and retained as exact-byte protected copies. Portable output contains only reviewed summaries/identities, not credentials or raw customer payloads.",
+    "The separate ten-persona customer-journey assessment is timestamped04:32; this App overlay does not count scripted helper calls as natural LibreChat completion."
+  ],
+  "historical_corrections": [
+    {
+      "model_id": "openfold3-openbind",
+      "correction": "coverage-v1 attached openfold3-inline-r168 to native openfold3. Its actual receipt model_id is openfold3-openbind; this overlay attributes the inline-loader repair only to that scientific-batch App.",
+      "evidence": [
+        "openbind"
+      ]
+    },
+    {
+      "model_id": "proteina-complexa",
+      "correction": "Ligand/AME public repair is no longer merely pending:173 public variant study and174 sensitivity exist, preserving original failures and raw-versus-refolded quality distinctions.",
+      "evidence": [
+        "proteina_variants",
+        "proteina_geometry"
+      ]
+    },
+    {
+      "model_id": "boltzgen",
+      "correction": "Five additional advertised protocols now have explicit tested/reassessed evidence across releases; they were not all rerun on174.",
+      "evidence": [
+        "design_protocols",
+        "boltz_successor",
+        "peptide_reassessment",
+        "nanobody_reassessment",
+        "small_molecule"
+      ]
+    },
+    {
+      "model_id": "rfdiffusion",
+      "correction": "Motif-preservation fixture has now executed; downstream196-design study is separate from still-running RFdiffusion followups.",
+      "evidence": [
+        "motif",
+        "design_refolds"
+      ]
+    },
+    {
+      "model_id": "cosmos3-lerobot-augmentation",
+      "correction": "Old unselected-camera reencoding defect has a separate exact-byte-preserving179 scripted public replay. This is not natural LibreChat completion or physical action validity.",
+      "evidence": [
+        "lerobot179",
+        "lerobot_validation"
+      ]
+    },
+    {
+      "model_id": "diffdock",
+      "correction": "179 exact-image public replica attribution and paired numerical evidence supersede missing attribution for new calls only. Historical null identity and old-reference discrepancy remain.",
+      "evidence": [
+        "diffdock"
+      ]
+    }
+  ],
+  "models": {
+    "openfold2": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Native single-sequence outputs and downstream design refolding completed through public MCP.",
+          "evidence": [
+            "native2",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_with_recovery",
+          "summary": "Scientist01 produced and downloaded a structure report through v36. Two rejected overlong execution waits and automatic recovery remain in its chat; this does not qualify every folding App or a clean first-pass journey.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Experimental-reference CA metrics are recorded; confidence is not accuracy. One RFdiffusion design refold has poor self-consistency despite high pLDDT.",
+          "evidence": [
+            "native2",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Current unchanged-client clean cohorts across all declared shapes remain unproved.",
+        "Hosted contract does not advertise arbitrary MSA/templates/relaxation."
+      ]
+    },
+    "boltz2": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Query-only monomers, experimental complexes and genuine PDB70-MSA followups have terminal public artifacts.",
+          "evidence": [
+            "native2",
+            "complex",
+            "msa",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_after_explicit_correction",
+          "summary": "Scientist02 v37 downloaded independently checked complex structures/report after an ordinary continuation. A separate explicit methodological correction removed unsupported Boltz seed claims; original report remains.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Independent sequence correspondence, CA geometry/RMSD and complex contact checks exist; query-only accuracy varies substantially.",
+          "evidence": [
+            "native2",
+            "complex",
+            "msa",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Complexes with genuine paired homolog MSAs remain untested.",
+        "No ligand/affinity capability is exposed by this hosted contract."
+      ]
+    },
+    "openfold3": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Native monomer, complex and supplied-MSA public artifacts are retained; native parser reassessments are explicitly separate.",
+          "evidence": [
+            "native3",
+            "complex",
+            "msa"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Experimental-reference comparisons are descriptive; fixed seed42 repeats are not independent seed coverage.",
+          "evidence": [
+            "native3",
+            "complex",
+            "msa"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Do not attribute the separate OpenBind inline-loader repair to this native App.",
+        "Broader biological/ligand accuracy and clean natural-client completion are not established."
+      ]
+    },
+    "esmfold2": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Single-sequence and genuine precomputed-MSA paths completed. Original preemption/error-classification failures and separate exact-input replays remain distinct.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "msa",
+            "esm_replay",
+            "esm_replay174"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Sequence/reference alignment and structure metrics are available, not generalization or experimental-function validation.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "msa",
+            "esm_replay",
+            "esm_replay174"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "A successful replay does not prove a second actual node-loss recovery cycle.",
+        "Exact final-client MSA workflow delivery remains a separate gate."
+      ]
+    },
+    "esmfold2-fast": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Single-sequence scientific batches and the completed196-design refolding campaign have retained outputs.",
+          "evidence": [
+            "batch3",
+            "design_refolds"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Design recovery uses mapped sequences and positional RMSD/CA-lDDT; it is computational self-consistency, not experimental stability or binding.",
+          "evidence": [
+            "batch3",
+            "design_refolds"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "New RFdiffusion followups still running at review are not included as complete.",
+        "All-client clean-cohort and current-image snapshot gates are separate."
+      ]
+    },
+    "protenix-v2": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Public protein monomer/complex batches complete; published input-role validation repairs reject malformed manifests before GPU admission.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "complex",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_after_explicit_correction",
+          "summary": "Scientist02 v37 downloaded independently checked complex structures/report after an ordinary continuation. A separate explicit methodological correction removed unsupported Boltz seed claims; original report remains.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Scientist02 independently checked poor no-MSA complex outcomes, including zero recovered native contacts; model completion is not accuracy.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "complex",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Ligand/reference-data scenarios need their own advertised-contract fixtures.",
+        "The disabled cloned App has no independent customer qualification."
+      ]
+    },
+    "openfold3-openbind": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "The exact scientific-batch OpenBind inline-loader successor completed three previously hanging complexes; distinct from native OpenFold3.",
+          "evidence": [
+            "openbind",
+            "complex"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Whole-complex CA RMSDs approximately18.2/15.3/19.1 Å and low contact recovery remain poor despite service success.",
+          "evidence": [
+            "openbind",
+            "complex"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Native OpenFold3 evidence cannot qualify this independent App.",
+        "Ligands and natural full-workflow delivery are not established."
+      ]
+    },
+    "alphafold3": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Query-only monomer/complex scientific batches returned structures after a harness CIF-recognition correction.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "complex",
+            "aggregate"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Reference-based structural checks exist; original false parser failures are preserved separately from reassessments.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "complex",
+            "aggregate"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Ligands, broader reference-data scenarios and clinical/experimental validity remain unqualified.",
+        "Academic access constraints remain part of the real grant contract."
+      ]
+    },
+    "proteina-complexa": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Protein-target, ligand-target and AME completed publicly on e5e075…; three additional four-sample PDL1 runs completed on release178.",
+          "evidence": [
+            "proteina_variants",
+            "proteina_geometry",
+            "proteina_multisample"
+          ]
+        },
+        "natural_client": {
+          "state": "historical_natural_delivery",
+          "summary": "Scientist03 completed a Proteina/BoltzGen comparison with verified artifact/CSV roles on an earlier client/release. This is not a current-client all-variant or all-protocol acceptance.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Raw and self-refolded structures/metrics are distinct. Original173 study raw6/8 vs refold8/8 basic-geometry pass; separate400-step sensitivity cannot erase100-step failures.",
+          "evidence": [
+            "proteina_variants",
+            "proteina_geometry",
+            "proteina_multisample"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No affinity/catalytic/biological efficacy claim.",
+        "All variants need clean natural-client coverage; custom target configuration upload remains unsupported rather than inferred from a PDB filename."
+      ]
+    },
+    "boltzgen": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "All six named protocol lanes have public terminal evidence across historical and repaired releases, with original stage and evaluator failures retained.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "small_molecule",
+            "design_protocols",
+            "peptide_reassessment",
+            "nanobody_reassessment",
+            "boltz_protocols",
+            "boltz_successor"
+          ]
+        },
+        "natural_client": {
+          "state": "historical_natural_delivery",
+          "summary": "Scientist03 completed a Proteina/BoltzGen comparison with verified artifact/CSV roles on an earlier client/release. This is not a current-client all-variant or all-protocol acceptance.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Peptide/nanobody terminal-residue reassessments and antibody full-polymer/missing-coordinate reassessment are source-backed, separate verdicts. Redesign fixed-region geometry and ligand heavy-atom identity were checked.",
+          "evidence": [
+            "batch2",
+            "batch3",
+            "small_molecule",
+            "design_protocols",
+            "peptide_reassessment",
+            "nanobody_reassessment",
+            "boltz_protocols",
+            "boltz_successor"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Earlier four protocol results are not silently requalified as release174.",
+        "Reuse-completed staged workflow and all-protocol natural-client clean cohorts remain open.",
+        "Geometry/sequence constraints do not establish binding affinity, antibody developability or all-atom completeness."
+      ]
+    },
+    "mosaic": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Ubiquitin binder design completed on multiple seeds/lengths; additional held-out cases and four retained downstream refolds are documented.",
+          "evidence": [
+            "batch3",
+            "design_heldout",
+            "design_refolds"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Generated/refolded correspondence and computational recovery are measured. No binding or experimental validation follows.",
+          "evidence": [
+            "batch3",
+            "design_heldout",
+            "design_refolds"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Target diversity beyond the tested ubiquitin setup remains limited.",
+        "No independently completed natural Mosaic report is established."
+      ]
+    },
+    "bindcraft": {
+      "dimensions": {
+        "service_api": {
+          "state": "completed_subset_with_pending_item",
+          "summary": "Both soluble/vanilla MPNN lanes have bounded public design evidence; held-out campaign includes a still-pending item in the captured summary.",
+          "evidence": [
+            "batch3",
+            "design_heldout"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Output/sequence/basic structure checks do not guarantee scientifically accepted design yield; filter rejection must remain visible.",
+          "evidence": [
+            "batch3",
+            "design_heldout"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "One still-pending item is not a completed pass or proven software failure.",
+        "Expand target/length diversity and validate final accepted-design filtering and natural delivery."
+      ]
+    },
+    "rfdiffusion": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Unconditional backbones and the recorded ubiquitin motif scaffold completed; held-out lengths/seeds have additional public evidence.",
+          "evidence": [
+            "batch3",
+            "design_heldout",
+            "motif",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_after_correction",
+          "summary": "Scientist04 completed the design→ProteinMPNN→OpenFold2 chain and corrected report; original misleading narrative remains. Mapped RMSD8.03548 Å despite pLDDT82.465 is explicit.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Frozen motif preservation and sequence/geometry checks pass narrowly. Natural design→MPNN→OpenFold2 self-consistency can be poor; newer refolds in flight are not declared complete.",
+          "evidence": [
+            "batch3",
+            "design_heldout",
+            "motif",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Motif fixture does not establish all motif geometries or design function.",
+        "Await separately published RFdiffusion inverse-design/refold results."
+      ]
+    },
+    "proteinmpnn": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Repaired missing-backbone and multichain/chain-order/omission-policy cohorts completed publicly.",
+          "evidence": [
+            "molecular",
+            "multichain",
+            "design_refolds"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_after_correction",
+          "summary": "Scientist04 completed the design→ProteinMPNN→OpenFold2 chain and corrected report; original misleading narrative remains. Mapped RMSD8.03548 Å despite pLDDT82.465 is explicit.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Explicit unresolved X positions preserve partial coverage;192 designs from48 source requests were refolded against16 experimental backbones, with positional metrics rather than sequence-validity-only checks.",
+          "evidence": [
+            "molecular",
+            "multichain",
+            "design_refolds"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Computational refolding is not stability/affinity validation.",
+        "Do not silently remove/invent unresolved residues."
+      ]
+    },
+    "msa-search-pdb70": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Local PDB70 A3M search results feed actual downstream Boltz2/OpenFold3/ESMFold2 runs.",
+          "evidence": [
+            "native3",
+            "msa"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "A3M/reference-source checks and downstream consumption are established; this is not proof of every paired-complex homology scenario.",
+          "evidence": [
+            "native3",
+            "msa"
+          ]
+        },
+        "snapshot": {
+          "state": "not_assessed_as_gpu_snapshot_target",
+          "summary": "This formula/reference-database workflow is not qualified here as a GPU-process snapshot target; no acceleration claim follows from its successful results.",
+          "evidence": [
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Paired-complex alignment workflows and independently delivered natural standalone search reports remain untested."
+      ]
+    },
+    "diffdock": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Release179 completed two unchanged12-case public cohorts with strict exact response attribution across two H100 replicas.",
+          "evidence": [
+            "diffdock",
+            "diffdock_report",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_with_continuation",
+          "summary": "Scientist05 v37 delivered a browser-downloaded report after one ordinary continuation. Independent checks match 16 poses and 16 molecules; an imprecise strict-bound rounding sentence remains documented.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Paired179 results pass unchanged0.01 Å/0.001-confidence tolerances. Both retain one old176 reference discrepancy; only half top-ranked poses are within2 Å, and the~705.87 Å outlier is preserved.",
+          "evidence": [
+            "diffdock",
+            "diffdock_report",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No all-history bitwise-determinism or broad docking-accuracy claim.",
+        "Current image has no inherited snapshot qualification; broader chemistry/cross-docking and cold/burst modes remain separate."
+      ]
+    },
+    "genmol": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "The repaired finite-replenishment runtime completes exact requested valid/unique yields in the retained public cohort; original underfill remains.",
+          "evidence": [
+            "molecular",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "delivered_with_continuation",
+          "summary": "Scientist05 v37 delivered a browser-downloaded report after one ordinary continuation. Independent checks match 16 poses and 16 molecules; an imprecise strict-bound rounding sentence remains documented.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "RDKit validity, uniqueness and QED/LogP recomputation pass; mask token ranges are not promised heavy-atom counts.",
+          "evidence": [
+            "molecular",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No synthesizability/efficacy claim; exhaustion and broader input-space behavior need explicit coverage.",
+        "Changed runtime requires new snapshot qualification."
+      ]
+    },
+    "molmim": {
+      "dimensions": {
+        "service_api": {
+          "state": "mixed_success_and_search_exhaustion",
+          "summary": "Real CMA-ES and graph/tokenizer repairs are public, but28/48 repaired requests exhausted their unchanged finite search and remain failures.",
+          "evidence": [
+            "molmim_qwen",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "20 successful optimization requests do not excuse finite-search underfill/exhaustion or prove improvement for all targets/settings.",
+          "evidence": [
+            "molmim_qwen",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Strict similarity plus small budgets limits practical yield.",
+        "Not a universal optimizer or experimentally validated molecule generator.",
+        "No natural end-to-end MolMIM delivery or new exact-runtime snapshot qualification established."
+      ]
+    },
+    "evo2-40b": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "The tiled-memory/threaded-health successor completed the full public32-case replay, including8192-base prefix/512-output cases.",
+          "evidence": [
+            "evo",
+            "defects",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "bounded_natural_delivery",
+          "summary": "A fresh natural genome study completed four unchanged inputs/report in one turn on v27; later client changes and other genomic tasks are not qualified by it.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Isolated original-versus-tiled states/logits/seeded outputs match; generated plant DNA/reference suffix checks do not establish biological function.",
+          "evidence": [
+            "evo",
+            "defects",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Variant-effect scoring/log-likelihood/embeddings are absent from this hosted generation API.",
+        "Changed runtime does not inherit snapshot proof."
+      ]
+    },
+    "altumage": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Complete CpG panels, reordered columns and explicit median-imputation cases completed.",
+          "evidence": [
+            "native3",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "bounded_natural_delivery",
+          "summary": "Scientist07's v30 and v34 natural aging studies delivered independently recomputed CSV/report outputs. Historical incorrect reference reconstruction and link-navigation problems remain documented.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Independent original H5 architecture/scaler recomputation agrees; published examples are not held-out population generalization.",
+          "evidence": [
+            "native3",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No clinical aging/patient fitness or generalization claim.",
+        "All imputation fractions/cohorts and new-runtime snapshots are not established."
+      ]
+    },
+    "phenoage": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Individual and batched NHANES clinical-biomarker formula requests completed.",
+          "evidence": [
+            "native3",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "bounded_natural_delivery",
+          "summary": "Scientist07's v30 and v34 natural aging studies delivered independently recomputed CSV/report outputs. Historical incorrect reference reconstruction and link-navigation problems remain documented.",
+          "evidence": [
+            "browser",
+            "defects"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Independent60-digit Decimal computation matches declared rounded coefficients; NHANES age80 is top-coded and mortality outcomes were not validated.",
+          "evidence": [
+            "native3",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_assessed_as_gpu_snapshot_target",
+          "summary": "This formula/reference-database workflow is not qualified here as a GPU-process snapshot target; no acceleration claim follows from its successful results.",
+          "evidence": [
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Formula agreement does not establish mortality-risk calibration or clinical suitability."
+      ]
+    },
+    "cosmos3-nano": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Five dedicated media modes plus edge/blur/depth/seg/WSM controls have decoded artifacts across mixed releases. Later replica attribution and release179 full-video children have exact witnesses.",
+          "evidence": [
+            "cosmos_modes",
+            "cosmos_quality",
+            "cosmos_controls",
+            "lerobot179"
+          ]
+        },
+        "natural_client": {
+          "state": "natural_delivery_incomplete",
+          "summary": "Prior natural robotics attempts returned artifacts but used the wrong continuation lane or failed preparation/reporting. v39 third recovery was still in flight at the reviewed checkpoint; scripted179 API success is not natural delivery.",
+          "evidence": [
+            "browser",
+            "lerobot179"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Dimensions/frames/FPS/audio and bounded flow/appearance measurements exist. V2V is prefix-conditioned continuation; transfer whole-clip conditioning is not proof of physical action-label validity.",
+          "evidence": [
+            "cosmos_modes",
+            "cosmos_quality",
+            "cosmos_controls",
+            "lerobot179"
+          ]
+        },
+        "snapshot": {
+          "state": "strict_restore_observed_bounded",
+          "summary": "Exact native image5e2680… with bundle573bf6ac… restored CUDA/CRIU with Require/no fresh-load fallback, including release179 recorded transfer children. Coordinator is not itself the GPU snapshot. Image-pull/empty-node and all-option coverage are not inferred.",
+          "evidence": [
+            "lerobot179",
+            "cosmos_modes"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Earlier five missing attribution records remain unknown.",
+        "All advertised modes need unchanged-current-release client/burst cohorts.",
+        "Lighting-only augmentation and contact/object fidelity remain unproved."
+      ]
+    },
+    "cosmos3-lerobot-augmentation": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Release179 scripted public transfer preserved128 rows/6144 nonvideo values, exact unselected wrist bytes/pixels, selected640×480/64-frame/25FPS raw outputs and episode timing.",
+          "evidence": [
+            "lerobot179",
+            "lerobot_validation",
+            "cosmos_quality"
+          ]
+        },
+        "natural_client": {
+          "state": "natural_delivery_incomplete",
+          "summary": "Prior natural robotics attempts returned artifacts but used the wrong continuation lane or failed preparation/reporting. v39 third recovery was still in flight at the reviewed checkpoint; scripted179 API success is not natural delivery.",
+          "evidence": [
+            "browser",
+            "lerobot179"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Integrity and broad motion measures are verified, but selected object/contact details can change. Physical action/policy-training fitness is unproved; aggregate-stat rounding remains explicit.",
+          "evidence": [
+            "lerobot179",
+            "lerobot_validation",
+            "cosmos_quality"
+          ]
+        },
+        "snapshot": {
+          "state": "strict_restore_observed_bounded",
+          "summary": "Exact native image5e2680… with bundle573bf6ac… restored CUDA/CRIU with Require/no fresh-load fallback, including release179 recorded transfer children. Coordinator is not itself the GPU snapshot. Image-pull/empty-node and all-option coverage are not inferred.",
+          "evidence": [
+            "lerobot179",
+            "cosmos_modes"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Natural v41 deployment blocked by providerInternal; v39 final natural completion remains pending in checkpoint.",
+        "No physical action-alignment or downstream robotics-policy qualification.",
+        "Scripted single-parent success is not concurrency/batch saturation acceptance."
+      ]
+    },
+    "nemotron-speech-en-0-6b": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Full-duration English real acted consultations and quiet/band-limited variants returned transcripts.",
+          "evidence": [
+            "speech",
+            "defects",
+            "clinical_repro"
+          ]
+        },
+        "natural_client": {
+          "state": "draft_delivered_not_clinically_validated",
+          "summary": "Scientist08 completed real ASR-to-draft workflows. English source-grounding history, inconsistent WER narratives, omitted details and clinician-review requirements remain; German v39 excerpt delivery is not clinical completeness.",
+          "evidence": [
+            "browser",
+            "german_clinical",
+            "clinical_repro"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Weighted lexical WER17.11% in the retained study; two independent consultations, not six. Medical factual faithfulness and overlapping-speaker reference alignment remain separate.",
+          "evidence": [
+            "speech",
+            "defects",
+            "clinical_repro"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No German capability inferred.",
+        "Clinical report completeness/safety is not established by ASR or literal source anchors."
+      ]
+    },
+    "nemotron-speech-multilingual-0-6b": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "English and stratified German transcription, proxy/stream-related voice paths and natural German ASR→draft have retained results; one empty German study result remains.",
+          "evidence": [
+            "speech",
+            "voice",
+            "german_clinical",
+            "clinical_repro",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "draft_delivered_not_clinically_validated",
+          "summary": "Scientist08 completed real ASR-to-draft workflows. English source-grounding history, inconsistent WER narratives, omitted details and clinician-review requirements remain; German v39 excerpt delivery is not clinical completeness.",
+          "evidence": [
+            "browser",
+            "german_clinical",
+            "clinical_repro"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Study WER20.11% English/17.02% German; German v39 excerpts cover13/14 source segments, not clinical completeness. Source-faithfulness is distinct from transcript accuracy.",
+          "evidence": [
+            "speech",
+            "voice",
+            "german_clinical",
+            "clinical_repro",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Other advertised languages and streaming failure/recovery variations need evidence.",
+        "Narrative WER mismatch, missing medical details and clinician review remain explicit."
+      ]
+    },
+    "parakeet-realtime-eou-120m-v1": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "English full-duration consultation/perturbation transcripts complete through the exposed path.",
+          "evidence": [
+            "speech",
+            "defects",
+            "browser"
+          ]
+        },
+        "natural_client": {
+          "state": "draft_delivered_not_clinically_validated",
+          "summary": "Scientist08 completed real ASR-to-draft workflows. English source-grounding history, inconsistent WER narratives, omitted details and clinician-review requirements remain; German v39 excerpt delivery is not clinical completeness.",
+          "evidence": [
+            "browser",
+            "german_clinical",
+            "clinical_repro"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Weighted lexical WER23.78% on two acted consultation sources with variants; no medical-suitability claim.",
+          "evidence": [
+            "speech",
+            "defects",
+            "browser"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Realtime end-of-utterance latency/interruption under actual customer streaming is not established by file transcription.",
+        "No German language support inferred."
+      ]
+    },
+    "diar-streaming-sortformer-4spk-v2-1": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Native and streaming diarization returned bounded timestamps/speaker outputs in the voice study.",
+          "evidence": [
+            "voice",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Full-consultation DER19.68%/18.20% under explicit no-collar, overlap-included reference methodology; no perfect speaker identity or clinical reliability claim.",
+          "evidence": [
+            "voice",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Broader overlap/accent/speaker-count behavior and natural integrated voice session remain unqualified."
+      ],
+      "reviewed_mode_scope": [
+        "native-diarization",
+        "streaming-diarization"
+      ]
+    },
+    "magpie-tts-multilingual-357m": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Five voice/language native TTS cases and English/German streaming synthesis yielded decoded audio.",
+          "evidence": [
+            "voice"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "ASR round-trip proxy error measures intelligibility only indirectly; no blinded human pronunciation/prosody/medical-dosage validation.",
+          "evidence": [
+            "voice"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "All voices/languages and actual natural voice-agent interruption sessions are untested."
+      ],
+      "reviewed_mode_scope": [
+        "native-tts-English/German",
+        "streaming-tts-English/German"
+      ]
+    },
+    "nv-reason-cxr-3b": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Repaired exact-label JSON-Schema recipe has terminal public output and verified H100 placement evidence; free-form/JSON-object failures remain historical.",
+          "evidence": [
+            "cxr",
+            "h100_placement",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Weak-label exact match7/20 is poor and not a clinical reference standard. Constrained output validity is not diagnostic accuracy.",
+          "evidence": [
+            "cxr",
+            "h100_placement",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No physician/clinical validation or natural imaging-report workflow.",
+        "No L40S or other-GPU support inferred from H100 proof."
+      ]
+    },
+    "nv-segment-ct": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "All three prompt modes completed on nine public volumes after coordinate/dependency repair.",
+          "evidence": [
+            "ct",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Expert-mask-derived point prompts and median Dice label0.96246/point0.95238/combined0.95691 are bounded reference overlap, not independent clinical validation.",
+          "evidence": [
+            "ct",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "New runtime does not inherit old snapshot evidence.",
+        "Broader anatomies/scans and natural clinician/scientist interaction remain unqualified."
+      ]
+    },
+    "qwen3-8b": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Repaired chat, JSON-object and tool-calling recipes have two retained public60-case mode cohorts; original20 forced-tool failures and20 semantic failures remain.",
+          "evidence": [
+            "molmim_qwen",
+            "qwen",
+            "defects"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Bounded structured extraction is verified; it does not establish reasoning/scientific correctness or replace the separate Token Factory planner/judge qualification.",
+          "evidence": [
+            "molmim_qwen",
+            "qwen",
+            "defects"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Disabled cloned App is not qualified by the canonical App.",
+        "New parser configuration must not inherit unverified restored-process behavior.",
+        "This local App is distinct from workshop/planner Token Factory Qwen families."
+      ]
+    },
+    "sdxl": {
+      "dimensions": {
+        "service_api": {
+          "state": "bounded_public_evidence",
+          "summary": "Public seeded512px text-to-image cases decode, with exact H100 placement evidence for the tested image.",
+          "evidence": [
+            "general",
+            "h100_placement"
+          ]
+        },
+        "natural_client": {
+          "state": "not_established_by_this_overlay",
+          "summary": "No independently completed natural LibreChat deliverable for this specific App/mode is established by the reviewed browser checkpoints. API fixtures are not a substitute.",
+          "evidence": [
+            "browser"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "bounded_checks_not_scientific_validation",
+          "summary": "Image format/shape and bounded generation checks are not scientific image correctness, medical augmentation validity or prompt-fidelity qualification.",
+          "evidence": [
+            "general",
+            "h100_placement"
+          ]
+        },
+        "snapshot": {
+          "state": "not_requalified_here",
+          "summary": "Historical snapshot capability/configuration may exist. This overlay establishes no new restore verdict for this App's exact currently selected image and all advertised modes; do not inherit qualification after a runtime change.",
+          "evidence": [
+            "snapshot_history",
+            "runtime179"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "No L40S/other-GPU or clinical/scientific realism claim.",
+        "Natural image study, snapshot restore and broad prompt modes remain unqualified."
+      ]
+    },
+    "glm-5-2-fp8": {
+      "dimensions": {
+        "service_api": {
+          "state": "excluded_disabled",
+          "summary": "Disabled/unavailable in the captured H100 inventory; intentionally excluded from the user-approved H100 campaign.",
+          "evidence": [
+            "inventory"
+          ]
+        },
+        "natural_client": {
+          "state": "out_of_scope",
+          "summary": "No natural H100 campaign for this disabled App.",
+          "evidence": [
+            "inventory"
+          ]
+        },
+        "scientific_correctness": {
+          "state": "not_evaluated",
+          "summary": "No new GLM measurements or qualification in this campaign; historical B300 work is not transferred.",
+          "evidence": [
+            "inventory"
+          ]
+        },
+        "snapshot": {
+          "state": "out_of_scope",
+          "summary": "Historical B300 checkpoint work was not exercised or requalified in this H100 campaign.",
+          "evidence": [
+            "inventory"
+          ]
+        }
+      },
+      "remaining_gaps": [
+        "Outside this H100 campaign; no readiness or capacity claim."
+      ],
+      "reviewed_mode_scope": []
+    }
+  }
+}
