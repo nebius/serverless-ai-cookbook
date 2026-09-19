@@ -23,6 +23,8 @@ METHOD = {
     'denominator': 'Number of normalized reference tokens, not hypothesis length or raw whitespace count.',
 }
 LIMIT = 'Lexical/source selection only: neither exact matches nor all checklist items found establish clinical correctness, speaker attribution, or completeness.'
+PLAN_SCHEMA = 'clinical-study-plan/v1'
+BUNDLE_SCHEMA = 'clinical-study-bundle/v1'
 
 
 def digest(data):
@@ -93,7 +95,7 @@ def selection_report(document, transcript, probes=()):
         raise ValueError('This reader supports clinical-documentation/v11 only')
     if document.get('transcript_sha256') != digest(transcript.encode()):
         raise ValueError('Document/transcript identity mismatch')
-    selected, contexts = [], []
+    selected, contexts, fact_rows = [], [], []
     for fact in document['facts']:
         phrases = fact['source_phrases']
         if not phrases or fact['statement'] != ' … '.join(p['quote'] for p in phrases):
@@ -104,6 +106,9 @@ def selection_report(document, transcript, probes=()):
             raise ValueError('Selected phrase falls outside its cited context')
         selected.extend(spans)
         contexts.extend(evidence)
+        fact_rows.append({'fact_id': fact.get('id'), 'section': fact.get('section'),
+                          'selected_span_ranges': [{'start': a, 'end': b} for a, b in spans],
+                          'cited_context_ranges': [{'start': a, 'end': b} for a, b in evidence]})
     # Only already-retained literal excerpts count; rejected model proposals do not.
     review = quoted_spans(document['source_excerpts'], transcript)
     segments = sorted({checked_span(row, transcript)
@@ -132,7 +137,10 @@ def selection_report(document, transcript, probes=()):
                     'cited_context_only' if any(contains(s, target) for s in contexts) else
                     'review_excerpt_only' if any(contains(s, target) for s in review) else
                     'source_only')
+        matching = [fact for fact in fact_rows if any(
+            contains((span['start'], span['end']), target) for span in fact['selected_span_ranges'])]
         probes_out.append({**probe, 'location': location,
+                           'accepted_fact_ids': [fact['fact_id'] for fact in matching if fact['fact_id'] is not None],
                            'meaning_preserved': 'not_assessed'})
     return {'accepted_facts': len(document['facts']),
             'selected_phrases': sum(len(fact['source_phrases']) for fact in document['facts']),
@@ -141,6 +149,7 @@ def selection_report(document, transcript, probes=()):
             'segments_with_selected_phrase': sum(row['has_selected_phrase'] for row in rows),
             'declared_segment_character_gaps': gaps, 'segments': rows,
             'withheld_candidates': len(document['rejected']),
+            'accepted_fact_index': fact_rows,
             'review_excerpts': len(document['source_excerpts']), 'source_span_probes': probes_out,
             'clinical_completeness': 'not_established',
             'interpretation': 'A selected phrase does not cover every fact in its segment. Context/review presence is not selection as a report fact. Probe absence means literal absence, not proof of semantic omission. Rendered visibility and clinical meaning require separate review.'}
@@ -172,6 +181,150 @@ def markdown(value):
     return '\n'.join(lines)
 
 
+def _json_bytes(value):
+    return (json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False) + '\n').encode()
+
+
+def _cell(value):
+    return str(value).replace('|', '\\|').replace('\r', ' ').replace('\n', ' ')
+
+
+def _bundle_report(value):
+    lines = ['# Speech and clinical-source study measurements', '', LIMIT, '',
+             'This is a deterministic measurement report, not a consultation draft or a medical assessment.', '',
+             '| Case | Accepted facts | Selected / declared source segments | WER edits / reference tokens | WER (%) |',
+             '| --- | ---: | ---: | ---: | ---: |']
+    for case in value['cases']:
+        selection, wer = case['source_selection'], case['wer']
+        facts = selection['measurement']['accepted_facts'] if selection['status'] == 'measured' else 'not measured'
+        segments = (f"{selection['measurement']['segments_with_selected_phrase']} / {selection['measurement']['declared_segments']}"
+                    if selection['status'] == 'measured' else 'not measured')
+        edits = f"{wer['measurement']['edit_distance']} / {wer['measurement']['reference_tokens']}" if wer['status'] == 'measured' else 'no reference'
+        percent = f"{wer['measurement']['wer'] * 100:.12g}" if wer['status'] == 'measured' else 'not measured'
+        lines.append(f"| {_cell(case['id'])} | {facts} | {segments} | {edits} | {percent} |")
+    lines += ['', '## Interpretation boundaries', '',
+              '- Accepted facts are counted from the validated v11 `facts` list and literal `source_phrases`, not an invented `source.text` field.',
+              '- Source selection does not require a human WER reference. Missing WER references do not prevent source coverage measurement.',
+              '- Case and declared edge punctuation are already ignored by this WER method; differences in those features alone cannot explain its errors.',
+              '- A literal probe absent from accepted phrases is not proof of semantic omission. Equivalent wording is not automatically classified.',
+              '- Model confidence, literal citations and lexical agreement do not establish medical correctness or completeness.',
+              '- Original drafts, transcripts, failed attempts and poor predictions are not changed.', '',
+              f"Normalization: `{NORMALIZATION}`. WER is stored as a ratio in JSON and explicitly converted to percent in this table.",
+              'No cross-case mean or model ranking is inferred from cases with different sources, languages or normalization.', '',
+              '## Source identity', '', f"Plan SHA-256: `{value['plan_sha256']}`", f"Helper SHA-256: `{value['helper_sha256']}`", '']
+    for case in value['cases']:
+        lines.append(f"### {_cell(case['id'])}")
+        lines.append('')
+        for role, item in case['inputs'].items():
+            lines.append(f"- {role}: `{item['sha256']}`, {item['size_bytes']} bytes.")
+        if case['source_selection']['status'] == 'measured':
+            measured = case['source_selection']['measurement']
+            lines.append(f"- Withheld candidates: {measured['withheld_candidates']}; review excerpts: {measured['review_excerpts']}; clinical completeness not established.")
+        lines.append('')
+    return '\n'.join(lines)
+
+
+def prepare_bundle(plan_file):
+    """Validate every input and compute every case before publishing any output."""
+    plan_bytes = plan_file.read_bytes()
+    plan = json.loads(plan_bytes)
+    if (not isinstance(plan, dict) or set(plan) != {'schema', 'cases'}
+            or plan.get('schema') != PLAN_SCHEMA or not isinstance(plan['cases'], list) or not plan['cases']):
+        raise ValueError('Expected clinical-study-plan/v1 with a nonempty cases list')
+    source = Path(__file__).read_bytes()
+    value = {'schema': BUNDLE_SCHEMA, 'plan_sha256': digest(plan_bytes), 'helper_sha256': digest(source),
+             'cases': [], 'clinical_validation': False, 'inference_submitted': False,
+             'units': {'wer': 'ratio', 'wer_percent': 'percent', 'source_offsets': 'Unicode code points',
+                       'file_sizes': 'bytes', 'facts_and_segments': 'counts'}}
+    files, identifiers = {'plan.json': plan_bytes, 'helper.py': source}, set()
+    for specification in plan['cases']:
+        if (not isinstance(specification, dict)
+                or set(specification) - {'id', 'transcript', 'document', 'reference', 'source_spans', 'provenance'}):
+            raise ValueError('Unknown clinical-study case fields')
+        identifier = specification.get('id')
+        if (not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', identifier)
+                or identifier in identifiers):
+            raise ValueError('Case IDs must be unique filename-safe identifiers')
+        identifiers.add(identifier)
+        inputs = {}
+        for role in ('transcript', 'document', 'reference', 'source_spans'):
+            filename = specification.get(role)
+            if filename is None:
+                continue
+            if not isinstance(filename, str) or not filename:
+                raise ValueError(f'{identifier}: {role} must name an actual input file')
+            path = Path(filename)
+            inputs[role] = (path if path.is_absolute() else plan_file.parent / path).read_bytes()
+        if 'transcript' not in inputs:
+            raise ValueError(f'{identifier}: transcript is required')
+        if 'source_spans' in inputs and 'document' not in inputs:
+            raise ValueError(f'{identifier}: source_spans requires document')
+        transcript = inputs['transcript'].decode('utf-8')
+        provenance = specification.get('provenance', {})
+        if (not isinstance(provenance, dict)
+                or set(provenance) - {'operation_id', 'model_id', 'clinical_job_id', 'language', 'transcription_reused'}
+                or any(not isinstance(item, str) or not item for key, item in provenance.items() if key != 'transcription_reused')
+                or ('transcription_reused' in provenance and type(provenance['transcription_reused']) is not bool)):
+            raise ValueError(f'{identifier}: unsupported or invalid declared provenance fields')
+        case = {'id': identifier, 'declared_provenance': provenance,
+                'provenance_scope': 'Caller-declared identifiers; exact file hashes verified locally, service identity not queried.',
+                'inputs': {role: {'sha256': digest(data), 'size_bytes': len(data)} for role, data in inputs.items()},
+                'source_selection': {'status': 'not_measured', 'reason': 'No clinical document supplied; accepted fact count is unknown, not zero.'},
+                'wer': {'status': 'not_measured', 'reason': 'No human reference supplied; source selection remains independently measurable.'}}
+        if 'document' in inputs:
+            case['source_selection'] = {'status': 'measured', 'measurement': selection_report(
+                json.loads(inputs['document']), transcript, json.loads(inputs.get('source_spans', b'[]')))}
+        if 'reference' in inputs:
+            case['wer'] = {'status': 'measured', 'normalization': METHOD,
+                           'measurement': word_error(inputs['reference'].decode('utf-8'), transcript),
+                           'interpretation': 'Case/declared edge punctuation are ignored; WER does not evaluate medication, negation or clinical correctness.'}
+        value['cases'].append(case)
+        files[f'cases/{identifier}/measurement.json'] = _json_bytes(case)
+        for role, data in inputs.items():
+            files[f'cases/{identifier}/{role}' + ('.json' if role in {'document', 'source_spans'} else '.txt')] = data
+    files['measurement.json'] = _json_bytes(value)
+    files['report.md'] = _bundle_report(value).encode()
+    return value, files
+
+
+def assemble(plan_file, output):
+    """Hash-bound re-entry resumes own partial output without replacing evidence."""
+    value, files = prepare_bundle(plan_file)
+    identity = {'schema': BUNDLE_SCHEMA, 'plan_sha256': value['plan_sha256'],
+                'helper_sha256': value['helper_sha256'],
+                'inputs': {case['id']: case['inputs'] for case in value['cases']}}
+    marker = output / '.clinical-study-prepared.json'
+    if output.exists() and not marker.is_file():
+        raise ValueError('Output already exists without this report preparation identity; choose a new directory')
+    output.mkdir(mode=0o700, parents=True, exist_ok=True)
+    def write_once(name, data):
+        path = output / name
+        if path.exists():
+            if path.read_bytes() != data:
+                raise ValueError(f'Existing report artifact differs: {name}; historical evidence was not overwritten')
+            return
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path.write_bytes(data)
+        path.chmod(0o600)
+        if path.read_bytes() != data:
+            raise OSError(f'Report artifact readback mismatch: {name}')
+    write_once(marker.name, _json_bytes(identity))
+    for name, data in files.items():
+        write_once(name, data)
+    manifest = {**identity, 'schema': 'clinical-study-artifacts/v1', 'state': 'complete',
+                'case_count': len(value['cases']), 'clinical_validation': False,
+                'artifacts': [{'path': name, 'sha256': digest(data), 'size_bytes': len(data)}
+                              for name, data in sorted(files.items())]}
+    # The completion marker is written only after every listed byte is verified.
+    manifest_bytes = _json_bytes(manifest)
+    reused = (output / 'completion-manifest.json').is_file()
+    write_once('completion-manifest.json', manifest_bytes)
+    return {'schema': BUNDLE_SCHEMA, 'state': 'complete', 'output': str(output),
+            'manifest': str(output / 'completion-manifest.json'), 'manifest_sha256': digest(manifest_bytes),
+            'case_count': len(value['cases']), 'reused_completed_output': reused,
+            'clinical_validation': False, 'inference_submitted': False}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='kind', required=True)
@@ -182,9 +335,14 @@ def main():
     coverage.add_argument('--document', type=Path, required=True)
     coverage.add_argument('--transcript', type=Path, required=True)
     coverage.add_argument('--source-spans', type=Path, help='Optional JSON list of exact {start,end,quote} source probes')
-    for command in (wer, coverage):
+    bundle = sub.add_parser('assemble', help='Deterministic multi-case study report; optional WER and independent source selection')
+    bundle.add_argument('--plan', type=Path, required=True, help='Versioned clinical-study-plan/v1 JSON; relative inputs resolve beside this file')
+    for command in (wer, coverage, bundle):
         command.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
+    if args.kind == 'assemble':
+        print(json.dumps(assemble(args.plan, args.output)))
+        return
     names = ('reference', 'hypothesis') if args.kind == 'wer' else ('document', 'transcript', 'source_spans')
     inputs = {name: getattr(args, name).read_bytes() for name in names if getattr(args, name) is not None}
     if args.kind == 'wer':

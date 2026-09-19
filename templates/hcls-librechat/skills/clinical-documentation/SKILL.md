@@ -66,6 +66,42 @@ using them with a patient. Do not present them as a validated clinical checklist
 
 ## Reproducible study measurements and coverage language
 
+For a complete multi-case study, prefer one deterministic assembly step after
+the full transcripts and any clinical documents have been retrieved:
+
+```bash
+python /app/skill/clinical-documentation/scripts/study_report.py assemble \
+  --plan /workspace/study/measurement-plan.json \
+  --output /workspace/study/measurements/complete-study
+```
+
+The plan is `{"schema":"clinical-study-plan/v1","cases":[...]}`. Each case has
+a unique filename-safe `id`, the actual full-text `transcript` file, and optional
+`document` (v11 JSON), `reference` (human text) and `source_spans` (exact probes).
+Relative input paths resolve beside the plan. Optional `provenance` can record
+`operation_id`, `model_id`, `clinical_job_id`, `language` and boolean
+`transcription_reused`; these are explicitly declared identities, not a new
+service verification or an inferred fresh ASR call. Do not put keys or URLs in
+the plan.
+
+The helper counts accepted facts from the canonical `facts` and `source_phrases`
+fields, preserves fact IDs for exact source probes, and produces the final
+study table itself. Do not write a competing `source.text` walker or recalculate
+its counts in another report. Source selection is measured whenever a document
+is supplied, **even without a human WER reference**. No document means the fact
+count is unknown, not zero. No WER reference means WER is unmeasured, not zero.
+Case and declared edge punctuation are already ignored by the pinned scorer:
+they cannot on their own explain a measured error. Literal probe absence is not
+proof of semantic omission; do not turn equivalent wording into a missing fact.
+
+Return the helper's `report.md`, `measurement.json` and
+`completion-manifest.json`, which lists the verified hashes/sizes of all
+retained input and measurement files. The manifest is written only after every
+listed artifact has been read back. Reusing the same plan, helper and unchanged
+input bytes resumes its own interrupted output or verifies a completed output;
+changed historical files are rejected, never overwritten. A deterministic
+measurement bundle is not a new clinical report or proof of completeness.
+
 For a speech comparison, use the bundled offline helper rather than writing one
 normalizer in a scratch command and saving a different scoring script:
 
