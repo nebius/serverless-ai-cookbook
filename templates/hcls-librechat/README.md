@@ -28,6 +28,8 @@ export SCIENTIFIC_MODELS_API_KEY_SECRET_SELECTOR='nebius-scientific-model-gatewa
 export TOKEN_FACTORY_SECRET_SELECTOR='<secret selector with NEBIUS_API_KEY>'
 export TAVILY_SECRET_SELECTOR='<secret selector with TAVILY_API_KEY>'
 export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/nebius-scientific-ai-agent:<release-tag>'
+# Only for a user who has no active study supervisor:
+export SCIENTIFIC_STUDY_OWNER_MODE='first-instance'
 
 ./templates/hcls-librechat/scripts/deploy.sh
 ```
@@ -56,6 +58,11 @@ policy. Credentials are deployment secrets, never files in the shared workspace.
 Acceptance must exercise distinct dedicated instances and verify their request
 attribution and intentional shared storage. Shared-instance user multiplexing is
 outside this architecture and is not a release requirement.
+
+For replacements, preserve the predecessor's chat/database state and stop its
+study supervisor before using `SCIENTIFIC_STUDY_OWNER_MODE=stopped-predecessor`.
+This applies to the **same user**, not to other users sharing a tenant bucket.
+See [durable study ownership and recovery](demos/UNATTENDED_STUDIES.md#deployment-and-ownership).
 
 ### Personal instance with an existing tenant bucket
 
