@@ -423,3 +423,85 @@ customer-ready verdict follows from these narrower fixes.
 Evidence is under the protected campaign directory, with portable summaries
 and exact source references in linked task cards. No budget, quota, concurrency,
 context, output, tool-round or rollout-timeout limits were raised.
+
+## 19 September, 05:44 UTC — later evidence and remaining failures
+
+This additive checkpoint supersedes the earlier pending states only within the
+explicit scopes below. It does not change historical receipts or claim that ten
+clean natural journeys passed on one final release. The full twelve-hour report
+is being assembled at
+`demos/evidence/20260919-twelve-hour-checkpoint/README.md`.
+
+- **Backend 182 is deployed**, source `8e747def5`, index `f3a3d6c2…`.
+  Frozen regression suite: 2,760 passed, five skipped, 130 deselected. Apps
+  list/detail usage queries no longer perform unnecessary full fan-out; fixed
+  historical counts match. Eight external API reads, six per-Pod reads and 32
+  real-browser admin GETs returned 200. No database/HTTP timeout was raised.
+- The snapshot status projection first exposed a strict-SSA 422 on Cosmos and
+  Qwen: an empty evidence-selector object was interpreted as removing the last
+  owned key, yielding invalid null. Release 180 failed and rolled back to 181.
+  The bounded omission of optional empty maps repairs that actual API contract;
+  release 182 succeeded. All 21 model specs and 33 generated Pod templates
+  remained unchanged. Configured snapshot selection is not measured fast-start
+  qualification: unmeasured effective levels remain unavailable.
+- **Q63, narrow DiffDock attribution/repeatability:** release-179 paired public
+  cohorts have 24/24 actual replica/node/GPU/image/revision joins. New paired
+  numerical comparisons pass unchanged tolerances; an older-reference mismatch
+  and poor experimental poses remain. See the separate published DiffDock note.
+- **Q64, untouched LeRobot media:** both scripted release-179 and natural v42
+  successor evidence preserve exact unselected wrist media, 128 rows and all
+  6,144 non-video values. The natural successor delivered four verified browser
+  downloads after two ordinary continuations. Q56 physical/action alignment is
+  still unqualified; metadata preservation does not establish training utility.
+- **Q65, complete-result recovery:** v42 naturally adopted lossless recovery
+  and delivered nonempty native/dataset provenance. Its first NPZ seek failure,
+  automatic recovery, 429 overlap and report-method errors remain visible.
+  Admission/activation time was incorrectly called pure cold start, and RGB
+  mean was called luminance. Correct files do not fix those statements.
+- **Seekable scientific exports:** v43 adds shared explicit local staging and
+  verified closed-file publication, without pretending a bucket is POSIX.
+  NPZ/HDF5/ZIP/closed SQLite passed real mount plus independent S3 reopening.
+  The natural v43 task also produced all four formats with all 6,144 values
+  exact and seven byte-verified browser downloads. It needed one continuation;
+  five preparation execution errors and a wrong first ZIP boolean comparison
+  self-recovered. The initial incorrect 5,120 vector-value count was not
+  explicitly corrected; a later 5,504 figure counts floats only. These report
+  defects remain, rather than being hidden by the output-equality pass.
+- **Clickable downloads remain under repair:** v43 prints six correct workspace
+  URLs in a fenced code block. They work by navigation but are not links.
+  Narrow renderer candidate `6976499` preserves the original code block and
+  adds authenticated workspace links for exact recognized URL-only content.
+  Eleven tests and an immutable v44 build pass; live preview creation and
+  real-browser acceptance are pending at this checkpoint. No natural study is
+  relabelled as a v44 pass.
+- **Clinical v42:** two full-source drafts and one expected typed no-report
+  outcome, 24 verified browser downloads, five reproducible measurement bundles.
+  Four earlier ASRs were reused; there are zero new ASR calls in this successor.
+  English still required two continuations. Agent-written analysis used wrong
+  fields to report zero accepted facts instead of 32, falsely described a fact
+  as omitted, and gave an unsupported WER explanation. German omitted a possible
+  source-selection analysis by confusing it with missing human-reference WER.
+  Exact literal spans and deterministic metrics are not clinical readiness.
+- **Design completion:** all 13 held-out BindCraft/Mosaic/RFdiffusion operations
+  are now terminal with checked artifacts, including the original long BindCraft
+  search. Its 8,416-second client wait includes approximately 18 minutes of
+  placement queueing. The separate downstream refold study completed 220 cases;
+  poor self-consistency is retained, not counted as experimental success.
+- **Preemptible recovery:** the deployed classifier/controller passes a replay
+  of the retained exact taint-evicted Pod status and unchanged bounded retry
+  tests. Synthetic Job/Kueue shells are labelled as such. The successful new
+  same-payload request is not automatic recovery of the original failure, and
+  a new live capacity-loss recovery cycle is still unqualified.
+
+The final read-only 05:38 capture has healthy backend gateways/controllers and
+15/15 Ready GPU observers, with one historical observer restart retained.
+Twenty-nine schedulable GPU units minus 19 Pod reservations leaves ten resource
+units, not ten universally placeable GPUs or a utilization measurement. Older
+unhealthy infrastructure/workshop resources remain explicitly listed in the
+live-state note; no cleanup or unrelated mutation was performed.
+
+Aggregation now explicitly separates uploaded artifacts from actual inference
+children, joins exact retained terminal status captures without inventing
+admissions, and treats persistence-history directories as directories rather
+than corrupt JSON files. Thirty-four aggregation/latency/workshop tests pass.
+Those are measurement repairs, not additional model calls or product passes.
