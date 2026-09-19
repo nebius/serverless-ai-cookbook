@@ -174,12 +174,16 @@ if s["status"] == "completed":
 
 ### Observed results
 
-Nano on one H100, this template's command, HTTPS FQDN:
+Nano with this template's command over the HTTPS FQDN. Measured on one H100 (eu-north1) and
+repeated on one **RTX Pro 6000 Blackwell** (`gpu-rtx6000-a` / `1gpu-24vcpu-218gb`, uk-south2),
+where the same requests took: text-to-image 5.4 s, text-to-video 81 frames 107 s, image-to-video
+81 frames 113 s, text-to-video with sound 189 frames 377 s.
 
 | Request | Result |
 | --- | --- |
 | Text-to-image 1024², 50 steps | 3.2 s, 3.1 MB PNG |
 | Text-to-video 720p, 189 frames, **sync** | `504 Gateway Time-out` after 60 s (render continues server-side) — use async |
+| Text-to-video 480p (832x480), 33 frames, **sync** | 200 in 14 s, 0.66 MB — sync is fine for clips that finish well under 60 s (RTX 6000) |
 | Text-to-video 720p, 81 frames, async | completed; 3.4 MB h264, 3.4 s clip (render ≈ 60 s when the GPU is idle) |
 | Image-to-video 720p, 81 frames, async (uploaded frame) | completed in 63 s; 7.4 MB |
 | Text-to-video with sound 720p, 189 frames, async | completed in 207 s; 11 MB, h264 + AAC track, 7.9 s |
@@ -215,6 +219,13 @@ nebius ai endpoint create \
 (`Token: …`); pass `--token <value>` to set your own, or `--token-secret <secret-version-id>` for CI.
 The `cosmos3` image tag is NVIDIA's Cosmos 3 build of vLLM-Omni (`0.25.0`); it is a moving
 tag, so pin by digest for reproducible deployments.
+
+### Other platforms
+
+Validated on **RTX Pro 6000 Blackwell** (96 GB) in `uk-south2`:
+`--platform gpu-rtx6000-a --preset 1gpu-24vcpu-218gb` (plus `--parent-id` of a uk-south2
+project). Ready ~10 min after create; roughly 1.6–1.8× the H100 render times (see Observed
+results). A good fit for preemptible capacity.
 
 ### Other model sizes
 
