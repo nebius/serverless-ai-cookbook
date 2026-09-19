@@ -84,9 +84,15 @@ def main():
                ("coordinate_tolerance_angstrom", "confidence_tolerance", "adapter_identity")):
             raise ValueError("Cross-process adapter or predeclared tolerances changed")
         for key in sorted(loaded[0][1]):
+            try:
+                comparison = compare(loaded[0][1][key], results[key], baseline["coordinate_tolerance_angstrom"],
+                                     baseline["confidence_tolerance"])
+            except ValueError as error:
+                # Preserve the entire failed cohort rather than aborting the
+                # report at its first uncomparable generated ligand.
+                comparison = {"numerical_repeatability_pass": False, "error": str(error)}
             cross_process.append({"case_id": key[0], "repetition": key[1], "compared_run": index,
-                **compare(loaded[0][1][key], results[key], baseline["coordinate_tolerance_angstrom"],
-                          baseline["confidence_tolerance"])})
+                                  **comparison})
     report = {"cases_sha256": digest(args.cases), "run_count": len(loaded),
               "inference_calls": sum(len(item[0]["runs"]) for item in loaded),
               "all_retained_bytes_verified": True, "runs": reports, "cross_process": cross_process,

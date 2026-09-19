@@ -335,3 +335,44 @@ No quotas, customer concurrency, transport deadlines, reasoning/output budgets
 or rollout limits were raised. The first completed isolated DiffDock Pod and
 ConfigMap were removed normally after all logs, outputs and hashes were saved;
 the test is reproducible from the retained immutable image and manifest.
+
+### 19 September, 01:50 UTC — customer-shaped checks continue
+
+- Helm174 is settled with the protocol-aware BoltzGen repair. Exact original
+  antibody and redesign public replays remain in flight; isolated stage success
+  is not yet whole-workflow acceptance.
+- Q54: final DiffDock image `9766b4fb2a22787874bd8d90306980a4cb1ff9808941f0f1ae429d8b8f7cc948`
+  completed 48 isolated calls in two fresh H100 processes on different GPUs.
+  All same-input coordinates and confidence values match exactly across these
+  processes; the predeclared tolerances were not relaxed. Root causes included
+  unseeded conformer generation, nondeterministic GPU kernels, and an unseeded
+  import-time torsion normalization table. Weights and inference budgets remain
+  unchanged. Generated SDFs now explicitly identify 3D coordinates. Public
+  promotion/replay and new-image cold-start evidence remain pending; no old
+  snapshot evidence transfers. Original failures and intermediate candidates
+  remain retained.
+- Q55: exact-size ordinary LeRobot replay on173 passed independent readback of
+  128 frames, two episodes/two cameras and all6,144 non-video values. Actual raw
+  generated clips are640×480, not resized448×256 outputs. Q56 remains separate:
+  appearance changes and motion proxies do not establish action-aligned robotic
+  policy training suitability.
+- Scientist07's unchanged aging study completed in one natural v34 turn,
+  150.054s, with independent checks of32PhenoAge and17AltumAge rows. Downloaded
+  report is13,279 bytes, SHA256
+  `96dc52b8738c21cdde7b2737a7d5579639eb1affae75e016b6624a5bf2d016ee`.
+  Inline-code workspace URLs still required manual navigation; the general
+  renderer fix is included in candidatev36, not yet browser-qualified.
+
+| ID | Observation | Classification and action |
+| --- | --- | --- |
+| Q57 | Natural scientist02 used invented Protenix inner-manifest roles/MIME. The model schema omitted the exact roles, the client discarded top-level manifest contracts, and the server misreported the invalid request as `scientific_profile_unavailable`. | Original rejected request255c7295… retained; no operation was admitted. Backend80ffcc4d6 publishes adapter-derived contracts for all11 scientific Apps and validates roles before compilation;95 focused tests pass. Client2d3df06 consumes the real top-level shape and rejects mismatches before uploads, with51 tests and15 actual descriptor variants checked. Same Protenix parameters form the expected two-stage plan with correct metadata offline. Combined deployment and unchanged-request natural recovery remain pending. |
+| Q58 | A successful Cosmos request during a multi-replica overlap returned unknown Pod/node/GPU attribution; zero GPU count represented missing evidence, not zero consumption. | The singleton fallback cannot select the actual serving Pod when two are ready. Candidate5df175740 adds exact response identity at the Cosmos adapter with a verified same-Pod adapter→GPU mapping;104 focused tests pass. New template is prepared; actual overlapping multi-Pod inference and billing-attribution acceptance remain pending. Historical missing values are not guessed. |
+
+Clinical candidate3cf02bb rejects unsupported normalized medication names using
+literal source anchors. In the retained original-transcript replay the extractor
+again invented the normalized brand; the deterministic gate withheld it and kept
+the unclear source phrase for review. This fixes the demonstrated lexical
+contract, not clinical correctness, completeness or fitness for doctors.
+
+The new combined workbenchv36 is built, not yet deployed. No overall
+customer-ready verdict follows from these narrower fixes.
