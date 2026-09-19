@@ -1,0 +1,657 @@
+{
+  "at": "2026-09-19T04:42:15.792529+00:00",
+  "manifest_sha256": "7520fa9cfd9358b8585233e9f53e2ce327a0dcfddab48583e6b657f41e365148",
+  "selected_frozen_cases": 24,
+  "non_refolding_manifest_cases": 0,
+  "groups": [
+    {
+      "upstream_model": "proteinmpnn",
+      "frozen_cases": 24,
+      "case_states": {
+        "verified": 24
+      },
+      "source_requests": 6,
+      "unique_backbone_references": 6,
+      "measured_predictions": 24,
+      "metrics": {
+        "ca_rmsd_angstrom": {
+          "min": 0.4226221683100255,
+          "median": 1.2188495617515254,
+          "max": 18.032164023304063
+        },
+        "ca_lddt_15A": {
+          "min": 0.5930898242218996,
+          "median": 0.951670644391408,
+          "max": 0.9894590294351631
+        }
+      }
+    }
+  ],
+  "rows": [
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l256-backbone1-design1",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l256-backbone1",
+      "reference_sha256": "10b87f68af9eba3d368faad762c34a057565b53e6d22f000c466cf0dfa727fd1",
+      "state": "verified",
+      "operation_id": "13f20947-2e83-48b5-ac2f-dca1cfcf3b72",
+      "receipt_sha256": "5cc9210eca946000dcde135e73008f5af8714b3ad9b2b42aae629771e1974860",
+      "result_sha256": "1a2f9d2f77837ac8888c00aa4a32241b1da1242fc5073261385e40adf353befd",
+      "evaluation_sha256": "331a57dc1350bbb629f1fa8e4ad49f95c266cd43ad2a9d0bd93af26e95fe879c",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 256,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.04296875,
+          "ca_rmsd_angstrom": 2.745351251273897,
+          "ca_lddt_15A": 0.8327846063798653,
+          "tm_score_kabsch": 0.8411818951520287,
+          "gdt_ts_kabsch": 0.5859375,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l256-backbone1-design2",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l256-backbone1",
+      "reference_sha256": "10b87f68af9eba3d368faad762c34a057565b53e6d22f000c466cf0dfa727fd1",
+      "state": "verified",
+      "operation_id": "b95e5968-cdd0-4d38-9de6-33399bcfa287",
+      "receipt_sha256": "4ead3b086bf8820f8a19e274f7225f55b667ee79a1d39e7bdc4d591995a6ed49",
+      "result_sha256": "2b7c15f69b23659d9d381151f191234f7586a72f52c8c8dcf30d4de3c1bbfe46",
+      "evaluation_sha256": "fe0ae13d829263fd2d3ff6f2326f500f0b405bf7b609e0f7bca6abecea612b57",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 256,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.0390625,
+          "ca_rmsd_angstrom": 2.8025670462045684,
+          "ca_lddt_15A": 0.8083113842551946,
+          "tm_score_kabsch": 0.8379112623985567,
+          "gdt_ts_kabsch": 0.5830078125,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l256-backbone1-design3",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l256-backbone1",
+      "reference_sha256": "10b87f68af9eba3d368faad762c34a057565b53e6d22f000c466cf0dfa727fd1",
+      "state": "verified",
+      "operation_id": "a6f2687e-0975-4138-9183-116dd31ad4ba",
+      "receipt_sha256": "70498467f09c905d64930f51047bf69c165ee61407e140280b7ff44db3caeed7",
+      "result_sha256": "7cc015d4a2a7c9779a1a84499753932db114c8cc2f9dbdbf63216a133d83aefd",
+      "evaluation_sha256": "7193f9820e3e00ab67be4b6c2b1903f7657cebb3e94d46915e1566bc1c848484",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 256,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.04296875,
+          "ca_rmsd_angstrom": 7.523980061461103,
+          "ca_lddt_15A": 0.7737415861867134,
+          "tm_score_kabsch": 0.6165331944704298,
+          "gdt_ts_kabsch": 0.34375,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l256-backbone1-design4",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l256-backbone1",
+      "reference_sha256": "10b87f68af9eba3d368faad762c34a057565b53e6d22f000c466cf0dfa727fd1",
+      "state": "verified",
+      "operation_id": "98e17024-eb70-4e1a-b60d-dd678a9d6ab5",
+      "receipt_sha256": "c4f2e1227b750cb85e1b9868757e761b0d54c04e479b76a242cf6cfb620a18e7",
+      "result_sha256": "ecb9dbcf2bac076fecb84cb171572800b2c25f6837eb69b6b09d5d28fd385926",
+      "evaluation_sha256": "1abb734903a4dfc3cf2a4833e4c7859090a7c4fc300647f893bf267f7514a241",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 256,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.04296875,
+          "ca_rmsd_angstrom": 3.029450331487316,
+          "ca_lddt_15A": 0.7633157740708224,
+          "tm_score_kabsch": 0.8241387304569752,
+          "gdt_ts_kabsch": 0.5537109375,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l256-backbone2-design1",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l256-backbone2",
+      "reference_sha256": "50db0030066809003d8c998bdb72fb291bee606f9d2f31233a96388775619729",
+      "state": "verified",
+      "operation_id": "771f6eb4-f0d8-4757-bf75-3e2aa1d2ff48",
+      "receipt_sha256": "3fac8016fae9f675cfac54c47c01e9cedce58d1c3fab952c543746cfcf6ef53b",
+      "result_sha256": "004fb5bc2158f2b4bb07c52e2fafd72c76f28318937e582ef42b63fa79d140d8",
+      "evaluation_sha256": "3c8a819d356b51ffe12e2991278b0095b3f878c431e04aefe7501a5fc7ecce19",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 256,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.02734375,
+          "ca_rmsd_angstrom": 11.720050800973583,
+          "ca_lddt_15A": 0.5930898242218996,
+          "tm_score_kabsch": 0.463993791222582,
+          "gdt_ts_kabsch": 0.23828125,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l256-backbone2-design2",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l256-backbone2",
+      "reference_sha256": "50db0030066809003d8c998bdb72fb291bee606f9d2f31233a96388775619729",
+      "state": "verified",
+      "operation_id": "31e76647-57cd-4346-9daf-4cb79d60de3b",
+      "receipt_sha256": "fe02df9683191a41381fd6e832fc2dc9983e1efbb039fa60bb44389522345d64",
+      "result_sha256": "f3779645e9071979dca889f7efd71b517a4912ed2257f29c0d5c283baecc961b",
+      "evaluation_sha256": "7031e1804ea4f7ba1bf627cc52845b1af848f1ba345a5dd4d4e76c764f87403b",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 256,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.03125,
+          "ca_rmsd_angstrom": 3.2084086998851893,
+          "ca_lddt_15A": 0.7889453313981617,
+          "tm_score_kabsch": 0.8114892962689768,
+          "gdt_ts_kabsch": 0.5595703125,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l256-backbone2-design3",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l256-backbone2",
+      "reference_sha256": "50db0030066809003d8c998bdb72fb291bee606f9d2f31233a96388775619729",
+      "state": "verified",
+      "operation_id": "19df710c-3947-40ba-b860-30fa6bab1a49",
+      "receipt_sha256": "3ba4ddf27cc3e4ec9b8bd6c9954e873a63c1e486f206a5398b5fe89218bf47d7",
+      "result_sha256": "09f32762650327551239cc57de450aeb0cd842c8bf7ad2a03ce61ddf48bc5835",
+      "evaluation_sha256": "6e00060b7fbe1b4da1b927f6b7ab79f3c72a376b98f82d6bd18a5ea91dc3650f",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 256,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.02734375,
+          "ca_rmsd_angstrom": 2.1711417998863642,
+          "ca_lddt_15A": 0.8596597323012417,
+          "tm_score_kabsch": 0.9167872657184787,
+          "gdt_ts_kabsch": 0.8017578125,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l256-backbone2-design4",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l256-backbone2",
+      "reference_sha256": "50db0030066809003d8c998bdb72fb291bee606f9d2f31233a96388775619729",
+      "state": "verified",
+      "operation_id": "c9078225-2a21-4d58-a412-4545202613ae",
+      "receipt_sha256": "50cb18bce4e7710b14f93aff915d3a34d644d46d67b90af7387abe0bd0ed90f1",
+      "result_sha256": "97cb64a5765e85043894fcd2730b7e7f0d67223aad9a934a70a8dc0c93f1dd26",
+      "evaluation_sha256": "8bd905d3ba9e9ae27c474452d380443c2623ed4fbc924f170d30bcf272f16a9c",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 256,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.02734375,
+          "ca_rmsd_angstrom": 13.964847741313255,
+          "ca_lddt_15A": 0.6223189808095468,
+          "tm_score_kabsch": 0.3770157526629078,
+          "gdt_ts_kabsch": 0.1767578125,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l48-backbone1-design1",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l48-backbone1",
+      "reference_sha256": "043cde973829934b39e94f441052d14fd3708abcbb0f3a008f4ffbcfb70fbc5d",
+      "state": "verified",
+      "operation_id": "acf368fc-aef4-4b44-87f7-6288173564eb",
+      "receipt_sha256": "1c3e8747b945017d897140db136d43f849820c4a5a25f3f19a482ca1c5861e28",
+      "result_sha256": "d57ad5c1c9adc0026e2a725d5fa06d903fd0085c3f914b00a6c39721783efccb",
+      "evaluation_sha256": "328366a887f1bff072d0c7f76e658288e9e26cd1b25e0356e2b308ada27aa69e",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 48,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.020833333333333332,
+          "ca_rmsd_angstrom": 2.1018426456098447,
+          "ca_lddt_15A": 0.9160899653979239,
+          "tm_score_kabsch": 0.6345083719754951,
+          "gdt_ts_kabsch": 0.6979166666666667,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l48-backbone1-design2",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l48-backbone1",
+      "reference_sha256": "043cde973829934b39e94f441052d14fd3708abcbb0f3a008f4ffbcfb70fbc5d",
+      "state": "verified",
+      "operation_id": "492f8dd2-b2e5-4f8b-ba4f-f791b81b35e2",
+      "receipt_sha256": "6188cec0e9bae32f214d8ec873029ff6ac9c4c5770fafab34c9b29a9dd6c2441",
+      "result_sha256": "5c86fa79159488574868ef1f30a608cf2f24ada0f19d147b32f5bf111b245f55",
+      "evaluation_sha256": "7b78777d3f4735cb15e35f6985f9df52f35f00165a49eb5ef4461dbb5865e20c",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 48,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.020833333333333332,
+          "ca_rmsd_angstrom": 18.032164023304063,
+          "ca_lddt_15A": 0.6288927335640139,
+          "tm_score_kabsch": 0.025266406169786176,
+          "gdt_ts_kabsch": 0.0,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l48-backbone1-design3",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l48-backbone1",
+      "reference_sha256": "043cde973829934b39e94f441052d14fd3708abcbb0f3a008f4ffbcfb70fbc5d",
+      "state": "verified",
+      "operation_id": "0a4e6213-84c0-42b5-9337-6e0b7a776ece",
+      "receipt_sha256": "6fa4a9cc88277a267fbeaa31ba821cc2b3d23113be52180d6720fbb01166418f",
+      "result_sha256": "72d54adbca6e3e4698350535b21b3f65e35a93e668c51f6dbaf187c221320543",
+      "evaluation_sha256": "b422af1ff9a565800a5bc927f0b3d841f5ae9ca777a96f201a5a5f50e959d743",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 48,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.020833333333333332,
+          "ca_rmsd_angstrom": 0.6849755607036202,
+          "ca_lddt_15A": 0.967560553633218,
+          "tm_score_kabsch": 0.921981982129004,
+          "gdt_ts_kabsch": 0.96875,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l48-backbone1-design4",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l48-backbone1",
+      "reference_sha256": "043cde973829934b39e94f441052d14fd3708abcbb0f3a008f4ffbcfb70fbc5d",
+      "state": "verified",
+      "operation_id": "0a75f62c-8642-4321-aafa-d2188bafbbb9",
+      "receipt_sha256": "304eed32fb4644c5c93f1daf7bc0a030fb27f4cb0f104a6646bb791f1cb69c64",
+      "result_sha256": "b76c1b24b37a93176ccc69916f35a65ce6f6bfabfa30b57c45b6cd4f1a68432b",
+      "evaluation_sha256": "0cabf51612099ac5d82410ebe270443df7aa8f1a895be3b9ec902968ea2eb8e5",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 48,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.0625,
+          "ca_rmsd_angstrom": 17.974980763880655,
+          "ca_lddt_15A": 0.6275951557093427,
+          "tm_score_kabsch": 0.02734346228534187,
+          "gdt_ts_kabsch": 0.010416666666666666,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l48-backbone2-design1",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l48-backbone2",
+      "reference_sha256": "ef4de6ff31134f7411bfbbd032742a49781e717043f35adcc29cfcc16abdba1d",
+      "state": "verified",
+      "operation_id": "04055e6c-d195-4658-a74a-e8bcaa5cbacd",
+      "receipt_sha256": "b2aff91c781905715649bbcb1b1cafb38fc65523acf0ee0648bec0042b05286a",
+      "result_sha256": "b816c4d32b6d98f0ce86d00f8ed533cd13524c9b10295bef55b7831667e908c4",
+      "evaluation_sha256": "d894f6fd6d9989870a4a22a35fdb07d9750c40a488260e14e5724c39509dac4b",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 48,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.0,
+          "ca_rmsd_angstrom": 0.6381420171981433,
+          "ca_lddt_15A": 0.9681603773584906,
+          "tm_score_kabsch": 0.9271155598066839,
+          "gdt_ts_kabsch": 0.96875,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l48-backbone2-design2",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l48-backbone2",
+      "reference_sha256": "ef4de6ff31134f7411bfbbd032742a49781e717043f35adcc29cfcc16abdba1d",
+      "state": "verified",
+      "operation_id": "1deeb836-12b8-41c0-866f-017a58595a25",
+      "receipt_sha256": "290f9fed9d9e5965b1c56adee2c8777b241aa36040bd4e338c2319e2ef6c4117",
+      "result_sha256": "a3b95b5781ae85ec09c014488b7fcc5e84a26c27b7b271a4799e71e2597ef023",
+      "evaluation_sha256": "7036a64afdd157b09bfe2cc23f1a8aa8f2ac35b208f926fec1e211ae96577f5b",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 48,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.020833333333333332,
+          "ca_rmsd_angstrom": 0.6783821317691116,
+          "ca_lddt_15A": 0.9669811320754718,
+          "tm_score_kabsch": 0.9202274207536489,
+          "gdt_ts_kabsch": 0.96875,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l48-backbone2-design3",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l48-backbone2",
+      "reference_sha256": "ef4de6ff31134f7411bfbbd032742a49781e717043f35adcc29cfcc16abdba1d",
+      "state": "verified",
+      "operation_id": "175901ed-b02f-4bde-b05f-c397a6660478",
+      "receipt_sha256": "c8595164cd069da7b76ee6875e25d6b17b1d5ed1188ad08e859aad6719eff1d8",
+      "result_sha256": "16a9abb36e7d771c38758d0d3319157c09eadfec8ad8370225482bd730c5c09c",
+      "evaluation_sha256": "6b473649ab472d8751c4c77dcd21211bdbcfc4f7fe2370355131e9c9322bcbb0",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 48,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.020833333333333332,
+          "ca_rmsd_angstrom": 0.5775813832976169,
+          "ca_lddt_15A": 0.9775943396226415,
+          "tm_score_kabsch": 0.9378083853722718,
+          "gdt_ts_kabsch": 0.984375,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l48-backbone2-design4",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l48-backbone2",
+      "reference_sha256": "ef4de6ff31134f7411bfbbd032742a49781e717043f35adcc29cfcc16abdba1d",
+      "state": "verified",
+      "operation_id": "e9648be2-2885-492d-b114-eaffffbed029",
+      "receipt_sha256": "b6012873dcfaede6ae4a7a4126c44481acc64360406d96395b4a071c9298d0a5",
+      "result_sha256": "7f2c2217533b974b1f0f2cf6086fbbe716acf8cc4873ad5c28b8399e3a67e69b",
+      "evaluation_sha256": "5d167014320ea218ae4d96742c495add1699c1921fe7f94852aae4ede388e34f",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 48,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.0,
+          "ca_rmsd_angstrom": 0.9177570944960556,
+          "ca_lddt_15A": 0.9606918238993711,
+          "tm_score_kabsch": 0.8641320545039789,
+          "gdt_ts_kabsch": 0.921875,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l76-backbone1-design1",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l76-backbone1",
+      "reference_sha256": "6623a69dfd002b2b5b53663bfdcb41b8f61e7e29f8e2bf3c3407d26676caa82e",
+      "state": "verified",
+      "operation_id": "b2baf7a9-6dc6-4ad9-a3e9-9d93b75f7e86",
+      "receipt_sha256": "1fa7f8d310c6b0270772ce14809fdaba0115cabcab7611d4d3512f020cca7b50",
+      "result_sha256": "e1c83334946be99b39a5fb125d091db56fb7de652c29cfa17ad1a86e5cb269d5",
+      "evaluation_sha256": "546a7b35482116db3f704381db2c1398f7954a8b16083b38269c63f3012dd582",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 76,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.013157894736842105,
+          "ca_rmsd_angstrom": 0.8084110176748763,
+          "ca_lddt_15A": 0.9476929196499602,
+          "tm_score_kabsch": 0.9382954408477019,
+          "gdt_ts_kabsch": 0.9572368421052632,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l76-backbone1-design2",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l76-backbone1",
+      "reference_sha256": "6623a69dfd002b2b5b53663bfdcb41b8f61e7e29f8e2bf3c3407d26676caa82e",
+      "state": "verified",
+      "operation_id": "889f9d63-ed70-4cd3-90b2-f2ae53e01e09",
+      "receipt_sha256": "ec78c35e5f1631b6b2e85f363287b3f9a58c154fb9797306bcc7d450169266b9",
+      "result_sha256": "56ae2763d90f87e565851c568ccbd843c9dbd085d3d8d49061eedcff45525afb",
+      "evaluation_sha256": "b8de85cb6b40309d9f61b79956ecdc7c94a42b6c820d967b0ef2c8ef0039a429",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 76,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.013157894736842105,
+          "ca_rmsd_angstrom": 0.4226221683100255,
+          "ca_lddt_15A": 0.9894590294351631,
+          "tm_score_kabsch": 0.9818240852970262,
+          "gdt_ts_kabsch": 1.0,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l76-backbone1-design3",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l76-backbone1",
+      "reference_sha256": "6623a69dfd002b2b5b53663bfdcb41b8f61e7e29f8e2bf3c3407d26676caa82e",
+      "state": "verified",
+      "operation_id": "8e93fee1-6397-4329-96ca-12445cc2e19f",
+      "receipt_sha256": "ccd934c426938fa50d149cbac37eb1988004f1cc3b8cb65420c4e333af4ce5e8",
+      "result_sha256": "7f76a9ac89b9ba294225da7e761abb9093c48c8ebec717143f1889ce2c67685c",
+      "evaluation_sha256": "a1a8619cf40648a2432954ab1d48d9036581b00ab31936ada0b2131420419cd7",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 76,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.013157894736842105,
+          "ca_rmsd_angstrom": 0.48853223552222563,
+          "ca_lddt_15A": 0.955648369132856,
+          "tm_score_kabsch": 0.9757576458152798,
+          "gdt_ts_kabsch": 1.0,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l76-backbone1-design4",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l76-backbone1",
+      "reference_sha256": "6623a69dfd002b2b5b53663bfdcb41b8f61e7e29f8e2bf3c3407d26676caa82e",
+      "state": "verified",
+      "operation_id": "84311194-6d5c-420a-bb35-5625b33547de",
+      "receipt_sha256": "7c44b1b6ee58c7250d060607f732bd8cd2984a24f79b4fa217091a6796e98374",
+      "result_sha256": "d115d93632fa8d47f75e3e971da1b7a2ea1ff75838a6b8a5718b830b344c7feb",
+      "evaluation_sha256": "1d6bfa8b6aae40b896c3dfef19a6c82afb08e026e7d5b30a0add0783f2fbd6a1",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 76,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.013157894736842105,
+          "ca_rmsd_angstrom": 0.6220187349362147,
+          "ca_lddt_15A": 0.9797136038186157,
+          "tm_score_kabsch": 0.9638554968316785,
+          "gdt_ts_kabsch": 0.9802631578947368,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l76-backbone2-design1",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l76-backbone2",
+      "reference_sha256": "e1c1f57b9d3bb447e15110ae22be9a8d9a48b8329b9edf4eb19a5e3fdc19ad47",
+      "state": "verified",
+      "operation_id": "fe4a69d2-c186-43ac-972e-ffd9c420dbd3",
+      "receipt_sha256": "d32c6e0e2b87e205f1c2b7fd2e61ef1c7a706503ed8bdf02a66b900e815dec43",
+      "result_sha256": "61e4e4a761e592dafd6764b52cdcaa71500d6d4163f1da10fabc9b3a863a9e19",
+      "evaluation_sha256": "06de4cd4b6f3c2df7b35a348f463a79b8008ab35cd12188c2efbae956c2f40bf",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 76,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.02631578947368421,
+          "ca_rmsd_angstrom": 0.6209391817771023,
+          "ca_lddt_15A": 0.9757131842713955,
+          "tm_score_kabsch": 0.9646542030022518,
+          "gdt_ts_kabsch": 0.9769736842105263,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l76-backbone2-design2",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l76-backbone2",
+      "reference_sha256": "e1c1f57b9d3bb447e15110ae22be9a8d9a48b8329b9edf4eb19a5e3fdc19ad47",
+      "state": "verified",
+      "operation_id": "1fee2ee9-5804-4467-afac-1464aac1338d",
+      "receipt_sha256": "c07e30a94cfa41b395d5567ffa449b0a42e9f3706803e2c268ce401d09eac575",
+      "result_sha256": "2e291c911dba5e90603aa466b9057c448fccbcf0ba1a8f028ab6b14365d5efa7",
+      "evaluation_sha256": "d5a222b2d526e64168b30148a6083339c58c7123f79d452579e96f6a89949deb",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 76,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.02631578947368421,
+          "ca_rmsd_angstrom": 0.5916097425461435,
+          "ca_lddt_15A": 0.9838087895142638,
+          "tm_score_kabsch": 0.9661937332862687,
+          "gdt_ts_kabsch": 0.9802631578947368,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l76-backbone2-design3",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l76-backbone2",
+      "reference_sha256": "e1c1f57b9d3bb447e15110ae22be9a8d9a48b8329b9edf4eb19a5e3fdc19ad47",
+      "state": "verified",
+      "operation_id": "da7eaee8-5e28-4f0d-a191-eefb6f201460",
+      "receipt_sha256": "99cfb9a825c80fa6963c5c3cb060535f36f219d16e6763f2fb7f4d43b343f291",
+      "result_sha256": "40c07835829395834605c021d2d624ed389e9f61c9896499bda3f77a86f1d82e",
+      "evaluation_sha256": "574e59713f5f3c8a6416ab3a02ec1d0c115526d7b8a126665d0c23c30cce5b81",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 76,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.039473684210526314,
+          "ca_rmsd_angstrom": 0.506246732573279,
+          "ca_lddt_15A": 0.9826522744795683,
+          "tm_score_kabsch": 0.9755036943918551,
+          "gdt_ts_kabsch": 0.9868421052631579,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    },
+    {
+      "case_id": "refold-inverse-rfdiffusion-unconditional-s1-l76-backbone2-design4",
+      "upstream_model": "proteinmpnn",
+      "upstream_case_id": "inverse-rfdiffusion-unconditional-s1-l76-backbone2",
+      "reference_sha256": "e1c1f57b9d3bb447e15110ae22be9a8d9a48b8329b9edf4eb19a5e3fdc19ad47",
+      "state": "verified",
+      "operation_id": "b555bc3f-a47a-457b-b92e-8ff010286f4d",
+      "receipt_sha256": "43cb6589bc6a1ae4a2bf301972ea1f0f201005e0d2e63878141dfb6bd1d53d56",
+      "result_sha256": "f2bd3dc54f4dfc6624f22c41399ec7d261b502c9dba4ca8278c2b2da5a67f380",
+      "evaluation_sha256": "8579e33faf7ae86cab610c1c3ac59b07a5d22a882bf1bf209e91a586cd982af6",
+      "independent_semantic_pass": true,
+      "predictions": [
+        {
+          "prediction_sequence_exact": true,
+          "residues": 76,
+          "positional_coverage": 1.0,
+          "designed_sequence_identity_to_original": 0.02631578947368421,
+          "ca_rmsd_angstrom": 1.5199420290069952,
+          "ca_lddt_15A": 0.9870855821125675,
+          "tm_score_kabsch": 0.9389014545331563,
+          "gdt_ts_kabsch": 0.9572368421052632,
+          "mapping": "all residue positions, including redesigned amino acids; not sequence-identity alignment",
+          "score_scope": "fixed Kabsch CA metrics, not optimized TM-align or experimental design validation"
+        }
+      ]
+    }
+  ],
+  "scope": "Descriptive full-position CA recovery; all frozen cases retained. No affinity, stability, paper-reproduction or independent-replicate claim. No post-hoc quality threshold."
+}
