@@ -56,7 +56,43 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 ## Implementation status
 
-In progress as of 19 September, 15:26 UTC. This is not a final readiness claim.
+In progress. This is not a final readiness claim.
+
+### Latest v49/189 customer-path results
+
+All ten separate v49 instances were deployed without a quota increase and received
+one uncoached frozen prompt each (only output roots changed). Three studies
+completed through saved preparation, inference, analysis and final publication:
+ubiquitin/OpenFold2, chemistry/DiffDock+GenMol, and aging/PhenoAge+AltumAge.
+Independent numerical recomputation passed. Actual Runs→Workspace browser
+downloads passed for all eight, fourteen and thirteen declared files respectively.
+The aging study completed after its browser closed while a PhenoAge step ran.
+The other two closures were after completion or not witnessed before completion;
+do not count them as cloud-disconnect proofs. The initial observer also missed
+legitimate nested output directories, now corrected in the private test harness.
+
+Seven other v49 conversations failed before admitting a study. The complex
+comparison ended normally but asked for continuation; the clinical and retained
+MindEval tasks have explicit truncated tool-argument errors. The remaining four
+ended without a usable final answer. The detailed PD-L1 trace proves reasoning-only
+normal graph termination, not an observed client abort or hard tool-step limit;
+the provider finish reason/main-generation token usage is unavailable. No output
+limit, timeout or scientific parameter is being changed to label these successful.
+
+Candidate v50 work adds a generic, incremental typed plan composer over the same
+v2 validator/runner to avoid giant command generation. It is not deployed yet.
+A separately labelled, reuse-only MindEval comparison with a non-reasoning planner
+is being prepared on one retained test instance; this is not a production-default
+change, new GPU benchmark, or acceptance pass. Rene's original endpoint is unchanged.
+
+Backend189 is deployed. Its corrected app-bound concurrency test passed six
+overlapping metrics reads and two public history reads, including a history read
+on the metrics-loaded gateway. Earlier public404/Pod-proxy-timeout harness failures
+remain recorded separately. Retained accounting, node-fit and model-discovery
+assertions passed. Source evidence is in the solutions-library
+`k8s-inference/acceptance/reporting-contention-20260919/README.md`.
+Successful report evidence is in
+[chemistry and aging v49](evidence/20260919-unattended-chemistry-aging-v49/README.md).
 
 Latest integration update (the dated evidence below remains historical):
 
