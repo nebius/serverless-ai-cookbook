@@ -1,11 +1,27 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 04:12 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 04:36 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### Third v39 robotics recovery: real transfer outputs, incomplete delivery
+
+One ordinary third turn04:19:43.608–04:26:29.181 made28 tool calls and submitted
+actual native transfer227a8c45… plusLeRobot9fb534d6…. Both succeeded; the latter
+finished3.789s after the honest interim response. No fourth prompt. The partial
+4,357B report is browser-downloadable, but required provenance is zero bytes
+after another ad hoc NumPy export, and float32 pixel averaging makes several
+reported values wrong. Both original30s status-tool interruptions and the
+self-recovered parallel-plan429 remain failures. The installed deterministic
+export helper was available but not used. Operator-only independent LeRobot
+recovery verifies all128 rows/6,144 numeric values and exact untouched video;
+that does not complete the customer's report or establish physical validity.
+The status-wait deadline race has a bounded source fix with29 tests, not yet
+deployed. Exact IDs, hashes, method/error boundaries and pending release gate:
+[retained recovery and deadline diagnosis](../20260919-operation-wait-boundary/README.md).
 
 ### Backend179 targeted discovery verified independently
 

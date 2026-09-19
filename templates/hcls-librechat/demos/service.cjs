@@ -57,7 +57,13 @@ async function platform(key, method, resource, body, idempotencyKey, timeoutMs =
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json',
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  } catch { throw failure('Platform connection interrupted. Check existing runs before retrying with the same request ID.', 503); }
+  } catch (cause) {
+    const error = failure('Platform connection interrupted. Check existing runs before retrying with the same request ID.', 503);
+    // Private discriminator for an observation deadline, not an HTTP/backend
+    // failure or caller cancellation. Never expose the raw transport error.
+    error.platformTimeout = cause?.name === 'TimeoutError';
+    throw error;
+  }
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail = result.error && typeof result.error === 'object' ? result.error
@@ -307,13 +313,23 @@ async function waitOperation(owner, key, operationId, waitSeconds = 15) {
   const deadline = Date.now() + waitSeconds * 1000;
   const observations = [];
   let latest;
-  do {
-    latest = await track(owner, key, operationId, { source: 'agent' }, waitSeconds ? Math.max(1, deadline - Date.now()) : 45000);
+  while (true) {
+    // A wakeup at the exact deadline must not launch one final 1ms request
+    // which discards the valid running/queued state already observed.
+    if (latest && Date.now() >= deadline) break;
+    try {
+      latest = await track(owner, key, operationId, { source: 'agent' }, waitSeconds ? Math.max(1, deadline - Date.now()) : 45000);
+    } catch (error) {
+      if (latest && waitSeconds && error.platformTimeout && Date.now() >= deadline) break;
+      throw error;
+    }
     if (observations.at(-1)?.status !== latest.status) observations.push({ status: latest.status, observed_at: latest.updated_at });
     if (TERMINAL_STATES.has(latest.status) || Date.now() >= deadline) break;
     await new Promise((resolve) => setTimeout(resolve, Math.min(3000, deadline - Date.now())));
-  } while (Date.now() <= deadline);
+  }
   return { ...latest, observations, terminal: TERMINAL_STATES.has(latest.status),
+    wait_expired: Boolean(waitSeconds && !TERMINAL_STATES.has(latest.status) && Date.now() >= deadline),
+    last_observed_at: latest.updated_at,
     next_step: TERMINAL_STATES.has(latest.status) ? 'Inspect the terminal state before retrieving output.'
       : 'Still accepted, not complete. Reconnect through Runs or use another bounded wait; do not resubmit or tight-loop polls.' };
 }
