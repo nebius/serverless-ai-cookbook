@@ -161,6 +161,23 @@ the preparation's chain/prediction_chain; it records the observed ID and fails
 on zero/multiple chains. No chain letter is guessed before inference.
 Original confidence data remains separate from reference agreement. This is
 not a sequence-identity-only fit or an arbitrary observed-output tolerance.
+Prefer the correspondence's paired `prediction-result.json` as `structure.result`,
+not coordinates alone. Newly produced correspondence steps also register the
+exact paired envelope for their `prediction.structure`; when that verified
+step-file reference is selected, the structure adapter carries the same-generation
+envelope automatically. It does not scan directories or attach nearby files.
+For other coordinate inputs, explicitly supply `confidence_result` as the same
+operation's downloaded `output-manifest.json` (with the existing verified sibling
+artifact layout) or the new paired envelope. The helper requires exactly one
+coordinate SHA-256/byte-count match in that manifest and exactly one matching
+versioned confidence row. It verifies the original confidence bytes/hash and
+retains model revision, runtime, input identity, seed and sample as provenance,
+not proof of determinism. Values including `plddt_mean` and zero ipTM keep their
+native scale; no 0–1 to 0–100 conversion is inferred. Missing confidence remains
+unavailable; mismatched or ambiguous evidence fails rather than merging samples.
+Old correspondence envelopes without exact confidence source bytes are not
+rewritten: use their original downloaded manifest explicitly for a separate
+offline reassessment. Old completed studies/reports keep their original verdict.
 Declare the final structural analysis/report separately. Input
 FASTA rows are excluded from generated-design indexes; indexes are not seeds.
 These single-chain adapters require complete N/CA/C/O coordinates and explicit

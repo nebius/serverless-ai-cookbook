@@ -98,7 +98,7 @@ def coordinate_input(path, index, inputs, measurements, *, allow_mmcif=False):
         verify_file(selected, reference)
         inputs['selected_artifact'] = selected
         measurements['selected_artifact'] = {'path': str(selected), 'size_bytes': reference['size_bytes'], 'sha256': reference['sha256']}
-        confidence = []
+        confidence, confidence_sources = [], []
         if allow_mmcif:
             for position, entry in enumerate(value['entries']):
                 if entry.get('semantic_type') != 'structure-confidence-json/v1':
@@ -111,8 +111,11 @@ def coordinate_input(path, index, inputs, measurements, *, allow_mmcif=False):
                 name = f'confidence_artifact_{position}'
                 inputs[name] = file
                 measurements[name] = {'path': str(file), 'size_bytes': reference['size_bytes'], 'sha256': reference['sha256']}
-                confidence.append(json.loads(file.read_bytes()))
-        return selected.read_text(), len(candidates), {'manifest': value, 'confidence_artifacts': confidence}
+                raw = file.read_bytes()
+                confidence.append(json.loads(raw))
+                confidence_sources.append({'manifest_entry_index': position, 'raw_json': raw.decode('utf-8')})
+        return selected.read_text(), len(candidates), {'manifest': value, 'confidence_artifacts': confidence,
+            'confidence_artifact_sources': confidence_sources}
     candidates = structure_helper().structures(value)
     if index >= len(candidates):
         raise ValueError(f'Explicit structure_index {index} unavailable; found {len(candidates)} coordinate structures.')

@@ -100,7 +100,7 @@ def test_worker_chain_uses_prepared_content_not_paths_as_model_inputs(tmp_path, 
     # recorded-shaped responses. Transport identity/recovery has separate tests.
     native = {'model', 'input', 'output', 'idempotency_key'}
     batch = {'model', 'tool', 'operation', 'media_type', 'entry_name', 'semantic_type', 'idempotency_key', 'display_name', 'source', 'parameters', 'output'}
-    monkeypatch.setattr(study, 'workflow_module', lambda: SimpleNamespace(NATIVE_REQUIRED=native, REQUIRED=batch, OPTIONAL={'compression', 'service_class', 'source_artifact'}))
+    monkeypatch.setattr(study, 'workflow_module', lambda: SimpleNamespace(NATIVE_REQUIRED=native, NATIVE_OPTIONAL={'tool_name'}, REQUIRED=batch, OPTIONAL={'compression', 'service_class', 'source_artifact'}))
     source = tmp_path / 'rf.json'
     source.write_text('{}')
     args = mpnn_args(source)
@@ -311,7 +311,10 @@ def test_correspondence_consumes_published_mmcif_and_confidence_without_new_tran
     assert metadata['selection']['mapped_residues'] == 3
     assert (output / 'prediction.structure').read_bytes() == coordinate_bytes
     retained = json.loads((output / 'prediction-result.json').read_bytes())
-    assert structure_helper().confidence_fields(retained) == {'retained_source_result.confidence_artifacts[0].ptm': 0.75}
+    # Artifact confidence needs the versioned structure-hash join; a legacy
+    # arbitrary metric object is retained but is not unbound sample evidence.
+    assert structure_helper().confidence_fields(retained) == {}
+    assert retained['retained_source_result']['confidence_artifact_sources'][0]['raw_json'] == confidence_bytes.decode()
     (tmp_path / 'output-01.artifact').write_bytes(b'{"ptm":1}')
     with pytest.raises((ValueError, RuntimeError)):
         prepare('design-refold-correspondence', args, output)

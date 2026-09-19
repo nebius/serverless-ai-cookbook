@@ -59,8 +59,16 @@ def structures(value):
 def confidence_fields(value, prefix=''):
     output = {}
     if isinstance(value, dict):
+        if value.get('schema') == 'fs2.nebius.ai/structure-confidence/v1':
+            # These rows have explicit structure identities. Never aggregate
+            # other samples through recursive confidence-name discovery.
+            return output
         for name, child in value.items():
             field = f'{prefix}.{name}'.lstrip('.')
+            if name == 'confidence_artifacts' and isinstance(value.get('manifest'), dict):
+                # Published artifacts are handled only by the byte-bound join,
+                # including legacy envelopes that lack the new raw-byte field.
+                continue
             if name in {'confidence_scores', 'ptm_scores'}:
                 # Exact native Boltz result fields. Preserve every value and
                 # returned order; no rank/seed association or calibration.
@@ -68,7 +76,7 @@ def confidence_fields(value, prefix=''):
                         and not isinstance(x, bool) and np.isfinite(x) for x in child)):
                     output[field] = {'values': list(child), 'count': len(child),
                                      'ordering': 'as returned; not inferred seeds or ranks'}
-            if name in {'confidence', 'plddt', 'ptm_score', 'ptm', 'iptm', 'iptm_score', 'ranking_score'}:
+            if name in {'confidence', 'plddt', 'plddt_mean', 'ptm_score', 'ptm', 'iptm', 'iptm_score', 'ranking_score'}:
                 if isinstance(child, (int, float)) and not isinstance(child, bool) and np.isfinite(child):
                     output[field] = child
                 elif isinstance(child, list) and child and all(isinstance(x, (float, int)) and not isinstance(x, bool) for x in child):
@@ -83,6 +91,85 @@ def confidence_fields(value, prefix=''):
             if isinstance(item, (dict, list)):
                 output.update(confidence_fields(item, f'{prefix}[{index}]'))
     return output
+
+
+def bound_confidence(value, prediction_bytes, *, source_path=None):
+    """Join a published confidence row by exact bytes, never names or rank.
+
+    Accept the existing downloaded batch manifest, or the correspondence
+    envelope retaining that manifest and the exact verified confidence bytes.
+    No network access, sibling search, unit conversion or cross-run lookup.
+    """
+    manifest_schema = 'fs2-serve.nebius.ai/scientific-artifact-manifest/v1'
+    retained = value.get('retained_source_result', {}) if isinstance(value, dict) else {}
+    manifest = value if isinstance(value, dict) and value.get('schema') == manifest_schema else retained.get('manifest')
+    if not isinstance(manifest, dict) or manifest.get('schema') != manifest_schema:
+        raise ValueError('Confidence evidence requires a published batch manifest or its verified correspondence envelope.')
+    checksum = hashlib.sha256(prediction_bytes).hexdigest()
+    entries = manifest.get('entries', [])
+    coordinates = [entry for entry in entries
+                   if entry.get('semantic_type') in {'protein-structure-pdb/v1', 'protein-structure-mmcif/v1'}
+                   and entry.get('artifact', {}).get('sha256') == checksum
+                   and entry['artifact'].get('size_bytes') == len(prediction_bytes)
+                   and entry['artifact'].get('compression') == 'none']
+    if len(coordinates) != 1:
+        raise ValueError('Confidence manifest must contain exactly one selected coordinate SHA256/size match.')
+    if retained:
+        if value.get('structure', '').encode('utf-8') != prediction_bytes:
+            raise ValueError('Confidence correspondence envelope coordinates differ from the selected prediction.')
+    matches, declared = [], 0
+    for index, entry in enumerate(entries):
+        if entry.get('semantic_type') != 'structure-confidence-json/v1':
+            continue
+        declared += 1
+        artifact = entry['artifact']
+        if artifact.get('compression') != 'none' or artifact.get('media_type') != 'application/json':
+            raise ValueError('Confidence artifact must be uncompressed JSON.')
+        if manifest is value:
+            if source_path is None:
+                raise ValueError('A downloaded manifest requires its exact local artifact layout.')
+            raw = (Path(source_path).parent / f'output-{index:02d}.artifact').read_bytes()
+        else:
+            sources = [item for item in retained.get('confidence_artifact_sources', [])
+                       if item.get('manifest_entry_index') == index]
+            if len(sources) != 1 or not isinstance(sources[0].get('raw_json'), str):
+                raise ValueError('Confidence envelope lacks exact source bytes; supply the retained output-manifest.json explicitly.')
+            raw = sources[0]['raw_json'].encode('utf-8')
+        if hashlib.sha256(raw).hexdigest() != artifact.get('sha256') or len(raw) != artifact.get('size_bytes'):
+            raise ValueError('Confidence artifact SHA256/size does not match the same manifest.')
+        document = json.loads(raw)
+        if document.get('schema') != 'fs2.nebius.ai/structure-confidence/v1':
+            raise ValueError('Confidence artifact lacks the supported structure-bound schema.')
+        for row_index, row in enumerate(document.get('results', [])):
+            identity = row.get('structure', {})
+            if identity.get('sha256') != checksum:
+                continue
+            if identity.get('bytes') != len(prediction_bytes):
+                raise ValueError('Confidence row byte count contradicts the selected structure.')
+            if (type(row.get('seed')) is not int or type(row.get('sample_index')) is not int
+                    or row['sample_index'] < 0 or row['seed'] not in document.get('seeds', [])
+                    or type(document.get('samples_per_seed')) is not int
+                    or row['sample_index'] >= document['samples_per_seed']):
+                raise ValueError('Confidence row has contradictory seed/sample provenance.')
+            metrics = row.get('metrics')
+            if not isinstance(metrics, dict) or not metrics or any(
+                    type(number) not in (int, float) or not np.isfinite(number) for number in metrics.values()):
+                raise ValueError('Confidence metrics must be finite native numbers, including zero.')
+            prefix = f'confidence_artifacts[{index}].results[{row_index}].metrics'
+            matches.append(({f'{prefix}.{key}': number for key, number in metrics.items()}, {
+                'status': 'exact_structure_sha256_and_size_match',
+                'manifest_id': manifest.get('manifest_id'), 'manifest_entry_index': index,
+                'confidence_artifact_sha256': artifact['sha256'], 'confidence_artifact_size_bytes': len(raw),
+                'structure_sha256': checksum, 'structure_size_bytes': len(prediction_bytes),
+                'seed': row['seed'], 'sample_index': row['sample_index'],
+                'runtime_id': document.get('runtime_id'), 'model_revision': document.get('model_revision'),
+                'input_identity': document.get('input_identity'),
+                'scope': 'Exact published byte association; seed/sample are retained labels, not determinism or biological validity. Native numeric scales are unchanged.'}))
+    if not declared:
+        return {}, {'status': 'unavailable_no_confidence_artifact', 'structure_sha256': checksum}
+    if len(matches) != 1:
+        raise ValueError('Confidence evidence requires exactly one matching row; absent or ambiguous samples are not inferred.')
+    return matches[0]
 
 
 def matched(reference, prediction):
@@ -298,9 +385,18 @@ def report_markdown(metrics):
         if isinstance(value, dict) and 'values' in value:
             lines.append(f"- Native `{escape(field)}`: `{json.dumps(value['values'], allow_nan=False)}` "
                          '(exact returned order, not inferred seeds/ranks; source result SHA-256 below).')
+        elif type(value) in (int, float):
+            lines.append(f'- Native `{escape(field)}`: `{value}` (unchanged native scale).')
+    binding = metrics.get('confidence_binding')
+    if binding:
+        lines += [f"Confidence association: `{binding['status']}`."]
+        if 'seed' in binding:
+            lines += [f"Retained seed `{binding['seed']}`, sample `{binding['sample_index']}`; runtime `{escape(binding['runtime_id'])}`, model revision `{escape(binding['model_revision'])}`.", binding['scope']]
     lines += ['', '## Provenance', '']
-    for key in ('reference_sha256', 'prediction_sha256', 'result_sha256', 'residue_map_sha256', 'request_sha256'):
+    for key in ('reference_sha256', 'prediction_sha256', 'result_sha256', 'residue_map_sha256', 'request_sha256', 'confidence_result_sha256'):
         lines.append(f"- {key}: `{metrics.get('provenance', {}).get(key) or 'not supplied'}`")
+    if binding and binding.get('confidence_artifact_sha256'):
+        lines.append(f"- confidence_artifact_sha256: `{binding['confidence_artifact_sha256']}`")
     lines += ['', 'Poor reference agreement remains a scientific finding, not a failed service request. No quality threshold or biological success is inferred.', '']
     return '\n'.join(lines)
 
@@ -310,6 +406,8 @@ def main():
     parser.add_argument('--reference', required=True, type=Path)
     parser.add_argument('--prediction', type=Path)
     parser.add_argument('--result', type=Path, help='Raw platform JSON result containing coordinates.')
+    parser.add_argument('--confidence-result', type=Path,
+                        help='Explicit same-operation output-manifest.json or paired correspondence envelope; exact structure/artifact SHA256 and unique sample must match.')
     parser.add_argument('--structure-index', type=int, default=0)
     parser.add_argument('--chain-map', nargs='+', action='extend', help='Explicit reference:prediction chain IDs, e.g. A:A D:B; repeated flags append mappings.')
     parser.add_argument('--residue-map', type=Path,
@@ -343,6 +441,17 @@ def main():
     correspondence = json.loads(args.residue_map.read_text()) if args.residue_map else None
     metrics, mapping = compare(reference_text, prediction_text, chain_map, residue_correspondence=correspondence)
     metrics['model_confidence_not_reference_agreement'] = confidence_fields(result)
+    confidence_path = args.confidence_result
+    confidence_bytes = confidence_path.read_bytes() if confidence_path else None
+    retained = result.get('retained_source_result', {}) if isinstance(result, dict) else {}
+    if confidence_bytes is not None or isinstance(retained, dict) and 'manifest' in retained:
+        evidence = json.loads(confidence_bytes) if confidence_bytes is not None else result
+        fields, binding = bound_confidence(evidence, prediction_text.encode('utf-8'), source_path=confidence_path)
+        metrics['model_confidence_not_reference_agreement'].update(fields)
+        metrics['confidence_binding'] = binding
+    else:
+        metrics['confidence_binding'] = {'status': 'unavailable_no_structure_bound_evidence',
+            'scope': 'Any inline native result confidence is retained separately; no selected sample association is inferred.'}
     request_bytes = args.request_file.read_bytes() if args.request_file else None
     metrics['sampling_provenance'] = sampling_provenance(request_bytes, args.structure_index)
     metrics['provenance'] = {'reference_file': str(args.reference),
@@ -350,6 +459,8 @@ def main():
                              'prediction_sha256': hashlib.sha256(prediction_text.encode()).hexdigest(),
                              'result_file': str(args.result) if args.result else None,
                              'result_sha256': hashlib.sha256(result_bytes).hexdigest() if result_bytes is not None else None,
+                             'confidence_result_file': str(confidence_path) if confidence_path else None,
+                             'confidence_result_sha256': hashlib.sha256(confidence_bytes).hexdigest() if confidence_bytes is not None else None,
                              'request_file': str(args.request_file) if args.request_file else None,
                              'request_sha256': metrics['sampling_provenance']['request_sha256'],
                              'residue_map_file': str(args.residue_map) if args.residue_map else None,
