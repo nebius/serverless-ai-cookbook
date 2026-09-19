@@ -64,8 +64,69 @@ alongside the report rather than hiding omitted candidates. Suggested questions
 can repeat answered points or contain speculative rationales; review them before
 using them with a patient. Do not present them as a validated clinical checklist.
 
-Rerun the **same command and output directory** to resume a pending operation
-without retranscribing. A new input, language, prompt or model needs a new output
+## Reproducible study measurements and coverage language
+
+For a speech comparison, use the bundled offline helper rather than writing one
+normalizer in a scratch command and saving a different scoring script:
+
+```bash
+python /app/skill/clinical-documentation/scripts/study_report.py wer \
+  --reference /workspace/study/human-reference.txt \
+  --hypothesis /workspace/study/actual-transcript.txt \
+  --output /workspace/study/measurements/new-case
+```
+
+It emits `measurement.json` and `report.md` from the **same** calculated counts,
+with exact normalization ID, helper SHA-256, input hashes and unchanged copies
+of inputs and `helper.py`. Quote those recorded N/S/D/I/WER values; do not
+recount them in prose. Keep the denominator and normalization alongside every
+comparison. This method retains uncertain inner words, drops the specified
+annotation markers, and strips a declared set of edge punctuation, including
+standalone `--`. It does not expand contractions or map numbers. Other pinned
+scorers and normalization choices are separate regimes: retain their original
+outputs, name the difference, and never silently change an earlier denominator.
+WER is lexical agreement, not medication/negation accuracy or clinical quality.
+Inspect those issues separately against actual reference passages and audio.
+
+After retrieving a v11 report's exact `document.json` and `transcript.txt`, run:
+
+```bash
+python /app/skill/clinical-documentation/scripts/study_report.py coverage \
+  --document /workspace/study/clinical/document.json \
+  --transcript /workspace/study/clinical/transcript.txt \
+  --output /workspace/study/measurements/new-source-selection
+```
+
+The helper verifies literal source offsets and counts **accepted selections**,
+cited context, and review excerpts separately. Optional `--source-spans` takes
+a JSON list of exact transcript `{start, end, quote}` ranges for an explicitly
+bounded check; it reports `selected_phrase`, `cited_context_only`,
+`review_excerpt_only`, or `source_only`, not clinical entailment. A keyword in
+the report's repeated full context or review queue is not an accepted fact.
+One selected phrase does not cover every fact in its segment. Even all probe
+hits or all segments selected do **not** establish completeness. Do not turn
+"16 items located" into "no important omissions" or "all facts supported".
+
+Report only the measured scope: e.g. "X/Y declared source segments contain at
+least one accepted literal selection; completeness remains unassessed." For
+each meaning-sensitive comparison, cite the actual human-reference passage,
+the unchanged ASR passage and the accepted fact ID (or context/review-only
+location). Retain disagreements, uncertain speakers, conditions and unanswered
+questions. A source-anchored statement can still repeat an ASR error or omit a
+qualifier; source equality does not prove clinical correctness. Keep the
+automated review's claims separate from independent checks. Do not rewrite the
+clinical draft or transcript to make the comparison pass.
+
+These commands are local analysis, not new inference. Use a **new** measurement
+directory; completed outputs are immutable. Re-run its retained `helper.py`
+with retained inputs into another new directory for exact reproduction. Keep
+source text and review output in the user's protected workspace. If the exact
+helper is absent from an older image, state that limitation instead of claiming
+it ran or silently substituting an unpinned scorer.
+
+For the clinical draft workflow (not offline measurement commands), rerun the
+**same command and output directory** to resume a pending operation without
+retranscribing. A new input, language, prompt or model needs a new output
 directory. A completed directory is immutable. Empty audio/transcripts, terminal
 model errors and truncated JSON are explicit incomplete runs, not blank letters.
 Report the saved operation ID when blocked. Do not repeatedly create new runs
