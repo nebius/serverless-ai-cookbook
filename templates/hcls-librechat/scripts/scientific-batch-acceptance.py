@@ -47,6 +47,46 @@ class ExplicitRejection(RuntimeError):
         super().__init__(self.error.get("message", "Gateway explicitly rejected the request."))
 
 
+class ParameterPreflightError(ValueError):
+    """A local parameter-file rejection, before this invocation uploads/admission."""
+
+
+def preflight_parameters(tool_schema: dict, parameters: object, source: bytes, args) -> None:
+    """Validate the exact advertised parameter schema without reserving an artifact.
+
+    The documented uploaded-bundle binding is checked with a validation-only UUID
+    and measured bytes. It is never persisted or submitted; the final request is
+    still validated against the real finalized upload reference.
+    """
+    schema = tool_schema.get('properties', {}).get('parameters')
+    if not isinstance(schema, (dict, bool)):
+        raise RuntimeError('Scientific submission tool has no parameters schema; no upload was submitted.')
+    measured = {'artifact_id': '00000000-0000-4000-8000-000000000001',
+                'sha256': digest(source), 'size_bytes': len(source),
+                'media_type': args.media_type, 'compression': args.compression}
+    candidate = bind_uploaded_source(parameters, measured)
+    # Evolve the root validator rather than constructing one from the detached
+    # property: local $defs/$ref targets remain relative to the advertised tool.
+    validator = Draft202012Validator(tool_schema).evolve(schema=schema)
+    errors = list(validator.iter_errors(candidate))
+    if not errors:
+        return
+    envelope = isinstance(parameters, dict) and isinstance(parameters.get('parameters'), dict) and any(
+        field in parameters for field in ('schema', 'operation', 'service_class', 'input_manifest'))
+    prefix = ('The parameters file contains a full scientific-run request envelope. '
+              'Put only its model-parameter object at the file root, not the envelope; '
+              'the client does not unwrap or correct it. ' if envelope else
+              'The parameters file does not match the advertised model-parameter schema. ')
+    properties = schema.get('properties', {}) if isinstance(schema, dict) else {}
+    if properties:
+        shape = {name: '<' + str(value.get('type', 'contract value')) + '>'
+                 for name, value in list(properties.items())[:12] if isinstance(value, dict)}
+        prefix += 'Root-object shape (placeholders, not scientific defaults): ' + json.dumps(shape) + '. '
+    details = '; '.join('/'.join(str(part) for part in error.absolute_path) + ': ' + error.message
+                        for error in errors[:8])
+    raise ParameterPreflightError(prefix + details + '. No upload or inference was submitted by this invocation.')
+
+
 def canonical(value: object) -> bytes:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
@@ -296,7 +336,8 @@ def bind_uploaded_source(parameters: dict, artifact: dict) -> dict:
     verified source upload/reuse supplies every artifact field; filenames and
     guessed artifact IDs are never required in the parameter file.
     """
-    if parameters.get('source', {}).get('kind') != 'uploaded-bundle':
+    if (not isinstance(parameters, dict) or not isinstance(parameters.get('source'), dict)
+            or parameters['source'].get('kind') != 'uploaded-bundle'):
         return parameters
     return {**parameters, 'source': {'kind': 'uploaded-bundle', **artifact}}
 
@@ -324,6 +365,21 @@ def recover_saved_admission(args, receipt):
 
 
 async def run(args) -> dict:
+    try:
+        return await _run(args)
+    except ExceptionGroup as error:
+        # MCP/AnyIO may wrap the local validation exception during context
+        # teardown. Preserve only this exact single-leaf rejection; mixed or
+        # unrelated transport/model errors retain their original group.
+        leaf = error
+        while isinstance(leaf, BaseExceptionGroup) and len(leaf.exceptions) == 1:
+            leaf = leaf.exceptions[0]
+        if isinstance(leaf, ParameterPreflightError):
+            raise leaf from error
+        raise
+
+
+async def _run(args) -> dict:
     endpoint = os.environ["SCIENTIFIC_MODELS_MCP_URL"]
     key = os.environ["SCIENTIFIC_MODELS_API_KEY"]
     origin = endpoint.removesuffix("/mcp").removesuffix("/mcp/")
@@ -361,6 +417,16 @@ async def run(args) -> dict:
                     save(args.output / 'model-contract.json', discovery)
                     contract = scientific_contract(discovery)
                     preflight_source(contract, parameters, args, len(source))
+                    try:
+                        preflight_parameters(tool.input_schema, parameters, source, args)
+                    except ParameterPreflightError as error:
+                        save(args.output / 'parameter-preflight-error.json', {
+                            'code': 'invalid_parameter_file', 'message': str(error),
+                            'parameters_sha256': identity['parameters_sha256'],
+                            'tool_schema_sha256': digest(canonical(tool.input_schema)),
+                            'uploads_submitted_this_invocation': False,
+                            'inference_submitted_this_invocation': False})
+                        raise
                     descriptor = {'entry_name': args.entry_name, 'semantic_type': args.semantic_type,
                                   'media_type': args.media_type, 'compression': args.compression,
                                   'tool': args.tool, 'operation': args.operation}
@@ -465,7 +531,7 @@ def main() -> None:
     parser.add_argument("--entry-name", required=True)
     parser.add_argument("--semantic-type", required=True)
     parser.add_argument("--parameters", required=True, type=Path,
-                        help='Existing JSON parameter file. For an uploaded-bundle source, set source to {"kind":"uploaded-bundle"}; the client injects the exact finalized --source upload/reference before validation and submission. Do not invent artifact fields. Other source kinds retain their published contract.')
+                        help='Existing JSON containing ONLY the model parameter object, not a scientific-run request envelope. It is checked against the discovered submission parameters schema before any upload. For an uploaded-bundle source, set source to {"kind":"uploaded-bundle"}; the client injects the exact finalized --source upload/reference before validation and submission. Do not invent artifact fields. Other source kinds retain their published contract.')
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--idempotency-key", required=True)
     parser.add_argument("--display-name", required=True)
