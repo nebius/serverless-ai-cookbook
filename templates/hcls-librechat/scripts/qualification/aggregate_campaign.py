@@ -697,6 +697,10 @@ def finalize(row, current):
 
 
 def aggregate_counts(rows):
+    top_level = [row for row in rows if row["operation_kind"].startswith("top_level_")]
+    children = [
+        row for row in rows if not row["operation_kind"].startswith("top_level_")
+    ]
     stages = {
         attempt["attempt_id"]: attempt
         for row in rows
@@ -714,6 +718,17 @@ def aggregate_counts(rows):
             for x in rows
         ),
         "service_states": dict(Counter(x["service_state"] for x in rows)),
+        "service_states_scope": "all durable IDs, including child operations; not the top-level request denominator",
+        "top_level_service_states": dict(
+            Counter(x["service_state"] for x in top_level)
+        ),
+        "child_service_states": dict(Counter(x["service_state"] for x in children)),
+        "top_level_independent_checks": dict(
+            Counter(x["independent_check_state"] for x in top_level)
+        ),
+        "child_independent_checks": dict(
+            Counter(x["independent_check_state"] for x in children)
+        ),
         "independent_checks": dict(Counter(x["independent_check_state"] for x in rows)),
         "operations_with_any_retained_failed_check": sum(
             x["historical_failed_check_retained"] for x in rows
@@ -887,14 +902,25 @@ def markdown(report):
         + json.dumps(counts["operation_kinds"], sort_keys=True)
         + "`.",
         "",
-        "| App | Durable IDs | Service succeeded | Service failed | "
+        "Top-level service states: `"
+        + json.dumps(counts["top_level_service_states"], sort_keys=True)
+        + "`.",
+        "",
+        "Child service states (separate denominator): `"
+        + json.dumps(counts["child_service_states"], sort_keys=True)
+        + "`.",
+        "",
+        "| App | Top-level requests | Service succeeded | Service failed | "
         "Independent checks (pass / fail / mixed / missing) |",
         "|---|---:|---:|---:|---|",
     ]
     for app, values in report["by_app"].items():
-        states, checks = values["service_states"], values["independent_checks"]
+        states, checks = (
+            values["top_level_service_states"],
+            values["top_level_independent_checks"],
+        )
         lines.append(
-            f"| {app} | {values['durable_operation_ids']} | {states.get('succeeded', 0)} | "
+            f"| {app} | {values['top_level_inference_request_ids']} | {states.get('succeeded', 0)} | "
             f"{states.get('failed', 0)} | "
             + " / ".join(
                 str(checks.get(key, 0))

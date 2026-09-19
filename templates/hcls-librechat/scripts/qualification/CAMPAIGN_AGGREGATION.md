@@ -39,6 +39,14 @@ read, not a claim that later mutable documents still have the same hash.
   inference and children without a start witness are separate. Unconfirmed
   children are not treated as GPU inference; a capability probe may have an
   operation UUID but no GPU execution.
+- Service/check totals are split into `top_level_service_states` and
+  `child_service_states` (and corresponding independent-check maps). The App
+  table uses only the top-level denominator. Legacy `service_states` explicitly
+  covers **all durable IDs**, including children: never divide it by the number
+  of top-level requests. For the 02:16:50Z interim, 1,733 successes included 12
+  children, so the correct top-level success count was 1,721 out of 1,895
+  top-level requests, plus 56 receipt-only successes, 111 failures, six ongoing
+  states and one cancellation. The 12 children belong to a separate population.
 - Scientific stage attempts use their own immutable attempt IDs. They are not
   additional logical model submissions. Retry/stage and design/sample counts
   are distinct from top-level call volume.

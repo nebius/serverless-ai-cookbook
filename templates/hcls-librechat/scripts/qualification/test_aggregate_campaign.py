@@ -129,6 +129,13 @@ class AggregationTest(unittest.TestCase):
             },
         )
         self.assertEqual(result["counts"]["observed_stage_attempts"], 1)
+        self.assertEqual(result["counts"]["top_level_inference_request_ids"], 1)
+        self.assertEqual(result["counts"]["top_level_service_states"], {"succeeded": 1})
+        self.assertEqual(result["counts"]["child_service_states"], {"succeeded": 2})
+        self.assertEqual(sum(result["counts"]["service_states"].values()), 3)
+        report = markdown(result)
+        self.assertIn("Top-level service states", report)
+        self.assertIn("separate denominator", report)
 
     def test_unadmitted_capacity_not_model_failure_and_private_fields_omitted(self):
         for name in ("a", "b"):
