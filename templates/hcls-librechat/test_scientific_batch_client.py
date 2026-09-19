@@ -1,5 +1,6 @@
 """The packaged client reuses the existing real scientific-batch transport."""
 import asyncio
+from contextlib import asynccontextmanager
 import hashlib
 import importlib.util
 from pathlib import Path
@@ -59,13 +60,17 @@ def test_batch_upload_hashes_and_verifies_exact_compressed_file():
 def test_batch_download_must_verify_bytes_before_deliverable(tmp_path):
     class Response:
         is_success = True
-        content = b'wrong bytes'
+        headers = {}
+        async def aiter_raw(self, chunk_size):
+            yield b'wrong bytes'
     class HTTP:
-        async def get(self, path):
-            return Response()
+        @asynccontextmanager
+        async def stream(self, method, path):
+            assert method == 'GET'
+            yield Response()
     target = tmp_path / 'output.artifact'
     with pytest.raises(RuntimeError, match='hash or size mismatch'):
-        asyncio.run(client.download(HTTP(), {'artifact_id': 'fixture', 'size_bytes': 4, 'sha256': '0' * 64}, target))
+        asyncio.run(client.download(HTTP(), {'artifact_id': 'fixture', 'size_bytes': 11, 'sha256': '0' * 64}, target))
     assert not target.exists()
 
 

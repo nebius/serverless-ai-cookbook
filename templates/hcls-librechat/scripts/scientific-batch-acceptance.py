@@ -7,11 +7,13 @@ operation; it never silently resubmits after ambiguous admission.
 
 import argparse
 import asyncio
+import errno
 import hashlib
 import json
 import os
 from pathlib import Path
 import sys
+import tempfile
 import time
 from urllib.parse import quote, urlparse
 from uuid import UUID, uuid4
@@ -28,6 +30,7 @@ from scientific_receipts import load as load_receipt, receipt_lock, save
 
 
 TERMINAL = {"failed", "cancelled", "expired", "preempted"}
+ARTIFACT_CHUNK_BYTES = 1024 * 1024
 
 
 class ExplicitRejection(RuntimeError):
@@ -177,22 +180,104 @@ async def upload(http, model: str, data: bytes, media_type: str, compression: st
     return result
 
 
+def artifact_file_measurement(path: Path) -> tuple[int, str]:
+    """Hash retained files without loading an entire scientific dataset."""
+    size, checksum = 0, hashlib.sha256()
+    with path.open('rb') as stream:
+        while chunk := stream.read(ARTIFACT_CHUNK_BYTES):
+            size += len(chunk)
+            checksum.update(chunk)
+    return size, checksum.hexdigest()
+
+
+def verify_artifact_file(path: Path, reference: dict) -> None:
+    if artifact_file_measurement(path) != (reference['size_bytes'], reference['sha256']):
+        raise RuntimeError('Existing artifact bytes differ from the declared result; preserve them and use a new recovery directory.')
+
+
+def publish_artifact(staged: Path, target: Path, reference: dict) -> str:
+    """Publish verified local bytes without overwriting prior evidence.
+
+    A same-filesystem hard link is atomic and exclusive. Object Storage mounts
+    do not support that operation (or reliable rename); there the final copy is
+    exclusive, streamed, fsynced and read back before its receipt is published.
+    It is deliberately not described as atomically visible on a bucket mount.
+    """
+    try:
+        os.link(staged, target)
+        return 'atomic-link'
+    except FileExistsError:
+        verify_artifact_file(target, reference)
+        return 'verified-existing'
+    except OSError as error:
+        if error.errno not in {errno.EXDEV, errno.ENOTSUP, errno.EOPNOTSUPP, errno.EPERM, errno.ENOSYS}:
+            raise
+    created = False
+    try:
+        with open(target, 'xb', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
+            created = True
+            with staged.open('rb') as source:
+                while chunk := source.read(ARTIFACT_CHUNK_BYTES):
+                    output.write(chunk)
+            output.flush()
+            os.fsync(output.fileno())
+        verify_artifact_file(target, reference)
+        return 'verified-copy'
+    except FileExistsError:
+        verify_artifact_file(target, reference)
+        return 'verified-existing'
+    except BaseException as error:
+        # Only the partial file exclusively created by this attempt is removed.
+        # Existing files and all operation/admission receipts remain untouched.
+        if created:
+            try:
+                target.unlink(missing_ok=True)
+            except OSError as cleanup_error:
+                error.add_note(f'Partial artifact remains at {target}; cleanup failed: {cleanup_error}. No verified receipt was published.')
+        raise
+
+
 async def download(http, reference: dict, target: Path) -> dict:
+    expected_size = reference['size_bytes']
+    if type(expected_size) is not int or expected_size < 0:
+        raise ValueError('Artifact size_bytes must be a nonnegative integer.')
+    expected_hash = reference['sha256']
+    if not isinstance(expected_hash, str) or len(expected_hash) != 64 or any(c not in '0123456789abcdef' for c in expected_hash):
+        raise ValueError('Artifact sha256 must be a canonical SHA-256 digest.')
     if target.exists():
-        retained = target.read_bytes()
-        if len(retained) != reference['size_bytes'] or digest(retained) != reference['sha256']:
-            raise RuntimeError('Existing artifact bytes differ from the declared result; preserve them and use a new recovery directory.')
-        return {'artifact_id': reference['artifact_id'], 'path': str(target),
-                'size_bytes': len(retained), 'sha256': digest(retained)}
-    response = check(await http.get("/v1/artifacts/" + quote(reference["artifact_id"], safe="") + "/content"))
-    data = response.content
-    if len(data) != reference["size_bytes"] or digest(data) != reference["sha256"]:
-        raise RuntimeError("Downloaded artifact hash or size mismatch.")
-    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with open(target, "wb", opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
-        output.write(data)
-    return {"artifact_id": reference["artifact_id"], "path": str(target),
-            "size_bytes": len(data), "sha256": digest(data)}
+        verify_artifact_file(target, reference)
+        publication = 'verified-existing'
+    else:
+        target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        # Stage outside the customer bucket so an interrupted network transfer
+        # never appears as a completed artifact. No new global size cap: the
+        # exact server-declared size bounds every chunk and the resulting file.
+        with tempfile.TemporaryDirectory(prefix='scientific-artifact-') as folder:
+            staged = Path(folder) / 'download.partial'
+            size, checksum = 0, hashlib.sha256()
+            path = '/v1/artifacts/' + quote(reference['artifact_id'], safe='') + '/content'
+            async with http.stream('GET', path) as response:
+                if not response.is_success:
+                    raise RuntimeError(f'Platform returned HTTP {response.status_code}; inspect the saved evidence.')
+                length = response.headers.get('content-length')
+                if length is not None and int(length) != expected_size:
+                    raise RuntimeError('Artifact Content-Length differs from the declared size.')
+                with open(staged, 'xb', opener=lambda name, flags: os.open(name, flags, 0o600)) as stream:
+                    # Stored gzip/zstd bytes are the checksum identity; do not
+                    # transparently decode HTTP Content-Encoding during hashing.
+                    async for chunk in response.aiter_raw(chunk_size=ARTIFACT_CHUNK_BYTES):
+                        size += len(chunk)
+                        if size > expected_size:
+                            raise RuntimeError('Downloaded artifact exceeds its declared size.')
+                        checksum.update(chunk)
+                        stream.write(chunk)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            if size != expected_size or checksum.hexdigest() != expected_hash:
+                raise RuntimeError('Downloaded artifact hash or size mismatch.')
+            publication = publish_artifact(staged, target, reference)
+    return {'artifact_id': reference['artifact_id'], 'path': str(target),
+            'size_bytes': expected_size, 'sha256': expected_hash, 'publication': publication}
 
 
 async def collect_outputs(http, result: dict, output: Path) -> dict:

@@ -1,6 +1,7 @@
 """Completed-result recovery reuses the batch client without any admission."""
 import argparse
 import asyncio
+from contextlib import asynccontextmanager
 import importlib.util
 import json
 import sys
@@ -30,13 +31,20 @@ def setup_client(tmp_path, monkeypatch):
     class Context:
         async def __aenter__(self): return self
         async def __aexit__(self, *args): return False
-        async def get(self, path):
+        @asynccontextmanager
+        async def stream(self, method, path):
+            assert method == 'GET'
             requested.append(path)
             name = path.split('/')[-2]
             if name == 'bundle' and (tmp_path / 'disconnect-once').exists():
                 (tmp_path / 'disconnect-once').unlink()
                 raise ConnectionError('retained failed transfer')
-            return type('Response', (), {'is_success': True, 'content': data[name]})()
+            class Response:
+                is_success = True
+                headers = {}
+                async def aiter_raw(self, chunk_size):
+                    yield data[name]
+            yield Response()
     async def rpc(connection, name, arguments):
         tools.append(name)
         assert arguments == {'operation_id': OPERATION}
