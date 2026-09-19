@@ -5,7 +5,9 @@
 """Uploaded consultation audio -> transcript -> traceable report and questions.
 
 Run with uv run clinical_report.py --help. No administrator credential is used.
-The same output directory resumes completed stages and durable operations.
+The same output directory resumes only identical version/configuration stages.
+v5 source anchors are not retrofitted into v4 runs: keep old completed reports
+unchanged and choose a new directory to reassess an existing transcript.
 """
 
 from __future__ import annotations
@@ -305,7 +307,7 @@ def document_transcript(text, language, reporter, output):
     document = {"schema": VERSION, "kind": "consultation" if "consultation" in kinds else kinds[0],
                 "language": language, "transcript_sha256": digest(text), "facts": facts,
                 "uncertainties": uncertainties, "questions": questions, "rejected": rejected,
-                "validation": "literal source checks and automated fact review; not clinical validation"}
+                "validation": "literal medication/dose anchors and automated contextual fact review; entity omission/classification can fail; not clinical validation"}
     report, followup = render(document, language)
     save(output / "document.json", document)
     save(output / "review.json", {"uncertainties": uncertainties, "rejected": rejected})
@@ -332,7 +334,7 @@ def run(args, key=None, provider_key=None):
         "config": config, "id": "clinical-" + uuid4().hex, "started_at": datetime.now(UTC).isoformat(),
         "source_files": {name: file_digest(Path(__file__).parent / name) for name in ("clinical_report.py", "document.py")}}
     if manifest["config"] != config:
-        raise ValueError("output directory belongs to different input/configuration; use a new directory")
+        raise ValueError("output directory belongs to different input/configuration/document version; keep the existing run unchanged and use a new directory")
     save(manifest_path, manifest)
     if manifest.get("status") == "completed":
         return read(output / "document.json")

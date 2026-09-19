@@ -16,15 +16,16 @@ class CitationReporter:
         if stage.startswith('extract'):
             return {'kind': 'consultation', 'facts': [
                 {'section': 'history', 'statement': 'Symptoms began yesterday.',
-                 'source_ids': ['S1'], 'uncertain': False},
+                 'source_ids': ['S1'], 'uncertain': False, 'medication_or_dose': False, 'source_anchors': []},
                 {'section': 'plan', 'statement': 'A sample may be collected if symptoms persist.',
-                 'source_ids': ['S1'], 'uncertain': False}], 'uncertainties': []}
+                 'source_ids': ['S1'], 'uncertain': False, 'medication_or_dose': False, 'source_anchors': []}], 'uncertainties': []}
         if stage.startswith('review'):
             fact = data['facts'][0]
             verdict = ('supported' if fact['id'] == 'F0001' else
                        self.repaired if stage.endswith('-repaired') else self.initial)
             return {'decisions': [{'id': fact['id'], 'verdict': verdict,
-                'reason': 'Exact cited source checked; incomplete evidence is not approval.'}]}
+                'reason': 'Exact cited source checked; incomplete evidence is not approval.',
+                'medication_or_dose': False, 'source_anchors': []}]}
         if stage.startswith('locate'):
             return {'source_ids': ['S1', 'S2'] if self.relocated else []}
         if stage == 'questions':
