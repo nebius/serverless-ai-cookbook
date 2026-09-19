@@ -239,3 +239,46 @@ Root-owned live rollout169 contains the repaired LeRobot coordinator execution
 map and bounded App Logs reader; other serving owner settings and the four live
 scientific snapshot registrations are preserved. No limits, quotas, tool budgets
 or production customer concurrency settings were increased.
+
+## Checkpoint at approximately 00:06 UTC, 19 September
+
+- Helm169 deployed the repaired LeRobot coordinator. Ordinary public parent
+  `a04f37db-1c2b-4e8a-b776-d60225078ed5` completed both video generations and
+  returned a dataset reopened with pinned LeRobot0.6.1. All6,144 checked
+  non-video values match over128 frames/two episodes/two cameras. Total
+  latency406.806s includes156.20s fresh image pull; inference16.574/15.367s.
+  This is artifact/action alignment evidence, not physical-motion validity.
+- Helm170 deployed source1ad44fce0, image2172e19536a3, preserving all four
+  existing scientific snapshot registrations. The registered new Cosmos
+  snapshot remains unselected (`Never`) while ordinary edge-transfer runs.
+  Cross-node isolated restore is not yet ordinary public snapshot acceptance.
+- A new public ESMFold2 operation`cf771dd7-ac0f-42d9-bd09-8b6497270c01`
+  completed in114.767s. Its CPU preparation and GPU folding attempts now carry
+  the actual node/Pod IDs; the folding stage additionally carries its observed
+  GPU UUID. Admin inventory agrees:1CPU node/0GPUs and1GPU node/1GPU.
+  Older immutable receipts are not silently backfilled or rewritten.
+- Independent Gemmi/NumPy recomputation confirms all four v26 complex-study
+  coordinate metric sets within1.45e-7Å and exactly matches all contact counts.
+  The generated narrative still gives an incorrect local-fit summary range;
+  correct metrics do not establish a clean end-to-end report.
+- Proteina's original five repaired variant/protein pipelines completed in
+  isolation. Explicit100-step ligand/AME test settings produced malformed raw
+  geometry. A matched ligand seed7 run at the upstream400-step baseline passes
+  the limited CA-geometry check and reduces raw→refold RMSD55.67/56.12Å to
+  1.666/0.811Å. The public API already requires an explicit diffusion_steps;
+  there is no hidden100-step production default to repair. Other400-step
+  variants and exact public deployment remain pending. No affinity claim.
+
+| ID | Additional observation | Classification and current action |
+| --- | --- | --- |
+| Q49 | Live log-page comparison exposed one skipped row per page despite bounded reads succeeding. | Loki's backward end is exclusive. Source1ad44fce0 includes the boundary by1ns before applying the duplicate offset; regression mocks now model the real exclusivity.170 live comparison:500 single-read rows equal the first500 of three200-row pages exactly; each page0.76–0.92s. No timeout/row ceiling increase. |
+| Q50 | Scientific public result attempts omitted known node/GPU IDs even though existing lifecycle facts contained them. | Source1ad44fce0 projects existing operation/attempt/Pod-scoped correlations at terminal publication. Five focused provenance cases cover missing evidence, CPU, GPU, retries and isolation; new ordinary ESMFold2 result and admin counts verify the live repair. Parent serving-runtime defaults must not be read as aggregate multistage GPU usage. |
+| Q51 | Two already-deleting GPU-observer Pods on provider-confirmed STOPPED nodes prevented normal DaemonSet rollout progress. | Exact Pod/node/provider snapshots were retained, then only those two obsolete observer records were removed.170 subsequently reached13/13 updated and Ready within the unchanged10-minute deadline. This required operator recovery and is not an automatic-preemption recovery pass. Nodes and customer jobs were not deleted; durable provider-aware cleanup remains to be addressed. |
+| Q52 | v29 bounded30s execution observation raced the existing30000ms MCP transport deadline, producing two recoverable tool timeouts. | Durable jobs continued and were recovered without duplicate inference. v30 reserves5s transport margin, reports effective25s observation, and tests a real26s job across pending/terminal reconnect. Original timeout evidence remains; no transport, job, tool-round or output limit increase. Fresh live retest pending. |
+| Q53 | Typed deterministic per-run chemistry/aging metrics are correct, but handwritten cross-run narrative still invents denominators, extrema or causal explanations. | v29 deterministic per-run docking reports fix the earlier extrema mistakes, but its final report says three of four top-ranked3PTB results despite only two such runs. Generic multi-run aggregation is being implemented. v28 aging completed after a continuation; historical reconstruction cause wording remains unsupported. No natural-workflow pass from numeric artifacts alone. |
+
+Current source coverage explicitly preserves32Apps and13 scoped evidence rows,
+including remaining BoltzGen protocol/RFdiffusion motif gaps, Proteina public
+variant failures and MolMIM finite-search exhaustion. Source coverage refresh is
+not a requalification of every release. Existing MSA/refold campaigns and other
+customer work continue; the review deadline remains06:04UTC.
