@@ -271,7 +271,7 @@ def test_grouped_plan_reduces_peak_arguments_without_one_call_per_step(mounted, 
     # validation. No endpoint, model call, or scientific calculation is run.
     from types import SimpleNamespace
     monkeypatch.setattr(study, 'workflow_module', lambda: SimpleNamespace(
-        NATIVE_REQUIRED={'kind', 'id', 'model', 'input', 'output', 'idempotency_key'}, REQUIRED=set(), OPTIONAL=set()))
+        NATIVE_REQUIRED={'kind', 'id', 'model', 'input', 'output', 'idempotency_key'}, NATIVE_OPTIONAL={'tool_name'}, REQUIRED=set(), OPTIONAL=set()))
     plan = representative_plan(mounted)
     Draft202012Validator(STUDY_SCHEMA).validate(plan)
     study.validate(plan)

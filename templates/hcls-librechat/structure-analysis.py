@@ -61,6 +61,13 @@ def confidence_fields(value, prefix=''):
     if isinstance(value, dict):
         for name, child in value.items():
             field = f'{prefix}.{name}'.lstrip('.')
+            if name in {'confidence_scores', 'ptm_scores'}:
+                # Exact native Boltz result fields. Preserve every value and
+                # returned order; no rank/seed association or calibration.
+                if (isinstance(child, list) and all(isinstance(x, (float, int))
+                        and not isinstance(x, bool) and np.isfinite(x) for x in child)):
+                    output[field] = {'values': list(child), 'count': len(child),
+                                     'ordering': 'as returned; not inferred seeds or ranks'}
             if name in {'confidence', 'plddt', 'ptm_score', 'ptm', 'iptm', 'iptm_score', 'ranking_score'}:
                 if isinstance(child, (int, float)) and not isinstance(child, bool) and np.isfinite(child):
                     output[field] = child
@@ -286,8 +293,12 @@ def report_markdown(metrics):
         lines.append(f"- Declared `{escape(field['json_pointer'])}`: `{field['value']}` ({field['status']}).")
     confidence = metrics.get('model_confidence_not_reference_agreement', {})
     lines += ['Model-confidence values remain separate, in their model-native units. No rescaling or accuracy/affinity claim is made.',
-              f"Retained confidence fields: {len(confidence)}; see metrics.json for their exact source paths and values.", '',
-              '## Provenance', '']
+              f"Retained confidence fields: {len(confidence)}; see metrics.json for their exact source paths and values."]
+    for field, value in confidence.items():
+        if isinstance(value, dict) and 'values' in value:
+            lines.append(f"- Native `{escape(field)}`: `{json.dumps(value['values'], allow_nan=False)}` "
+                         '(exact returned order, not inferred seeds/ranks; source result SHA-256 below).')
+    lines += ['', '## Provenance', '']
     for key in ('reference_sha256', 'prediction_sha256', 'result_sha256', 'residue_map_sha256', 'request_sha256'):
         lines.append(f"- {key}: `{metrics.get('provenance', {}).get(key) or 'not supplied'}`")
     lines += ['', 'Poor reference agreement remains a scientific finding, not a failed service request. No quality threshold or biological success is inferred.', '']

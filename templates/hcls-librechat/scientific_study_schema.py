@@ -35,7 +35,9 @@ def local(method, args):
 CHAIN = {'oneOf': [TEXT, object_schema({'selection': {'const': 'sole-protein-chain'}})],
          'description': 'Exact chain ID, or explicitly request the sole observed protein chain; zero/multiple chains fail, never guess A.'}
 NATIVE = object_schema({'id': TEXT, 'kind': {'const': 'native'}, 'model': TEXT,
-                       'input': FILE, 'idempotency_key': TEXT})
+                       'input': {**FILE, 'description': FILE['description'] + ' Preserve this exact original input reference for request provenance; native does not publish a new input.json output.'}, 'idempotency_key': TEXT,
+                       'tool_name': {**TEXT, 'description': 'Exact native tool_name from the model schema used to author this input. Preserved in the immutable plan and client identity; never add missing scientific fields or select a different contract silently. Without a selector the client requires one uniquely matching native schema.'}},
+                       ['id', 'kind', 'model', 'input', 'idempotency_key'])
 BATCH_FIELDS = {'id': TEXT, 'kind': {'const': 'batch'}, **{key: TEXT for key in (
     'model', 'tool', 'operation', 'media_type', 'entry_name', 'semantic_type', 'idempotency_key', 'display_name')},
     'source': FILE, 'parameters': {**FILE,
@@ -92,7 +94,8 @@ STEPS = [NATIVE, BATCH, CLINICAL,
         'prediction_chain': CHAIN})),
     local('structure', {**object_schema({'reference': FILE, 'prediction': FILE, 'result': FILE,
         'chain_map': {'type': 'array', 'minItems': 1, 'items': TEXT}, 'structure_index': {'type': 'integer', 'minimum': 0},
-        'residue_map': FILE, 'request_file': FILE}, ['reference']), **PREDICTION,
+        'residue_map': FILE, 'request_file': {**FILE,
+            'description': FILE['description'] + ' Bind the original native input or batch request.json whenever reporting requested seeds/sampling settings. Filenames, coordinate indices and report headings are not request provenance. Omission is recorded as unknown, not inferred from context.'}}, ['reference']), **PREDICTION,
         'anyOf': [{'required': ['chain_map']}, {'required': ['residue_map']}]}),
     local('docking', {**object_schema({'reference': FILE, 'prediction': FILE, 'result': FILE,
         'same_coordinate_frame': {'const': True}, 'threshold_queries': THRESHOLDS},
@@ -145,7 +148,7 @@ DRAFT_SCHEMA = object_schema({
 # loosely documented plan language. Lists apply only to successful phases;
 # conditional filenames must never become unconditional final deliverables.
 PHASE_OUTPUTS = {
-    'native': (['result.json'], ['JSON models retain their original result shape. Native media publish scientific-native-file/v1 in result.json with verified file.path/size_bytes/sha256 plus result.mp4, result.wav or another declared media extension. Do not JSON-decode binary media or infer its identity by directory globbing.']),
+    'native': (['result.json'], ['JSON models retain their original result shape. Native media publish scientific-native-file/v1 in result.json with verified file.path/size_bytes/sha256 plus result.mp4, result.wav or another declared media extension. Do not JSON-decode binary media or infer its identity by directory globbing. Native does not publish input.json: preserve the exact original input file or its preparation-step reference as provenance, not a guessed model output.']),
     'batch': (['result.json', 'output-manifest.json'], ['output-NN.artifact: one verified sibling per manifest entry; role, MIME and compression come from output-manifest.json.']),
     'clinical': (['clinical-outcome.json', 'clinical-outcome.md'], ['Normal report success publishes the existing clinical files. Explicit allow_no_report permits only no_supported_clinical_facts, preserving transcript.txt, review.json, coverage.json and run.json; report.md, document.json and follow-up.md do not exist for that outcome. Reference the guaranteed clinical-outcome.md in downstream reports when either outcome is allowed.']),
     'write-json': ([], ['Exactly the declared filename; JSON values are not automatically loaded from file references.']),
@@ -171,9 +174,16 @@ PHASE_OUTPUTS = {
 # Unknown/dynamic outputs are not inferred from prose or forbidden here.
 PHASE_OUTPUT_DIRECTORIES = {'mindeval': ['records', 'transcripts'], 'report': ['sources']}
 
-# Only helpers with an exhaustive output contract belong here. Model,
-# clinical and manifest-driven helper outputs remain dynamic, not guessed.
+# Exact client/helper filenames, including conditional files. Batch artifact
+# count remains unknown; its client-generated names use the pattern below.
+# Clinical and other manifest-driven helper outputs remain dynamic.
 PHASE_OUTPUT_ALTERNATIVES = {
+    'native': ['schema.json', 'submission.json', 'operation.json', 'result-envelope.json',
+               'result-artifact.json', 'validation-error.json',
+               'result.mp4', 'result.webm', 'result.png', 'result.jpg', 'result.wav',
+               'result.mp3', 'result.ogg', 'result.bin'],
+    'batch': ['contract.json', 'model-contract.json', 'input-manifest.json', 'request.json',
+              'submission.json', 'status.json', 'parameter-preflight-error.json', 'recovery-receipt.json'],
     'structure': ['prediction.pdb', 'prediction.cif'],
     'proteinmpnn-input': [], 'esmfold2-fast-input': [],
     'design-refold-correspondence': [],
@@ -182,15 +192,21 @@ PHASE_OUTPUT_ALTERNATIVES = {
     'robotics-analysis': ['helper-input.json'],
     'evo2-continuation': ['helper-input.json'],
 }
+PHASE_OUTPUT_PATTERNS = {'batch': [r'output-(?:[0-9]{2}|[1-9][0-9]{2,})\.artifact']}
+
+
+def output_contract_name(step):
+    return step.get('method') or step.get('kind')
 
 
 def known_output_files(step):
     """Possible exact files when the helper or saved plan determines them.
 
-    Possible is not guaranteed: structure emits one coordinate format. None
-    means this preflight cannot know the complete output set, not an error.
+    Possible is not guaranteed: structure emits one coordinate format. Additional
+    client-generated names may match PHASE_OUTPUT_PATTERNS. None means this
+    preflight cannot know the complete output set, not an error.
     """
-    method = step.get('method')
+    method = output_contract_name(step)
     if method in PHASE_OUTPUT_ALTERNATIVES:
         return set(PHASE_OUTPUTS[method][0] + PHASE_OUTPUT_ALTERNATIVES[method])
     args = step.get('arguments', {})
@@ -219,6 +235,8 @@ def describe_workflow(methods=None):
                          'directories_not_deliverable_files': PHASE_OUTPUT_DIRECTORIES.get(name, []),
                          **({'possible_exact_files': PHASE_OUTPUTS[name][0] + PHASE_OUTPUT_ALTERNATIVES[name]}
                             if name in PHASE_OUTPUT_ALTERNATIVES else {}),
+                         **({'possible_filename_fullmatch_patterns': PHASE_OUTPUT_PATTERNS[name]}
+                            if name in PHASE_OUTPUT_PATTERNS else {}),
                          **({'cli_example': PYTHON_SCRIPT_CLI_EXAMPLE,
                              'bindings_schema': {'schema': 'scientific-python-bindings/v1',
                                                  'inputs': {'result_a': '<resolved verified file path>'},

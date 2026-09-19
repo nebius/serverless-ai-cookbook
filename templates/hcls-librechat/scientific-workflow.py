@@ -36,9 +36,32 @@ REQUIRED = {'model', 'tool', 'operation', 'source', 'media_type', 'entry_name',
             'semantic_type', 'parameters', 'output', 'idempotency_key', 'display_name'}
 OPTIONAL = {'compression', 'service_class', 'source_artifact'}
 NATIVE_REQUIRED = {'model', 'input', 'output', 'idempotency_key'}
+NATIVE_OPTIONAL = {'tool_name'}
 TERMINAL_FAILURES = {'failed', 'cancelled', 'expired', 'preempted'}
 CONCURRENCY_CODES = {'concurrency_exceeded', 'admission_limit_reached'}
 MAX_READ_RECONNECTS = 3
+
+
+class NativePreflightRejected(ValueError):
+    """A saved native client receipt proves that this attempt was not admitted."""
+
+
+def native_preflight_diagnostic(saved):
+    rejection = saved.get('last_rejection', {})
+    if (saved.get('state') != 'input_rejected' or saved.get('operation_id')
+            or rejection.get('durable_admission') is not False
+            or rejection.get('type') not in {'local_input_validation', 'local_contract_selection'}):
+        return None
+    safe = {'type': rejection['type'], 'durable_admission': False}
+    for field in ('code', 'validator', 'input_pointer', 'schema_pointer'):
+        value = rejection.get(field)
+        if isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9_./~:-]{1,400}', value):
+            safe[field] = value
+    tools = rejection.get('candidate_tools')
+    if (isinstance(tools, list) and len(tools) <= 32
+            and all(isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9_-]{1,200}', value) for value in tools)):
+        safe['candidate_tools'] = tools
+    return safe
 
 
 def transport_disconnect(error):
@@ -60,9 +83,11 @@ def prepare(plan):
         if kind not in {'batch', 'native'}:
             raise ValueError('Step kind must be batch or native.')
         required = NATIVE_REQUIRED if kind == 'native' else REQUIRED
-        optional = set() if kind == 'native' else OPTIONAL
+        optional = NATIVE_OPTIONAL if kind == 'native' else OPTIONAL
         if set(step) - required - optional - {'id', 'kind'} or required - set(step):
             raise ValueError('Step must use exactly the documented client arguments.')
+        if 'tool_name' in step and (not isinstance(step['tool_name'], str) or not step['tool_name'].strip()):
+            raise ValueError('Native tool_name must be a nonempty exact published tool selector.')
         ids.add(identifier)
         for field in ('source', 'parameters', 'input', 'output', 'source_artifact'):
             if field not in step:
@@ -101,7 +126,7 @@ def validate_files(plan):
             if field != 'source':
                 try:
                     value = json.loads(path.read_bytes())
-                except ValueError as error:
+                except ValueError:
                     issues.append(f"Step {step['id']} {field} is not valid JSON: {path}")
                     continue
                 if not isinstance(value, dict):
@@ -121,6 +146,11 @@ async def run_native_step(arguments, execute):
         result = await execute(arguments)
     except Exception:
         saved = load(arguments.output_dir / 'receipt.json') or {}
+        diagnostic = native_preflight_diagnostic(saved)
+        if diagnostic:
+            raise NativePreflightRejected(
+                'Native input/contract rejected before admission: ' + json.dumps(diagnostic, sort_keys=True)
+                + '. Inspect the saved validation-error.json and original input; no retry was made.') from None
         rejection = saved.get('last_rejection', {})
         # Inspect only the receipt for this exact failed attempt. A historical
         # rejection must not turn a later ambiguous admission into a retry.
@@ -195,6 +225,8 @@ async def run(plan, output, wait_seconds=1800, poll_seconds=10, run_step=None, c
                              # never hold it through an unbounded batch wait.
                              'wait_seconds': min(poll_seconds, remaining, 30),
                              'recover_only': recover_only}
+                if step.get('tool_name'):
+                    arguments['tool'] = step['tool_name']
             else:
                 arguments = {**{'compression': 'none', 'service_class': 'customer-batch'},
                              **{key: value for key, value in step.items() if key not in {'id', 'kind'}},

@@ -119,14 +119,19 @@ def known_output_reference(value, steps):
     """Reject known impossible names before any model admission; never rename."""
     if not isinstance(value, dict):
         return
-    from scientific_study_schema import known_output_files
+    from scientific_study_schema import known_output_files, output_contract_name, PHASE_OUTPUT_PATTERNS
     source = steps[value['step']]
+    contract = output_contract_name(source)
     possible = known_output_files(source)
-    if possible is not None and value['file'] not in possible:
+    patterns = PHASE_OUTPUT_PATTERNS.get(contract, [])
+    if (possible is not None and value['file'] not in possible
+            and not any(re.fullmatch(pattern, value['file']) for pattern in patterns)):
         raise ValueError(
-            f"Step {value['step']} ({source['method']}) cannot publish {value['file']!r}. "
+            f"Step {value['step']} ({contract}) cannot publish {value['file']!r}. "
             f"Use an exact published filename: {', '.join(sorted(possible))}. "
-            'Conditional coordinate formats are not guaranteed before their result exists; '
+            + ('Batch artifact names follow output-NN.artifact in output-manifest.json; their count, bytes and media types are not known before execution. ' if patterns else '')
+            + ('Native input provenance must reference the original input file or its exact preparation-step reference; native does not copy it to input.json. ' if contract == 'native' else '')
+            + 'Conditional files are not guaranteed before their result exists; '
             'no output has been renamed and no study has been admitted.')
 
 
@@ -211,7 +216,7 @@ def validate(plan):
         if kind in MODEL_KINDS:
             required = workflow.NATIVE_REQUIRED if kind == 'native' else workflow.REQUIRED
             required = required - {'output'}
-            optional = set() if kind == 'native' else workflow.OPTIONAL
+            optional = workflow.NATIVE_OPTIONAL if kind == 'native' else workflow.OPTIONAL
             if required - step.keys() or step.keys() - required - optional - {'id', 'kind'}:
                 raise ValueError(f'Step {identifier}: {kind} fields must match the existing client contract; output is managed by the study.')
             for name in (required | optional) - {'input', 'source', 'parameters', 'source_artifact'}:
@@ -382,7 +387,8 @@ def submit(plan, output):
         for step in plan['steps']:
             if step['kind'] == 'clinical':
                 script = Path(os.environ.get('SCIENTIFIC_CLINICAL_SCRIPT', '/app/skill/clinical-documentation/scripts/clinical_report.py'))
-                for helper in [HERE / 'scientific_clinical.py', script, script.with_name('document.py')]:
+                report_helper = Path(os.environ.get('SCIENTIFIC_CLINICAL_REPORT_HELPER', str(script.with_name('study_report.py'))))
+                for helper in [HERE / 'scientific_clinical.py', script, script.with_name('document.py'), report_helper]:
                     if not helper.is_file():
                         raise ValueError('The existing clinical runner is not installed.')
                     implementations['clinical/' + helper.name] = measure(helper)
@@ -631,7 +637,49 @@ async def run_model(step, record):
             **{key: observed[key] for key in ('operation_id',) if key in observed}}
 
 
+def publication_artifacts(plan, record):
+    """Verify promised files, then include explicitly registered customer outputs.
+
+    A phase producer, not directory enumeration or an LLM, chooses supplementary
+    customer files. No worker/checkpoint files are included implicitly. Explicit
+    impossible/missing promises still fail, even when useful other files exist.
+    """
+    artifacts = []
+    for item in plan['deliverables']:
+        path = path_in_workspace(resolve(item['source'], record))
+        info = measure(path)
+        if item['role'] == 'report' and not info['size_bytes']:
+            raise ValueError('A promised report is empty; study cannot complete.')
+        artifacts.append({'name': item['name'], 'role': item['role'], **info})
+    paths = {item['path'] for item in artifacts}
+    names = {item['name'] for item in artifacts}
+    for step in plan['steps']:
+        result = record['steps'][step['id']]
+        for filename, selected in result.get('customer_artifacts', {}).items():
+            registered = result.get('files', {}).get(filename)
+            if (result.get('state') != 'completed' or not registered
+                    or any(selected.get(key) != registered.get(key) for key in ('path', 'sha256', 'size_bytes'))
+                    or selected.get('role') not in {'report', 'data', 'metrics', 'provenance', 'support'}):
+                raise ValueError('Customer output is not an exact verified completed-step file.')
+            path = path_in_workspace(registered['path'])
+            verify_file(path, registered)
+            if selected['role'] == 'report' and not registered['size_bytes']:
+                raise ValueError('A registered customer report is empty; study cannot complete.')
+            if str(path) in paths:
+                continue
+            name = f"steps/{step['id']}/{filename}"
+            if name in names:
+                raise ValueError('Declared and registered customer artifact names conflict; no file was renamed.')
+            artifacts.append({'name': name, 'role': selected['role'], **measure(path),
+                              'source_step': step['id'], 'source_file': filename,
+                              'publication_basis': 'registered_customer_output'})
+            paths.add(str(path))
+            names.add(name)
+    return artifacts
+
+
 def run_clinical(step, record):
+    from scientific_clinical import customer_artifacts, outcome_documents
     source = path_in_workspace(resolve(step['source'], record))
     root = Path(record['output_directory']) / 'steps' / step['id'] / 'clinical-checkpoint'
     command = [sys.executable, str(HERE / 'scientific_clinical.py'), '--source', str(source),
@@ -670,19 +718,13 @@ def run_clinical(step, record):
                    'report_model': step['report_model'],
                    'report_provider': 'https://api.tokenfactory.nebius.com/v1',
                    'files': public_files.copy()}
-        summary = ('No supported clinical facts were extracted. No report, document or follow-up was produced. '
-                   'This explicitly permitted no-report outcome is not a finding of absent illness or proof that the source lacks important information. '
-                   'Review the unchanged transcript, review.json and coverage.json.' if allowed_no_report else
-                   'A clinical draft was produced. Review its unchanged transcript, cited contexts, withheld candidates and questions; completion does not establish clinical correctness or completeness.')
         with tempfile.TemporaryDirectory(prefix='clinical-outcome-') as temporary:
-            for name, content in {
-                'clinical-outcome.json': canonical(outcome) + b'\n',
-                'clinical-outcome.md': ('# Clinical stage outcome\n\n' + state + '\n\n' + summary + '\n').encode(),
-            }.items():
+            for name, content in outcome_documents(outcome).items():
                 local = Path(temporary) / name
                 local.write_bytes(content)
                 public_files[name] = persist_local_file(local, generation / name)
         return {'state': 'completed', 'files': public_files, 'clinical_validation': False,
+                'customer_artifacts': customer_artifacts(public_files, not allowed_no_report),
                 'outcome': state, 'report_produced': not allowed_no_report,
                 'checkpoint': str(root), 'report_model': step['report_model'],
                 'operations': operations,
@@ -816,13 +858,7 @@ async def advance(identifier, model_runner=None, local_runner=None, cancel_runne
             else:
                 record.update(state='publishing', phase='publication')
                 save(root / 'receipt.json', record)
-                artifacts = []
-                for item in plan['deliverables']:
-                    path = path_in_workspace(resolve(item['source'], record))
-                    info = measure(path)
-                    if item['role'] == 'report' and not info['size_bytes']:
-                        raise ValueError('A promised report is empty; study cannot complete.')
-                    artifacts.append({'name': item['name'], 'role': item['role'], **info})
+                artifacts = publication_artifacts(plan, record)
                 manifest = {'schema': 'scientific-study-artifacts/v1', 'study_id': record['id'],
                             'plan_identity': record['identity'], 'title': record['title'],
                             'artifacts': artifacts, 'scientific_validity_claim': False,

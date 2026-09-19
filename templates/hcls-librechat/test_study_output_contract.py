@@ -135,7 +135,7 @@ def test_future_worker_path_or_directory_has_actionable_named_reference_hint(mou
         'step_schema']['properties']['arguments']['properties']['inputs']['items']['properties']['file']['description']
 
 
-@pytest.mark.parametrize('step', [{'kind': 'native'}, {'kind': 'batch'}, {'kind': 'clinical'},
+@pytest.mark.parametrize('step', [{'kind': 'clinical'},
     {'method': 'mindeval'}, {'method': 'report'}, {'method': 'clinical-study'}, {'method': 'aging'}])
 def test_dynamic_output_contracts_remain_deferred_not_forbidden(step):
     assert known_output_files(step) is None
