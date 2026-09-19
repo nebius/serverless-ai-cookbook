@@ -105,19 +105,57 @@ def verify_saved_native_file(value, output_dir):
     verify_file(target, reference)
 
 
+class NativeContractError(ValueError):
+    """An explicit, pre-admission contract-selection failure."""
+
+    def __init__(self, code, tools):
+        self.code = code
+        self.tools = tools
+        super().__init__(code + ': specify the exact discovered native tool with --tool.')
+
+
+def select_contract(schema, arguments, tool_name=None):
+    """Never infer a capability from catalog order or modify model arguments.
+
+    A named tool is authoritative. Legacy unnamed callers may select only one
+    validating contract; overlapping contracts require an explicit choice.
+    """
+    contracts = [c for c in schema['contracts'] if c.get('protocol') == 'native']
+    tools = [c['tool_name'] for c in contracts]
+    if tool_name is not None:
+        matches = [c for c in contracts if c['tool_name'] == tool_name]
+        if len(matches) != 1:
+            raise NativeContractError('native_tool_not_unique_or_unavailable', tools)
+        Draft202012Validator(matches[0]['input_schema']).validate(arguments)
+        return matches[0]
+    if len(contracts) == 1:
+        Draft202012Validator(contracts[0]['input_schema']).validate(arguments)
+        return contracts[0]
+    matches = [c for c in contracts
+               if Draft202012Validator(c['input_schema']).is_valid(arguments)]
+    if len(matches) != 1:
+        code = 'ambiguous_native_contract' if matches else 'no_matching_native_contract'
+        raise NativeContractError(code, [c['tool_name'] for c in matches] or tools)
+    return matches[0]
+
+
+def retain_input_validation(error, output_dir, record):
+    pointer = lambda parts: '/' + '/'.join(str(part).replace('~', '~0').replace('/', '~1') for part in parts)
+    evidence = {'type': 'local_input_validation', 'durable_admission': False,
+                'message': error.message[:2000], 'validator': error.validator,
+                'input_pointer': pointer(error.absolute_path),
+                'schema_pointer': pointer(error.absolute_schema_path)}
+    save(output_dir / 'validation-error.json', evidence)
+    record.update(state='input_rejected', last_rejection=evidence)
+    save(output_dir / 'receipt.json', record)
+
+
 def validate_input(schema, arguments, output_dir, record):
     """Retain a useful pre-admission diagnostic without another model call."""
     try:
         Draft202012Validator(schema).validate(arguments)
     except ValidationError as error:
-        pointer = lambda parts: '/' + '/'.join(str(part).replace('~', '~0').replace('/', '~1') for part in parts)
-        evidence = {'type': 'local_input_validation', 'durable_admission': False,
-                    'message': error.message[:2000], 'validator': error.validator,
-                    'input_pointer': pointer(error.absolute_path),
-                    'schema_pointer': pointer(error.absolute_schema_path)}
-        save(output_dir / 'validation-error.json', evidence)
-        record.update(state='input_rejected', last_rejection=evidence)
-        save(output_dir / 'receipt.json', record)
+        retain_input_validation(error, output_dir, record)
         raise
 
 
@@ -133,6 +171,8 @@ async def run(args):
     identity = {'model_id': args.model, 'input_sha256': hashlib.sha256(payload_bytes).hexdigest(),
                 'endpoint': endpoint, 'caller_fingerprint': hashlib.sha256(key.encode()).hexdigest(),
                 'idempotency_key': args.idempotency_key}
+    if getattr(args, 'tool', None) is not None:
+        identity['tool_name'] = args.tool
     args.output_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     path = args.output_dir / 'receipt.json'
     record = load_receipt(path)
@@ -186,10 +226,27 @@ async def run(args):
                 return unpack(response)
 
             if not record.get('operation_id'):
-                schema = await call('get_model_schema', {'model_id': args.model, 'protocol': 'native'}, 'schema.json')
-                contract = next(c for c in schema['contracts'] if c['protocol'] == 'native')
+                # A previously selected capability is sticky across an explicit
+                # non-admission retry. Catalog order is never an operation ID.
+                selected_tool = getattr(args, 'tool', None) or record.get('tool')
+                query = {'model_id': args.model, 'protocol': 'native'}
+                if selected_tool is not None:
+                    query['tool_name'] = selected_tool
+                schema = await call('get_model_schema', query, 'schema.json')
                 arguments = dict(payload, idempotency_key=args.idempotency_key, wait_seconds=0)
-                validate_input(contract['input_schema'], arguments, args.output_dir, record)
+                try:
+                    contract = select_contract(schema, arguments, selected_tool)
+                except ValidationError as error:
+                    retain_input_validation(error, args.output_dir, record)
+                    raise
+                except NativeContractError as error:
+                    evidence = {'type': 'local_contract_selection', 'durable_admission': False,
+                                'code': error.code, 'candidate_tools': error.tools,
+                                'message': str(error)}
+                    save(args.output_dir / 'validation-error.json', evidence)
+                    record.update(state='input_rejected', last_rejection=evidence)
+                    save(path, record)
+                    raise
                 record.update(state='submitting', tool=contract['tool_name'], input_bytes=len(payload_bytes))
                 save(path, record)
                 try:
@@ -239,6 +296,7 @@ async def run(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model', required=True)
+    parser.add_argument('--tool', help='Exact native tool_name returned by get_model_schema; required when contracts overlap.')
     parser.add_argument('--input', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--idempotency-key', required=True)
@@ -259,9 +317,17 @@ def main():
             raise SystemExit(75)
     except Exception as error:
         # Provider/library exception text may contain signed handles or headers.
-        print(json.dumps({'state': 'error', 'error_type': type(error).__name__,
-                          'details': 'Inspect local receipt files; no automatic resubmission.',
-                          'output_dir': str(args.output_dir)}))
+        summary = {'state': 'error', 'error_type': type(error).__name__,
+                   'details': 'Inspect local receipt files; no automatic resubmission.',
+                   'output_dir': str(args.output_dir)}
+        saved = load_receipt(args.output_dir / 'receipt.json') or {}
+        rejection = saved.get('last_rejection', {})
+        if (saved.get('state') == 'input_rejected' and not saved.get('operation_id')
+                and rejection.get('durable_admission') is False):
+            summary['local_rejection'] = {key: rejection[key] for key in
+                ('type', 'code', 'validator', 'input_pointer', 'schema_pointer', 'candidate_tools')
+                if key in rejection}
+        print(json.dumps(summary))
         raise SystemExit(1)
 
 

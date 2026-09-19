@@ -49,12 +49,19 @@ depth/segmentation controls if those data were not supplied or validly derived.
 
 The published specialized native transfer tool is `cosmos3_nano_transfer_video`.
 Request `get_model_schema(model_id="cosmos3-nano", tool_name="cosmos3_nano_transfer_video")`
-to inspect that exact contract without every sibling mode. The file-based native
-client uses its generic `mode: transfer-video` representation outside chat;
-the specialized direct tool already selects its mode. Follow each live schema.
+to inspect that exact contract without every sibling mode. Preserve that choice
+as `tool_name: "cosmos3_nano_transfer_video"` in the native workflow phase, or
+`--tool cosmos3_nano_transfer_video` in the file helper. Use exactly that tool's
+input schema: its specialized contract already selects the mode. The separate
+generic `cosmos3_nano_generate_media_native` contract requires an explicit mode.
+Do not mix the generic and specialized inputs or depend on catalog ordering.
 For a direct call, load only that exact tool with tool_search's existing
 `max_results:1`, `fields:["name"]`, `mcp_server:"bionemo-models"` parameters.
 A file-based workflow does not need the direct model tools loaded into chat.
+Queued whole-study admission is not evidence that either model call has been
+submitted. Describe the Study as queued/in progress until its actual phase
+receipts contain operation IDs; never say both media calls were submitted merely
+because the supervisor accepted the plan.
 
 For `cosmos3-lerobot-augmentation`, read its scientific schema and artifact
 contract. The current recorded-video path is `augmentation.mode: transfer`

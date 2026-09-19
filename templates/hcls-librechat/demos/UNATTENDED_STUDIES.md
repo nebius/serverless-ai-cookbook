@@ -84,7 +84,7 @@ Supported phases reuse installed implementations:
 | preparation/esmfold2-fast-input | Exact original ProteinMPNN input + selected generated FASTA row → refolding source JSON and parameters; no implicit sequence choice |
 | preparation/design-refold-correspondence | Exact original design/query/returned chain → full hash-bound query-position residue map for the existing structure evaluator |
 | preparation or analysis/python-script | Saved hash-frozen scientific Python source and declared files → private scratch outputs, verified publication and retained source/provenance; unchanged 120-second phase budget |
-| native | `invoke-native.py` with unchanged model/input/idempotency identity |
+| native | `invoke-native.py` with immutable model/tool/input/idempotency identity |
 | batch | `invoke-scientific-batch.py` with published input contract and verified artifact transport |
 | clinical | Existing bounded clinical runner, explicit model at the existing Token Factory provider, audio/artifact/transcript input |
 | analysis/structure, docking, docking-batch, aging | Existing deterministic domain helpers |
@@ -98,6 +98,15 @@ Complete provider responses are checkpointed and reused. A request without a
 saved response is ambiguous; no automatic duplicate paid call is made. Audio
 upload uses the same existing idempotent byte uploader. The configured clinical
 credential stays in memory/environment, not in the plan or checkpoint.
+
+Native stages carry the exact discovered capability as optional `tool_name`.
+The file client's equivalent is `--tool`. Inputs are validated against that
+named tool, not the first native contract for a model. Legacy unnamed stages
+require a unique validating schema; ambiguous contracts fail before inference
+with an actionable selection error. Neither the runner nor planner may silently
+add a mode or rewrite scientific arguments to fit a different sibling tool.
+For example, Cosmos' dedicated transfer contract and generic generation contract
+are distinct even though both belong to `cosmos3-nano`.
 
 Example CPU-only whole study:
 
