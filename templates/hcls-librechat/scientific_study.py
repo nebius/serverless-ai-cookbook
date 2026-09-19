@@ -164,6 +164,33 @@ def coordinate_output_references(step, steps):
                 + guidance + ' No file was substituted and no study has been admitted.')
 
 
+def structure_manifest_reference(step):
+    """Require explicit future selection; validate materialized manifests now."""
+    if step.get('method') != 'structure':
+        return
+    args = step['arguments']
+    prediction = args.get('prediction')
+    if isinstance(prediction, dict):
+        if prediction['file'] == 'output-manifest.json' and 'structure_index' not in args:
+            raise ValueError('A future structure prediction manifest requires explicit structure_index among coordinate entries; no study has been admitted.')
+        return
+    if not isinstance(prediction, str):
+        return
+    path = path_in_workspace(prediction)
+    try:
+        value = json.loads(path.read_bytes())
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return
+    if not isinstance(value, dict) or value.get('schema') != 'fs2-serve.nebius.ai/scientific-artifact-manifest/v1':
+        return
+    if 'structure_index' not in args:
+        raise ValueError('A structure prediction manifest requires explicit structure_index; no study has been admitted.')
+    spec = importlib.util.spec_from_file_location('study_manifest_prediction', HELPERS['structure'])
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    helper.manifest_prediction(path, args['structure_index'])
+
+
 def input_references(step):
     """Named file inputs, not arbitrary strings guessed to be file paths."""
     kind = step['kind']
@@ -276,6 +303,7 @@ def validate(plan):
                 path = path_in_workspace(value)
                 inputs[str(path)] = measure(path)
         coordinate_output_references(step, by_id)
+        structure_manifest_reference(step)
         if step.get('method') in {'report', 'mindeval'}:
             spec = importlib.util.spec_from_file_location('study_report', HELPERS[step['method']])
             helper = importlib.util.module_from_spec(spec)

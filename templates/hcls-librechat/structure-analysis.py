@@ -28,7 +28,9 @@ def is_mmcif(text):
 
 def load_structure(text):
     parser = MMCIFParser(QUIET=True) if is_mmcif(text) else PDBParser(QUIET=True)
-    model = next(parser.get_structure('comparison', io.StringIO(text)).get_models())
+    model = next(parser.get_structure('comparison', io.StringIO(text)).get_models(), None)
+    if model is None:
+        raise ValueError('No coordinate model found: supply PDB/mmCIF bytes, a supported result JSON, or a published prediction manifest with explicit structure_index.')
     chains = {}
     for chain in model:
         residues = [r for r in chain if 'CA' in r and r.id[0] in {' ', 'H_MSE'}]
@@ -54,6 +56,36 @@ def structures(value):
                  'structures_in_ranked_order', 'structures_with_scores', 'structures', 'predictions', 'outputs', 'data', 'result', 'response')
         return [text for key in names if key in value for text in structures(value[key])]
     return []
+
+
+def manifest_prediction(path, index):
+    """Select a declared coordinate, never an arbitrary artifact index or role."""
+    from scientific_protein_preparation import coordinate_input
+    if type(index) is not int or index < 0:
+        raise ValueError('A prediction manifest requires an explicit nonnegative structure_index among its coordinate entries.')
+    raw = path.read_bytes()
+    manifest = json.loads(raw)
+    if not isinstance(manifest, dict) or manifest.get('schema') != 'fs2-serve.nebius.ai/scientific-artifact-manifest/v1':
+        raise ValueError('Prediction manifest requires the published scientific-artifact-manifest/v1 schema.')
+    inputs, measurements = {}, {}
+    text, count, _ = coordinate_input(path, index, inputs, measurements, allow_mmcif=True)
+    selected = measurements['selected_artifact']
+    positions = [i for i, entry in enumerate(manifest['entries'])
+                 if entry.get('semantic_type') in {'protein-structure-pdb/v1', 'protein-structure-mmcif/v1'}
+                 and entry.get('artifact', {}).get('sha256') == selected['sha256']
+                 and entry['artifact'].get('size_bytes') == selected['size_bytes']]
+    if len(positions) != 1:
+        raise ValueError('Selected coordinates need one unambiguous manifest entry by exact SHA256/size.')
+    position = positions[0]
+    actual_format = 'mmcif' if is_mmcif(text) else 'pdb'
+    if manifest['entries'][position]['semantic_type'] != 'protein-structure-' + actual_format + '/v1':
+        raise ValueError('Selected coordinate bytes disagree with the declared manifest PDB/mmCIF format.')
+    load_structure(text)
+    fields, binding = bound_confidence(manifest, text.encode('utf-8'), source_path=path)
+    return text, {'source': 'published_manifest_explicit_coordinate_index',
+        'manifest_file': str(path), 'manifest_sha256': hashlib.sha256(raw).hexdigest(),
+        'structure_index': index, 'coordinate_candidates': count, 'manifest_entry_index': position,
+        'selected_artifact': selected, 'coordinate_format': actual_format}, fields, binding
 
 
 def confidence_fields(value, prefix=''):
@@ -404,11 +436,11 @@ def report_markdown(metrics):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--reference', required=True, type=Path)
-    parser.add_argument('--prediction', type=Path)
+    parser.add_argument('--prediction', type=Path, help='PDB/mmCIF bytes, or exact downloaded output-manifest.json with explicit --structure-index.')
     parser.add_argument('--result', type=Path, help='Raw platform JSON result containing coordinates.')
     parser.add_argument('--confidence-result', type=Path,
                         help='Explicit same-operation output-manifest.json or paired correspondence envelope; exact structure/artifact SHA256 and unique sample must match.')
-    parser.add_argument('--structure-index', type=int, default=0)
+    parser.add_argument('--structure-index', type=int, help='Explicit coordinate index for a manifest; defaults to 0 only for direct coordinates/inline results.')
     parser.add_argument('--chain-map', nargs='+', action='extend', help='Explicit reference:prediction chain IDs, e.g. A:A D:B; repeated flags append mappings.')
     parser.add_argument('--residue-map', type=Path,
                         help='Versioned explicit correspondence JSON with description, structure hashes and residue pairs; needed for sequence-redesigned backbone comparisons.')
@@ -424,17 +456,27 @@ def main():
         return
     if not args.output_dir or bool(args.prediction) == bool(args.result):
         parser.error('Supply --output-dir and exactly one of --prediction or --result.')
-    if args.structure_index < 0 or (args.prediction and args.structure_index != 0):
-        parser.error('Structure index must be nonnegative; a direct prediction file has only index 0.')
+    if args.structure_index is not None and args.structure_index < 0:
+        parser.error('Structure index must be nonnegative.')
+    index = args.structure_index if args.structure_index is not None else 0
+    selection, manifest_fields, manifest_binding = None, {}, None
     result_bytes = args.result.read_bytes() if args.result else None
     result = json.loads(result_bytes) if result_bytes is not None else {}
     if args.result:
         candidates = structures(result)
-        if args.structure_index < 0 or args.structure_index >= len(candidates):
-            raise ValueError(f'No coordinate structure at index {args.structure_index}; found {len(candidates)}.')
-        prediction_text = candidates[args.structure_index]
+        if index >= len(candidates):
+            raise ValueError(f'No coordinate structure at index {index}; found {len(candidates)}.')
+        prediction_text = candidates[index]
     else:
         prediction_text = args.prediction.read_bytes().decode('utf-8')
+        try:
+            value = json.loads(prediction_text)
+        except json.JSONDecodeError:
+            value = None
+        if isinstance(value, dict) and value.get('schema') == 'fs2-serve.nebius.ai/scientific-artifact-manifest/v1':
+            prediction_text, selection, manifest_fields, manifest_binding = manifest_prediction(args.prediction, args.structure_index)
+        elif index != 0:
+            parser.error('A direct prediction file has only index 0; manifest coordinates require explicit published selection.')
     chain_map = [tuple(item.split(':')) for item in args.chain_map] if args.chain_map else None
     if chain_map and any(len(pair) != 2 for pair in chain_map):
         parser.error('Use REF:PRED chain mappings.')
@@ -449,12 +491,17 @@ def main():
         fields, binding = bound_confidence(evidence, prediction_text.encode('utf-8'), source_path=confidence_path)
         metrics['model_confidence_not_reference_agreement'].update(fields)
         metrics['confidence_binding'] = binding
+    elif manifest_binding is not None:
+        metrics['model_confidence_not_reference_agreement'].update(manifest_fields)
+        metrics['confidence_binding'] = manifest_binding
     else:
         metrics['confidence_binding'] = {'status': 'unavailable_no_structure_bound_evidence',
             'scope': 'Any inline native result confidence is retained separately; no selected sample association is inferred.'}
     request_bytes = args.request_file.read_bytes() if args.request_file else None
     prediction_format = 'mmcif' if is_mmcif(prediction_text) else 'pdb'
-    metrics['sampling_provenance'] = sampling_provenance(request_bytes, args.structure_index)
+    metrics['sampling_provenance'] = sampling_provenance(request_bytes, index)
+    if selection is not None:
+        metrics['prediction_selection'] = selection
     metrics['provenance'] = {'reference_file': str(args.reference),
                              'reference_sha256': hashlib.sha256(reference_bytes).hexdigest(),
                              'prediction_sha256': hashlib.sha256(prediction_text.encode()).hexdigest(),
