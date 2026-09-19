@@ -1,0 +1,33 @@
+{
+  "schema": "fs2-workbench-ui-candidate-evidence/v1",
+  "as_of_utc": "2026-09-19T05:45:57Z",
+  "source_revision": "6976499dd79c38fe91d8d73ec7d5e7e4a2d6c674",
+  "image_tag": "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0919-v44-6976499",
+  "image_index": "sha256:68a23fd0b48f18f7ca913f4225da21f8281a24e3eb2b71afb16a8e2aa58256bf",
+  "image_amd64": "sha256:dc073b968d42408f93d6f347a6cf3e0d60af3ade95d436e8cd9222b1ba1eaa53",
+  "checks": {
+    "focused_tests_passed": 11,
+    "actual_pinned_renderer_patch_transpiles": true,
+    "full_vite_build_passed": true,
+    "installed_source_label_matches": true,
+    "installed_compiled_renderer_sha256": "ccf9088327b167e44ac38f4e9397f1638ff2aaff7fca67d70e51029701d27d0b",
+    "retained_fenced_blocks_link_counts": [6, 7],
+    "original_code_unchanged": true,
+    "new_model_calls": 0,
+    "live_authenticated_browser_acceptance": "not_in_this_receipt"
+  },
+  "protected_evidence_root": "/home/tux/secure-handoff/scientific-qualification-20260918",
+  "evidence": [
+    {"path": "workbench-v44-build.json", "sha256": "ed1f1141d68f5068fac976554b3ac513a56aceb5b35fd506f3a84cffd67df6d6"},
+    {"path": "workbench-v44-source-tests.log", "sha256": "e89f929ca3df565b738130b7454a4cf2364295ba71188f47db30f3c8429958c1"},
+    {"path": "workbench-v44-retained-render.json", "sha256": "8cd41de81f42e05d27aa8ceb972dd8291fc417fb5bc76179d101e49e5fae1978"},
+    {"path": "workbench-v44-retained-render-both.json", "sha256": "a1fd81407622685ffebf6cc2bd8ff05d7c90936be78f748779fbdc3e614235bb"},
+    {"path": "workbench-v44-installed.json", "sha256": "5126f729f75e9973767d04f0071ecab43c6b13ee5ef7e14a872b996cf9fab989"},
+    {"path": "browser-evidence/scientist-10-v43-second-final/messages.json", "sha256": "503d1067dee12d4a4a1d7fc61697b7479a164c64e8c1aef91f39c628abab5896"}
+  ],
+  "limitations": [
+    "Source/build/offline rendering evidence is not live browser acceptance.",
+    "This UI repair does not qualify model science or remedy the preserved report numerical-label error.",
+    "The initial image checker expected an environment variable; the corrected check uses the existing OCI revision label."
+  ]
+}
