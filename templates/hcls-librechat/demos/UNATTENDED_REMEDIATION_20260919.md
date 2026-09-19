@@ -58,6 +58,31 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 In progress. This is not a final readiness claim.
 
+### 16:53 UTC — final-candidate cohort deployment
+
+Backend189 remains live: gateway three ready replicas, controller two, and the
+qualified contention/accounting/fit changes are intact. The new client candidate
+is source `e4005cea9e8dd4429064104a53861e8a877016a9`, immutable image index
+`sha256:0c2a60ea79d3a2ff27c3927964ad5ddb95b02c7f21d94a86990b40200a29f182`.
+Its installed baseline eleven SDK cases and semantic preflight/381-character
+report-title regression passed. Removing an arbitrary report-heading cap does
+not increase any inference, context, execution or request budget.
+
+Ten separate user instances are being deployed for the unchanged scientific
+acceptance prompts (only their output root changes to `unattended-20260919-r6`).
+The explicitly selected planner candidate is `moonshotai/Kimi-K3`, low reasoning,
+131072 context and the unchanged 8192 output budget. This is not yet a qualified
+production default. Prior Qwen, Kimi and GLM comparisons remain failed evidence;
+provider token exhaustion is not inferred where finish reasons were absent.
+
+All ten v49 previews and the v50 report-comparison preview were archived,
+terminal-checked and deleted with final NotFound receipts. Together with the
+earlier twelve, this reclaims twenty-three disposable endpoints without raising
+the public-IP quota. Their endpoint IDs/local databases are not recoverable;
+protected transcripts/configuration/artifacts and all tenant buckets remain.
+Rene's existing client is still unchanged. The final cohort must finish before
+its state-preserving replacement is promoted.
+
 ### Latest v49/189 customer-path results
 
 All ten separate v49 instances were deployed without a quota increase and received
