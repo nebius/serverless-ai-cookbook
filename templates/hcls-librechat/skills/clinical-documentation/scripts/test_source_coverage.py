@@ -129,6 +129,24 @@ class SourceCoverageTests(unittest.TestCase):
             self.assertIn('dire light', followup)
             self.assertIn('Dioralyte', render_review(document, language))
 
+    def test_full_source_conditions_are_adjacent_to_each_selected_plan_phrase(self):
+        contexts = ['If feeling feverish and weak, taking paracetamol two tablets up to four times a day.',
+                    'Take two to three days off work and rest; if symptoms have not improved in three to four days, return.']
+        selected = ['taking paracetamol two tablets up to four times a day.',
+                    'Take two to three days off work and rest']
+        facts = [{'id': f'F{i+1:04}', 'section': 'plan', 'statement': phrase, 'uncertain': False,
+                  'evidence': [{'quote': context, 'spans': [{'start': 0, 'end': len(context)}]}]}
+                 for i, (phrase, context) in enumerate(zip(selected, contexts))]
+        document = {'kind': 'consultation', 'facts': facts, 'rejected': [],
+                    'uncertainties': [], 'questions': []}
+        for language in ('en', 'de'):
+            report, _ = render(document, language)
+            first, second = report.index('[F0001]'), report.index('[F0002]')
+            self.assertIn(contexts[0], report[first:second])
+            # The context is in the same plan entry, before the later evidence appendix.
+            appendix = report.index('## Quellen' if language == 'de' else '## Evidence')
+            self.assertIn(contexts[1], report[second:appendix])
+
 
 if __name__ == '__main__':
     unittest.main()

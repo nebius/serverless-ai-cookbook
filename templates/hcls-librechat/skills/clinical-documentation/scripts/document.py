@@ -7,7 +7,7 @@ import json
 import re
 import unicodedata
 
-VERSION = "clinical-documentation/v10"
+VERSION = "clinical-documentation/v11"
 SECTIONS = {
     "history": ("Anamnese", "History"),
     "background": ("Vorgeschichte, Medikation und Allergien", "Background, medication and allergies"),
@@ -550,7 +550,13 @@ def render(document, language):
         rows = [f for f in document["facts"] if f["section"] == section]
         for fact in rows:
             uncertain = (" [unklar – prüfen]" if de else " [unclear – verify]") if fact["uncertain"] else ""
-            report.append(f"- {plain(fact['statement'])}{uncertain} [{fact['id']}]")
+            label = "Ausgewählte Quellenpassage" if de else "Selected source passage"
+            report.append(f"- {label}: {plain(fact['statement'])}{uncertain} [{fact['id']}]")
+            for evidence in fact["evidence"]:
+                positions = ", ".join(f"{s['start']}–{s['end']}" for s in evidence["spans"])
+                context = "Vollständiger zitierter Kontext – Bedingungen und Sprecher prüfen" if de else "Full cited context – check conditions and speaker"
+                report += ["", f"  {context} ({positions}):", "",
+                           "  > " + plain(evidence["quote"]), ""]
         if not rows:
             report.append("Keine Einträge diesem Abschnitt zugeordnet; andere Abschnitte und review.md prüfen."
                           if de else "No entries assigned to this section; check the other sections and review.md.")

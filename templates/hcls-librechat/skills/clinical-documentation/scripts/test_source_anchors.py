@@ -307,7 +307,7 @@ class SourceAnchorTests(unittest.TestCase):
             self.assertIn('Discuss med a sin.', render_review(result, 'en'))
 
     def test_old_completed_outputs_are_untouched_and_require_new_directory(self):
-        for version in ('v4', 'v5', 'v6', 'v7', 'v8', 'v9'):
+        for version in ('v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10'):
             with self.subTest(version=version), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder)
                 source = root / 'input.txt'
@@ -325,7 +325,7 @@ class SourceAnchorTests(unittest.TestCase):
                         run(args)
                     platform.assert_not_called()
                 self.assertEqual(manifest.read_text(), original)
-                self.assertEqual(VERSION, 'clinical-documentation/v10')
+                self.assertEqual(VERSION, 'clinical-documentation/v11')
 
 
 if __name__ == '__main__':
