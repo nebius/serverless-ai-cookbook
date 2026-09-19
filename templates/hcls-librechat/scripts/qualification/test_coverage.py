@@ -62,6 +62,18 @@ class CoverageTests(unittest.TestCase):
         self.assertIn("snapshot", " ".join(self.apps["cosmos3-nano"]["gaps"]))
         self.assertIn("pending", " ".join(self.apps["cosmos3-lerobot-augmentation"]["gaps"]))
 
+    def test_cosmos_media_pass_does_not_erase_identity_or_physical_gaps(self):
+        native = self.apps["cosmos3-nano"]
+        dataset = self.apps["cosmos3-lerobot-augmentation"]
+        self.assertEqual(native["current_evidence"]["counts"]["verified"], 22)
+        self.assertIn("missing5", native["current_evidence"]["count_scope"])
+        self.assertIn("physical", " ".join(native["gaps"]))
+        self.assertIn("silently resized", " ".join(dataset["historical"]["gaps"]))
+        self.assertIn("41a01714", dataset["current_evidence"]["summary"])
+        self.assertIn("physically valid", " ".join(dataset["gaps"]))
+        self.assertIn("prior_evidence", native["historical"])
+        self.assertIn("prior_evidence", dataset["historical"])
+
 
 if __name__ == "__main__":
     unittest.main()
