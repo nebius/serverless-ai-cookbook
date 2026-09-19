@@ -61,6 +61,34 @@ correctness or completeness is inferred.
 
 ## Customer-path acceptance recipe
 
+### Structure comparisons
+
+The existing `structure-analysis.py` CLI now also accepts `--request-file` with
+the actual retained request JSON. The durable stage must preflight/hash this
+optional file like its existing reference, prediction and residue-map inputs.
+It records declared seed/sample settings and exact JSON pointers, never a seed
+inferred from a filename or returned sample index. Missing request settings
+remain unknown; even present settings do not prove the runtime honored them.
+
+The helper writes `report.md` alongside `metrics.json`, `residue-mapping.json`,
+`prediction.pdb`/`.cif` and `methods.md`. Every report uses actual computed
+counts and explicit units. Globally fitted complex RMSD, independently fitted
+chain RMSD, mapped interface contacts, observed residue coverage and model
+confidence stay distinct. Poor predictions and unmapped/excluded chains remain
+visible. Sequence redesign still requires the existing hash-bound explicit
+residue correspondence; no positional or chain guessing is introduced.
+Comment-prefixed CIFs and nested OpenFold structure results are supported;
+identical extracted samples are not silently deduplicated. Extracted selection
+order is not asserted to be the model's native rank or a distinct model call.
+
+For natural acceptance, ask for an actual reference-complex comparison and a
+designed-backbone/refold comparison using the retained correspondence. Download
+the report and mapping, then independently compare the counts and units with
+metrics. A low independent-chain RMSD must not hide a poor complex arrangement;
+an index such as `seed7` in a filename must not become a declared request seed.
+
+### Full clinical study
+
 After root builds and deploys the integrated candidate, use an ordinary user's
 dedicated instance and full retained teaching-consultation files. A natural
 request should ask for the English/German transcription/report comparison and

@@ -19,8 +19,15 @@ from Bio.PDB import MMCIFParser, NeighborSearch, PDBParser, Superimposer
 from Bio.SeqUtils import seq1
 
 
+def is_mmcif(text):
+    """CIF allows comments before its data block (including AlphaFold outputs)."""
+    first = next((line.strip() for line in text.splitlines()
+                  if line.strip() and not line.lstrip().startswith('#')), '')
+    return first.startswith('data_')
+
+
 def load_structure(text):
-    parser = MMCIFParser(QUIET=True) if text.lstrip().startswith('data_') else PDBParser(QUIET=True)
+    parser = MMCIFParser(QUIET=True) if is_mmcif(text) else PDBParser(QUIET=True)
     model = next(parser.get_structure('comparison', io.StringIO(text)).get_models())
     chains = {}
     for chain in model:
@@ -39,13 +46,13 @@ def sequence(residues):
 def structures(value):
     """Recognize explicit coordinate fields without guessing an absent output."""
     if isinstance(value, str):
-        return [value] if value.lstrip().startswith('data_') or 'ATOM  ' in value else []
+        return [value] if is_mmcif(value) or 'ATOM  ' in value else []
     if isinstance(value, list):
         return [text for item in value for text in structures(item)]
     if isinstance(value, dict):
         names = ('structure', 'pdb', 'mmcif', 'cif', 'pdb_string', 'pdb_text', 'cif_text',
-                 'structures_in_ranked_order', 'structures', 'predictions', 'outputs', 'data', 'result', 'response')
-        return list(dict.fromkeys(text for key in names if key in value for text in structures(value[key])))
+                 'structures_in_ranked_order', 'structures_with_scores', 'structures', 'predictions', 'outputs', 'data', 'result', 'response')
+        return [text for key in names if key in value for text in structures(value[key])]
     return []
 
 
@@ -57,7 +64,7 @@ def confidence_fields(value, prefix=''):
             if name in {'confidence', 'plddt', 'ptm_score', 'ptm', 'iptm', 'iptm_score', 'ranking_score'}:
                 if isinstance(child, (int, float)) and not isinstance(child, bool) and np.isfinite(child):
                     output[field] = child
-                elif isinstance(child, list) and child and all(isinstance(x, (float, int)) for x in child):
+                elif isinstance(child, list) and child and all(isinstance(x, (float, int)) and not isinstance(x, bool) for x in child):
                     data = np.asarray(child, dtype=float)
                     if np.isfinite(data).all():
                         output[field] = {'count': len(child), 'mean': float(data.mean()),
@@ -141,6 +148,8 @@ def explicit_pairs(document, reference_text, prediction_text, reference, predict
 
 
 def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0, residue_correspondence=None):
+    if isinstance(cutoff, bool) or not isinstance(cutoff, (int, float)) or not np.isfinite(cutoff) or cutoff <= 0:
+        raise ValueError('Contact cutoff must be a finite positive distance in angstroms.')
     reference, prediction = load_structure(reference_text), load_structure(prediction_text)
     if not chain_map:
         if len(reference) != 1 or len(prediction) != 1:
@@ -176,7 +185,10 @@ def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0, residue
                                for i, j in pairs)
     ref_atoms = [r['CA'] for group in mapped_ref for r in group]
     pred_atoms = [r['CA'] for group in mapped_pred for r in group]
-    metrics = {'chains': reports, 'global_ca_rmsd_angstrom': rmsd(ref_atoms, pred_atoms),
+    metrics = {'schema': 'scientific-ai/protein-structure-comparison/v1',
+               'units': {'rmsd': 'angstrom', 'contact_cutoff': 'angstrom', 'coverage': 'fraction',
+                         'residue_and_contact_counts': 'counts', 'model_confidence': 'unchanged model-native values; not reference accuracy'},
+               'chains': reports, 'global_ca_rmsd_angstrom': rmsd(ref_atoms, pred_atoms),
                'mapped_residues': len(ref_atoms),
                'matched_identical_residues': sum(r['matched_identical_residues'] for r in reports),
                'correspondence_method': 'explicit-provenance' if explicit is not None else 'identical-sequence-alignment',
@@ -199,51 +211,138 @@ def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0, residue
     return metrics, residue_mapping
 
 
+def sampling_provenance(request_bytes, structure_index):
+    """Retain named request settings without inventing seed or runtime guarantees."""
+    value = {'extracted_structure_index': structure_index, 'index_base': 0,
+             'structure_index_is_seed': False, 'determinism_established': False,
+             'request_fields': [], 'request_sha256': None,
+             'scope': 'Selection within extracted coordinate fields is not a native rank, random seed, model seed or independent request. Identical returned coordinates are not deduplicated. Named settings below are declared by the retained request, not proof the runtime honored them.'}
+    if request_bytes is None:
+        value['request_status'] = 'not_supplied; seed and requested sample counts are unknown'
+        return value
+    request = json.loads(request_bytes)
+    if not isinstance(request, dict):
+        raise ValueError('Retained request must be a JSON object.')
+    names = {'seed', 'seeds', 'random_seed', 'random_seeds', 'model_seed', 'model_seeds',
+             'num_samples', 'num_diffusion_samples', 'diffusion_samples', 'selected_models'}
+    def walk(item, pointer=''):
+        if isinstance(item, dict):
+            for key, child in item.items():
+                location = pointer + '/' + key.replace('~', '~0').replace('/', '~1')
+                if key in names:
+                    scalar = type(child) is int
+                    array = isinstance(child, list) and all(type(part) is int for part in child)
+                    value['request_fields'].append({'json_pointer': location,
+                        'value': child if scalar or array else None,
+                        'status': 'recorded' if scalar or array else 'unsupported_sampling_value_not_interpreted'})
+                elif isinstance(child, (dict, list)):
+                    walk(child, location)
+        elif isinstance(item, list):
+            for index, child in enumerate(item):
+                if isinstance(child, (dict, list)):
+                    walk(child, f'{pointer}/{index}')
+    walk(request)
+    value['request_sha256'] = hashlib.sha256(request_bytes).hexdigest()
+    value['request_status'] = 'provided; no service-side association was queried by this offline helper'
+    return value
+
+
+def report_markdown(metrics):
+    """Render actual mapping, units and poor agreement without a model recount."""
+    lines = ['# Protein structure comparison', '',
+             'Descriptive agreement with the supplied reference; not experimental, functional or clinical validation.', '',
+             f"Global jointly fitted C-alpha RMSD: **{metrics['global_ca_rmsd_angstrom']:.12g} Å**.",
+             f"Mapped residues: {metrics['mapped_residues']}; identical sequence matches: {metrics['matched_identical_residues']}.",
+             f"Correspondence: `{metrics['correspondence_method']}`.", '',
+             '| Reference chain | Prediction chain | Mapped / observed reference | Mapped / observed prediction | Independently fitted chain RMSD (Å) |',
+             '| --- | --- | ---: | ---: | ---: |']
+    def escape(text):
+        return str(text).replace('|', '\\|').replace('\n', ' ')
+    for chain in metrics['chains']:
+        lines.append(f"| {escape(chain['reference_chain'])} | {escape(chain['prediction_chain'])} | {chain['mapped_residues']} / {chain['reference_observed_residues']} | {chain['mapped_residues']} / {chain['prediction_observed_residues']} | {chain['independently_fitted_ca_rmsd_angstrom']:.12g} |")
+    lines += ['', 'Per-chain fits are independent and can be small while the global complex arrangement is wrong. Global and independent-fit RMSDs are not interchangeable.',
+              'Coverage concerns observed mapped C-alpha residues, not missing sequence positions or the full biological assembly.',
+              f"Excluded reference chains: {metrics['excluded_reference_chains']}; excluded prediction chains: {metrics['excluded_prediction_chains']}."]
+    if 'interface' in metrics:
+        interface = metrics['interface']
+        lines += ['', '## Mapped interface', '',
+                  f"Heavy-atom contact cutoff: {interface['heavy_atom_cutoff_angstrom']} Å.",
+                  f"Recovered reference contacts: {interface['recovered_native_contacts']} / {interface['native_contacts_mapped_residues']}.",
+                  f"Predicted contacts: {interface['predicted_contacts_mapped_residues']}; mapped interface residues: {interface['interface_residues_mapped']}.",
+                  f"Separately fitted interface C-alpha RMSD (Å): {interface['interface_ca_rmsd_angstrom'] if interface['interface_ca_rmsd_angstrom'] is not None else 'undefined: fewer than three mapped interface residues'}.",
+                  interface['limitation']]
+    sampling = metrics.get('sampling_provenance', sampling_provenance(None, None))
+    lines += ['', '## Sampling and confidence', '',
+              f"Selected extracted structure index: {sampling['extracted_structure_index']} (zero-based when supplied, **not a seed**).",
+              sampling['scope'], f"Request evidence: {sampling.get('request_status', 'not supplied')}."]
+    for field in sampling['request_fields']:
+        lines.append(f"- Declared `{escape(field['json_pointer'])}`: `{field['value']}` ({field['status']}).")
+    confidence = metrics.get('model_confidence_not_reference_agreement', {})
+    lines += ['Model-confidence values remain separate, in their model-native units. No rescaling or accuracy/affinity claim is made.',
+              f"Retained confidence fields: {len(confidence)}; see metrics.json for their exact source paths and values.", '',
+              '## Provenance', '']
+    for key in ('reference_sha256', 'prediction_sha256', 'result_sha256', 'residue_map_sha256', 'request_sha256'):
+        lines.append(f"- {key}: `{metrics.get('provenance', {}).get(key) or 'not supplied'}`")
+    lines += ['', 'Poor reference agreement remains a scientific finding, not a failed service request. No quality threshold or biological success is inferred.', '']
+    return '\n'.join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--reference', required=True, type=Path)
     parser.add_argument('--prediction', type=Path)
     parser.add_argument('--result', type=Path, help='Raw platform JSON result containing coordinates.')
     parser.add_argument('--structure-index', type=int, default=0)
-    parser.add_argument('--chain-map', nargs='+', help='Explicit reference:prediction chain IDs, e.g. A:A D:B.')
+    parser.add_argument('--chain-map', nargs='+', action='extend', help='Explicit reference:prediction chain IDs, e.g. A:A D:B; repeated flags append mappings.')
     parser.add_argument('--residue-map', type=Path,
                         help='Versioned explicit correspondence JSON with description, structure hashes and residue pairs; needed for sequence-redesigned backbone comparisons.')
     parser.add_argument('--output-dir', type=Path)
+    parser.add_argument('--request-file', type=Path, help='Optional original request JSON for hash-linked declared sampling settings; never infer a seed from a filename/index.')
     parser.add_argument('--inspect', action='store_true', help='Print observed reference chains/sequences without inference.')
     args = parser.parse_args()
-    reference_text = args.reference.read_text()
+    reference_bytes = args.reference.read_bytes()
+    reference_text = reference_bytes.decode('utf-8')
     if args.inspect:
         print(json.dumps({'chains': [{'id': name, 'observed_residues': len(residues), 'sequence': sequence(residues)}
                                     for name, residues in load_structure(reference_text).items()]}))
         return
     if not args.output_dir or bool(args.prediction) == bool(args.result):
         parser.error('Supply --output-dir and exactly one of --prediction or --result.')
-    result = json.loads(args.result.read_text()) if args.result else {}
+    if args.structure_index < 0 or (args.prediction and args.structure_index != 0):
+        parser.error('Structure index must be nonnegative; a direct prediction file has only index 0.')
+    result_bytes = args.result.read_bytes() if args.result else None
+    result = json.loads(result_bytes) if result_bytes is not None else {}
     if args.result:
         candidates = structures(result)
         if args.structure_index < 0 or args.structure_index >= len(candidates):
             raise ValueError(f'No coordinate structure at index {args.structure_index}; found {len(candidates)}.')
         prediction_text = candidates[args.structure_index]
     else:
-        prediction_text = args.prediction.read_text()
+        prediction_text = args.prediction.read_bytes().decode('utf-8')
     chain_map = [tuple(item.split(':')) for item in args.chain_map] if args.chain_map else None
     if chain_map and any(len(pair) != 2 for pair in chain_map):
         parser.error('Use REF:PRED chain mappings.')
     correspondence = json.loads(args.residue_map.read_text()) if args.residue_map else None
     metrics, mapping = compare(reference_text, prediction_text, chain_map, residue_correspondence=correspondence)
     metrics['model_confidence_not_reference_agreement'] = confidence_fields(result)
+    request_bytes = args.request_file.read_bytes() if args.request_file else None
+    metrics['sampling_provenance'] = sampling_provenance(request_bytes, args.structure_index)
     metrics['provenance'] = {'reference_file': str(args.reference),
-                             'reference_sha256': hashlib.sha256(reference_text.encode()).hexdigest(),
+                             'reference_sha256': hashlib.sha256(reference_bytes).hexdigest(),
                              'prediction_sha256': hashlib.sha256(prediction_text.encode()).hexdigest(),
                              'result_file': str(args.result) if args.result else None,
+                             'result_sha256': hashlib.sha256(result_bytes).hexdigest() if result_bytes is not None else None,
+                             'request_file': str(args.request_file) if args.request_file else None,
+                             'request_sha256': metrics['sampling_provenance']['request_sha256'],
                              'residue_map_file': str(args.residue_map) if args.residue_map else None,
                              'residue_map_sha256': hashlib.sha256(args.residue_map.read_bytes()).hexdigest() if args.residue_map else None,
                              'biopython_version': Bio.__version__, 'numpy_version': np.__version__}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for filename, data in [('metrics.json', metrics), ('residue-mapping.json', mapping)]:
         (args.output_dir / filename).write_text(json.dumps(data, indent=2, allow_nan=False) + '\n')
-    suffix = 'cif' if prediction_text.lstrip().startswith('data_') else 'pdb'
-    (args.output_dir / ('prediction.' + suffix)).write_text(prediction_text)
+    suffix = 'cif' if is_mmcif(prediction_text) else 'pdb'
+    (args.output_dir / ('prediction.' + suffix)).write_bytes(prediction_text.encode('utf-8'))
+    (args.output_dir / 'report.md').write_text(report_markdown(metrics), encoding='utf-8')
     correspondence_method = (
         'Explicit provenance-backed residue correspondence from the supplied versioned JSON; both structure hashes '
         'are verified and all one-to-one residue identifiers must exist. Sequence identity is counted separately '

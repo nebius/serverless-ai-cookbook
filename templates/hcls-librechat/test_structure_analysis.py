@@ -1,5 +1,6 @@
 import importlib.util
 import hashlib
+import io
 import json
 from pathlib import Path
 import subprocess
@@ -7,6 +8,7 @@ import sys
 
 import numpy as np
 import pytest
+from Bio.PDB import MMCIFIO, PDBParser
 
 spec = importlib.util.spec_from_file_location('structure_analysis', Path(__file__).with_name('structure-analysis.py'))
 analysis = importlib.util.module_from_spec(spec)
@@ -133,11 +135,16 @@ def test_explicit_design_correspondence_does_not_require_unchanged_sequence():
 def test_incorrect_design_correspondence_is_not_silently_accepted(problem):
     reference, prediction = pdb({'A': COORDS}), pdb({'B': COORDS})
     document = correspondence(reference, prediction)
-    if problem == 'hash': document['reference_sha256'] = '0' * 64
-    if problem == 'duplicate': document['pairs'].append(document['pairs'][0])
-    if problem == 'absent': document['pairs'][0]['reference_residue'] = [' ', 999, ' ']
-    if problem == 'few': document['pairs'] = document['pairs'][:2]
-    if problem == 'chain': document['pairs'][0]['reference_chain'] = 'Z'
+    if problem == 'hash':
+        document['reference_sha256'] = '0' * 64
+    if problem == 'duplicate':
+        document['pairs'].append(document['pairs'][0])
+    if problem == 'absent':
+        document['pairs'][0]['reference_residue'] = [' ', 999, ' ']
+    if problem == 'few':
+        document['pairs'] = document['pairs'][:2]
+    if problem == 'chain':
+        document['pairs'][0]['reference_chain'] = 'Z'
     with pytest.raises(ValueError):
         analysis.compare(reference, prediction, residue_correspondence=document)
 
@@ -155,3 +162,95 @@ def test_design_cli_saves_explicit_method_and_real_mapping(tmp_path):
     assert metrics['mapped_residues'] == 4 and metrics['matched_identical_residues'] == 0
     assert metrics['provenance']['residue_map_sha256']
     assert 'Explicit provenance-backed' in (output / 'methods.md').read_text()
+
+
+def test_commented_cif_and_openfold_nested_results_preserve_repeated_structures(tmp_path):
+    text = pdb({'A': COORDS})
+    writer = MMCIFIO()
+    writer.set_structure(PDBParser(QUIET=True).get_structure('reference', io.StringIO(text)))
+    stream = io.StringIO()
+    writer.save(stream)
+    cif = '# generated coordinate file\n\n' + stream.getvalue()
+    result = {'outputs': [{'structures_with_scores': [
+        {'structure': cif, 'confidence': 0.8}, {'structure': cif, 'confidence': 0.7}]}]}
+    assert analysis.structures(result) == [cif, cif]
+    reference, source, output = tmp_path / 'ref.pdb', tmp_path / 'result.json', tmp_path / 'analysis'
+    reference.write_text(text)
+    source.write_text(json.dumps(result))
+    subprocess.run([sys.executable, spec.origin, '--reference', str(reference), '--result', str(source),
+        '--structure-index', '1', '--output-dir', str(output)], check=True, capture_output=True)
+    metrics = json.loads((output / 'metrics.json').read_text())
+    assert (output / 'prediction.cif').read_text() == cif
+    assert metrics['global_ca_rmsd_angstrom'] < 1e-5
+    assert metrics['sampling_provenance']['extracted_structure_index'] == 1
+    assert metrics['sampling_provenance']['structure_index_is_seed'] is False
+
+
+def test_cli_records_exact_bytes_and_declared_request_not_filename_seed(tmp_path):
+    original = pdb({'A': COORDS}).replace('\n', '\r\n').encode()
+    reference, prediction, request = [tmp_path / name for name in ('ref.pdb', 'seed7.pdb', 'request.json')]
+    reference.write_bytes(original)
+    prediction.write_bytes(original)
+    request.write_bytes(b'{"arguments":{"model_seeds":[42],"num_samples":4},"sequence":"PRIVATE"}\n')
+    output = tmp_path / 'output'
+    subprocess.run([sys.executable, spec.origin, '--reference', str(reference), '--prediction', str(prediction),
+        '--request-file', str(request), '--output-dir', str(output)], check=True, capture_output=True)
+    metrics = json.loads((output / 'metrics.json').read_text())
+    assert metrics['provenance']['reference_sha256'] == hashlib.sha256(original).hexdigest()
+    assert metrics['provenance']['prediction_sha256'] == hashlib.sha256(original).hexdigest()
+    assert metrics['provenance']['request_sha256'] == hashlib.sha256(request.read_bytes()).hexdigest()
+    assert (output / 'prediction.pdb').read_bytes() == original
+    sampling = metrics['sampling_provenance']
+    assert sampling['request_fields'] == [
+        {'json_pointer': '/arguments/model_seeds', 'value': [42], 'status': 'recorded'},
+        {'json_pointer': '/arguments/num_samples', 'value': 4, 'status': 'recorded'}]
+    assert sampling['determinism_established'] is False
+    report = (output / 'report.md').read_text()
+    assert 'PRIVATE' not in report and 'seed7' not in report
+    assert '**not a seed**' in report and '| A | A | 4 / 4 | 4 / 4 |' in report
+    assert metrics['units']['rmsd'] == 'angstrom'
+
+
+def test_sampling_unknown_and_invalid_values_are_not_invented():
+    assert 'unknown' in analysis.sampling_provenance(None, 3)['request_status']
+    value = analysis.sampling_provenance(b'{"seed":true,"nested/~":[{"random_seeds":[1,2]}]}', 0)
+    assert value['request_fields'] == [
+        {'json_pointer': '/seed', 'value': None, 'status': 'unsupported_sampling_value_not_interpreted'},
+        {'json_pointer': '/nested~1~0/0/random_seeds', 'value': [1, 2], 'status': 'recorded'}]
+    with pytest.raises(ValueError, match='JSON object'):
+        analysis.sampling_provenance(b'[42]', 0)
+
+
+def test_report_preserves_bad_complex_geometry_and_actual_denominators():
+    first = np.array(COORDS)
+    metrics, _ = analysis.compare(pdb({'A': first, 'D': first + [0, 0, 4]}),
+        pdb({'B': first, 'C': first + [0, 0, 24]}), [('A', 'B'), ('D', 'C')])
+    report = analysis.report_markdown(metrics)
+    assert metrics['global_ca_rmsd_angstrom'] > 9
+    assert f"**{metrics['global_ca_rmsd_angstrom']:.12g} Å**" in report
+    assert f"Recovered reference contacts: 0 / {metrics['interface']['native_contacts_mapped_residues']}" in report
+    assert 'Mapped residues: 8; identical sequence matches: 8.' in report
+    assert 'not experimental, functional or clinical validation' in report
+    assert 'None (zero-based when supplied' in report  # No absent structure index invented.
+
+
+@pytest.mark.parametrize('cutoff', [True, 0, -1, float('nan'), float('inf'), '5'])
+def test_invalid_contact_units_rejected(cutoff):
+    with pytest.raises(ValueError, match='finite positive distance'):
+        analysis.compare(pdb({'A': COORDS}), pdb({'A': COORDS}), cutoff=cutoff)
+
+
+def test_boolean_or_nonfinite_confidence_is_not_a_measurement():
+    assert analysis.confidence_fields({'plddt': [True, False], 'confidence': float('nan')}) == {}
+
+
+def test_repeated_chain_map_flags_never_silently_drop_prior_pairs(tmp_path):
+    reference, prediction = tmp_path / 'ref.pdb', tmp_path / 'pred.pdb'
+    reference.write_text(pdb({'E': COORDS, 'I': np.array(COORDS) + [0, 0, 4]}))
+    prediction.write_text(pdb({'A': COORDS, 'B': np.array(COORDS) + [0, 0, 4]}))
+    completed = subprocess.run([sys.executable, spec.origin, '--reference', str(reference),
+        '--prediction', str(prediction), '--chain-map', 'E:A', '--chain-map', 'I:B',
+        '--output-dir', str(tmp_path / 'output')], check=True, capture_output=True, text=True)
+    metrics = json.loads(completed.stdout)['metrics']
+    assert metrics['chain_mapping'] == [['E', 'A'], ['I', 'B']]
+    assert metrics['mapped_residues'] == 8 and metrics['excluded_reference_chains'] == []
