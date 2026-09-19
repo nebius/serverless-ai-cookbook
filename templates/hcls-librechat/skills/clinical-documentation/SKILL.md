@@ -14,6 +14,19 @@ clinically validated; a clinician must review the draft before using it in a
 record. Do not claim that a question was never asked just because it is absent
 from the recording.
 
+Keep source attribution separate from topic headings. Patient-reported symptoms,
+self-measured pulse/weight and recalled results are not clinician-observed
+findings. A clinician's recap or proposed examination does not establish that
+an examination occurred. The existing extraction and contextual-review passes
+record `source_attribution`; the report labels agreement as patient-reported,
+clinician-recorded observation, clinician statement or teaching/narrative
+context. Missing or conflicting labels remain explicitly unclear. These are
+automated source classifications, not clinically verified speaker identities.
+Preserve the exact source passages and surrounding dialogue, including doubt,
+conditions and uncertain names. Do not reclassify an old report from its heading
+or add attribution to a retained output; older documents without this metadata
+remain unclassified when separately inspected.
+
 ## Uploaded audio or an existing transcript
 
 Use the bundled executable workflow when the client provides a file-capable

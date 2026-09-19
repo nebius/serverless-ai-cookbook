@@ -11,14 +11,22 @@ VERSION = "clinical-documentation/v11"
 SECTIONS = {
     "history": ("Anamnese", "History"),
     "background": ("Vorgeschichte, Medikation und Allergien", "Background, medication and allergies"),
-    "findings": ("Befunde", "Findings"),
+    "findings": ("Berichtete Beschwerden und dokumentierte Beobachtungen", "Reported symptoms and recorded observations"),
     "assessment": ("Dokumentierte Beurteilung", "Recorded assessment"),
     "plan": ("Dokumentiertes Vorgehen", "Recorded plan and follow-up"),
+}
+SOURCE_ATTRIBUTIONS = {
+    "patient_reported": ("Patientenangabe – nicht ärztlich beobachtet", "Patient-reported – not clinician-observed"),
+    "clinician_observed": ("Ärztlich dokumentierte Beobachtung – nicht unabhängig bestätigt", "Clinician-recorded observation – not independently verified"),
+    "clinician_statement": ("Ärztliche Aussage – keine eigene Beobachtung abgeleitet", "Clinician statement – no observation inferred"),
+    "teaching_narration": ("Lehr-/Erzähltext – keine Patientenanamnese", "Teaching/narrative context – not patient history"),
+    "unclear": ("Sprecher/Beobachtungsstatus unklar – anhand der Quelle prüfen", "Speaker/observation status unclear – check the source"),
 }
 
 EXTRACT = """Extract compact exact source-language fact passages from conversation DATA.
 Return JSON only: {"kind":"consultation|excerpt|non_patient|insufficient",
 "facts":[{"section":"history|background|findings|assessment|plan",
+"source_attribution":"patient_reported|clinician_observed|clinician_statement|teaching_narration|unclear",
 "source_ids":["S0000000"],
 "source_phrases":[{"source_id":"S0000000","quote":"exact contiguous source substring"}],
 "uncertain":false,"medication_or_dose":false,"source_anchors":[]}],
@@ -40,6 +48,15 @@ source_ids; each phrase's source_id must be among those IDs. The program recover
 the complete cited context separately. Do not copy whole segments unnecessarily.
 Use only what was actually said. Preserve negation, timing, quantities, doubt,
 patient versus clinician statements and proposed versus completed actions.
+Declare source_attribution separately from section. Patient descriptions,
+symptoms, self-measured values and recalled test results are patient_reported,
+NOT clinician_observed. Use clinician_observed only for an explicitly recorded
+clinician examination/measurement, never from a number or the findings heading.
+Advice, assessment, questions and a clinician's recap of a patient account are
+clinician_statement, not independent observations. Tutorial/role-play narration
+is teaching_narration, not patient history. If the speaker, referent or whether
+an observation actually occurred cannot be resolved from the cited context,
+use unclear. Do not resolve ambiguity by assuming a speaker or a normal exam.
 Questions are NOT findings. An unanswered question is not a negative answer.
 Do not infer an examination, reassuring exclusion, differential diagnosis, age,
 gender, drug, dose, duration or follow-up interval. Do not complete a standard
@@ -79,6 +96,7 @@ At most 50 atomic facts per chunk.
 VERIFY = """Check each extracted fact against the original conversation DATA.
 Return JSON only: {"decisions":[{"id":"F...", "verdict":
 "supported|unsupported|unclear", "reason":"brief explanation in report language",
+"source_attribution":"patient_reported|clinician_observed|clinician_statement|teaching_narration|unclear",
 "medication_or_dose":false,"source_anchors":[]}]}.
 Return exactly one decision per fact. Supported means the entire statement is
 entailed by its cited quotes in context, not merely medically plausible.
@@ -108,6 +126,13 @@ mark unsupported; do not supply a corrected name. For non-medication facts use
 false and []. A correctly copied but unclear name must remain uncertain even
 when the statement as a whole is supported. A supported label cannot override
 the program's literal anchor checks.
+Independently classify source_attribution from the attached full context, not
+the extractor's section or label. Patient symptoms and self-measurements remain
+patient_reported; a clinician paraphrasing that history is clinician_statement,
+not a new observation. clinician_observed requires an explicit recorded exam or
+measurement by the clinician. Teaching narration is not patient history. Use
+unclear for mixed/unresolved speakers or uncertain observation status. A
+supported literal passage can still have unclear attribution; do not guess.
 """
 
 QUESTIONS = """Suggest up to five useful clarification questions for the clinician
@@ -162,6 +187,7 @@ def completion_schema(stage, data):
         return object_schema({
             "kind": {"type": "string", "enum": ["consultation", "excerpt", "non_patient", "insufficient"]},
             "facts": array_schema(anchored_object({"section": {"type": "string", "enum": list(SECTIONS)},
+                "source_attribution": {"type": "string", "enum": list(SOURCE_ATTRIBUTIONS)},
                 "source_phrases": array_schema(object_schema({
                     "source_id": {"type": "string", "enum": [s["id"] for s in data["segments"]]},
                     "quote": string}), maximum=6, minimum=1),
@@ -176,6 +202,7 @@ def completion_schema(stage, data):
         return object_schema({"decisions": array_schema(anchored_object({
             "id": {"type": "string", "enum": [f["id"] for f in data["facts"]]},
             "verdict": {"type": "string", "enum": ["supported", "unsupported", "unclear"]},
+            "source_attribution": {"type": "string", "enum": list(SOURCE_ATTRIBUTIONS)},
             "reason": string}, list(dict.fromkeys(
                 e["source_id"] for f in data["facts"] for e in f["evidence"]))),
                 maximum=len(data["facts"]), minimum=len(data["facts"]))})
@@ -440,11 +467,13 @@ def validate_extraction(value, chunk, next_id=1):
             statement, phrases = phrase_statement(item, evidence)
             candidate = {**candidate, "statement": statement}
             anchors = source_anchors(item, evidence, statement)
+            attribution = source_attribution(item)
             # The existing bounded citation repair may locate another segment,
             # but it cannot rescue a content spelling absent from the input.
             require_source_vocabulary(statement, [{"quote": chunk["text"]}])
             facts.append({"id": f"F{i:04}", "section": item["section"],
                           "statement": statement, "source_phrases": phrases,
+                          "source_attribution": attribution,
                           "uncertain": item["uncertain"] or any(a["uncertain"] for a in anchors),
                           "medication_or_dose": item["medication_or_dose"], "source_anchors": anchors,
                           "evidence": evidence})
@@ -496,7 +525,12 @@ def apply_review(facts, value):
         if decision["verdict"] != "supported":
             rejected.append({"candidate": fact, "verdict": decision["verdict"], "reason": decision["reason"]})
         else:
+            extracted_attribution = source_attribution(fact)
+            reviewed_attribution = source_attribution(decision)
             accepted.append({**fact, "statement": statement, "original_statement": fact["statement"],
+                             "source_attribution": (extracted_attribution if extracted_attribution == reviewed_attribution else "unclear"),
+                             "source_attribution_extraction": extracted_attribution,
+                             "source_attribution_review": reviewed_attribution,
                              "source_anchors": combined,
                              "uncertain": fact["uncertain"] or any(a["uncertain"] for a in combined),
                              "review": decision})
@@ -523,12 +557,31 @@ def plain(text):
     return re.sub(r"([\\`*_{}\[\]<>#!|])", r"\\\1", " ".join(text.split()))
 
 
+def source_attribution(item):
+    """Legacy/missing metadata is unknown, never inferred from a section/number."""
+    value = item.get("source_attribution", "unclear")
+    if not isinstance(value, str) or value not in SOURCE_ATTRIBUTIONS:
+        raise ValueError("invalid source attribution")
+    return value
+
+
+def rendered_attribution(fact):
+    """Both existing passes must agree; old documents do not gain attribution."""
+    value = source_attribution(fact)
+    if (fact.get("source_attribution_extraction") != value
+            or fact.get("source_attribution_review") != value):
+        return "unclear"
+    return value
+
+
 def render(document, language):
     de = language == "de"
     title = "Arztbrief – Gesprächsentwurf" if de else "Consultation report – draft"
     note = ("Aus dem Transkript erstellt; vor Übernahme fachlich prüfen. Nicht dokumentiert bedeutet nicht verneint. Die konservative Wortprüfung der Fakten kann auch richtige Umformulierungen, Flexionen oder Übersetzungen zurückhalten. Quellenwörter und wörtliche Anker beweisen keine klinische Richtigkeit."
             if de else "Generated from the transcript; review before use in a clinical record. Not documented does not mean denied. The conservative fact-wording check can withhold valid paraphrases, inflections or translations. Source words and literal anchors do not establish clinical correctness.")
     report = [f"# {title}", "", note, ""]
+    report += [("Die Quellenzuordnung ist eine automatisierte Einordnung, keine unabhängige Bestätigung. Patientenangaben, ärztliche Aussagen und Beobachtungen werden getrennt gekennzeichnet; fehlende oder widersprüchliche Zuordnung bleibt unklar. Abschnittsüberschriften beweisen keinen Untersuchungsbefund."
+                if de else "Source attribution is an automated classification, not independent verification. Patient reports, clinician statements and observations are labeled separately; missing or conflicting attribution remains unclear. Section headings do not establish an examination finding."), ""]
     gaps = [row for chunk in document.get("source_coverage", []) for row in chunk["final"]
             if row["assessment"] != "validated_phrase"]
     if gaps:
@@ -552,6 +605,9 @@ def render(document, language):
             uncertain = (" [unklar – prüfen]" if de else " [unclear – verify]") if fact["uncertain"] else ""
             label = "Ausgewählte Quellenpassage" if de else "Selected source passage"
             report.append(f"- {label}: {plain(fact['statement'])}{uncertain} [{fact['id']}]")
+            attribution_label = "Automatisierte Quellenzuordnung" if de else "Automated source attribution"
+            attribution = SOURCE_ATTRIBUTIONS[rendered_attribution(fact)][0 if de else 1]
+            report += ["", f"  {attribution_label}: {attribution}."]
             for evidence in fact["evidence"]:
                 positions = ", ".join(f"{s['start']}–{s['end']}" for s in evidence["spans"])
                 context = "Vollständiger zitierter Kontext – Bedingungen und Sprecher prüfen" if de else "Full cited context – check conditions and speaker"

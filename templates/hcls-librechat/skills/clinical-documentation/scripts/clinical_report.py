@@ -325,6 +325,14 @@ def document_transcript(text, language, reporter, output):
         else:
             prior = unique[identity]
             prior["uncertain"] |= fact["uncertain"]
+            if prior.get("source_attribution", "unclear") != fact.get("source_attribution", "unclear"):
+                conflicts = prior.setdefault("source_attribution_conflicts", [{
+                    "fact_id": prior["id"], "extraction": prior.get("source_attribution_extraction", "unclear"),
+                    "review": prior.get("source_attribution_review", "unclear")}])
+                conflicts.append({"fact_id": fact["id"],
+                                  "extraction": fact.get("source_attribution_extraction", "unclear"),
+                                  "review": fact.get("source_attribution_review", "unclear")})
+                prior["source_attribution"] = "unclear"
             for evidence in fact["evidence"]:
                 if evidence not in prior["evidence"]:
                     prior["evidence"].append(evidence)
