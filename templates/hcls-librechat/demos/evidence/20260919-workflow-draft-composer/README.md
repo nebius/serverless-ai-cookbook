@@ -90,3 +90,37 @@ on the **new immutable image**, without source/runtime overlays, with network
 disabled. The existing owner/clinical-binding negative cases remain in this
 gate. Installed execution and new uncoached natural acceptance are pending;
 no cloud mutation or additional natural prompt was made by this source change.
+
+## Exact installed v50 follow-through
+
+The subsequent Docker-only gate passed on source
+`6e1ef6858b899c58955b5927522b8eace12c8f30`, OCI index
+`sha256:c8c3e411599a42afe6d00dcc4be573f8d72322616f09a86c0e881fb2fb2ef3dd`,
+amd64 manifest
+`sha256:4aab9f4dae34afc66d502f79e7c4ff91069bb180483a074826c44422212956f1`.
+The test used the installed renderer, LibreChat processMCPEnv, SDK transport,
+scientific interpreter and helpers, with networking disabled and no runtime or
+renderer overlays. All 11 cases passed, including the added grouped-composer
+process-disconnect/reconnect case. Three CPU studies completed through the
+independent supervisor after disconnect; a separate readback verified all nine
+nonempty final artifacts plus their three manifests, including byte sizes and
+SHA256. Five installed runtime/seed/schema files match the frozen source.
+
+The original owner-binding negatives and missing clinical credential still
+reject. The three existing clinical credential forms only reached queued
+preflight: no worker or provider call ran for them. Both task test containers
+were removed normally, with their workspace and receipts retained privately.
+
+Protected receipts under `U/workbench-v50-installed.LIsyEO/`:
+
+- `stdio-installed-gate.json`, SHA256
+  `9a8ea31dd7fab07687148c8501739ed152cb227d41456b675f9864f562c6b32f`.
+- `installed-files-verification.json`, SHA256
+  `7c85c706ad53f6034487f430f74edf33ff6223609dab4caa682c54bd7791c941`.
+
+This is installed transport/runtime evidence, not natural planner adoption or
+bucket/browser completion. Scientist04's next unchanged-intent prompt is
+prepared but held; all v49 failures remain unchanged. The separate local Rene
+migration mechanism gate is documented in
+`../20260919-rene-migration-local-v50/README.md`; it does not select or qualify a
+new default planner.
