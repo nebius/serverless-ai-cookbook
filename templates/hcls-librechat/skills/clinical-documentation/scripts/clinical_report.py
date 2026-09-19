@@ -35,6 +35,7 @@ from document import (
     completion_schema,
     digest,
     evidence_for,
+    extraction_coverage,
     render,
     render_review,
     source_excerpt_fallbacks,
@@ -246,7 +247,7 @@ class Reporter:
 def document_transcript(text, language, reporter, output):
     if not text.strip():
         raise ValueError("empty transcript: no consultation report generated")
-    facts, uncertainties, rejected, kinds = [], [], [], []
+    facts, uncertainties, rejected, kinds, coverage = [], [], [], [], []
     next_id = 1
     for index, chunk in enumerate(chunks(text)):
         chunk["segments"] = source_segments(chunk)
@@ -254,6 +255,26 @@ def document_transcript(text, language, reporter, output):
         value = reporter.complete(f"extract-{index:03}", EXTRACT, data)
         current, doubts, invalid, next_id = validate_extraction(value, chunk, next_id)
         kinds.append(value["kind"])
+        initial = extraction_coverage(value, chunk["segments"], current)
+        missing = {row["source_id"] for row in initial if row["assessment"] != "validated_phrase"}
+        record = {"chunk_index": index, "initial": initial,
+                  "followup_requested": sorted(missing), "final": initial,
+                  "interpretation": "Segment assessment is not proof of factual completeness or clinical correctness."}
+        coverage.append(record)
+        save(output / "coverage.json", coverage)
+        if missing:
+            # One bounded follow-up for only missing segments; never loop until
+            # successful or increase the provider's per-call context/output budget.
+            gap = {**chunk, "segments": [s for s in chunk["segments"] if s["id"] in missing]}
+            gap_data = {**data, "segments": [s for s in data["segments"] if s["id"] in missing]}
+            extra = reporter.complete(f"extract-gap-{index:03}", EXTRACT, gap_data)
+            extra_facts, extra_doubts, extra_invalid, next_id = validate_extraction(extra, gap, next_id)
+            current.extend(extra_facts)
+            doubts.extend(extra_doubts)
+            invalid.extend(extra_invalid)
+            assessed = {row["source_id"]: row for row in extraction_coverage(extra, gap["segments"], extra_facts)}
+            record["final"] = [assessed.get(row["source_id"], row) for row in initial]
+            save(output / "coverage.json", coverage)
         if current:
             def review_one(fact, index=index, data=data, chunk=chunk):
                 stage = f"review-{index:03}-{fact['id']}"
@@ -284,7 +305,8 @@ def document_transcript(text, language, reporter, output):
     # Overlapping chunks can repeat a fact; never collapse differing statements.
     unique = {}
     for fact in facts:
-        identity = (fact["section"], fact["statement"].casefold().strip())
+        identity = (fact["section"], tuple((p["quote"], tuple((s["start"], s["end"]) for s in p["spans"]))
+                                           for p in fact["source_phrases"]))
         if identity not in unique:
             unique[identity] = fact
         else:
@@ -299,7 +321,8 @@ def document_transcript(text, language, reporter, output):
         save(output / "review.json", {"rejected": rejected, "kinds": kinds, "uncertainties": uncertainties})
         raise ValueError("no supported clinical facts; transcript retained without a report")
     # Ask about the entire fact set, not separate chunks that could contain answers.
-    question_data = {"language": language, "facts": facts, "uncertainties": uncertainties}
+    question_data = {"language": language, "facts": facts, "uncertainties": [
+        {k: v for k, v in item.items() if k != "model_description_for_review"} for item in uncertainties]}
     if not facts:
         questions = []
     elif len(json.dumps(question_data, ensure_ascii=False)) > 60000:
@@ -312,6 +335,7 @@ def document_transcript(text, language, reporter, output):
                 "language": language, "transcript_sha256": digest(text), "facts": facts,
                 "uncertainties": uncertainties, "questions": questions, "rejected": rejected,
                 "source_excerpts": excerpts,
+                "source_coverage": coverage,
                 "draft_mode": "facts_and_review" if facts else "source_review_only_no_accepted_facts",
                 "validation": "facts constructed only from validated exact source-language phrases, with literal declared medication/dose anchors and automated contextual review; withheld wording retained as review-only source excerpts, not accepted facts; quote selection/context can be wrong and completeness is not established; not clinical validation"}
     report, followup = render(document, language)
