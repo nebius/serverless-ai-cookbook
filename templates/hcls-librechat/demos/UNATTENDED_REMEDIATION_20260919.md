@@ -58,6 +58,57 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 In progress. This is not a final readiness claim.
 
+### 20:25 UTC — exact v57 deployed to six users; four creates externally blocked
+
+The frozen combined source is `d7cf50364f80e98efa974200d33dbde7f193e6b8`,
+published as `lc:r0919-v57-d7cf503`, OCI index
+`sha256:09406d09cbbb38937648e71708c3ecf2655d032abe933e0b18d560bdece11aa8`
+and runtime manifest
+`sha256:57be1dd1c222eea4474b5728ce7e80ae29b8c096d68ff437f0994488f949e4c6`.
+It contains explicit native-tool selection, strict known-output preflight,
+clinical customer-artifact registration/measured outcomes, confidence/request
+provenance and complete recorded design-constraint/score rendering. Native
+arguments are not rewritten to satisfy a different capability's schema.
+
+Exact installed acceptance passed24 runtime hashes,11 actual SDK cases,
+198 domain tests and7 CPU studies/40 independently checked files. An original
+external test-import error was preserved and corrected only in the test binding;
+no runtime source overlay was used. Protected acceptance SHA:
+`feee485d3a016e75707d23ce44dc4c5541760b93cb4bbbcb2c5dc54a8d226f40`.
+
+Six dedicated instances01/04/05/07/08/09 are configured, with exact owner, key,
+image and bucket binding. Each received one unchanged r9 prompt.01 OpenFold2,
+05 chemistry,07 aging and09 retained MindEval completed; independent science,
+provenance and actual UI delivery checks are recorded separately.04's dependent
+protein workflow and08 clinical publication are still under observation.
+The09 Study finished0.203 seconds before its recorded browser close, so its
+fresh running-state observation does not prove precompletion disconnect.
+
+The09 final files/measurements and five actual UI downloads are correct, but
+its chat quoted GLM profile032 overall as4.325 rather than the stored4.55.
+That narrative defect remains a failure, not a qualified clean cohort. A small
+source-bound summary projection is being prepared without new scoring or calls.
+Some verifier reconnects used stale rotated cookies and required one ordinary
+same-account login; original401/timeout evidence remains. This is not yet
+attributed to the deployed authentication implementation.
+
+The other four creates02/03/06/10 each returned provider Internal on three
+explicit attempts, with absent exact-name resources confirmed by complete
+inventories and earlier command/state evidence retained. Six instances are
+running; there is no ten-user release pass. Read-only quota checks showed
+tenant CPU1704/2700 and public IPv4 usage245/250; these do not establish the
+cause of an Internal response. Root reported the actual external blocker to
+the user. No quota, timeout or retry-policy increase was made.
+
+All predecessor test instances were archived before stop. All five successful
+v54 and four of five v56 predecessors are confirmed absent; the oldv56/08
+endpoint remains stopped after rejected delete attempts. Deleted endpoint IDs
+and local databases are irrecoverable; archives, buckets and customer endpoints
+are retained. Rene's original instance is unchanged. Exactv57 local migration
+replay passed49 collections/81 documents/334 indexes/two state files, original
+password, seeded agents and restart/chat continuity; actual fresh cloud migration
+and unchanged-release customer cohorts remain open. Backend190 is unchanged.
+
 ### 19:49 UTC — all five v56 replacements deployed; delivery defects isolated
 
 All five affected test users now have separate, configured v56 instances with
