@@ -829,6 +829,9 @@ def evaluate(case: dict, result: Any, base: Path = Path(".")) -> dict:
                 downstream_refolding="required_for_structure_recovery", unique_sequences=len({m["sequence"] for m in measured}))
         elif kind == "molecule_generation":
             receipt.update(molecular_metrics(unwrap(result), expected))
+        elif kind == "design_protocol":
+            from design_protocol_metrics import evaluate_protocol
+            receipt.update(evaluate_protocol(result, expected, base))
         elif kind == "design_constraints":
             if case.get("model_id") == "proteina-complexa":
                 receipt.update(proteina_design_metrics(result, expected))
