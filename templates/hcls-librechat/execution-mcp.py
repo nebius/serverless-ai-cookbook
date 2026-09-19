@@ -202,6 +202,41 @@ def execute(args):
     return read_job({'job_id': directory.name, 'wait_seconds': wait})
 
 
+def study_argument(value):
+    """Decode the two advertised representations, without repairing a plan."""
+    if isinstance(value, str):
+        def unique_object(pairs):
+            result = {}
+            for key, item in pairs:
+                if key in result:
+                    raise ValueError('study JSON text contains a duplicate object key; no study was admitted.')
+                result[key] = item
+            return result
+
+        def nonfinite(_):
+            raise ValueError('study JSON text contains a non-finite number; no study was admitted.')
+
+        try:
+            value = json.loads(value, object_pairs_hook=unique_object, parse_constant=nonfinite)
+        except json.JSONDecodeError as error:
+            raise ValueError(f'study JSON text is malformed at line {error.lineno}, column {error.colno}; '
+                             'supply a complete scientific-workflow/v2 object or use a finalized composer plan_file. '
+                             'No study was admitted; correct the draft, not a v1 fallback.') from error
+    # This also rejects float overflow (1e400) and non-finite object-form values.
+    try:
+        json.dumps(value, allow_nan=False)
+    except (TypeError, ValueError) as error:
+        raise ValueError('study must contain only finite JSON values; no study was admitted.') from error
+    from jsonschema import Draft202012Validator
+    problem = next(Draft202012Validator(STUDY_SCHEMA).iter_errors(value), None)
+    if problem:
+        pointer = '/' + '/'.join(str(part) for part in problem.absolute_path)
+        raise ValueError('study differs from scientific-workflow/v2 at ' + pointer +
+                         '; preserve its analysis and deliverables while correcting the draft. '
+                         'No study was admitted; do not downgrade to legacy v1.')
+    return value
+
+
 def run_scientific_workflow(args):
     """Typed launch of the existing durable client, not a new model transport."""
     workspace = Path(WORKSPACE).resolve()
@@ -210,7 +245,7 @@ def run_scientific_workflow(args):
         if 'steps' in args or 'plan_file' in args or args.get('resume'):
             raise ValueError('Whole studies use one immutable study plan; no separate steps, plan_file or manual resume.')
         import scientific_study
-        return scientific_study.submit(args['study'], output)
+        return scientific_study.submit(study_argument(args['study']), output)
     if ('steps' in args) == ('plan_file' in args):
         raise ValueError('Supply typed steps OR an existing plan_file, not both.')
     index_dir = ROOT / 'workflow-index'
@@ -447,13 +482,14 @@ TOOLS = [
                     'media_type': {**TEXT, 'description': 'Actual source MIME accepted by the live model contract.'},
                     'idempotency_key': {'type': 'string', 'minLength': 8, 'maxLength': 200}}}}}}},
     {'name': 'run_scientific_workflow',
-     'description': 'Preferred whole-study launch: supply inline study OR plan_file pointing to existing scientific-workflow/v2 JSON, plus output_directory. Both use the same immutable plan, input validation and persistent worker. Prefer compose_scientific_workflow for longer plans: small typed groups produce a validated immutable plan_file, not a giant script inside tool arguments. Include ordered preparation, native/batch/clinical, deterministic analysis and final deliverables. File references are existing workspace paths or {step,file}; native result.json and batch output-manifest.json preserve their verified sibling artifacts. Supported mindeval analysis consumes full saved record paths directly and publishes exact transcripts, scores, counts and report without catalog or new model calls. The worker continues after chat disconnect or process restart, serializes admission, and publishes verified final files in Runs. Do NOT ask for mechanical continue to run declared phases. Repeating the same plan/output returns the same study; unknown admissions stop for inspection. Only legacy steps or scientific-workflow/v1 plan files omit whole-study analysis. No budgets are increased; completion is not scientific validation.',
+     'description': 'Preferred whole-study launch: supply inline study (a v2 object or its complete strict JSON text) OR plan_file pointing to existing scientific-workflow/v2 JSON, plus output_directory. Both representations use identical validation and immutable identity: no duplicate keys, non-finite numbers, inferred defaults or schema conversion. Prefer compose_scientific_workflow for longer plans: small typed groups produce a validated immutable plan_file. If preflight rejects a draft, correct that same v2 plan while preserving analysis/deliverables; do not downgrade to legacy v1 or shell CLI. Include ordered preparation, native/batch/clinical, deterministic analysis and final deliverables. File references are existing workspace paths or {step,file}; native result.json and batch output-manifest.json preserve their verified sibling artifacts. Supported mindeval analysis consumes full saved record paths directly without new model calls. The worker continues after chat disconnect or process restart and publishes verified final files in Runs. Do NOT ask for mechanical continue to run declared phases. Repeating the same plan/output returns the same study; unknown admissions stop for inspection. Only explicitly requested legacy steps/v1 omit whole-study analysis. No budgets are increased; completion is not scientific validation.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
      'inputSchema': {'type': 'object', 'additionalProperties': False,
         'required': ['output_directory'], 'oneOf': [{'required': ['steps'], 'not': {'anyOf': [{'required': ['plan_file']}, {'required': ['study']}]}},
             {'required': ['plan_file'], 'not': {'anyOf': [{'required': ['steps']}, {'required': ['study']}]}},
             {'required': ['study'], 'not': {'anyOf': [{'required': ['steps']}, {'required': ['plan_file']}]}}], 'properties': {
-            'study': STUDY_SCHEMA,
+            'study': {'oneOf': [STUDY_SCHEMA, {'type': 'string', 'minLength': 1,
+                'description': 'Complete strict JSON text encoding the SAME scientific-workflow/v2 object. Parsed once, then validated identically; duplicate keys, NaN/Infinity, invalid schema and double encoding are rejected before admission. Prefer a finalized composer plan_file for longer plans.'}]},
             'plan_file': {'type': 'string', 'description': 'Existing workspace JSON file: scientific-workflow/v2 launches the full durable study; scientific-workflow/v1 retains legacy native/batch-only behavior. Mutually exclusive with study and steps.'}, 'output_directory': {'type': 'string'},
             'steps': {'type': 'array', 'minItems': 1, 'items': {'oneOf': [NATIVE_STEP_SCHEMA, BATCH_STEP_SCHEMA]}},
             'resume': {'type': 'boolean', 'default': False}}}},

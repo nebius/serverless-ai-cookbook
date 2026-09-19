@@ -221,8 +221,15 @@ def sampling_provenance(request_bytes, structure_index):
         value['request_status'] = 'not_supplied; seed and requested sample counts are unknown'
         return value
     request = json.loads(request_bytes)
-    if not isinstance(request, dict):
-        raise ValueError('Retained request must be a JSON object.')
+    if not (isinstance(request, dict) or
+            isinstance(request, list) and request and all(isinstance(item, dict) for item in request)):
+        raise ValueError('Retained request must be a JSON object or a nonempty array of request objects.')
+    if isinstance(request, list):
+        # Protenix's uploaded input is an array of named complex records. Keep
+        # array-index JSON pointers; a coordinate index is NOT a request index.
+        value['request_document_shape'] = 'array-of-objects'
+        value['request_record_count'] = len(request)
+        value['request_record_association'] = 'not established; recorded fields describe all supplied records, not a selected structure'
     names = {'seed', 'seeds', 'random_seed', 'random_seeds', 'model_seed', 'model_seeds',
              'num_samples', 'num_diffusion_samples', 'diffusion_samples', 'selected_models'}
     def walk(item, pointer=''):

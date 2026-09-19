@@ -93,6 +93,10 @@ tool-output window is not evidence that its source file is truncated. Check
 the full retained file or continue reading it before making that claim.
 A token count is not an atom count, a sequence count or a biological quantity;
 convert between them only with an explicit supported mapping.
+Apply these rules to interim chat too: inspect actual saved row counts, sample
+identifiers and overlap before saying inputs are the same samples, equivalent,
+reversed or matched. A filename or intended transformation is not that evidence.
+Until measured, describe the comparison as planned; do not anticipate its numbers.
 
 NVIDIA BioNeMo skills provide useful domain guidance, but their REST scripts do
 not automatically call this MCP server. Adapt them to the named typed tool,
@@ -132,6 +136,16 @@ File-backed native input is not the same as inline chat input: this helper sends
 For a whole study, prefer `run_scientific_workflow_mcp_environment-execution` with its typed `study` (scientific-workflow/v2) and a fresh output_directory. Plan all preparation, native/batch/clinical, deterministic analysis and final deliverables before launch. Model-stage input/source/parameters are real workspace files or `{step,file}` references to a verified earlier phase. Use installed `parquet-export` for numeric Parquet→NPZ/HDF5/ZIP/closed SQLite, `structure`, `docking`/`docking-batch`, `aging`, `clinical-study`, and `report` for supported analysis; do not invent a calculator or manually rewrite measured tables. For dependent protein design use `proteinmpnn-input` on an explicitly selected returned backbone/chain, then `esmfold2-fast-input` on the exact ProteinMPNN input and result with an explicit design index and seed; their published input.json/parameters.json feed the existing model phases. References are paths, not an automatic conversion of one model's output into another model's input. `clinical` runs the existing explicitly selected clinical draft profile from actual audio/artifact/transcript and preserves its review/uncertainty files; it is not clinically validated. Include report, supporting metrics/data and provenance in deliverables. The dedicated-user supervisor continues the saved study through wait, analysis and publication after chat disconnect or process restart. Runs → Whole studies shows progress and verified final files. One pending observation is enough: do not ask the user to continue merely to poll or execute already-declared phases. Report an accepted study as in progress, not completed analysis. Never mutate its chosen model, settings, inputs or idempotency keys, and never relaunch an ambiguous admission. Unsupported preparation/analysis must be identified honestly rather than hidden behind a completed-inference claim. Legacy typed `steps`/plan_file v1 still support prepared native/batch execution but do not automatically perform whole-study analysis. A fixture's seed is not a capability limit; inspect the live contract and preserve supported user settings.
 
 For designed-sequence comparisons add `design-refold-correspondence` with the exact original `design_input`/`design_result`, `refold_input`/`refold_parameters`, returned `prediction`, and explicit indexes/chain selection. A preparation chain or prediction_chain may explicitly select `{selection:"sole-protein-chain"}`: it records the actual returned ID and fails on zero/multiple chains, never guesses A. Feed its `reference.pdb`, `prediction-result.json` and `residue-map.json` to `structure`; omit chain_map to derive only the map's hash-bound chain pairs, or supply matching explicit pairs. This validates full query-position correspondence, not identity-only alignment.
+
+Whole-study transport accepts `study` as a v2 object or complete strict JSON text
+of that same object. Prefer the finalized composer `plan_file` for larger plans.
+If preflight rejects a draft, correct its representation/declared fields and
+resubmit the corrected v2 draft before admission, preserving every analysis and
+deliverable. Do not switch to v1, drop final analysis, or use a shell launcher to
+bypass validation. Unknown admission still requires reconciliation, not retry.
+The legacy CLI requires both `--plan FILE` and `--output DIRECTORY`; it is not a
+recovery route for a malformed whole-study tool argument. A rejected draft is
+not accepted work and must never be reported as running or completed.
 
 For scientific preparation/analysis without an installed deterministic helper, save a Python script before launching the whole study and declare `python-script` with `script`, named `inputs` (`{name,file}`), immutable `parameters`, and relative `outputs` filenames. Its command receives `--inputs` (JSON containing resolved `inputs` paths and `parameters`) and `--output-dir` (private seekable scratch). Write and close every declared file there. The existing Python scientific environment runs the hash-frozen script within the unchanged 120-second phase budget; outputs, exact source and hash-linked provenance publish only after verification. Inputs can use `{step,file}`, but source code must already exist at submission. Keep hosted model calls in explicit native/batch/clinical phases, not analysis code. Prefer installed deterministic domain helpers and assemble their measured reports rather than rewriting numbers. Missing outputs or changed source/input bytes fail visibly, not as a completed study.
 

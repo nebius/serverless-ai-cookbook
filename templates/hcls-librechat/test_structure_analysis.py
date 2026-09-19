@@ -221,6 +221,45 @@ def test_sampling_unknown_and_invalid_values_are_not_invented():
         analysis.sampling_provenance(b'[42]', 0)
 
 
+def test_uploaded_complex_array_keeps_record_pointers_without_seed_association():
+    source = b'[{"name":"complex-a","model_seeds":[7],"sequences":[{"proteinChain":{"sequence":"AAAA","count":1}}]}, {"name":"complex-b","seed":42}]\n'
+    value = analysis.sampling_provenance(source, 1)
+    assert value['request_document_shape'] == 'array-of-objects'
+    assert value['request_record_count'] == 2
+    assert value['request_fields'] == [
+        {'json_pointer': '/0/model_seeds', 'value': [7], 'status': 'recorded'},
+        {'json_pointer': '/1/seed', 'value': 42, 'status': 'recorded'}]
+    assert value['request_sha256'] == hashlib.sha256(source).hexdigest()
+    assert value['structure_index_is_seed'] is False
+    assert value['determinism_established'] is False
+    assert 'not established' in value['request_record_association']
+    for invalid in (b'[]', b'[{} , null]', b'["request"]', b'null'):
+        with pytest.raises(ValueError, match='array of request objects'):
+            analysis.sampling_provenance(invalid, 0)
+
+
+@pytest.mark.parametrize('request_bytes', [
+    b'[{"name":"complex-a","sequences":[{"proteinChain":{"sequence":"AAAA","count":1}}]}]',
+    b'[{"name":"complex-b","sequences":[{"proteinChain":{"sequence":"AAAA","count":1}}]}]',
+])
+def test_array_request_cli_publishes_all_measured_outputs(tmp_path, request_bytes):
+    original = pdb({'A': COORDS}).encode()
+    reference, prediction, source = [tmp_path / name for name in ('ref.pdb', 'prediction.pdb', 'request.json')]
+    reference.write_bytes(original)
+    prediction.write_bytes(original)
+    source.write_bytes(request_bytes)
+    output = tmp_path / 'comparison'
+    subprocess.run([sys.executable, spec.origin, '--reference', str(reference), '--prediction', str(prediction),
+                    '--request-file', str(source), '--output-dir', str(output)], check=True, capture_output=True)
+    metrics = json.loads((output / 'metrics.json').read_bytes())
+    assert metrics['global_ca_rmsd_angstrom'] < 1e-6
+    assert metrics['mapped_residues'] == 4
+    assert metrics['sampling_provenance']['request_fields'] == []  # No invented seed.
+    assert metrics['provenance']['request_sha256'] == hashlib.sha256(request_bytes).hexdigest()
+    assert {'metrics.json', 'report.md', 'methods.md', 'residue-mapping.json', 'prediction.pdb'} <= {p.name for p in output.iterdir()}
+    assert 'Mapped residues: 4' in (output / 'report.md').read_text()
+
+
 def test_report_preserves_bad_complex_geometry_and_actual_denominators():
     first = np.array(COORDS)
     metrics, _ = analysis.compare(pdb({'A': first, 'D': first + [0, 0, 4]}),

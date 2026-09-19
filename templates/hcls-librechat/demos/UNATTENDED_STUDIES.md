@@ -37,6 +37,16 @@ or `{ "step": "earlier-id", "file": "published-name" }`. The plan, original
 input hashes, helper hashes, selected models, parameters and request keys are
 frozen before admission. A changed plan cannot take over an existing output.
 
+The `study` argument explicitly accepts either that object or its complete JSON
+text. Text is decoded once, rejecting duplicate object keys, non-finite numbers,
+double encoding and invalid v2 shape, then sent through the identical submitter
+and immutable identity. No defaults, field aliases or v1 conversion are inferred.
+Prefer a finalized composer `plan_file` for longer plans. Correct a rejected
+draft before admission while retaining its analysis and deliverables; never
+downgrade a whole study to a v1-only inference plan or bypass its preflight with
+a shell command. Unknown admission remains fail-closed. The separate legacy CLI
+requires both `--plan FILE` and `--output DIRECTORY` and is not this repair path.
+
 `describe_scientific_workflow_mcp_environment-execution` is read-only and
 returns a compact list by default. Select only required `methods` for their
 exact launcher schemas and guaranteed versus conditional output filenames.
