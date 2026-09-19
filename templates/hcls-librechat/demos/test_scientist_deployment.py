@@ -157,3 +157,45 @@ def test_deploy_helper_preserves_explicit_network_setting_without_implicit_ssh(t
     monkeypatch.setattr(module, 'deploy_command', command)
     with pytest.raises(RuntimeError, match='fixture-stopped'):
         module.deploy(manifest, person, args)
+
+
+def test_reconcile_uses_exact_lookup_not_truncated_list(tmp_path, monkeypatch):
+    calls = []
+    def cloud(cli, arguments, *rest):
+        calls.append(arguments)
+        return {'metadata': {'id': 'endpoint-existing', 'name': 'exact-name',
+                             'parent_id': 'project-fixture'}, 'spec': {'image': 'image@sha256:fixture'}}
+    monkeypatch.setattr(module, 'cloud', cloud)
+    state = {'scientist_id': 'scientist-01', 'endpoint_name': 'exact-name', 'image': 'image@sha256:fixture'}
+    assert module.reconcile_endpoint([], {'project_id': 'project-fixture'}, state, tmp_path) == 'endpoint-existing'
+    assert calls == [['ai', 'endpoint', 'get-by-name', '--parent-id', 'project-fixture', '--name', 'exact-name']]
+
+
+@pytest.mark.parametrize('changed', ['name', 'parent_id', 'id', 'image'])
+def test_reconcile_rejects_different_or_incomplete_resource(tmp_path, monkeypatch, changed):
+    endpoint = {'metadata': {'id': 'endpoint-existing', 'name': 'exact-name', 'parent_id': 'project-fixture'},
+                'spec': {'image': 'image@sha256:fixture'}}
+    if changed == 'image':
+        endpoint['spec']['image'] = 'different'
+    else:
+        endpoint['metadata'][changed] = '' if changed == 'id' else 'different'
+    monkeypatch.setattr(module, 'cloud', lambda *args: endpoint)
+    state = {'scientist_id': 'scientist-01', 'endpoint_name': 'exact-name', 'image': 'image@sha256:fixture'}
+    with pytest.raises(RuntimeError, match='do not reuse|manual reconciliation'):
+        module.reconcile_endpoint([], {'project_id': 'project-fixture'}, state, tmp_path)
+
+
+@pytest.mark.parametrize('failure', ['NotFound', 'Internal', 'Unauthenticated'])
+def test_failed_lookup_never_creates_a_second_endpoint(tmp_path, monkeypatch, failure):
+    manifest, person, args, path = existing_endpoint(tmp_path)
+    state = json.loads(path.read_text())
+    state.pop('endpoint_id')
+    state['state'] = 'creating_endpoint'
+    path.write_text(json.dumps(state))
+    def cloud(*args):
+        raise RuntimeError('fixture lookup ' + failure)
+    monkeypatch.setattr(module, 'cloud', cloud)
+    monkeypatch.setattr(module, 'deploy_command', lambda *args: pytest.fail('Ambiguous create must not retry'))
+    with pytest.raises(RuntimeError, match='fixture lookup ' + failure):
+        module.deploy(manifest, person, args)
+    assert json.loads(path.read_text()) == state

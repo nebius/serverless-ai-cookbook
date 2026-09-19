@@ -62,16 +62,21 @@ def deploy_command(command: list[str], environment: dict) -> subprocess.Complete
 
 
 def reconcile_endpoint(cli: list[str], manifest: dict, state: dict, folder: Path) -> str:
-    inventory = cloud(cli, ["ai", "endpoint", "list", "--parent-id", manifest["project_id"]],
-                      folder, "endpoint-reconcile")
     name = state.get("endpoint_name", "science-qualification-20260918-" + state["scientist_id"])
-    matches = [item for item in inventory.get("items", []) if item.get("metadata", {}).get("name") == name]
-    if len(matches) != 1:
-        raise RuntimeError("Interrupted endpoint creation needs manual reconciliation; expected exactly one named resource")
-    endpoint = matches[0]
+    # List is paginated, and the high-level CLI does not expose its page token.
+    # Exact lookup must never mistake an absent first-page entry for no resource.
+    # NotFound and every other lookup failure remain operator-reconciled: no
+    # automatic second create follows an ambiguous original create.
+    endpoint = cloud(cli, ["ai", "endpoint", "get-by-name", "--parent-id", manifest["project_id"],
+                           "--name", name], folder, "endpoint-reconcile")
+    metadata = endpoint.get("metadata", {})
+    if metadata.get("name") != name or metadata.get("parent_id") != manifest["project_id"]:
+        raise RuntimeError("Named endpoint identity differs; do not reuse it")
+    if not metadata.get("id"):
+        raise RuntimeError("Named endpoint has no ID; needs manual reconciliation")
     if endpoint.get("spec", {}).get("image") != state["image"]:
         raise RuntimeError("Named endpoint has a different image; do not reuse it")
-    return endpoint["metadata"]["id"]
+    return metadata["id"]
 
 
 def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
