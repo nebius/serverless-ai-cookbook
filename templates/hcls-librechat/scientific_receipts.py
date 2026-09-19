@@ -62,6 +62,27 @@ def save(path: Path, value: object) -> None:
     _write_verified(path, data)
 
 
+def save_analysis(path: Path, value: object) -> None:
+    """Export measured scientific values without partial NumPy JSON writes.
+
+    Analysis may contain NumPy scalars/arrays; protocol receipts keep their
+    existing strict types. Serialize and validate the complete analysis before
+    touching an existing file, then reuse the bucket-compatible readback path.
+    Non-finite numbers are not silently converted into measurements.
+    """
+    import numpy as np
+
+    def scientific_value(item):
+        if isinstance(item, np.ndarray):
+            return item.tolist()
+        if isinstance(item, np.generic):
+            return item.item()
+        raise TypeError(f'Unsupported scientific JSON type: {type(item).__name__}')
+
+    serialized = json.dumps(value, default=scientific_value, allow_nan=False)
+    save(Path(path), json.loads(serialized))
+
+
 def load(path: Path):
     """Return the latest verified receipt, or None only when no receipt exists."""
     path = Path(path)
