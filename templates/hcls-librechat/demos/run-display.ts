@@ -21,3 +21,28 @@ export function runDisplay(run: { protocol?: string; status?: string; operation?
     showResult: !upload && ['succeeded', 'completed'].includes(run.status || ''),
   };
 }
+
+/** A bounded observation ending is not the saved study or model timing out. */
+export function studyDisplay(state: string) {
+  if (state === 'observation_expired') {
+    return {
+      status: 'Waiting for an update',
+      description: 'The status-check window ended, not the study. Checks continue automatically while the study supervisor is available.',
+    };
+  }
+  if (state === 'waiting_admission') {
+    return {
+      status: 'Waiting to start',
+      description: 'This step has not been accepted yet. The existing concurrency limit still applies.',
+    };
+  }
+  if (state === 'observation_interrupted') {
+    return {
+      status: 'Reconnecting to the existing operation',
+      description: 'A status connection was interrupted. Saved operation IDs are retained; do not submit another copy.',
+    };
+  }
+  // Preserve terminal and unknown states; presentation never turns a failure
+  // or unrecognized state into a successful or active run.
+  return { status: state, description: '' };
+}

@@ -6,7 +6,7 @@ import { Button, Input } from '@librechat/client';
 import { request } from 'librechat-data-provider';
 import { compareBatch, comparisonCsv } from './scientific-comparison';
 import type { WorkshopRun as Run } from './scientific-comparison';
-import { runDisplay } from './scientific-run-display';
+import { runDisplay, studyDisplay } from './scientific-run-display';
 
 type Job = { id: string; status: string; created_at: string; error?: string; files: string[] };
 type Catalog = { catalog: { judge_model: string; data: { id: string; clinician_eligible: boolean; patient_eligible: boolean }[] };
@@ -161,15 +161,19 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
         <h3 className="font-semibold">Whole studies</h3>
         <p className="my-2 text-sm text-text-secondary">Saved preparation, model work, analysis and publication continue independently of chat. Completion means the declared files were verified, not clinical or scientific validation.</p>
         {studies.data?.engine && !studies.data.engine.alive && <p role="status" className="my-2 text-sm">{studies.data.engine.configured ? 'The study supervisor is currently unavailable. Saved work is retained; do not submit another copy.' : 'The operator must enable this dedicated user’s single study supervisor before whole studies can run.'}</p>}
-        {(studies.data?.data || []).map((study) => <article key={study.id} className="border-t border-border-light py-3">
-          <div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{study.title}</strong><p className="text-sm">{study.state} · {study.phase}{study.current_step ? ` · ${study.current_step}` : ''} · {study.completed_steps.length}/{study.step_count} phases</p><code className="text-xs">{study.id}</code></div>
+        {(studies.data?.data || []).map((study) => {
+          const display = studyDisplay(study.state);
+          return <article key={study.id} className="border-t border-border-light py-3">
+          <div className="flex flex-wrap items-start justify-between gap-2"><div><strong>{study.title}</strong><p className="text-sm" title={`Recorded state: ${study.state}`}>{display.status} · {study.phase}{study.current_step ? ` · ${study.current_step}` : ''} · {study.completed_steps.length}/{study.step_count} phases</p><code className="text-xs">{study.id}</code></div>
             {(!['completed', 'failed', 'cancelled', 'needs_attention'].includes(study.state) || study.queue_blocked) && <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(async () => { await request.post(`${BASE}/studies/${study.id}/cancel`); })}>Cancel remaining study</Button>}
           </div>
+          {display.description && <p role="status" className="mt-2 text-sm">{display.description}</p>}
           {study.queue_blocked && <p role="status" className="mt-2 text-sm">A previous admission needs inspection. Later studies are held to avoid duplicate or overlapping model work.</p>}
           {study.failure && <p role="alert" className="mt-2 text-sm">{study.failure.message}</p>}
           <CompletedStudySummaries summaries={study.completion_summaries} />
           <ul className="mt-2 space-y-1">{(study.artifacts || []).map((artifact) => <li key={artifact.name}><Link className="underline" to={artifact.download_url}>{artifact.name}</Link><span className="ml-2 text-xs text-text-secondary">{artifact.role} · {artifact.size_bytes.toLocaleString()} bytes · SHA256 {artifact.sha256}</span></li>)}</ul>
-        </article>)}
+        </article>;
+        })}
         {!studies.isLoading && !studies.error && !studies.data?.data.length && <p className="text-sm">No saved whole studies yet. Ask the agent to prepare and launch a complete study plan.</p>}
       </section>
       {runs.data?.history_notice && <p role="status" className="my-3 rounded border border-border-medium p-3 text-sm">{runs.data.history_notice}</p>}

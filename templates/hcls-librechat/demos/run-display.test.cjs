@@ -47,3 +47,29 @@ test('legacy cold_start_seconds label includes queue instead of claiming activat
   assert.equal(display.readyTimingLabel, 'Accepted → ready (includes queue)');
   assert.match(fs.readFileSync(`${__dirname}/Demos.tsx`, 'utf8'), /display\.readyTimingLabel/);
 });
+
+test('a completed polling window does not imply study or model timeout', () => {
+  const display = exported.studyDisplay('observation_expired');
+  assert.equal(display.status, 'Waiting for an update');
+  assert.match(display.description, /not the study/);
+  assert.match(display.description, /while the study supervisor is available/);
+  assert.doesNotMatch(display.status, /failed|expired|completed|succeeded/);
+});
+test('admission waiting and read reconnection do not imply new or repeated inference', () => {
+  assert.equal(exported.studyDisplay('waiting_admission').status, 'Waiting to start');
+  assert.match(exported.studyDisplay('waiting_admission').description, /has not been accepted/);
+  assert.equal(exported.studyDisplay('observation_interrupted').status, 'Reconnecting to the existing operation');
+  assert.match(exported.studyDisplay('observation_interrupted').description, /do not submit another copy/);
+});
+test('terminal and unknown study states remain explicit', () => {
+  for (const state of ['completed', 'failed', 'cancelled', 'needs_attention', 'future_unknown_state']) {
+    assert.equal(exported.studyDisplay(state).status, state);
+    assert.equal(exported.studyDisplay(state).description, '');
+  }
+});
+test('Runs uses the label while retaining the actual recorded state and cancellation policy', () => {
+  const ui = fs.readFileSync(`${__dirname}/Demos.tsx`, 'utf8');
+  assert.match(ui, /studyDisplay\(study\.state\)/);
+  assert.match(ui, /Recorded state: \$\{study\.state\}/);
+  assert.match(ui, /\['completed', 'failed', 'cancelled', 'needs_attention'\]\.includes\(study\.state\)/);
+});
