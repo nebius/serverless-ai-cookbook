@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 00:54 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 01:01 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -45,7 +45,16 @@ v33 candidate removes contradictory Python-report-rendering guidance and adds
 authenticated Workspace deep-links to exact retained files. It changes no model,
 compute, context or token policy. The capture helper also stops storing its
 failed direct status/tool probes as evidence; actual persisted messages and
-workspace bytes remain authoritative. Preview/download qualification pending.
+workspace bytes remain authoritative. Published source7978d1e image digest
+`sha256:50474c6b9d06b24c5fabc8b4aecf9fd9f9a523a3470b4012200de4a48f77c046`
+is live on isolated06 endpoint `aiendpoint-e00p1hrfp1pnem3v6b` with32 Apps and
+the verified original bucket. Actual browser deep-link→selected-file download
+returns the same6,537 bytes/hash above. Anonymous file API requests return401;
+a missing selected file shows a clear not-found state without starting download.
+This qualifies existing dedicated-deployment file access, not shared-user
+isolation or scientific narrative. Natural read-only recovery conversation
+`5ba784c0-965a-58db-b43a-bdd9d0bb14fd` is in progress using unchanged original
+inputs and a new output directory; no new model inference requested.
 
 ### Latest release gate: v31 raw results correct, combined report malformed
 
