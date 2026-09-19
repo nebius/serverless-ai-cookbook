@@ -1,5 +1,6 @@
 """Typed launch contract shared by the existing execution MCP and its validator."""
 TEXT = {'type': 'string', 'minLength': 1}
+DEFAULT_REPORT_TITLE = 'Scientific study report'
 REPORT_HEADING = {**TEXT, 'pattern': r'\S', 'not': {'pattern': r'[\r\n]'},
     'description': 'Meaningful nonblank one-line heading without CR/LF. No arbitrary character-length cap; preserved verbatim.'}
 JSON_BASENAME = {**TEXT, 'pattern': r'^[^/]*\.json$', 'not': {'pattern': r'\n$'},
@@ -129,8 +130,10 @@ STEPS = [NATIVE, BATCH, CLINICAL,
         'binder_length_max': {'type': 'integer', 'minimum': 1},
         'target_reference': FILE, 'target_chain': TEXT}, ['manifest_file']),
         'dependentRequired': {'target_reference': ['target_chain'], 'target_chain': ['target_reference']}}),
-    local('report', object_schema({'title': REPORT_HEADING, 'sections': {'type': 'array', 'minItems': 1, 'maxItems': 16,
-        'items': object_schema({'title': REPORT_HEADING, 'file': FILE, 'format': {'enum': ['markdown', 'csv', 'operation-timing', 'recorded-export', 'rgb-statistics', 'mindeval-runs']}})}})),
+    local('report', object_schema({'title': {**REPORT_HEADING, 'default': DEFAULT_REPORT_TITLE,
+        'description': REPORT_HEADING['description'] + ' Optional presentation heading; omission uses exactly "Scientific study report". Explicit titles are preserved. Section titles, source files and formats remain required.'},
+        'sections': {'type': 'array', 'minItems': 1, 'maxItems': 16,
+        'items': object_schema({'title': REPORT_HEADING, 'file': FILE, 'format': {'enum': ['markdown', 'csv', 'operation-timing', 'recorded-export', 'rgb-statistics', 'mindeval-runs']}})}}, ['sections'])),
     local('clinical-study', object_schema({'plan_file': FILE})),
     local('mindeval', object_schema({'title': REPORT_HEADING, 'records': {'type': 'array', 'minItems': 1,
         'items': FILE, 'description': 'Full native saved run JSON: state.config, state.transcript[{role,content,...}], and optional state.judgment.judgment mapping criterion names to scores. This nested native judgment shape is directly supported: do NOT transform it into judgment.scores or write a custom parser. Preserves original records/transcripts, identities, supplied criterion rows, descriptive within-profile pairing, missing cells and judge-family limitations. No catalog/model calls.'}})),

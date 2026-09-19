@@ -274,7 +274,8 @@ def validate(plan):
             spec.loader.exec_module(helper)
             try:
                 if step['method'] == 'report':
-                    helper.validate_report_metadata(step['arguments']['title'], step['arguments']['sections'])
+                    from scientific_study_schema import DEFAULT_REPORT_TITLE
+                    helper.validate_report_metadata(step['arguments'].get('title', DEFAULT_REPORT_TITLE), step['arguments']['sections'])
                 else:
                     helper.validate_report_metadata(step['arguments']['title'])
             except ValueError as error:
@@ -336,7 +337,7 @@ def validate_local_arguments(method, args):
         'robotics-analysis': ({'source_video', 'source_archive', 'native_result', 'manifest_file', 'selected_cameras'}, {'variant_index'}),
         'evo2-continuation': ({'reference_file', 'cases'}, {'title', 'reference_id'}),
         'aging': ({'model', 'cohorts'}, {'coefficient_version', 'reference_ages'}),
-        'report': ({'title', 'sections'}, set()), 'mindeval': ({'title', 'records'}, set()),
+        'report': ({'sections'}, {'title'}), 'mindeval': ({'title', 'records'}, set()),
         'clinical-study': ({'plan_file'}, set()),
     }
     required, optional = fields[method]
@@ -540,6 +541,9 @@ def local_command(method, args, scratch):
         return command
     if method in {'report', 'mindeval', 'aging', 'docking-batch'}:
         data = args if method in {'report', 'mindeval'} else args['cohorts'] if method == 'aging' else args['runs']
+        if method == 'report':
+            from scientific_study_schema import DEFAULT_REPORT_TITLE
+            data = {'title': DEFAULT_REPORT_TITLE, **args}
         manifest = scratch / 'helper-input.json'
         manifest.write_bytes(canonical(data))
         command += [{'report': '--manifest', 'mindeval': '--mindeval-plan', 'aging': '--cohorts', 'docking-batch': '--runs'}[method], str(manifest)]

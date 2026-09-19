@@ -118,7 +118,8 @@ def test_typed_report_cardinality_matches_existing_helper_before_admission(mount
     args['sections'] *= count
     descriptor = describe_workflow(['report'])['phases']['report']['step_schema']['properties']['arguments']
     assert descriptor['properties']['sections']['maxItems'] == 16
-    assert descriptor['properties']['title'] is REPORT_HEADING
+    assert all(descriptor['properties']['title'][key] == value
+               for key, value in REPORT_HEADING.items() if key != 'description')
     assert 'maxLength' not in REPORT_HEADING
     if 1 <= count <= 16:
         assert Draft202012Validator(descriptor).is_valid(args)
