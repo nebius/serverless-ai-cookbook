@@ -27,7 +27,10 @@ not an absent bundle or stale frontend. A successor must test the actual
 Markdown/highlighting pipeline as well as the real browser.
 
 The authenticated workspace remains available by manually navigating the exact
-URLs; this does not pass clickable-chat navigation. A501 queued-turns request
+URLs. Seven actual browser downloads total153,693 bytes and match independent
+S3 receipts; `download-verification.json` SHA256
+`4f836ac5276f912a4f16c7f4325f000d2720c921fdab20c9c5f2e0ac01a19db1`.
+This does not pass clickable-chat navigation. A501 queued-turns request
 also appears in the imported agents conversation's console and is retained,
 not interpreted as model inference or this renderer's causal failure.
 
