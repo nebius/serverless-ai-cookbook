@@ -1,0 +1,1005 @@
+{
+  "schema": "scientific-qualification/capacity-evidence/v1",
+  "window": {
+    "start_sample_inclusive": "20260919T025641Z",
+    "end_sample_inclusive": "20260919T044118Z"
+  },
+  "reservations": {
+    "samples": 105,
+    "measured_samples": 105,
+    "reservation_ranges": {
+      "schedulable_allocatable_gpus": {
+        "min": 28,
+        "max": 29
+      },
+      "schedulable_reserved_gpus": {
+        "min": 19,
+        "max": 26
+      }
+    },
+    "unreserved_resource_units": {
+      "min": 3,
+      "max": 10,
+      "median": 7
+    },
+    "pending_gpu_pod_samples": 43,
+    "readyz_http_counts": {
+      "200": 105
+    },
+    "is_gpu_utilization": false,
+    "is_model_placement_headroom": false
+  },
+  "snapshots": {
+    "20260919T025752Z": {
+      "pools": [
+        {
+          "pool_id": "h100-1x",
+          "ready_gpu_units": 4,
+          "reserved_gpu_units": 1,
+          "nodes": 4,
+          "unreserved_gpu_units": 3
+        },
+        {
+          "pool_id": "h100-ondemand-1x",
+          "ready_gpu_units": 1,
+          "reserved_gpu_units": 1,
+          "nodes": 1,
+          "unreserved_gpu_units": 0
+        },
+        {
+          "pool_id": "h100-reserved-8x",
+          "ready_gpu_units": 16,
+          "reserved_gpu_units": 16,
+          "nodes": 2,
+          "unreserved_gpu_units": 0
+        },
+        {
+          "pool_id": "l40s-1x",
+          "ready_gpu_units": 8,
+          "reserved_gpu_units": 5,
+          "nodes": 8,
+          "unreserved_gpu_units": 3
+        }
+      ],
+      "queue_strategy": "BestEffortFIFO",
+      "queue_workloads": {
+        "pending": {
+          "value": 2.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        },
+        "reserving": {
+          "value": 20.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        },
+        "admitted": {
+          "value": 20.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        }
+      },
+      "bindcraft_pod": null
+    },
+    "20260919T031552Z": {
+      "pools": [
+        {
+          "pool_id": "h100-1x",
+          "ready_gpu_units": 4,
+          "reserved_gpu_units": 2,
+          "nodes": 4,
+          "unreserved_gpu_units": 2
+        },
+        {
+          "pool_id": "h100-ondemand-1x",
+          "ready_gpu_units": 1,
+          "reserved_gpu_units": 0,
+          "nodes": 1,
+          "unreserved_gpu_units": 1
+        },
+        {
+          "pool_id": "h100-reserved-8x",
+          "ready_gpu_units": 16,
+          "reserved_gpu_units": 16,
+          "nodes": 2,
+          "unreserved_gpu_units": 0
+        },
+        {
+          "pool_id": "l40s-1x",
+          "ready_gpu_units": 8,
+          "reserved_gpu_units": 5,
+          "nodes": 8,
+          "unreserved_gpu_units": 3
+        }
+      ],
+      "queue_strategy": "BestEffortFIFO",
+      "queue_workloads": {
+        "pending": {
+          "value": 0.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        },
+        "reserving": {
+          "value": 20.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        },
+        "admitted": {
+          "value": 20.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        }
+      },
+      "bindcraft_pod": {
+        "uid": "fc8db5a5-c708-4a7e-8dc5-e8138752f14f",
+        "phase": "Running",
+        "node": "computeinstance-e00m0hsph76ajt9sdb",
+        "node_selector": {
+          "accelerator.fs2.nebius/class": "nvidia-h100-sxm5-80gb",
+          "accelerator.fs2.nebius/pool-id": "h100-reserved-8x",
+          "storage.fs2.nebius/reference-data": "true"
+        },
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "accelerator.fs2.nebius/pool-id",
+                      "operator": "In",
+                      "values": [
+                        "h100-reserved-8x"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "containers": [
+          {
+            "name": "scientific-stage",
+            "resources": {
+              "limits": {
+                "cpu": "24",
+                "ephemeral-storage": "128Gi",
+                "memory": "128Gi",
+                "nvidia.com/gpu": "1"
+              },
+              "requests": {
+                "cpu": "16",
+                "ephemeral-storage": "32Gi",
+                "memory": "96Gi",
+                "nvidia.com/gpu": "1"
+              }
+            }
+          },
+          {
+            "name": "artifact-collector",
+            "resources": {
+              "limits": {
+                "cpu": "2",
+                "memory": "2Gi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "256Mi"
+              }
+            }
+          }
+        ],
+        "container_restarts": {
+          "artifact-collector": 0,
+          "scientific-stage": 0
+        }
+      }
+    },
+    "20260919T044118Z": {
+      "pools": [
+        {
+          "pool_id": "h100-1x",
+          "ready_gpu_units": 4,
+          "reserved_gpu_units": 0,
+          "nodes": 4,
+          "unreserved_gpu_units": 4
+        },
+        {
+          "pool_id": "h100-ondemand-1x",
+          "ready_gpu_units": 1,
+          "reserved_gpu_units": 0,
+          "nodes": 1,
+          "unreserved_gpu_units": 1
+        },
+        {
+          "pool_id": "h100-reserved-8x",
+          "ready_gpu_units": 16,
+          "reserved_gpu_units": 15,
+          "nodes": 2,
+          "unreserved_gpu_units": 1
+        },
+        {
+          "pool_id": "l40s-1x",
+          "ready_gpu_units": 8,
+          "reserved_gpu_units": 5,
+          "nodes": 8,
+          "unreserved_gpu_units": 3
+        }
+      ],
+      "queue_strategy": "BestEffortFIFO",
+      "queue_workloads": {
+        "pending": {
+          "value": 0.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        },
+        "reserving": {
+          "value": 17.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        },
+        "admitted": {
+          "value": 17.0,
+          "unit": "workloads",
+          "state": "available",
+          "source": "kueue",
+          "reason": null
+        }
+      },
+      "bindcraft_pod": {
+        "uid": "fc8db5a5-c708-4a7e-8dc5-e8138752f14f",
+        "phase": "Running",
+        "node": "computeinstance-e00m0hsph76ajt9sdb",
+        "node_selector": {
+          "accelerator.fs2.nebius/class": "nvidia-h100-sxm5-80gb",
+          "accelerator.fs2.nebius/pool-id": "h100-reserved-8x",
+          "storage.fs2.nebius/reference-data": "true"
+        },
+        "affinity": {
+          "nodeAffinity": {
+            "requiredDuringSchedulingIgnoredDuringExecution": {
+              "nodeSelectorTerms": [
+                {
+                  "matchExpressions": [
+                    {
+                      "key": "accelerator.fs2.nebius/pool-id",
+                      "operator": "In",
+                      "values": [
+                        "h100-reserved-8x"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "containers": [
+          {
+            "name": "scientific-stage",
+            "resources": {
+              "limits": {
+                "cpu": "24",
+                "ephemeral-storage": "128Gi",
+                "memory": "128Gi",
+                "nvidia.com/gpu": "1"
+              },
+              "requests": {
+                "cpu": "16",
+                "ephemeral-storage": "32Gi",
+                "memory": "96Gi",
+                "nvidia.com/gpu": "1"
+              }
+            }
+          },
+          {
+            "name": "artifact-collector",
+            "resources": {
+              "limits": {
+                "cpu": "2",
+                "memory": "2Gi"
+              },
+              "requests": {
+                "cpu": "100m",
+                "memory": "256Mi"
+              }
+            }
+          }
+        ],
+        "container_restarts": {
+          "artifact-collector": 0,
+          "scientific-stage": 0
+        }
+      }
+    }
+  },
+  "bindcraft_queue_events": [
+    {
+      "reason": "Pending",
+      "message": "couldn't assign flavors to pod set main: flavor inference-h100-1x doesn't match node affinity, flavor inference-h100-ondemand-1x doesn't match node affinity, flavor inference-l40s-1x doesn't match node affinity, insufficient unused quota for nvidia.com/gpu in flavor inference-h100-reserved-8x, 1 more needed",
+      "firstTimestamp": "2026-09-19T02:56:42Z",
+      "lastTimestamp": "2026-09-19T03:13:43Z",
+      "count": 28
+    },
+    {
+      "reason": "QuotaReserved",
+      "message": "Quota reserved in ClusterQueue inference-accelerators, wait time since queued was 1083s; Flavors considered: main: inference-h100-ondemand-1x(NoFit;flavor inference-h100-ondemand-1x doesn't match node affinity)",
+      "firstTimestamp": "2026-09-19T03:14:43Z",
+      "lastTimestamp": "2026-09-19T03:14:43Z",
+      "count": 1
+    },
+    {
+      "reason": "Admitted",
+      "message": "Admitted by ClusterQueue inference-accelerators, wait time since reservation was 0s",
+      "firstTimestamp": "2026-09-19T03:14:43Z",
+      "lastTimestamp": "2026-09-19T03:14:43Z",
+      "count": 1
+    }
+  ],
+  "concurrent_completion_witnesses": [
+    {
+      "model_id": "mosaic",
+      "operation_id": "b2260b5b-a189-4a89-9963-c939b8ff0e94",
+      "tenant_id": "qualification-20260918-lab-a",
+      "scientist": "scientist-01",
+      "state": "verified",
+      "started_at": "2026-09-19T03:45:11.979320+00:00",
+      "admitted_at": "2026-09-19T03:45:16.466693+00:00",
+      "finished_at": "2026-09-19T03:48:19.182889+00:00",
+      "elapsed_seconds": 187.203562
+    },
+    {
+      "model_id": "proteina-complexa",
+      "operation_id": "9bd8fefa-bf44-4578-9ec3-f2338b4b6619",
+      "tenant_id": "qualification-20260918-lab-a",
+      "scientist": "scientist-02",
+      "state": "verified",
+      "started_at": "2026-09-19T03:34:30.638760+00:00",
+      "admitted_at": "2026-09-19T03:34:36.019735+00:00",
+      "finished_at": "2026-09-19T03:41:41.923328+00:00",
+      "elapsed_seconds": 431.284559
+    },
+    {
+      "model_id": "diffdock",
+      "operation_id": "2b22c485-de02-4d81-ad29-d0e8cb59305a",
+      "tenant_id": "qualification-20260918-lab-b",
+      "scientist": "scientist-06",
+      "state": "verified",
+      "started_at": "2026-09-19T03:59:59.179480+00:00",
+      "admitted_at": "2026-09-19T04:00:01.022155+00:00",
+      "finished_at": "2026-09-19T04:00:34.663471+00:00",
+      "elapsed_seconds": 35.483983
+    },
+    {
+      "model_id": "esmfold2-fast",
+      "operation_id": "13f20947-2e83-48b5-ac2f-dca1cfcf3b72",
+      "tenant_id": "qualification-20260918-lab-a",
+      "scientist": "scientist-01",
+      "state": "verified",
+      "started_at": "2026-09-19T04:20:50.359694+00:00",
+      "admitted_at": "2026-09-19T04:20:57.529454+00:00",
+      "finished_at": "2026-09-19T04:23:00.504288+00:00",
+      "elapsed_seconds": 130.144587
+    }
+  ],
+  "capacity_incident": {
+    "events": [
+      {
+        "object": "computeinstance-e00srhk44n11yvn2n9",
+        "reason": "NodeNotReady",
+        "message": "Node computeinstance-e00srhk44n11yvn2n9 status is now: NodeNotReady",
+        "lastTimestamp": "2026-09-18T22:11:21Z"
+      },
+      {
+        "object": "fs2-fold-main-a1-12ca44823a06-b6g8t",
+        "reason": "TriggeredScaleUp",
+        "message": "pod triggered scale-up: [{mk8snodegroup-e00n67290jzpdmffbv 4->5 (max: 16)}]",
+        "lastTimestamp": "2026-09-18T22:06:12Z"
+      },
+      {
+        "object": "fs2-fold-main-a1-12ca44823a06-b6g8t",
+        "reason": "Scheduled",
+        "message": "Successfully assigned fs2-models/fs2-fold-main-a1-12ca44823a06-b6g8t to computeinstance-e00srhk44n11yvn2n9",
+        "lastTimestamp": "2026-09-18T22:08:26Z"
+      },
+      {
+        "object": "fs2-fold-main-a1-12ca44823a06-b6g8t",
+        "reason": "Failed",
+        "message": "Failed to pull image \"cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/fs2-models/cancer-immunotherapy/esmfold2@sha256:b372dd7e34e464680a82456ca31b403b0ac0d0851511930d471b67041adbbde3\": rpc error: code = Unavailable desc = error reading from server: EOF",
+        "lastTimestamp": "2026-09-18T22:10:39Z"
+      },
+      {
+        "object": "fs2-fold-main-a1-12ca44823a06-b6g8t",
+        "reason": "Failed",
+        "message": "Error: ErrImagePull",
+        "lastTimestamp": "2026-09-18T22:10:39Z"
+      },
+      {
+        "object": "fs2-fold-main-a1-12ca44823a06-b6g8t",
+        "reason": "InspectFailed",
+        "message": "Failed to inspect image \"\": rpc error: code = Unavailable desc = connection error: desc = \"transport: Error while dialing: dial unix /run/containerd/containerd.sock: connect: no such file or directory\"",
+        "lastTimestamp": "2026-09-18T22:10:39Z"
+      },
+      {
+        "object": "fs2-fold-main-a1-12ca44823a06-b6g8t",
+        "reason": "Failed",
+        "message": "Error: ImageInspectError",
+        "lastTimestamp": "2026-09-18T22:10:39Z"
+      },
+      {
+        "object": "fs2-fold-main-a1-12ca44823a06-b6g8t",
+        "reason": "TaintManagerEviction",
+        "message": "Marking for deletion Pod fs2-models/fs2-fold-main-a1-12ca44823a06-b6g8t",
+        "lastTimestamp": "2026-09-18T22:16:21Z"
+      },
+      {
+        "object": "nvidia-device-plugin-computeinstance-e00srhk44n11yvn2n9",
+        "reason": "NodeNotReady",
+        "message": "Node is not ready",
+        "lastTimestamp": "2026-09-18T22:11:21Z"
+      }
+    ],
+    "provider_captures": [
+      {
+        "node": "computeinstance-e00e0ga28zazapewdb",
+        "at": "2026-09-18T22:16:46.013587+00:00",
+        "state": "STOPPED",
+        "preemptible": {
+          "on_preemption": "STOP",
+          "priority": 5
+        },
+        "cause": "not recorded by provider response"
+      },
+      {
+        "node": "computeinstance-e00krj1rq710382765",
+        "at": "2026-09-18T22:16:44.399872+00:00",
+        "state": "STOPPED",
+        "preemptible": {
+          "on_preemption": "STOP",
+          "priority": 5
+        },
+        "cause": "not recorded by provider response"
+      }
+    ],
+    "original_operation_id": "405cc84b-9a5e-4311-b8d3-8275f7a21c7f",
+    "original_error": {
+      "code": "WORKLOAD_FAILED",
+      "message": "scientific run did not succeed",
+      "retryable": false
+    },
+    "separate_replay_operation_id": "eff0b12a-d92f-4f7e-bbab-b0ad9148f735",
+    "separate_replay_state": "verified",
+    "automatic_recovery_qualified": false
+  },
+  "evidence_root": "protected scientific-qualification-20260918 directory",
+  "evidence": {
+    "observations/20260919T025652Z/summary.json": {
+      "sha256": "60b653dad6f2a49c23328e6ecc1702a01950df8553d7ba1dad22d495adefc674",
+      "size_bytes": 476
+    },
+    "observations/20260919T025752Z/summary.json": {
+      "sha256": "275c5f0e02a3b12d27dce3f4410c9114b54079644059a5c1942b09ac47cd91aa",
+      "size_bytes": 372
+    },
+    "observations/20260919T025852Z/summary.json": {
+      "sha256": "8dec2c8e42c484882ce5f1e6804cd9ecb555fe7a5f5a845559d1b5c35c8baa1d",
+      "size_bytes": 427
+    },
+    "observations/20260919T025952Z/summary.json": {
+      "sha256": "6e9c5e5cb4639919c3aaa8b5cda3e781bc80d367dad01acabbcca0dde9045d5f",
+      "size_bytes": 440
+    },
+    "observations/20260919T030052Z/summary.json": {
+      "sha256": "f124f416fffd5980d6f80b2dd0ef161850bcfe14a167e9179a4bc198f32f5393",
+      "size_bytes": 493
+    },
+    "observations/20260919T030152Z/summary.json": {
+      "sha256": "87a042910c4cac327a72e7352d116a606a930ac688677d3baab710d99dd984f2",
+      "size_bytes": 372
+    },
+    "observations/20260919T030252Z/summary.json": {
+      "sha256": "c8921153cd49f6db71ae4f6e180f619b2ed757355ac4844282024a2aa3ebfa25",
+      "size_bytes": 428
+    },
+    "observations/20260919T030352Z/summary.json": {
+      "sha256": "e146da764bfcc9c54529e9d725c8640a64e902f95a46c7f2015e2884d6230c8d",
+      "size_bytes": 371
+    },
+    "observations/20260919T030452Z/summary.json": {
+      "sha256": "f473ce8b5edf84276d531364824b6695bd7d90affe4f380a254499be6e3e29c4",
+      "size_bytes": 428
+    },
+    "observations/20260919T030552Z/summary.json": {
+      "sha256": "e1963525e69f06f79dc102a63f891f61106807b502c7cb34fe5a0b97168584f0",
+      "size_bytes": 371
+    },
+    "observations/20260919T030652Z/summary.json": {
+      "sha256": "fc050dab03489445c06ad556faf4881f0708c2c5c3f95e8b28a343c13111bfc0",
+      "size_bytes": 428
+    },
+    "observations/20260919T030752Z/summary.json": {
+      "sha256": "30ccbc06f102b03751b634cfc18448ac7ae6bb46883556d490a0d2379d402e96",
+      "size_bytes": 371
+    },
+    "observations/20260919T030852Z/summary.json": {
+      "sha256": "51f3c076a2901122341e65d29cc8bce55cb482eee711f9fc68f8a65a438c1f14",
+      "size_bytes": 427
+    },
+    "observations/20260919T030952Z/summary.json": {
+      "sha256": "b6fb3c2c3ab380b8db5a5a4d9d42274414dcde93940a26ae27ed694c273792b5",
+      "size_bytes": 372
+    },
+    "observations/20260919T031052Z/summary.json": {
+      "sha256": "5e86cd0240a117928a26bd4c7218a5da65724af91e83279d6e7da8248e3755c7",
+      "size_bytes": 428
+    },
+    "observations/20260919T031152Z/summary.json": {
+      "sha256": "4b1c04395d31b931362b189152e1b5e2c70aea1f544bf97b6a4e2acbfea196d6",
+      "size_bytes": 371
+    },
+    "observations/20260919T031252Z/summary.json": {
+      "sha256": "60b308a53db6b2d54c86f46424f7f63828ec5d5bf8e81ab0e029bbaca87becc4",
+      "size_bytes": 428
+    },
+    "observations/20260919T031352Z/summary.json": {
+      "sha256": "66b6986417fc0998d17107c3684c38756882aad9e0aa7c42f58c3c74c74edd2b",
+      "size_bytes": 370
+    },
+    "observations/20260919T031452Z/summary.json": {
+      "sha256": "d009a8c5798071c1d173652a4a4a8e8ee267682548b2e4d97f4688d8f0efb8e6",
+      "size_bytes": 494
+    },
+    "observations/20260919T031552Z/summary.json": {
+      "sha256": "bbbb73bb408780f7a6fcfbe2b2a9c7557127c43ee725f1a3bdcaa817b3fc828c",
+      "size_bytes": 371
+    },
+    "observations/20260919T031652Z/summary.json": {
+      "sha256": "ca42465ea7ecb6f1c2c190fe2042a4753a08620a294a0bf2718495c6b9355e55",
+      "size_bytes": 427
+    },
+    "observations/20260919T031752Z/summary.json": {
+      "sha256": "6f562cf5c2fcef8666d091f471bfe36f32af65c494503e29a0ad1052114c3fa4",
+      "size_bytes": 370
+    },
+    "observations/20260919T031852Z/summary.json": {
+      "sha256": "97d5c1ebb71b97c0fae450b2db8bda33f1607ccb02f49914c2888772e8cefd01",
+      "size_bytes": 428
+    },
+    "observations/20260919T031952Z/summary.json": {
+      "sha256": "e0046032797dd516cd7bdcb5e0dbe97b57755f98a8a43f47c09cc76fbb74ef45",
+      "size_bytes": 371
+    },
+    "observations/20260919T032052Z/summary.json": {
+      "sha256": "088fbaf25cffaa5327c59d2f50585d2475f7c5374310495edb1f6caa8680940f",
+      "size_bytes": 427
+    },
+    "observations/20260919T032152Z/summary.json": {
+      "sha256": "f292b79b789bd480a5aa3561770be07cc173aafc5d37e08fa4158fd95fad6bf5",
+      "size_bytes": 372
+    },
+    "observations/20260919T032252Z/summary.json": {
+      "sha256": "bc0688170341332d054de6ac53e039942a4f77c40b1995d10ff5a5d0e331a33f",
+      "size_bytes": 428
+    },
+    "observations/20260919T032352Z/summary.json": {
+      "sha256": "fc4d19e7c42b11dff110ffdae247401b16820defa0ca75b454b453b289c3498d",
+      "size_bytes": 371
+    },
+    "observations/20260919T032452Z/summary.json": {
+      "sha256": "0d0a6a2a468c2c40b0f6bf35c782a8ed5de818ef4bdace4e40967e655d07ff4b",
+      "size_bytes": 427
+    },
+    "observations/20260919T032552Z/summary.json": {
+      "sha256": "7b9c0844f02d5ddcde88dbf327c19a9794ebeb913b1552e082d03600339dc4c3",
+      "size_bytes": 372
+    },
+    "observations/20260919T032652Z/summary.json": {
+      "sha256": "78b16747932dd33fc7afeb94ab78b43c51108c720950c5bd0a9c4c3fe1207fd0",
+      "size_bytes": 428
+    },
+    "observations/20260919T032752Z/summary.json": {
+      "sha256": "3322e624595dc479104e9758bbfd14257c5b256e7ffb27299e1004b24e1bad26",
+      "size_bytes": 371
+    },
+    "observations/20260919T032852Z/summary.json": {
+      "sha256": "b4ac76698a3381079cc248ee9c15f0ea1a90a7e35ce39afd83d3561d2549a1e3",
+      "size_bytes": 428
+    },
+    "observations/20260919T032952Z/summary.json": {
+      "sha256": "c090f13d37f706c6bc4c5e347456c857dd2dfc61e227494a7299027f70be79c5",
+      "size_bytes": 372
+    },
+    "observations/20260919T033052Z/summary.json": {
+      "sha256": "c00caa30943eb5d1755d78d18a6e39cc0e43d81de3cc36c1b70a723ac281074d",
+      "size_bytes": 427
+    },
+    "observations/20260919T033152Z/summary.json": {
+      "sha256": "ecc84fd385f85733d9bdf5765bba1531b06213969f86a6083de149b1d69e1841",
+      "size_bytes": 371
+    },
+    "observations/20260919T033252Z/summary.json": {
+      "sha256": "7f72d296bb84bed6091fcf53735423d80bffc1d58af06a7e47a5038bca8023f2",
+      "size_bytes": 498
+    },
+    "observations/20260919T033352Z/summary.json": {
+      "sha256": "d78eee2b9ca5437d740301e79956ac54409f256b4ac4050b25d14cb2259efbf5",
+      "size_bytes": 443
+    },
+    "observations/20260919T033452Z/summary.json": {
+      "sha256": "626c4050fd0ce093800e7dfe65bec92a35eb2fd1f34ea38dd0c44bd7d6ed2f10",
+      "size_bytes": 554
+    },
+    "observations/20260919T033552Z/summary.json": {
+      "sha256": "f1103be31f52bcb0ef9a4d4f7c60ab94819482fdd48d198d1a2bf4c34054fb53",
+      "size_bytes": 556
+    },
+    "observations/20260919T033652Z/summary.json": {
+      "sha256": "18ec854afe4c0f7cac33a9fdfa43ef26b364a565e0a74fea1e17cb23c25ba320",
+      "size_bytes": 480
+    },
+    "observations/20260919T033752Z/summary.json": {
+      "sha256": "1edf1ce98bc0fac8d64136cc5ac052743e03a37fc6143fbadd853bca58c50cc5",
+      "size_bytes": 443
+    },
+    "observations/20260919T033852Z/summary.json": {
+      "sha256": "a832d9476a796285e7ad8e8abfa8b6d905bb952bb9349b3917d5c369b6bd18ca",
+      "size_bytes": 497
+    },
+    "observations/20260919T033952Z/summary.json": {
+      "sha256": "f06a7cb03da9e6f23a0a908558dc7deaeb9c72d2eab10da14a2369fe357d5b36",
+      "size_bytes": 501
+    },
+    "observations/20260919T034052Z/summary.json": {
+      "sha256": "330a3e0121a520dd3b152afb4e0d9daac1e7772d7c9a65245f825fb30d23bb26",
+      "size_bytes": 426
+    },
+    "observations/20260919T034152Z/summary.json": {
+      "sha256": "2b77f6f41e46af76e3325183d7462a2708e96700236f6d3406d3177f7d3a2828",
+      "size_bytes": 438
+    },
+    "observations/20260919T034252Z/summary.json": {
+      "sha256": "b4f963c3ba2f3bcc81ab6bd2bebd34b63c49e54fa4dbe4eb5110d8a979b0d7aa",
+      "size_bytes": 492
+    },
+    "observations/20260919T034352Z/summary.json": {
+      "sha256": "999ff3d1d269e4e44506549d35c354b548bb4d53b1c59957d531903d612bfe13",
+      "size_bytes": 371
+    },
+    "observations/20260919T034452Z/summary.json": {
+      "sha256": "d3bab16950470ebd7bbc34922f227046850eb644aa01f3e395a802ffcf15e688",
+      "size_bytes": 428
+    },
+    "observations/20260919T034552Z/summary.json": {
+      "sha256": "fe38c1f62897178ef95b3555c06ba89259ab7f1bd4538a51deafd55d312f33db",
+      "size_bytes": 371
+    },
+    "observations/20260919T034652Z/summary.json": {
+      "sha256": "f9429c634b6862f6788e86b79e4efef13701dfdd6619013ac7c910eda6a9ef80",
+      "size_bytes": 428
+    },
+    "observations/20260919T034752Z/summary.json": {
+      "sha256": "7c74989654c19344c6e5cf4698d2906fd4f35ae3bbe7c77ed885c5b03a7ea5b7",
+      "size_bytes": 371
+    },
+    "observations/20260919T034852Z/summary.json": {
+      "sha256": "c26c3e37d3dd03384d324704a920d086e8906a7189466f39bd271371ac11572d",
+      "size_bytes": 427
+    },
+    "observations/20260919T034952Z/summary.json": {
+      "sha256": "916bcc5f6aef189dc27d6e2d286dbe1f864b60a38459fe4a0ea017d9cff401f4",
+      "size_bytes": 371
+    },
+    "observations/20260919T035052Z/summary.json": {
+      "sha256": "b893cef086010ec268e40db98ba3dbf267208e1452d35f34bc71b0f4b46d5424",
+      "size_bytes": 427
+    },
+    "observations/20260919T035152Z/summary.json": {
+      "sha256": "d1627b4e4c4427b3cf7b686eb87445fdf81a416151497c4d215f094a891cc01d",
+      "size_bytes": 371
+    },
+    "observations/20260919T035252Z/summary.json": {
+      "sha256": "c95683245751fa28edb6f42cadfb5f7d4906b3e0059ddecf6d8e5d7b4378c08d",
+      "size_bytes": 427
+    },
+    "observations/20260919T035352Z/summary.json": {
+      "sha256": "f6d17c6c9b699bdbf02546b9efef5874815d071fdb03ec1e011d888c166589a4",
+      "size_bytes": 371
+    },
+    "observations/20260919T035452Z/summary.json": {
+      "sha256": "03f262121673b273dda150117ac1f6ad0388341eb0c9f2474f7265e73c50c05a",
+      "size_bytes": 372
+    },
+    "observations/20260919T035552Z/summary.json": {
+      "sha256": "fc393a3c42d35c38f4cf8866959979bc42ef2a2ec0a4bb64ee3ea4470ca68430",
+      "size_bytes": 371
+    },
+    "observations/20260919T035652Z/summary.json": {
+      "sha256": "4fe8a7901b5287d6705c5499f25fb473824593491b818dc09d31be1aca07a22f",
+      "size_bytes": 372
+    },
+    "observations/20260919T035759Z/summary.json": {
+      "sha256": "fff7c348483bac5e28ca4f886e8227c7a8c6095408489a5d6848864f0566cce2",
+      "size_bytes": 371
+    },
+    "observations/20260919T035859Z/summary.json": {
+      "sha256": "c882016e57dfcf328cc9e84973d30eac31fd5e87937e7292ab5ed1b7c1d6aced",
+      "size_bytes": 371
+    },
+    "observations/20260919T035959Z/summary.json": {
+      "sha256": "2db27e095972044ec501fe3b1bae1ca504c3c720ddc2b4d7e01ad2a0f731e9c9",
+      "size_bytes": 372
+    },
+    "observations/20260919T040059Z/summary.json": {
+      "sha256": "f78156235914a87e3a3f50af306472078c52c97ff5768988b65a03c51a1e1325",
+      "size_bytes": 372
+    },
+    "observations/20260919T040159Z/summary.json": {
+      "sha256": "e08b1f40d3561de503ef997dc0d0e6db48b09df50a9b32cfc323b9b06643b497",
+      "size_bytes": 371
+    },
+    "observations/20260919T040259Z/summary.json": {
+      "sha256": "7ebece37e31e19eb2d8d0e6bd7f7c00f0c9dfa6000cf85499ad6767c61defba6",
+      "size_bytes": 372
+    },
+    "observations/20260919T040359Z/summary.json": {
+      "sha256": "1cf404ea718f8a543c233a4dc872136e6105e6abf55f73603b63bc9755b80528",
+      "size_bytes": 371
+    },
+    "observations/20260919T040459Z/summary.json": {
+      "sha256": "8b74112218cf944ba70741f69d9261bc575a779b73e4db89ef31c123cf7a3f93",
+      "size_bytes": 371
+    },
+    "observations/20260919T040559Z/summary.json": {
+      "sha256": "5eb903bf496a6b43ec027d036f83366d8675896f871c3cf9bb9f657717219c8f",
+      "size_bytes": 372
+    },
+    "observations/20260919T040659Z/summary.json": {
+      "sha256": "74cf72717c0cd8ffa5fd3e2283d894137c6c1019ada1a3a46a6af1266a935d0f",
+      "size_bytes": 371
+    },
+    "observations/20260919T040818Z/summary.json": {
+      "sha256": "a505f5331cd77102994b65784a29ea573d8b6d6cdce54e306caeda22a50d4111",
+      "size_bytes": 372
+    },
+    "observations/20260919T040918Z/summary.json": {
+      "sha256": "c13f14a71b2f630da5ff70ceb99d9d40a8af63d01bd23e46b43e6bebf6ccd022",
+      "size_bytes": 372
+    },
+    "observations/20260919T041018Z/summary.json": {
+      "sha256": "6058e3f7b6bc9a39e604c1fb62a363f8e7e823534962e8c7d7afb073c4257227",
+      "size_bytes": 372
+    },
+    "observations/20260919T041118Z/summary.json": {
+      "sha256": "a2b3580ff0e2a3c3f333c6b2d0ffa50fa4df996bf14b7af10393f29df8c2c4da",
+      "size_bytes": 372
+    },
+    "observations/20260919T041218Z/summary.json": {
+      "sha256": "b3b295c890a3a2f999327834d06db53ade77d8d1bce526710b9bd0b0bba71ec7",
+      "size_bytes": 371
+    },
+    "observations/20260919T041318Z/summary.json": {
+      "sha256": "3dd6112891b8d676c079b9163de827b1104537d714dcc355a8c97b3b5a726658",
+      "size_bytes": 371
+    },
+    "observations/20260919T041418Z/summary.json": {
+      "sha256": "4d8491e62369b963ba14fd3d119a4ce99b4767546a77d4c51ff2474b9739faff",
+      "size_bytes": 372
+    },
+    "observations/20260919T041518Z/summary.json": {
+      "sha256": "e5dbb5f096146ded040783e1b0ec6d5963760bce11399893f4106667c43ebb9e",
+      "size_bytes": 372
+    },
+    "observations/20260919T041618Z/summary.json": {
+      "sha256": "037c97025fb35d2ebb4610f3a6e15dabcad64eb20cc3a1acebe2ebe554dc6580",
+      "size_bytes": 372
+    },
+    "observations/20260919T041718Z/summary.json": {
+      "sha256": "042a98f3bb1f13f8e0dde4e78fa2afe8ec2e2e2bde77b2dc0241196e5aa69a44",
+      "size_bytes": 371
+    },
+    "observations/20260919T041818Z/summary.json": {
+      "sha256": "5470256c73651989e2af6d2b58d2a45eaecf7e18d4d27fde100db5556fc372df",
+      "size_bytes": 371
+    },
+    "observations/20260919T041918Z/summary.json": {
+      "sha256": "a6600379a256798476b5125ce666d77473eafdb270caa9c6a167b7c248e997f5",
+      "size_bytes": 371
+    },
+    "observations/20260919T042018Z/summary.json": {
+      "sha256": "a1a3fe19ef2b05b531f861ebef1d48d6216a647ea58d6f5e95cb82d501fe45aa",
+      "size_bytes": 371
+    },
+    "observations/20260919T042118Z/summary.json": {
+      "sha256": "68095b26806c3369870fd625924166a7ffacf29682d08cec762e7071fbfab9cd",
+      "size_bytes": 427
+    },
+    "observations/20260919T042218Z/summary.json": {
+      "sha256": "e907f6712ab511b462d6feccc6bf8f4ab27c49e3087faf27fb413253e4ee0014",
+      "size_bytes": 427
+    },
+    "observations/20260919T042318Z/summary.json": {
+      "sha256": "0f725e1024f7023c9d56f2dc272c29e6871b9ab1dc438cd1f8de995850b02d60",
+      "size_bytes": 427
+    },
+    "observations/20260919T042418Z/summary.json": {
+      "sha256": "2cc8b50a5ff33a802fdb5e199b5640ec772f7d49fad20bcc53d449b9381f402d",
+      "size_bytes": 372
+    },
+    "observations/20260919T042518Z/summary.json": {
+      "sha256": "3ea1a2cc8d87f2e9705ba220d3b2d99e0881ac49cf4a20309eb521c96c54c2b4",
+      "size_bytes": 370
+    },
+    "observations/20260919T042618Z/summary.json": {
+      "sha256": "23187ce56342a25748e4cc84f2a61b33f8727f3a6ab569d1f84ff399301ead1d",
+      "size_bytes": 535
+    },
+    "observations/20260919T042718Z/summary.json": {
+      "sha256": "71f5b528f15b625d3d62bb54687cc798db74e8a4b5c08ee89ffc56d911aa498c",
+      "size_bytes": 371
+    },
+    "observations/20260919T042818Z/summary.json": {
+      "sha256": "7fd5201dbb5c1f369a66501b6789191bf415b329be43466e275b24ec096d6e08",
+      "size_bytes": 482
+    },
+    "observations/20260919T042918Z/summary.json": {
+      "sha256": "ec6630c72b4476263f1ee2550ff68100f42b53a1c10ef6a357bf0e45553d1561",
+      "size_bytes": 371
+    },
+    "observations/20260919T043018Z/summary.json": {
+      "sha256": "0c1c631059a2b4a4713decaeef30a2e6f816ed3acdeaf1e24f6c384156b92376",
+      "size_bytes": 536
+    },
+    "observations/20260919T043118Z/summary.json": {
+      "sha256": "7d099c8615f1648e9e160f58cc98cd4ca0f5a63bc0cb207e87f27481592272c8",
+      "size_bytes": 372
+    },
+    "observations/20260919T043218Z/summary.json": {
+      "sha256": "8ca93277faa41e7dd9860e9898040062e6058081c61b26584ec1387cae37aab3",
+      "size_bytes": 535
+    },
+    "observations/20260919T043318Z/summary.json": {
+      "sha256": "a3cc26490ae256ab5466235a96699a284b76a60c232743e807e1201c1204fb5f",
+      "size_bytes": 371
+    },
+    "observations/20260919T043418Z/summary.json": {
+      "sha256": "2ec75737b35a9dacdae2223a94cb6e610ece434905f46d2bb123045a8a8c3448",
+      "size_bytes": 428
+    },
+    "observations/20260919T043518Z/summary.json": {
+      "sha256": "f65a42d498e9269338d96812b6c26425fac1a68cd941afa1662a601bfb48871c",
+      "size_bytes": 372
+    },
+    "observations/20260919T043618Z/summary.json": {
+      "sha256": "c1e6bcd0067da87f792b8119630945781f21faf087a05d682c948e95a6ee0a3c",
+      "size_bytes": 371
+    },
+    "observations/20260919T043718Z/summary.json": {
+      "sha256": "bc7f13a6d490a2c7c1c37e2e236de34802573c7fd939188e152f32fefc941a7e",
+      "size_bytes": 372
+    },
+    "observations/20260919T043818Z/summary.json": {
+      "sha256": "c0f91dd40df9480550be0f65e2879c4397c409b29273ebb81d15fcd4425c82f8",
+      "size_bytes": 372
+    },
+    "observations/20260919T043918Z/summary.json": {
+      "sha256": "990573874ddc4315c17d6e11fbf3886249dbb97160e8cb436a1eca76905aeb7a",
+      "size_bytes": 371
+    },
+    "observations/20260919T044018Z/summary.json": {
+      "sha256": "edf0c694030fae539490f6112e39318bf5ab2cbead7ec7dd1714bdd0ab8a2c73",
+      "size_bytes": 371
+    },
+    "observations/20260919T044118Z/summary.json": {
+      "sha256": "b81e5a676a37b6a8673aa5c497ff3225ab643116095ea226f8f5f7afe940550d",
+      "size_bytes": 371
+    },
+    "observations/20260919T025752Z/nodes.json": {
+      "sha256": "06aebc2e19c6a49ee5b281604471443b96b552b574703ca694c445da72b49325",
+      "size_bytes": 447265
+    },
+    "observations/20260919T025752Z/pods.json": {
+      "sha256": "19536f95c24cdba2999064ec7700c39ef356d32d68a6737ec01d70dce85ff5aa",
+      "size_bytes": 5242894
+    },
+    "observations/20260919T025752Z/capacity.json": {
+      "sha256": "3fc6fd1cea4cc018ecb33b6ca02f79a4406af637ede23f8ce708197c80235845",
+      "size_bytes": 93479
+    },
+    "observations/20260919T031552Z/nodes.json": {
+      "sha256": "aa7fe64e45de52ceb9a32506836c932ff9e40aa817f21747dbd7f3b451617e58",
+      "size_bytes": 447541
+    },
+    "observations/20260919T031552Z/pods.json": {
+      "sha256": "5ed8371befdc92843d3a7a106f2c76970cca4508fb009fd2a24fef64a8c65acf",
+      "size_bytes": 5276923
+    },
+    "observations/20260919T031552Z/capacity.json": {
+      "sha256": "544a6471aeaaefb4ca9d0d88dc8c35919516abaff054687bb70ce9ca5675c350",
+      "size_bytes": 92785
+    },
+    "observations/20260919T044118Z/nodes.json": {
+      "sha256": "9e75b29ad452a43895bd0d4afdebeb39929b48862e8882912b0696d2e3a8aa55",
+      "size_bytes": 449680
+    },
+    "observations/20260919T044118Z/pods.json": {
+      "sha256": "00eb3155c292e542186154bfe263578eecda04ca71bb5befc4c1992974250add",
+      "size_bytes": 5062552
+    },
+    "observations/20260919T044118Z/capacity.json": {
+      "sha256": "10e0fd0a0602c149ea18cb0e1f29bfb47327adffe92f2b0c78fbcdd01ad31c13",
+      "size_bytes": 91676
+    },
+    "observations/20260919T031552Z/events.json": {
+      "sha256": "2106d4ab91ae24eadbe13222ce51d84abbe4d483f034ff267764b1cbb9f109f0",
+      "size_bytes": 3334871
+    },
+    "cohorts/design-heldout-r177/scientist-01/mosaic-ubiquitin-s42-l80/receipt.json": {
+      "sha256": "672529d1a0163948074018e436540cc5373bb178d3000984c87d364d44824a12",
+      "size_bytes": 1492
+    },
+    "cohorts/proteina-multisample-r178/scientist-02/proteina-complexa-pdl1-s1-n4/receipt.json": {
+      "sha256": "5db3686dff73593f246c66d703a0d09cc2ee3047f0bf7faac8658d6b30076495",
+      "size_bytes": 1525
+    },
+    "cohorts/diffdock-http-identity-public-r179-a/scientist-06/diffdock-1a52-est-s19-n4/receipt.json": {
+      "sha256": "21824b750af90113861aac105abb5a70fcf4ef62c4934b3a7b6539ca7409090c",
+      "size_bytes": 952
+    },
+    "cohorts/rfdiffusion-refolds-r179/scientist-01/refold-inverse-rfdiffusion-unconditional-s1-l256-backbone1-design1/receipt.json": {
+      "sha256": "5cc9210eca946000dcde135e73008f5af8714b3ad9b2b42aae629771e1974860",
+      "size_bytes": 1560
+    },
+    "heldout-bindcraft-observation-0404.json": {
+      "sha256": "7b4ff0ec0bb0f577d2a5734c8cae6723690887e6fe20a47539da9242a0c11dd4",
+      "size_bytes": 12765
+    },
+    "backend-baseline179/profiles.json": {
+      "sha256": "04acbcf63095f91eac0607b6001672dd5892a63c17d7cc1f25f154afc989f703",
+      "size_bytes": 90384
+    },
+    "observations/20260918T221631Z/events.json": {
+      "sha256": "34bd38d9f1d18e0d55e44820244a59127aa88fc2821d616693b29be899b85645",
+      "size_bytes": 3426632
+    },
+    "capacity-preemption-2211/computeinstance-e00e0ga28zazapewdb-provider.json": {
+      "sha256": "fa67f96a7ca30cc2d35fe2ecb61780e090aea73e2d5fc7a9bb7c0a2e3abcf779",
+      "size_bytes": 3788
+    },
+    "capacity-preemption-2211/computeinstance-e00krj1rq710382765-provider.json": {
+      "sha256": "a4dbeeee5b8839a37bf1ef289ea9379630d453a8d0868eb16d38ca42ca900016",
+      "size_bytes": 3788
+    },
+    "esmfold-preemption-diagnosis/public-result.json": {
+      "sha256": "c7e6fd3283121521fbe7e4f923f842ee7bd9f0ae04001cffd6e59b6d18b9aad0",
+      "size_bytes": 4945
+    },
+    "cohorts/esmfold-preemption-repaired-r1/scientist-01/esmfold2-1tim-pdb70-depth64/receipt.json": {
+      "sha256": "7a2a6fa7adfc8a7a2283604dd5bfea76aa61a25e761523fae033e9a6be1324f8",
+      "size_bytes": 1525
+    }
+  },
+  "limitations": [
+    "60-second, non-atomic snapshots",
+    "reservations are not GPU busy time",
+    "aggregate free resources are not placement-qualified capacity",
+    "BestEffortFIFO and observed progress do not establish bounded fairness",
+    "selected witnesses are not campaign operation counts"
+  ]
+}
