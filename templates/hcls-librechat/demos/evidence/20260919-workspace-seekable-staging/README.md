@@ -13,7 +13,9 @@ same publisher rather than keeping a duplicate implementation.
 
 ```python
 from pathlib import Path
+import sys
 import numpy as np
+sys.path.insert(0, '/opt/bionemo')
 from scientific_receipts import staged_output
 
 with staged_output(Path('/workspace/my-study/measurements.npz')) as staged:
