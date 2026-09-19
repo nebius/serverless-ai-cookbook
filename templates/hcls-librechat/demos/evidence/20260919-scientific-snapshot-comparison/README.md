@@ -175,3 +175,77 @@ remains retained; this does not qualify every provider-preemption mode.
 | `esmfold2-fast/analysis-final-v1.json` | `23163a9e22ca89a85ed6abddc1b64d0d14416d9cd6fbb469b7286c92f4158587` |
 | `protenix-v2/analysis-final-v1.json` | `c2e7543443211c6d64f40050d2d58cf26a58f7a8158a61e4aed8d91980a8918c` |
 | `rfdiffusion/analysis-final-v1.json` | `c2f2a041a616f8054221bfdc886194ef9a1420e18b9fae3825cf770b23c2729a` |
+
+## Separate isolated ESMFold2 restoration — 22:00–22:06 UTC
+
+One later **operator-owned isolated Pod** closed the missing direct-runtime
+restore observation for the existing compatible tuple. It did not use the
+public admission/Kueue/customer path and does not replace any of the original
+three `580.173.02` fallback results or change the table above.
+
+The existing qualified read-only restore template used unchanged ESMFold2 image
+`b372dd7e34e464680a82456ca31b403b0ac0d0851511930d471b67041adbbde3`,
+snapshot-tools image
+`17cc3536dd847355b8457b2e92bd7d0fdf292bdd8e6acc457e25f14e28284ba4`,
+bundle `esmfold2-h100-cuda-criu-20260907-r5` and model revision
+`8fc3ff471022fdce52c77030685eb775de0c00a3`. Actual allocated hardware was H100
+80GB HBM3, compute capability 9.0, driver **580.159.04**, kernel
+**6.11.0-1016-nvidia**. The existing qualified device-remapping option was used;
+no model, checkpoint, driver, resource/retry limit or global queue policy was
+changed. Checkpoint/model mounts stayed read-only and only task-owned scratch
+was writable.
+
+Pod `fs2-qual-esmfold2-r59-restore-20260919-r1`, UID
+`29ac450f-b6e6-414e-a435-eb48c9ac0972`, reported actual
+`cuda-criu-restored` at **22:00:56.851 UTC**: CRIU restore, CUDA restore and CUDA
+unlock all returned zero. Health was checked only after this restore witness.
+Root then issued exactly **one** original full request, using the retained
+16,810-byte prepared handoff from normal operation
+`cdec4fee-969e-40d1-8d3e-067ff70d7a6b` (SHA-256
+`830d20dca8bb6ea71f5f6cc271cbb3f57688c6de513dd0006eb5269be42d7698`).
+The original 247-residue precomputed-MSA input, seed 1, bf16, 20 loops, 200
+sampling steps, absolute argv, request environment and localization marker
+were preserved. The captured server cwd stayed captured; the ordinary proxy
+CLI child used the original request cwd. No new public operation was admitted.
+
+Independent local validation of the copied outputs confirms:
+
+- The existing production confidence validator passed the exact runtime/model
+  revision, input identity/hash, seed/sample and structure hash/size contract.
+  There is one 156,440-byte CIF with **247 matching residues and 1,870 finite
+  atoms**; CIF SHA-256 is
+  `00e0f25a2a32afdb883d2e0a426bd2e45c5f3c57d4d4009b87fa8800946eb743`.
+- The original and restored chains and residue IDs match exactly. Using the
+  existing explicit-correspondence comparison, fitted Cα RMSD is
+  **0.0032003223 Å**, raw Cα RMSD is 0.1742292622 Å, and maximum fitted
+  displacement is 0.0116075143 Å. The separate `parse_chain`/`structure_metrics`
+  path reports 0.0032003347 Å. Outputs are **not byte-identical**. These are
+  descriptive measurements, without a newly chosen tolerance or an
+  experimental-accuracy/equivalence claim.
+- Confidence is hash-linked to that exact CIF: producer values are
+  `plddt_mean=0.9790094494819641`, `ptm=0.9941316246986389`, `iptm=0.0`.
+  Values retain their producer representation; no new confidence scale or
+  biological-quality threshold is inferred.
+- The original 799-byte worker-log prefix, including the documented
+  Transformer Engine fallback and TorchScript warning, is hash-identical to
+  the captured donor. The new suffix has exactly one `/execute` request and
+  no new capture or `/fold` request. Warnings are preserved, not erased.
+- Root performed UID-checked cleanup. Both exact-name and all-Pod retained
+  readbacks show this Pod absent; no task GPU reservation remains. No shared
+  PVC, ConfigMap, model data or serving Pod was deleted.
+
+The scientific validator's 14.656-second interval measures this one proxy
+request on an already restored worker, **not customer end-to-end latency or a
+normal-versus-restored speedup**. This result is an exact isolated runtime and
+artifact-validation pass only. Public compatible placement, the newer-driver
+checkpoint, broader inputs, scientific accuracy and the required activation
+cohorts remain unqualified.
+
+Protected evidence is `snapshots/esmfold2-isolated-restore-r59-r1/` under the
+same evidence root. `independent-validation.json` SHA-256 is
+`7402621e5de0afeca84c3f9d8510ad719a562ac22b1511e03db60e6e84438de8`;
+it hashes the preparation, argv, source validators, original baseline, exact
+Pod/log/tuple evidence, output archive and cleanup readbacks. The independent
+pre-inference restore/health receipt is
+`observer-20260919T220242729977Z/receipt.json`, SHA-256
+`60bfefa90befbd25a7a03ff8844d8965f5015e3631ac6b2a68028e3aeceb6efa`.
