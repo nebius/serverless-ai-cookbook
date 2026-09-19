@@ -75,6 +75,23 @@ class AggregationTest(unittest.TestCase):
         self.assertEqual(result["counts"]["service_states"], {"succeeded": 1})
         self.assertEqual(len(result["operations"][0]["observations"]), 2)
 
+    def test_history_directory_is_not_a_read_error_but_bad_json_still_is(self):
+        self.receipt()
+        history = self.root / "browser-evidence/run/.receipt-history/receipt.json"
+        history.mkdir(parents=True)
+        (history / "generation.json").write_text(json.dumps({"operation_id": OP}))
+        malformed = self.root / "cohorts/malformed/receipt.json"
+        malformed.parent.mkdir(parents=True)
+        malformed.write_text("not-json")
+        result = self.report()
+        self.assertEqual(result["counts"]["durable_operation_ids"], 1)
+        self.assertEqual(result["scan"]["receipt_history_directories_excluded"], 1)
+        self.assertEqual(result["scan"]["admission_receipt_files"], 2)
+        self.assertEqual(result["scan"]["errors"], [{
+            "path": "cohorts/malformed/receipt.json",
+            "error_type": "JSONDecodeError",
+        }])
+
     def test_separate_child_upload_is_not_a_model_call(self):
         self.receipt()
         self.put("child-refresh/children.json", {"children": [

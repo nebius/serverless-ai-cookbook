@@ -400,6 +400,12 @@ def scan(root, as_of, *, current=None, annotations=None):
         if not excluded(path.relative_to(root))
     )
     for path in files:
+        # Verified-persistence history uses directories named receipt.json.
+        # They contain generations, not admission files or malformed JSON.
+        # Continue scanning real nested receipts and keep actual read errors.
+        if path.is_dir():
+            counters["receipt_history_directories_excluded"] += 1
+            continue
         try:
             doc = read(path)
         except (OSError, ValueError) as error:
@@ -584,7 +590,8 @@ def scan(root, as_of, *, current=None, annotations=None):
         "unadmitted_logical_items": list(unadmitted_by_key.values()),
         "scan": {
             **dict(counters),
-            "admission_receipt_files": len(files),
+            "admission_receipt_files": len(files)
+            - counters["receipt_history_directories_excluded"],
             "errors": scan_errors,
         },
         "manual_interventions": annotations.get("manual_interventions", []),
