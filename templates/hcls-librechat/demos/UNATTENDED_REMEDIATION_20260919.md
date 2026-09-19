@@ -58,6 +58,51 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 In progress. This is not a final readiness claim.
 
+### 19:14 UTC — combined v56 tested; replacement creation errors
+
+The complete v54/r7 cohort is terminal:01,04,05,07,09 delivered independently
+verified artifacts through the actual UI.02,03,06,08,10 did not finish complete
+studies. Successful inference alone was not counted as successful delivery:
+02 completed four inferences before Protenix analysis failed;06 completed twelve
+Evo2 calls before a generated script failed;10 generated a valid Cosmos MP4 but
+the native client incorrectly tried to parse it as JSON.03 admitted no Study;
+08's explicitly expected short-source no-report outcome blocked its final report.
+
+Combined successor v56 is frozen at
+`cba6304ec772a70cc7fccf44743145b0a7e3a479`, published as
+`lc:r0919-v56-cba6304`, index
+`sha256:7b5b3b46713b61fd5fafc8085fa29fd8fc54f631a993c1aa28c4aa7d9e842c3c`.
+It includes strict JSON-text plan support, actual Protenix provenance, typed
+Evo2/robotics analysis, explicitly permitted clinical no-report outcomes, verified
+binary native artifacts, and cancellation parsing/identity fixes. v55 was
+published but never deployed. Scientific prompts, seeds and limits are unchanged.
+
+Exact installed-image qualification passed18 runtime hashes,11 SDK cases,
+10 receipt-lock tests and61 domain tests, including dependent report publication,
+binary media and cancellation after replacement. The source and runtime files
+were not overlaid during testing. A separate real-Mongo replay preserved Rene's
+49 collections,81 documents,334 index definitions, two state files, password and
+original chat across login/restart. It used retained state, not a fresh live
+cutover archive. See [installed-image and migration evidence](evidence/20260919-installed-v56/README.md).
+
+Only archived test instances02/03/06/10 were deleted, with final NotFound checks;
+their endpoint/local databases cannot be restored, but archives and tenant buckets
+remain.08 is stopped: its delete command and one reconciled retry both returned
+provider Internal. All three initial v56 creates also returned Internal and the
+exact-name inventory contained no created resources. A single reconciled02
+creation retry is being checked. No quota or resource-policy increase was made.
+
+Scientist10's original one cancellation POST remains retained. It exposed a flat
+native-status parser defect; no repeated POST or manual receipt repair was used.
+Its same-owner/key successor must reconcile the saved intent and visibly unblock
+the queue before new work. The original MP4 has been recovered and hash/codec
+verified read-only, not relabelled a successful original study.
+
+Backend190 remains deployed with three ready gateways and two controllers.
+Rene's original endpoint is unchanged and its login page returns HTTP200.
+The five affected natural reruns, unchanged-release integrated cohorts, actual
+successor cancellation recovery and Rene's cloud migration remain outstanding.
+
 ### 18:22 UTC — four delivered workflows; remaining six continue
 
 Four v54/r7 studies completed after witnessed browser closure and delivered
