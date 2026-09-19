@@ -436,9 +436,22 @@ def resolve(value, record):
     return value
 
 
-def verify_inputs(record):
+def verify_owner(record):
     if record['owner'] != owner_identity() or record['caller_fingerprint'] != caller_fingerprint():
         raise ValueError('Dedicated study owner/key changed; no model work is submitted under a replacement identity.')
+
+
+def verify_cancellation_identity(record, plan):
+    """Stopping saved work needs its identity, not unchanged analysis helpers."""
+    verify_owner(record)
+    expected = hashlib.sha256(canonical({'plan': plan, 'output': record['output_directory'],
+                                         'owner': record['owner']})).hexdigest()
+    if record['identity'] != expected or record['id'] != str(uuid.uuid5(uuid.NAMESPACE_URL, expected)):
+        raise ValueError('Saved study plan identity changed; no cancellation was sent.')
+
+
+def verify_inputs(record):
+    verify_owner(record)
     for item in record['inputs'].values():
         verify_file(Path(item['path']), item)
     for item in record.get('implementations', {}).values():
@@ -704,6 +717,9 @@ async def cancel_active(step, record):
     if known.get('state') in {'submitting', 'admission_unknown'} and not known.get('operation_id'):
         return {'state': 'needs_attention', 'failure': 'Admission is unknown; cancellation cannot invent an operation ID.'}
     operation = known.get('operation_id')
+    recorded = record.get('steps', {}).get(step['id'], {}).get('operation_id')
+    if recorded and recorded != operation:
+        raise ValueError('Saved study and operation receipts disagree; no cancellation was sent.')
     if not operation:
         return {'state': 'cancelled'}
     return await cancel_known_operation(operation, step['kind'] == 'batch', directory(record['id']) / 'cancel-sent.json')
@@ -722,7 +738,12 @@ async def cancel_known_operation(operation, scientific, intent):
                 await workflow.batch.call(client, 'cancel_scientific_run' if scientific else 'cancel_operation', {'operation_id': operation})
                 save(intent, {'operation_id': operation, 'state': 'sent'})
             result = await workflow.batch.call(client, 'get_scientific_status' if scientific else 'get_operation', {'operation_id': operation})
-    status = result.get('operation', result)['status']
+    # Native status is flat: its "operation" field is a name such as
+    # "generate-media". Scientific status can wrap the operation object.
+    operation_status = result['operation'] if isinstance(result.get('operation'), dict) else result
+    status = operation_status.get('status')
+    if not isinstance(status, str) or not status:
+        raise ValueError('Cancellation status response has no operation status; cancellation is not confirmed.')
     if status not in {'succeeded', 'failed', 'cancelled', 'expired', 'preempted'} and saved and saved.get('state') == 'sending':
         return {'state': 'needs_attention', 'operation_id': operation, 'queue_blocked': True,
                 'cancellation_unknown': True,
@@ -737,14 +758,18 @@ async def advance(identifier, model_runner=None, local_runner=None, cancel_runne
         if not record or (record['state'] in FINAL and not (root / 'cancel-request.json').exists()):
             return view(record) if record else None
         plan = json.loads((root / 'plan.json').read_bytes())
+        cancelling = (root / 'cancel-request.json').exists()
         try:
-            verify_inputs(record)
+            if cancelling:
+                verify_cancellation_identity(record, plan)
+            else:
+                verify_inputs(record)
             remaining = [step for step in plan['steps'] if step['id'] not in record['completed_steps']]
-            if (root / 'cancel-request.json').exists():
+            if cancelling:
                 active = remaining[0] if remaining else None
-                if active and active['kind'] == 'clinical' and record.get('admission_unknown'):
+                if record.get('admission_unknown'):
                     outcome = {'state': 'needs_attention', 'queue_blocked': True,
-                               'failure': {'message': 'Remaining clinical phases are cancelled, but an earlier provider admission is unknown. No duplicate call or false cancellation confirmation is allowed.'}}
+                               'cancellation_failure': {'message': 'An earlier provider admission is unknown. No duplicate call or false cancellation confirmation is allowed.'}}
                 elif active and active['kind'] == 'clinical':
                     from scientific_clinical import operation_states
                     checkpoint = Path(record['output_directory']) / 'steps' / active['id'] / 'clinical-checkpoint'
@@ -757,6 +782,9 @@ async def advance(identifier, model_runner=None, local_runner=None, cancel_runne
                     outcome = unresolved or {'state': 'cancelled' if all(item['state'] == 'cancelled' for item in outcomes) else 'cancelling'}
                 else:
                     outcome = await (cancel_runner or cancel_active)(active, record) if active and active['kind'] in MODEL_KINDS else {'state': 'cancelled'}
+                if 'failure' in outcome:
+                    outcome = {**outcome, 'cancellation_failure': outcome['failure']}
+                    del outcome['failure']
                 record.update(outcome, phase='cancellation')
                 if outcome['state'] == 'cancelled':
                     record['queue_blocked'] = False
@@ -816,6 +844,9 @@ async def advance(identifier, model_runner=None, local_runner=None, cancel_runne
             known = load(Path(record['output_directory']) / 'steps' / active / 'operation' / 'receipt.json') if active else None
             unknown = bool(known and known.get('state') in {'submitting', 'admission_unknown'})
             active_operation = bool(known and known.get('operation_id') and known.get('state') not in {'verified', 'succeeded', 'failed', 'cancelled', 'expired', 'preempted'})
+            if cancelling:
+                unknown |= bool(record.get('admission_unknown'))
+                active_operation |= bool(record.get('queue_blocked'))
             active_spec = next((step for step in plan['steps'] if step['id'] == active), None)
             if active_spec and active_spec['kind'] == 'clinical':
                 from scientific_clinical import operation_states
@@ -830,7 +861,8 @@ async def advance(identifier, model_runner=None, local_runner=None, cancel_runne
                         state = json.loads(Path(state_info['path']).read_bytes()) if state_info else {}
                         unknown |= not bool(state.get('operation_id'))
             record.update(state='needs_attention' if unknown or active_operation else 'failed', phase='failure',
-                          failure={'type': type(error).__name__, 'message': str(error)[:2000]},
+                          **{'cancellation_failure' if cancelling else 'failure':
+                             {'type': type(error).__name__, 'message': str(error)[:2000]}},
                           admission_unknown=unknown, queue_blocked=unknown or active_operation, finished_at=time.time())
         record['updated_at'] = time.time()
         save(root / 'receipt.json', record)
@@ -839,7 +871,7 @@ async def advance(identifier, model_runner=None, local_runner=None, cancel_runne
 
 def view(record):
     result = copy.deepcopy({key: record[key] for key in ('id', 'title', 'state', 'phase', 'current_step', 'completed_steps',
-        'steps', 'created_at', 'updated_at', 'finished_at', 'failure', 'admission_unknown', 'cancellation_unknown', 'queue_blocked', 'manifest', 'artifacts') if key in record})
+        'steps', 'created_at', 'updated_at', 'finished_at', 'failure', 'cancellation_failure', 'admission_unknown', 'cancellation_unknown', 'queue_blocked', 'manifest', 'artifacts') if key in record})
     result.update(job_id=record['id'], status='completed' if record['state'] == 'completed' else
                   'failed' if record['state'] in {'failed', 'needs_attention', 'cancelled'} else 'running',
                   durable_study=True, output_directory=record['output_directory'],
