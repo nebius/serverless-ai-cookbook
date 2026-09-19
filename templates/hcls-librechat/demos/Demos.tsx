@@ -24,7 +24,25 @@ type RunPage = { data: RunRow[]; next_cursor?: string; history_available?: boole
 type Study = { id: string; title: string; state: string; phase: string; current_step?: string;
   completed_steps: string[]; step_count: number; queue_blocked?: boolean;
   created_at: number; finished_at?: number; failure?: { message: string };
-  artifacts?: { name: string; role: string; path: string; size_bytes: number; sha256: string; download_url: string }[] };
+  artifacts?: { name: string; role: string; path: string; size_bytes: number; sha256: string; download_url: string }[];
+  completion_summaries?: CompletionSummary[] };
+type CompletionSummary = { source_step: string; state: string; text?: string; notice?: string;
+  artifact_name?: string; sha256?: string; download_url?: string };
+
+export function CompletedStudySummaries({ summaries }: { summaries?: CompletionSummary[] }) {
+  if (!summaries?.length) return null;
+  return <section aria-label="Verified completed-study measurements" className="my-3 rounded border border-border-light p-3">
+    <h4 className="font-semibold">Saved measurements · not chat recomputation</h4>
+    {summaries.map((summary) => <div key={summary.source_step} className="mt-2">
+      <p className="text-sm">Analysis phase: {summary.source_step}</p>
+      {summary.state === 'verified' && summary.text
+        ? <pre className="my-2 whitespace-pre-wrap break-words text-xs">{summary.text}</pre>
+        : <p role="status" className="text-sm">{summary.notice || 'Verified summary unavailable.'}</p>}
+      {summary.download_url && <Link className="text-sm underline" to={summary.download_url}>{summary.artifact_name || 'Download full summary'}</Link>}
+      {summary.sha256 && <p className="break-all text-xs text-text-secondary">SHA256 {summary.sha256}</p>}
+    </div>)}
+  </section>;
+}
 type WorkspaceEntry = { name: string; path: string; kind: 'directory' | 'file'; size_bytes?: number; updated_at: string };
 const BASE = '/api/scientific-demos';
 const field = 'rounded-lg border border-border-medium bg-surface-primary p-2 text-text-primary';
@@ -149,6 +167,7 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
           </div>
           {study.queue_blocked && <p role="status" className="mt-2 text-sm">A previous admission needs inspection. Later studies are held to avoid duplicate or overlapping model work.</p>}
           {study.failure && <p role="alert" className="mt-2 text-sm">{study.failure.message}</p>}
+          <CompletedStudySummaries summaries={study.completion_summaries} />
           <ul className="mt-2 space-y-1">{(study.artifacts || []).map((artifact) => <li key={artifact.name}><Link className="underline" to={artifact.download_url}>{artifact.name}</Link><span className="ml-2 text-xs text-text-secondary">{artifact.role} · {artifact.size_bytes.toLocaleString()} bytes · SHA256 {artifact.sha256}</span></li>)}</ul>
         </article>)}
         {!studies.isLoading && !studies.error && !studies.data?.data.length && <p className="text-sm">No saved whole studies yet. Ask the agent to prepare and launch a complete study plan.</p>}

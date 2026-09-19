@@ -403,10 +403,12 @@ def publish_mindeval(plan_file, output_dir):
     report, provenance = assemble(plan['title'], sections, source_data=[methods, run_csv, score_csv, payload])
     measurements.update(message_count=sum(row['message_count'] for row in run_rows),
                         score_rows=len(score_rows), supplied_score_rows=sum(row['measurement_state'] == 'supplied' for row in score_rows))
+    summary = mindeval_customer_summary(plan['title'], runs, sources, measurements)
     helper = Path(__file__).read_bytes()
     provenance.update(schema='scientific-ai/mindeval-report/v1', inputs=sources,
                       manifest_sha256=digest(plan_bytes), helper_sha256=digest(helper), reused_results=True)
     files = {'report.md': report, 'methods.md': methods, 'runs.csv': run_csv, 'scores.csv': score_csv, 'records.json': payload,
+             'customer-summary.json': (json.dumps(summary, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode(),
              'measurements.json': (json.dumps(measurements, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode(),
              'provenance.json': (json.dumps(provenance, indent=2, allow_nan=False) + '\n').encode(),
              'mindeval-plan.json': plan_bytes, 'helper.py': helper, **extras}
@@ -423,6 +425,49 @@ def publish_mindeval(plan_file, output_dir):
     return {'state': 'complete', 'record_count': len(runs), 'message_count': measurements['message_count'],
         'report_size_bytes': len(report), 'report_sha256': digest(report), 'inference_submitted': False,
         'completion_manifest': str(output_dir / 'completion-manifest.json')}
+
+
+def mindeval_customer_summary(title, runs, sources, measurements):
+    """Project supplied overall scores with their original three-part identity.
+
+    This is not another scoring algorithm: missing/non-numeric overall scores
+    stay unavailable even when all criterion scores are present. No mean,
+    ranking, winner or cross-profile join is computed.
+    """
+    counts = {row['measurement']: row['value'] for row in measurements['measurements']
+              if row['measurement'] in {'consultations', 'scored_consultations', 'distinct_criteria',
+                  'distinct_profiles', 'distinct_clinicians', 'profile_criterion_cells'}}
+    counts.update(message_count=measurements['message_count'],
+                  supplied_score_rows=measurements['supplied_score_rows'])
+    rows = []
+    for run, source in zip(runs, sources):
+        config, judgment = run['state']['config'], run['state'].get('judgment') or {}
+        value = judgment.get('overall_score')
+        supplied = type(value) in (int, float) and math.isfinite(value)
+        rows.append({'run_id': run['id'], 'profile_id': config.get('profile_id'),
+            'clinician_model': config.get('clinician_model'), 'patient_model': config.get('patient_model'),
+            'judge_model': judgment.get('model'), 'judge_provider_model': judgment.get('provider_model'),
+            'overall_score': value if supplied else None,
+            'measurement_state': 'supplied' if supplied else 'unavailable',
+            'source_field': 'state.judgment.overall_score',
+            'record_file': source['record_file'], 'source_sha256': source['sha256']})
+    def display(value):
+        return 'unavailable' if value is None else str(value)
+    lines = [title, '', 'Reused MindEval records; no new consultations or judgments.',
+        *[f'{name}: {display(value)}' for name, value in counts.items()], '',
+        'Stored overall judge scores (uncalibrated; not recomputed):']
+    for row in rows:
+        # A separate keyed line per record prevents a profile-column reshuffle.
+        lines.append(' | '.join(f'{key}: {display(row[key])}' for key in
+            ('profile_id', 'clinician_model', 'run_id', 'overall_score')))
+    limitations = ['Profile×criterion cells are not distinct criteria; message counts include seed messages.',
+        'Overall scores are copied from each exact retained run, not means derived from criterion rows. Missing values remain unavailable.',
+        'Uncalibrated stochastic judge scores do not establish a clinical winner, statistical superiority or independent replicates.']
+    lines += ['', *limitations]
+    return {'schema': 'scientific-study-summary/v1', 'kind': 'mindeval', 'title': title,
+        'counts': counts, 'rows': rows, 'text': '\n'.join(lines) + '\n',
+        'limitations': limitations, 'reused_results': True, 'inference_submitted': False,
+        'scientific_claims_validated': False}
 
 
 def main():
