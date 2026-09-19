@@ -5,6 +5,10 @@ Receipts therefore have immutable journal records written before their convenien
 canonical view. Resume always reads the latest journal, including after an
 interrupted canonical write. An incomplete journal fails closed; it is never
 silently skipped in favor of an older pre-admission state.
+
+Within the dedicated owner instance, short local publication locks keep readers
+out of an in-progress write. They do not make bucket writes atomic or coordinate
+overlapping instances. The previous owner must be stopped before replacement.
 """
 import json
 from contextlib import contextmanager
@@ -111,6 +115,13 @@ def staged_output(target: Path):
         staged.receipt = persist_local_file(staged.path, target)
 
 
+def _local_lock_root() -> Path:
+    root = Path(os.environ.get('SCIENTIFIC_RECEIPT_LOCK_DIR',
+                str(Path(tempfile.gettempdir()) / f'scientific-receipt-locks-{os.geteuid()}')))
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    return root
+
+
 @contextmanager
 def receipt_lock(directory: Path):
     """Exclude competing clients in this container, without locking the bucket.
@@ -118,12 +129,27 @@ def receipt_lock(directory: Path):
     Cross-container admission remains protected by the platform idempotency
     identity, not by an unsupported distributed filesystem-lock promise.
     """
-    root = Path(os.environ.get('SCIENTIFIC_RECEIPT_LOCK_DIR',
-                str(Path(tempfile.gettempdir()) / f'scientific-receipt-locks-{os.geteuid()}')))
-    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    root = _local_lock_root()
     name = hashlib.sha256(str(Path(directory).resolve()).encode()).hexdigest() + '.lock'
     with open(root / name, 'w', opener=lambda path, flags: os.open(path, flags, 0o600)) as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        yield
+
+
+@contextmanager
+def _publication_lock(path: Path, *, writing: bool):
+    """Synchronize a single save/load, not the long-running client operation.
+
+    The API's observer child and the receipt worker inherit the same UID and
+    local lock root in the supported dedicated-instance deployment. Keep this
+    namespace distinct from receipt_lock, which a writer can hold for a whole
+    stage. No lock files or rename assumptions are imposed on the bucket.
+    Process exit releases the lock, but NEVER repairs/skips a partial journal.
+    """
+    name = 'publication-' + hashlib.sha256(str(path.resolve()).encode()).hexdigest() + '.lock'
+    with open(_local_lock_root() / name, 'a+b',
+              opener=lambda name, flags: os.open(name, flags, 0o600)) as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX if writing else fcntl.LOCK_SH)
         yield
 
 
@@ -146,14 +172,15 @@ def save(path: Path, value: object) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     data = (json.dumps(value, indent=2) + '\n').encode('utf-8')
-    if path.name == 'receipt.json':
-        history = _journal(path)
-        history.mkdir(parents=True, exist_ok=True, mode=0o700)
-        previous = sorted(history.glob('*.json'))
-        sequence = max(time.time_ns(), int(previous[-1].name.split('-', 1)[0]) + 1 if previous else 0)
-        version = history / f'{sequence:020d}-{uuid4().hex}.json'
-        _write_verified(version, data)
-    _write_verified(path, data)
+    with _publication_lock(path, writing=True):
+        if path.name == 'receipt.json':
+            history = _journal(path)
+            history.mkdir(parents=True, exist_ok=True, mode=0o700)
+            previous = sorted(history.glob('*.json'))
+            sequence = max(time.time_ns(), int(previous[-1].name.split('-', 1)[0]) + 1 if previous else 0)
+            version = history / f'{sequence:020d}-{uuid4().hex}.json'
+            _write_verified(version, data)
+        _write_verified(path, data)
 
 
 def save_analysis(path: Path, value: object) -> None:
@@ -180,15 +207,16 @@ def save_analysis(path: Path, value: object) -> None:
 def load(path: Path):
     """Return the latest verified receipt, or None only when no receipt exists."""
     path = Path(path)
-    versions = sorted(_journal(path).glob('*.json'))
-    source = versions[-1] if versions else path
-    if not versions and not source.exists():
-        return None
-    try:
-        value = json.loads(source.read_text(encoding='utf-8'))
-        if not isinstance(value, dict):
-            raise ValueError('Receipt must be a JSON object')
-        return value
-    except (OSError, ValueError) as error:
-        raise RuntimeError(f'Latest receipt is unreadable: {source}. Admission may be unknown; '
-                           'do not submit a new request. Inspect the retained receipt history.') from error
+    with _publication_lock(path, writing=False):
+        versions = sorted(_journal(path).glob('*.json'))
+        source = versions[-1] if versions else path
+        if not versions and not source.exists():
+            return None
+        try:
+            value = json.loads(source.read_text(encoding='utf-8'))
+            if not isinstance(value, dict):
+                raise ValueError('Receipt must be a JSON object')
+            return value
+        except (OSError, ValueError) as error:
+            raise RuntimeError(f'Latest receipt is unreadable: {source}. Admission may be unknown; '
+                               'do not submit a new request. Inspect the retained receipt history.') from error
