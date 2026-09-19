@@ -621,14 +621,43 @@ def run_clinical(step, record):
     value = json.loads(result.stdout)
     state = value['state']
     operations = value.get('operations', [])
-    if state == 'completed':
+    allowed_no_report = state == 'no_supported_clinical_facts' and step.get('allow_no_report') is True
+    if state == 'completed' or allowed_no_report:
+        if allowed_no_report:
+            required = {'transcript.txt', 'review.json', 'coverage.json', 'run.json'}
+            if required - value['files'].keys():
+                raise ValueError('No-report outcome is missing its required source/review/coverage/run evidence.')
+            if {'report.md', 'document.json', 'follow-up.md'} & value['files'].keys():
+                raise ValueError('No-report outcome unexpectedly includes report artifacts; preserve the checkpoint for inspection.')
+        if value.get('active_operations'):
+            raise ValueError('Clinical outcome still has active operations; it cannot be published as complete.')
         generation = root.parent / ('generation-' + uuid.uuid4().hex)
         public_files = {}
         for name, info in value['files'].items():
             if '/' not in name:
                 verify_file(Path(info['path']), info)
                 public_files[name] = persist_local_file(Path(info['path']), generation / name)
+        outcome = {'schema': 'scientific-clinical-outcome/v1', 'outcome': state,
+                   'report_produced': not allowed_no_report, 'clinical_validation': False,
+                   'no_report_explicitly_allowed': step.get('allow_no_report') is True,
+                   'source': measure(Path(source)), 'language': step['language'],
+                   'report_model': step['report_model'],
+                   'report_provider': 'https://api.tokenfactory.nebius.com/v1',
+                   'files': public_files.copy()}
+        summary = ('No supported clinical facts were extracted. No report, document or follow-up was produced. '
+                   'This explicitly permitted no-report outcome is not a finding of absent illness or proof that the source lacks important information. '
+                   'Review the unchanged transcript, review.json and coverage.json.' if allowed_no_report else
+                   'A clinical draft was produced. Review its unchanged transcript, cited contexts, withheld candidates and questions; completion does not establish clinical correctness or completeness.')
+        with tempfile.TemporaryDirectory(prefix='clinical-outcome-') as temporary:
+            for name, content in {
+                'clinical-outcome.json': canonical(outcome) + b'\n',
+                'clinical-outcome.md': ('# Clinical stage outcome\n\n' + state + '\n\n' + summary + '\n').encode(),
+            }.items():
+                local = Path(temporary) / name
+                local.write_bytes(content)
+                public_files[name] = persist_local_file(local, generation / name)
         return {'state': 'completed', 'files': public_files, 'clinical_validation': False,
+                'outcome': state, 'report_produced': not allowed_no_report,
                 'checkpoint': str(root), 'report_model': step['report_model'],
                 'operations': operations,
                 'report_provider': 'https://api.tokenfactory.nebius.com/v1'}

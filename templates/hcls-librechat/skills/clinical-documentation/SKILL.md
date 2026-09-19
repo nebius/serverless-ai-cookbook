@@ -66,6 +66,20 @@ using them with a patient. Do not present them as a validated clinical checklist
 
 ## Reproducible study measurements and coverage language
 
+In a durable whole-study plan, an explicitly requested unsupported-source test
+may set `allow_no_report: true` on that individual `kind: "clinical"` stage.
+The default remains false. This permits only the existing typed
+`no_supported_clinical_facts` outcome, not provider, storage, malformed-output or
+unknown-admission failures. It preserves the unchanged `transcript.txt`,
+`review.json`, `coverage.json` and `run.json` and publishes
+`clinical-outcome.json` plus `clinical-outcome.md`. Later declared analysis and
+publication can then continue without another draft or user continuation.
+Normal positive drafts also publish these two outcome files. Use the guaranteed
+`clinical-outcome.md` for downstream reporting when either outcome is allowed;
+do not promise `report.md`, `document.json` or questions from a no-report case.
+No report is not evidence of no illness or no important source information.
+Do not add this permission to positive cases merely to hide an unexpected failure.
+
 For a complete multi-case study, prefer one deterministic assembly step after
 the full transcripts and any clinical documents have been retrieved:
 

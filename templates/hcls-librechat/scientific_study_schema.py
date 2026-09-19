@@ -49,7 +49,9 @@ THRESHOLDS = {'type': 'array', 'items': object_schema({'confidence_above': {'typ
 CLINICAL = object_schema({'id': TEXT, 'kind': {'const': 'clinical'}, 'source': FILE,
     'source_type': {'enum': ['audio', 'transcript', 'artifact']}, 'language': {'enum': ['en', 'de']},
     'report_model': {**TEXT, 'description': 'Explicit clinical model on the existing Token Factory provider; no automatic model swap. The tested draft profile is Qwen/Qwen3-235B-A22B-Instruct-2507.'},
-    'asr_model': {'enum': ['nemotron-speech-en-0-6b', 'nemotron-speech-multilingual-0-6b']}},
+    'asr_model': {'enum': ['nemotron-speech-en-0-6b', 'nemotron-speech-multilingual-0-6b']},
+    'allow_no_report': {'type': 'boolean', 'default': False,
+        'description': 'Set true only when the user explicitly allows an unsupported-source/no-report outcome for this stage. Only no_supported_clinical_facts may then complete without a report, preserving unchanged transcript, review, coverage and run evidence. Provider, malformed-output, storage and unknown-admission failures still stop the study. Consume clinical-outcome.json or clinical-outcome.md downstream; report.md/document.json are conditional, never fabricate them.'}},
     ['id', 'kind', 'source', 'source_type', 'language', 'report_model'])
 STEPS = [NATIVE, BATCH, CLINICAL,
     local('write-json', object_schema({'filename': JSON_BASENAME, 'value': {}})),
@@ -129,7 +131,7 @@ DRAFT_SCHEMA = object_schema({
 PHASE_OUTPUTS = {
     'native': (['result.json'], ['Other files depend on the native result contract.']),
     'batch': (['result.json', 'output-manifest.json'], ['output-NN.artifact: one verified sibling per manifest entry; role, MIME and compression come from output-manifest.json.']),
-    'clinical': ([], ['Returned files follow the existing clinical receipt. A valid no-report outcome does not promise a normal report.']),
+    'clinical': (['clinical-outcome.json', 'clinical-outcome.md'], ['Normal report success publishes the existing clinical files. Explicit allow_no_report permits only no_supported_clinical_facts, preserving transcript.txt, review.json, coverage.json and run.json; report.md, document.json and follow-up.md do not exist for that outcome. Reference the guaranteed clinical-outcome.md in downstream reports when either outcome is allowed.']),
     'write-json': ([], ['Exactly the declared filename; JSON values are not automatically loaded from file references.']),
     'python-script': (['script.py', 'input-bindings.json', 'script-provenance.json'], ['Every declared outputs filename is required nonempty before success.']),
     'parquet-export': (['comparison.json', 'report.md'], ['Requested formats only: data.npz, data.h5, data.zip, data.sqlite.']),
