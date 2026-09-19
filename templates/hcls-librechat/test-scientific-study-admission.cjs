@@ -56,6 +56,31 @@ test('multi-call, unresolved sibling result, unrelated tool and malformed conten
 test('new user or already-emitted assistant message cannot replay the acknowledgement', () => {
   for (const type of ['human', 'ai']) assert.equal(acknowledge([...messages(), { getType: () => type, content: 'new turn' }]), null);
 });
+test('only the exact synthetic host budget envelope is transparent', () => {
+  const notice = () => ({ getType: () => 'human', content: 'System notice: this turn has about 3 more tool-calling rounds left.',
+    additional_kwargs: { role: 'system', source: 'scientific-step-budget', injected: true, isMeta: true,
+      provenance: { version: 1, parts: [{ attribution: 'synthetic' }] } } });
+  assert.equal(acknowledge([...messages(), notice()]), acknowledge(messages()));
+  for (const change of [
+    (m) => { delete m.additional_kwargs.source; }, (m) => { delete m.additional_kwargs.injected; },
+    (m) => { delete m.additional_kwargs.isMeta; }, (m) => { delete m.additional_kwargs.provenance; },
+    (m) => { m.additional_kwargs.role = 'user'; }, (m) => { m.additional_kwargs.source = 'steer'; },
+    (m) => { m.additional_kwargs.provenance.parts[0].attribution = 'user'; },
+    (m) => { m.additional_kwargs.provenance.parts[0].sourceMessageId = 'new-user'; },
+    (m) => { m.additional_kwargs.sourceMessageIds = ['new-user']; },
+    (m) => { m.additional_kwargs.provenance.parts.push({ attribution: 'user' }); },
+    ...[null, undefined, '', 'x', [], [null], [undefined], ['synthetic'], [{}],
+      { length: 1, 0: { attribution: 'synthetic' } }].map((parts) =>
+      (m) => { m.additional_kwargs.provenance.parts = parts; }),
+  ]) { const input = notice(); change(input); assert.equal(acknowledge([...messages(), input]), null); }
+  assert.equal(acknowledge([...messages(), notice(), { getType: () => 'human', content: 'new request' }]), null);
+});
+test('pinned budget producer stamp rejects absent, duplicate and already-patched seams', () => {
+  const anchor = 'return { additionalContext: buildBudgetNotice(remaining) };';
+  assert.throws(() => acknowledge.patchBudgetHook(''), /Unsupported pinned/);
+  assert.throws(() => acknowledge.patchBudgetHook(anchor + anchor), /Unsupported pinned/);
+  assert.throws(() => acknowledge.patchBudgetHook(acknowledge.patchBudgetHook(anchor)), /Unsupported pinned/);
+});
 test('pinned patch refuses missing, duplicate or already-patched seam', () => {
   const anchor = '\t\t\tconst { messages } = state;\n\t\t\tconst discoveredNames = require_tools.extractToolDiscoveries(messages);';
   assert.throws(() => acknowledge.patchGraph(''), /Unsupported pinned/);
@@ -82,7 +107,7 @@ if (graphPath) {
     compiled.filename = graphPath;
     compiled.paths = Module._nodeModulePaths(path.dirname(graphPath));
     compiled.require = (request) => request === '/opt/hcls-librechat/scientific-study-admission.cjs' ? acknowledge : requireInstalled(request);
-    compiled._compile(acknowledge.patchGraph(source), graphPath);
+    compiled._compile(source.includes('const studyAdmissionText =') ? source : acknowledge.patchGraph(source), graphPath);
     graph = compiled.exports;
   }
   function harness() {

@@ -4,10 +4,26 @@ const toolName = 'run_scientific_workflow_mcp_environment-execution';
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const messageType = (message) => message?.getType?.() ?? message?._getType?.();
 
+function isHostBudgetNotice(message) {
+  const metadata = message?.additional_kwargs;
+  const provenance = metadata?.provenance;
+  const parts = provenance?.parts;
+  return messageType(message) === 'human' && metadata?.role === 'system' &&
+    metadata.source === 'scientific-step-budget' && metadata.injected === true && metadata.isMeta === true &&
+    provenance?.version === 1 && Array.isArray(parts) && parts.length === 1 &&
+    parts[0]?.attribution === 'synthetic' &&
+    parts[0]?.sourceMessageId === undefined &&
+    metadata.sourceMessageId === undefined && metadata.sourceMessageIds === undefined;
+}
+
 function studyAdmissionAcknowledgement(messages) {
   if (!Array.isArray(messages) || messages.length < 2) return null;
-  const result = messages.at(-1);
-  const request = messages.at(-2);
+  // ToolNode appends the host's near-budget notice after the completed tool.
+  // Only that explicitly stamped synthetic notice is transparent. Never scan
+  // past a user/steering message, another tool, or an arbitrary text lookalike.
+  const end = messages.length - (isHostBudgetNotice(messages.at(-1)) ? 1 : 0);
+  const result = messages[end - 1];
+  const request = messages[end - 2];
   if (messageType(result) !== 'tool' || messageType(request) !== 'ai' ||
       result.name !== toolName || result.status === 'error') return null;
   const calls = request.tool_calls;
@@ -32,6 +48,18 @@ function studyAdmissionAcknowledgement(messages) {
     '[Runs → Whole studies](/demos?tab=runs). No continue prompt is needed for mechanical waiting.\n\n' +
     'This acknowledges admission only, not completion or scientific results.';
 }
+
+studyAdmissionAcknowledgement.patchBudgetHook = function patchBudgetHook(source) {
+  const anchor = 'return { additionalContext: buildBudgetNotice(remaining) };';
+  if (source.split(anchor).length !== 2) throw new Error('Unsupported pinned study budget-notice seam');
+  // Use the existing injected-message transport so ToolNode retains an exact
+  // producer tag and stamps synthetic provenance. Budget, text and timing stay
+  // unchanged; no user message is reclassified and no provider turn is added.
+  return source.replace(anchor, `return { injectedMessages: [{
+\t\t\trole: "system", content: buildBudgetNotice(remaining),
+\t\t\tisMeta: true, source: "scientific-step-budget"
+\t\t}] };`);
+};
 
 // Pinned upstream seam, shared by classic/event-driven tool execution. Keep
 // normal message events/persistence, but do not invoke a provider to paraphrase

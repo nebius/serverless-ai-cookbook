@@ -20,6 +20,13 @@ output_directory = Path(args.output_dir)
 FILE = {'oneOf': [TEXT, {'type': 'object', 'additionalProperties': False,
     'required': ['step', 'file'], 'properties': {'step': TEXT, 'file': TEXT}}],
     'description': 'Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}.'}
+COORDINATE_INPUT_GUIDANCE = {
+    'proteinmpnn-input': {'backbone': 'For a future batch backbone use {step,file:"output-manifest.json"} with explicit structure_index; the helper selects and hash-verifies the declared coordinate entry, not an artifact index.'},
+    'design-refold-correspondence': {'prediction': 'For a future batch prediction use {step,file:"output-manifest.json"} with explicit structure_index; correspondence retains the selected coordinates and same-operation confidence provenance.'}}
+
+
+def coordinate_file(method, name):
+    return {**FILE, 'description': FILE['description'] + ' ' + COORDINATE_INPUT_GUIDANCE[method][name]}
 
 
 def object_schema(properties, required=None):
@@ -80,7 +87,7 @@ STEPS = [NATIVE, BATCH, CLINICAL,
             'sequence_mode': {'enum': ['suffix', 'prefix-and-suffix'], 'default': 'suffix'}},
             ['id','start_zero_based','input_file','result_file','operation_file'])}},
         ['reference_file','cases'])),
-    local('proteinmpnn-input', object_schema({'backbone': FILE, 'structure_index': {'type': 'integer', 'minimum': 0},
+    local('proteinmpnn-input', object_schema({'backbone': coordinate_file('proteinmpnn-input', 'backbone'), 'structure_index': {'type': 'integer', 'minimum': 0},
         'chain': CHAIN,
         'num_sequences': {'type': 'integer', 'minimum': 1, 'maximum': 8},
         'seed': {'type': 'integer', 'minimum': 1, 'maximum': 2147483647},
@@ -89,7 +96,8 @@ STEPS = [NATIVE, BATCH, CLINICAL,
     local('esmfold2-fast-input', object_schema({'design_input': FILE, 'design_result': FILE,
         'design_index': {'type': 'integer', 'minimum': 0}, 'seed': {'type': 'integer', 'minimum': 0, 'maximum': 2147483647}})),
     local('design-refold-correspondence', object_schema({**{name: FILE for name in
-        ('design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction')},
+        ('design_input', 'design_result', 'refold_input', 'refold_parameters')},
+        'prediction': coordinate_file('design-refold-correspondence', 'prediction'),
         'confidence_result': {**FILE, 'description': FILE['description'] + ' Optional exact same-operation output-manifest.json for a selected coordinate file. A direct {step,file} coordinate from a completed batch producer automatically carries that producer\'s recorded manifest after hash verification; explicit workspace files require explicit metadata. Never changes selected coordinates or infers confidence from geometry.'},
         'design_index': {'type': 'integer', 'minimum': 0}, 'structure_index': {'type': 'integer', 'minimum': 0},
         'prediction_chain': CHAIN}, ['design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction',
@@ -152,7 +160,7 @@ DRAFT_SCHEMA = object_schema({
 # conditional filenames must never become unconditional final deliverables.
 PHASE_OUTPUTS = {
     'native': (['result.json'], ['JSON models retain their original result shape. Native media publish scientific-native-file/v1 in result.json with verified file.path/size_bytes/sha256 plus result.mp4, result.wav or another declared media extension. Do not JSON-decode binary media or infer its identity by directory globbing. Native does not publish input.json: preserve the exact original input file or its preparation-step reference as provenance, not a guessed model output.']),
-    'batch': (['result.json', 'output-manifest.json'], ['output-NN.artifact: one verified sibling per manifest entry; role, MIME and compression come from output-manifest.json.']),
+    'batch': (['result.json', 'output-manifest.json'], ['output-NN.artifact: one verified sibling per manifest entry; role, MIME and compression come from output-manifest.json. ProteinMPNN backbone preparation and design-refold correspondence select future batch coordinates through output-manifest.json plus explicit structure_index, never a guessed output-NN.artifact. Other input and deliverable references are unchanged.']),
     'clinical': (['clinical-outcome.json', 'clinical-outcome.md'], ['Normal report success publishes the existing clinical files. Explicit allow_no_report permits only no_supported_clinical_facts, preserving transcript.txt, review.json, coverage.json and run.json; report.md, document.json and follow-up.md do not exist for that outcome. Reference the guaranteed clinical-outcome.md in downstream reports when either outcome is allowed.']),
     'write-json': ([], ['Exactly the declared filename; JSON values are not automatically loaded from file references.']),
     'python-script': (['script.py', 'input-bindings.json', 'script-provenance.json'], ['Every declared outputs filename is required nonempty before success.']),

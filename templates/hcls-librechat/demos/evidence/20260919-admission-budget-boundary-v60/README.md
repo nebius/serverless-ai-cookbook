@@ -1,0 +1,13 @@
+# Admission acknowledgement: real tool boundary
+
+The retained v59 scientist04 chat used a model-authored narrative after a valid durable admission. Its eight planned phases and three fresh scientific calls were correctly described; optional historical Mosaic/BindCraft context was not required. The original run and chat remain unchanged.
+
+The prior 27 installed tests began with an already-completed AI/Tool message pair. They did not execute the host tool boundary. A new local test uses the actual pinned event-driven ToolNode, enclosing Run completion callback, and the actual API budget-hook function. At its unchanged 30-step setting, round 11 appends a synthetic budget notice after the successful ToolMessage. The old acknowledgement selector then misses the receipt and invokes another model generation. Exact v59 reproduces this failure: 7/8 boundary cases pass, the admission case fails `2 != 1` fake-model generations. No provider or scientific execution occurs.
+
+The candidate preserves the notice text, threshold, HumanMessage class and existing `role: system` metadata. It uses the existing injected-message transport to retain a specific host producer tag and synthetic provenance. Only that tagged terminal budget notice is transparent to admission recognition. User/steering messages, arbitrary text lookalikes, multi-tool batches, uncertain receipts and unresolved pending calls retain normal routing. The pending-call veto is unchanged.
+
+All 37 candidate tests pass: the original 27 names, two producer/envelope cases, and eight real-boundary cases. Candidate tests explicitly compile the candidate helper binding and hook stamp in memory; they are not an installed successor claim. Installed mode loads the actual Graph, ToolNode, Run and API hook without replacements. The successor image and actual persisted customer-chat gates remain required.
+
+The graph-only budget notice and exact live tool-round grouping were not retained in the original customer messages/provider logs. This is a reproduced implementation gap compatible with the live failure, not a claim that the original runtime branch was directly observed. A preliminary Graph-only harness omitted the Run completion callback; its stale pending map was a harness omission, not grounds to relax the production veto.
+
+Protected evidence: `v60-admission-boundary-r1/receipt.json`, SHA-256 `d2a72224572598b96d8a28e76a7a6b8d2c22c55fb97071a2be142087651821e0`. It binds the unchanged original receipt, baseline/candidate test output, source hashes, and retained diagnostic limitations. No model calls, cloud writes, deployment or original-study repair occurred.

@@ -112,3 +112,46 @@ were changed. Private report `orphan-preview-readonly-20260919/REPORT.md`, SHA25
 
 No whole-platform, snapshot-speed, model-quality or clinical-validation claim
 is made by these fixes.
+
+## Targeted dedicated-user deployment — 22:15 UTC
+
+One v59 scientist04 instance was created/configured and provider-read back as
+RUNNING: `aiendpoint-e00va0nnnepa97pkfe`. The same dedicated user/key and tenant
+bucket were preserved; login, 34 authorized Apps, mounted-bucket identity and
+the live durable-study supervisor passed. Its v58 predecessor was fully archived
+(1,077 personal-prefix files, local configuration/history and logical Mongo)
+before one stop; it remains STOPPED, not deleted. Other users and Rene's current
+instance are unchanged. No quota, concurrency, model budget or retry was raised.
+
+Root omitted `SSH_PUBLIC_KEY_FILE` from the new endpoint's create environment.
+The subsequent exact installed-runtime SSH binder failed with no authorized SSH
+keys. This original deployment/test error is retained, not converted to a pass.
+The published immutable-image gate and provider image/name identity are known;
+the new instance's installed source/Graph hashes were **not** read back. The
+preparation guide now explicitly supplies the existing public key before future
+creates. No in-place runtime overlay, duplicate replacement or hidden access
+path was used to hide the gap.
+
+Root therefore authorized only a **targeted fix-validation** run, not full
+release or customer migration qualification. One unchanged r11 prompt admitted
+Study `b4eb491e-a703-5baf-8a11-5ba18475f0f9`; its browser was closed at
+22:15:44.747422 UTC after an immediate running-state observation. All three
+model phases completed, but correspondence then failed after five of eight
+phases: the planner had selected `output-01.artifact`, which the actual producer
+manifest identifies as confidence JSON, not coordinates. The provenance check
+correctly refused to treat it as the selected structure. There is no successful
+final report. Raw coordinates/confidence remain retained, and no original output
+or selected reference was silently repaired.
+
+The persisted final chat was a model-authored pending-study narrative rather
+than the intended deterministic acknowledgement. Its eight planned steps/three
+model calls match the saved plan and it explicitly says results are not verified;
+it is not a false completion. Optional historical Mosaic/BindCraft context was
+omitted, which the frozen prompt permits. Local reproduction is investigating
+the host-generated near-budget notice at the real ToolNode/Run boundary; the
+earlier empty-pending-map fixture alone was insufficient to establish the cause.
+
+Successor work is limited to manifest-backed references for the existing
+coordinate-consuming preparation methods, pre-admission rejection of guessed
+future artifact roles, and recognizing the internally tagged budget notice.
+No scientific input, inference budget, retry limit or original failure changes.

@@ -136,6 +136,26 @@ def known_output_reference(value, steps):
             'no output has been renamed and no study has been admitted.')
 
 
+def coordinate_output_references(step, steps):
+    """A future batch artifact index declares no coordinate semantic type.
+
+    Existing materialized coordinates keep their exact bytes. Only these typed
+    coordinate arguments require manifest-backed selection before admission;
+    raw artifacts remain valid references in other inputs and deliverables.
+    """
+    from scientific_study_schema import COORDINATE_INPUT_GUIDANCE, PHASE_OUTPUT_PATTERNS
+    args = step.get('arguments', {})
+    for name, guidance in COORDINATE_INPUT_GUIDANCE.get(step.get('method'), {}).items():
+        value = args.get(name)
+        if (isinstance(value, dict) and steps[value['step']].get('kind') == 'batch'
+                and any(re.fullmatch(pattern, value['file'])
+                        for pattern in PHASE_OUTPUT_PATTERNS['batch'])):
+            raise ValueError(
+                f"Step {step['id']} argument {name} cannot select future batch coordinates by "
+                f"{value['file']!r}: output-NN.artifact indices do not establish semantic type. "
+                + guidance + ' No file was substituted and no study has been admitted.')
+
+
 def input_references(step):
     """Named file inputs, not arbitrary strings guessed to be file paths."""
     kind = step['kind']
@@ -247,6 +267,7 @@ def validate(plan):
             if isinstance(value, str):
                 path = path_in_workspace(value)
                 inputs[str(path)] = measure(path)
+        coordinate_output_references(step, by_id)
         if step.get('method') in {'report', 'mindeval'}:
             spec = importlib.util.spec_from_file_location('study_report', HELPERS[step['method']])
             helper = importlib.util.module_from_spec(spec)

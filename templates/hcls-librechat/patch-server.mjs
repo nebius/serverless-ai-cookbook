@@ -68,6 +68,7 @@ apiSource = apiSource.replace(budgetNoticeAnchor,
   + 'If jobs are still running, persist an explicitly interim report and exact operation and execution IDs; do not claim scientific completion. '
   + 'Do not spend the remaining rounds on repeated polls, new searches, or duplicate submissions. '
   + 'Then give a concise final status with verified file paths and what remains unresolved.');
+apiSource = studyAdmissionAcknowledgement.patchBudgetHook(apiSource);
 const exactCounterAnchor = 'if (requiresTokenEstimate(text)) return estimateBoundedTokenCount(text);';
 if (apiSource.split(exactCounterAnchor).length !== 3) throw new Error('Unsupported pinned tokenizer');
 apiSource = apiSource.replace(exactCounterAnchor,
