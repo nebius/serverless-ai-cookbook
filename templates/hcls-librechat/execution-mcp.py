@@ -246,7 +246,133 @@ def run_scientific_workflow(args):
                 'guidance': 'Poll this execution job; model operations and exact receipts remain in the workflow output. Completion still requires scientific analysis.'}
 
 
+def file_digest(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def file_stat_identity(path):
+    stat = path.stat()
+    return {'size_bytes': stat.st_size, 'mtime_ns': stat.st_mtime_ns}
+
+
+def upload_workspace_files(args):
+    """Expose the existing byte-verified uploader without model-managed handles."""
+    workspace = Path(WORKSPACE).resolve()
+    output = workspace_path(args.get('output_directory'), 'output_directory')
+    files = args.get('files')
+    if not isinstance(files, list) or not files:
+        raise ValueError('files must contain at least one typed workspace file.')
+    resume = args.get('resume', False)
+    if not isinstance(resume, bool):
+        raise ValueError('resume must be a boolean.')
+    prepared, identifiers = [], set()
+    required = {'id', 'model', 'file', 'media_type', 'idempotency_key'}
+    for item in files:
+        if not isinstance(item, dict) or set(item) != required or any(
+                not isinstance(value, str) or not value for value in item.values()):
+            raise ValueError('Each file needs exactly id, model, file, media_type and idempotency_key strings.')
+        identifier = item['id']
+        if identifier in identifiers or identifier in {'.', '..'} or '/' in identifier or '\\' in identifier:
+            raise ValueError('Each upload id must be a distinct plain directory name.')
+        identifiers.add(identifier)
+        if not 8 <= len(item['idempotency_key']) <= 200:
+            raise ValueError('Upload idempotency_key must contain 8–200 characters.')
+        path = workspace_path(item['file'], 'file')
+        if not path.is_file():
+            raise ValueError('Upload source is not an existing file: ' + str(path))
+        prepared.append({**item, 'file': str(path), 'output_directory': str(output / identifier),
+                         **file_stat_identity(path)})
+    plan = {'schema': 'workspace-artifact-upload/v1', 'files': prepared}
+    encoded = (json.dumps(plan, sort_keys=True) + '\n').encode()
+    identity = hashlib.sha256(encoded).hexdigest()
+    index_dir = ROOT / 'upload-index'
+    index_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # Bind one output directory to one frozen upload plan; changed bytes or
+    # metadata cannot implicitly create another reservation behind the same UI.
+    binding = hashlib.sha256(str(output).encode()).hexdigest()
+    index = index_dir / (binding + '.json')
+    with (index_dir / (binding + '.lock')).open('w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        previous = json.loads(index.read_text()) if index.exists() else {}
+        if previous and previous['identity'] != identity:
+            raise ValueError('Upload bytes or metadata changed for this output directory; preserve the old receipt and use an explicit new identity.')
+        if previous.get('job_id'):
+            current = read_job({'job_id': previous['job_id'], 'wait_seconds': 0})
+            if current['status'] in ('starting', 'running', 'completed') or not resume:
+                return {**current, 'upload_identity': identity, 'reused_existing_job': True,
+                        'resume_required': current['status'] not in ('starting', 'running', 'completed')}
+        frozen = index_dir / (identity + '.plan.json')
+        frozen.write_bytes(encoded)
+        command = [sys.executable, str(Path(__file__).resolve()), '--upload-worker', str(frozen)]
+        started = execute({'command': shlex.join(command), 'cwd': str(workspace),
+                           'timeout_seconds': 0, 'wait_seconds': 10})
+        save(index, {'identity': identity, 'job_id': started['job_id'],
+                     'previous_job_id': previous.get('job_id')})
+        return {**started, 'upload_identity': identity, 'preflight_files': len(prepared),
+                'reused_existing_job': False,
+                'guidance': 'Files upload sequentially through the existing verified uploader. Observe this job with read_execution; use only finalized artifact.json references. No model inference was submitted.'}
+
+
+def upload_worker(plan_path):
+    plan = json.loads(plan_path.read_text())
+    python = os.environ.get('SCIENTIFIC_CLIENT_PYTHON', '/opt/scientific-client/bin/python')
+    helper = os.environ.get('SCIENTIFIC_UPLOAD_HELPER', '/opt/bionemo/upload-artifact.py')
+    # Hash all sources in the detached worker, never on the MCP request path.
+    # A multi-GB mounted file may take longer than the unchanged call deadline.
+    # Freeze exact bytes before any reservation and reuse them after interruption.
+    frozen_path = plan_path.with_suffix('.bytes.json')
+    frozen = json.loads(frozen_path.read_text()) if frozen_path.exists() else None
+    prepared = []
+    for item in plan['files']:
+        path = Path(item['file'])
+        expected_stat = {field: item[field] for field in ('size_bytes', 'mtime_ns')}
+        if file_stat_identity(path) != expected_stat:
+            raise ValueError('Source changed after preflight; no reservation made for ' + item['id'])
+        digest = file_digest(path)
+        if file_stat_identity(path) != expected_stat:
+            raise ValueError('Source changed while hashing; no reservation made for ' + item['id'])
+        prepared.append({**item, 'sha256': digest})
+    if frozen is not None and frozen != prepared:
+        raise ValueError('Source bytes differ from the retained upload plan; no new reservation made.')
+    if frozen is None:
+        save(frozen_path, prepared)
+    for item in prepared:
+        path = Path(item['file'])
+        if file_stat_identity(path) != {field: item[field] for field in ('size_bytes', 'mtime_ns')}:
+            raise ValueError('Source changed before transfer; no reservation made for ' + item['id'])
+        command = [python, helper, '--model', item['model'], '--file', str(path),
+                   '--media-type', item['media_type'], '--output-dir', item['output_directory'],
+                   '--idempotency-key', item['idempotency_key']]
+        # A failed or ambiguous upload stops the sequence. Explicit resume
+        # delegates to the same durable receipts and idempotency keys; never
+        # spin through 429s, launch parallel reservations or invent a new key.
+        completed = subprocess.run(command, stdin=subprocess.DEVNULL, check=False)
+        if completed.returncode:
+            raise RuntimeError('Upload stopped at ' + item['id'] + '; inspect its retained receipt before explicit resume.')
+        artifact_file = Path(item['output_directory']) / 'artifact.json'
+        artifact = json.loads(artifact_file.read_text())
+        if any(artifact.get(field) != item[field] for field in ('sha256', 'size_bytes', 'media_type')):
+            raise ValueError('Finalized artifact differs from frozen source identity: ' + item['id'])
+        print(json.dumps({'id': item['id'], 'artifact_file': str(artifact_file), 'artifact': artifact}), flush=True)
+
+
 TOOLS = [
+    {'name': 'upload_workspace_files',
+     'description': 'Upload one or more actual workspace files as immutable model artifacts, sequentially. Preferred over manually reserving handles or hashing/copying bytes through chat. Supply file paths and live-contract media types; the existing uploader hashes, streams, finalizes and saves exact artifact.json references. Submit all related files in one call to avoid concurrent reservations. No model inference is run. Repeated identical calls reuse this execution job; resume=true only after inspecting a failed/interrupted receipt. Observe with read_execution and reuse finalized references in native/batch inputs.',
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
+     'inputSchema': {'type': 'object', 'additionalProperties': False,
+         'required': ['files', 'output_directory'], 'properties': {
+             'output_directory': TEXT, 'resume': {'type': 'boolean', 'default': False},
+             'files': {'type': 'array', 'minItems': 1, 'items': {'type': 'object',
+                 'additionalProperties': False, 'required': ['id', 'model', 'file', 'media_type', 'idempotency_key'],
+                 'properties': {'id': {**TEXT, 'description': 'Distinct receipt directory name within output_directory.'},
+                    'model': TEXT, 'file': {**TEXT, 'description': 'Existing mounted workspace file path, not bytes/base64/URL.'},
+                    'media_type': {**TEXT, 'description': 'Actual source MIME accepted by the live model contract.'},
+                    'idempotency_key': {'type': 'string', 'minLength': 8, 'maxLength': 200}}}}}}},
     {'name': 'run_scientific_workflow',
      'description': 'Preferred launch for a prepared scientific study: supply typed steps with input_file (native) or source_file plus parameters_file (batch), all real workspace paths, and output_directory. The tool constructs the canonical plan; do not invent a plan wrapper or put JSON data into path fields. Existing plan_file mode remains for recovery. Validates every source/input/parameter file before any admission and uses existing clients sequentially under unchanged caller policy. Native JSON input files can contain large arrays outside chat. Returns one saved execution job after up to10 seconds; poll read_execution, never launch again. Repeated calls reuse the job; resume=true is only for inspected interruptions, preserving original operation IDs/keys. Preflight is not scientific validation.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
@@ -295,7 +421,8 @@ def main():
             elif method == 'tools/call':
                 params = request['params']
                 handler = {'execute_command': execute, 'read_execution': read_job,
-                           'run_scientific_workflow': run_scientific_workflow}[params['name']]
+                           'run_scientific_workflow': run_scientific_workflow,
+                           'upload_workspace_files': upload_workspace_files}[params['name']]
                 try:
                     value = handler(params.get('arguments', {}))
                     result = {'content': [{'type': 'text', 'text': json.dumps(value)}],
@@ -314,5 +441,7 @@ def main():
 if __name__ == '__main__':
     if len(sys.argv) == 3 and sys.argv[1] == '--worker':
         worker(Path(sys.argv[2]))
+    elif len(sys.argv) == 3 and sys.argv[1] == '--upload-worker':
+        upload_worker(Path(sys.argv[2]))
     else:
         main()
