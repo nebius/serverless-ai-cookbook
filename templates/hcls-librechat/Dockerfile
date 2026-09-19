@@ -32,6 +32,11 @@ LABEL org.opencontainers.image.title="Nebius Scientific AI Agent" \
 
 USER root
 COPY --from=scientific-client /app/client/dist /app/client/dist
+# zstd is the published scientific/LeRobot archive transport, not an optional
+# notebook-only dependency. Keep it available after a fresh deployment.
+RUN apt-get update && apt-get install -y --no-install-recommends zstd \
+ && zstd --version \
+ && rm -rf /var/lib/apt/lists/*
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
 COPY templates/hcls-librechat/scientific-tool-options.cjs /opt/hcls-librechat/scientific-tool-options.cjs
 COPY templates/hcls-librechat/scientific-completion.cjs /opt/hcls-librechat/scientific-completion.cjs

@@ -246,6 +246,39 @@ def run_scientific_workflow(args):
                 'guidance': 'Poll this execution job; model operations and exact receipts remain in the workflow output. Completion still requires scientific analysis.'}
 
 
+def recover_scientific_results(args):
+    """Reuse the existing batch client's read-only completed-result path."""
+    operation = str(uuid.UUID(args['operation_id']))
+    output = workspace_path(args.get('output_directory'), 'output_directory')
+    resume = args.get('resume', False)
+    if not isinstance(resume, bool):
+        raise ValueError('resume must be a boolean.')
+    index_dir = ROOT / 'recovery-index'
+    index_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    identity = hashlib.sha256((operation + '\0' + str(output)).encode()).hexdigest()
+    index = index_dir / (hashlib.sha256(str(output).encode()).hexdigest() + '.json')
+    with index.with_suffix('.lock').open('w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        previous = json.loads(index.read_text()) if index.exists() else {}
+        if previous and previous['identity'] != identity:
+            raise ValueError('Recovery output directory is already bound to another operation.')
+        if previous.get('job_id'):
+            current = read_job({'job_id': previous['job_id'], 'wait_seconds': 0})
+            if current['status'] in ('starting', 'running', 'completed') or not resume:
+                return {**current, 'reused_existing_job': True,
+                        'resume_required': current['status'] not in ('starting', 'running', 'completed')}
+        command = [os.environ.get('SCIENTIFIC_CLIENT_PYTHON', '/opt/scientific-client/bin/python'),
+                   os.environ.get('SCIENTIFIC_BATCH_HELPER', '/opt/bionemo/invoke-scientific-batch.py'),
+                   '--recover-operation-id', operation, '--output', str(output)]
+        started = execute({'command': shlex.join(command), 'cwd': str(Path(WORKSPACE).resolve()),
+                           'timeout_seconds': 0, 'wait_seconds': 10})
+        save(index, {'identity': identity, 'job_id': started['job_id'],
+                     'previous_job_id': previous.get('job_id')})
+        return {**started, 'operation_id': operation, 'output_directory': str(output),
+                'reused_existing_job': False, 'inference_submitted': False,
+                'guidance': 'Observe the saved job with read_execution. The existing batch client saves the complete result, output manifest and hash-verified child artifacts. Read recovery-receipt.json for file paths, names, compression and hashes; then analyze the actual bytes. No upload or model call was submitted.'}
+
+
 def file_digest(path):
     digest = hashlib.sha256()
     with path.open('rb') as stream:
@@ -361,6 +394,13 @@ def upload_worker(plan_path):
 
 
 TOOLS = [
+    {'name': 'recover_scientific_results',
+     'description': 'Recover an existing COMPLETED scientific-batch operation into actual workspace files in one job. Preferred over separate status/result/download-handle/curl calls. Reuses the existing batch client, saves result.json, output-manifest.json, every flat manifest artifact and recovery-receipt.json with names, semantic roles, compression, sizes and SHA256. Supply a new empty output_directory or the same recovery directory to resume. Does NOT submit inference, reserve uploads, change settings or extract archives. Use packaged zstd for zstd archives afterward. Failed/incomplete operations remain failures; observe with read_execution. Repeated identical calls reuse the job; resume=true only for an inspected interrupted download.',
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
+     'inputSchema': {'type': 'object', 'additionalProperties': False,
+        'required': ['operation_id', 'output_directory'], 'properties': {
+            'operation_id': {**TEXT, 'format': 'uuid'}, 'output_directory': TEXT,
+            'resume': {'type': 'boolean', 'default': False}}}},
     {'name': 'upload_workspace_files',
      'description': 'Upload one or more actual workspace files as immutable model artifacts, sequentially. Preferred over manually reserving handles or hashing/copying bytes through chat. Supply file paths and live-contract media types; the existing uploader hashes, streams, finalizes and saves exact artifact.json references. Submit all related files in one call to avoid concurrent reservations. No model inference is run. Repeated identical calls reuse this execution job; resume=true only after inspecting a failed/interrupted receipt. Observe with read_execution and reuse finalized references in native/batch inputs.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
@@ -422,6 +462,7 @@ def main():
                 params = request['params']
                 handler = {'execute_command': execute, 'read_execution': read_job,
                            'run_scientific_workflow': run_scientific_workflow,
+                           'recover_scientific_results': recover_scientific_results,
                            'upload_workspace_files': upload_workspace_files}[params['name']]
                 try:
                     value = handler(params.get('arguments', {}))

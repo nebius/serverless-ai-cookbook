@@ -14,7 +14,7 @@ from pathlib import Path
 import sys
 import time
 from urllib.parse import quote, urlparse
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx2
 from jsonschema import Draft202012Validator
@@ -178,6 +178,12 @@ async def upload(http, model: str, data: bytes, media_type: str, compression: st
 
 
 async def download(http, reference: dict, target: Path) -> dict:
+    if target.exists():
+        retained = target.read_bytes()
+        if len(retained) != reference['size_bytes'] or digest(retained) != reference['sha256']:
+            raise RuntimeError('Existing artifact bytes differ from the declared result; preserve them and use a new recovery directory.')
+        return {'artifact_id': reference['artifact_id'], 'path': str(target),
+                'size_bytes': len(retained), 'sha256': digest(retained)}
     response = check(await http.get("/v1/artifacts/" + quote(reference["artifact_id"], safe="") + "/content"))
     data = response.content
     if len(data) != reference["size_bytes"] or digest(data) != reference["sha256"]:
@@ -187,6 +193,66 @@ async def download(http, reference: dict, target: Path) -> dict:
         output.write(data)
     return {"artifact_id": reference["artifact_id"], "path": str(target),
             "size_bytes": len(data), "sha256": digest(data)}
+
+
+async def collect_outputs(http, result: dict, output: Path) -> dict:
+    """One flat published manifest, using the existing hash-verified transport."""
+    if result.get('terminal_status') != 'succeeded' or result.get('semantic_validation', {}).get('status') != 'passed':
+        raise RuntimeError('Published result did not pass semantic validation.')
+    manifest = await download(http, result['output_manifest'], output / 'output-manifest.json')
+    entries = json.loads((output / 'output-manifest.json').read_text())['entries']
+    artifacts = []
+    for index, entry in enumerate(entries):
+        downloaded = await download(http, entry['artifact'], output / f'output-{index:02d}.artifact')
+        artifacts.append({**entry['artifact'], **downloaded,
+                          'name': entry['name'], 'semantic_type': entry['semantic_type']})
+    return {'output_manifest': manifest, 'verified_artifacts': artifacts}
+
+
+async def recover_completed(args) -> dict:
+    """Only status/result reads: never reserve, upload, admit, cancel or infer."""
+    operation_id = str(UUID(args.recover_operation_id))
+    endpoint = os.environ['SCIENTIFIC_MODELS_MCP_URL']
+    key = os.environ['SCIENTIFIC_MODELS_API_KEY']
+    origin = endpoint.removesuffix('/mcp').removesuffix('/mcp/')
+    identity = {'operation_id': operation_id, 'endpoint': endpoint,
+                'caller_fingerprint': digest(key.encode())}
+    path = args.output / 'recovery-receipt.json'
+    receipt = load_receipt(path)
+    if receipt is None:
+        # The caller's existing run directory and any rejected receipts remain
+        # untouched. Use a new recovery directory, then reuse its exact identity.
+        existing = [item for item in args.output.iterdir()] if args.output.exists() else []
+        if existing:
+            raise ValueError('Use an empty recovery directory; existing study files are preserved.')
+        receipt = {'identity': identity, 'operation_id': operation_id, 'state': 'prepared'}
+    if receipt['identity'] != identity:
+        raise ValueError('Recovery directory belongs to a different operation or caller.')
+    args.output.mkdir(parents=True, exist_ok=True, mode=0o700)
+    save(path, receipt)
+    headers = {'authorization': 'Bearer ' + key}
+    async with httpx2.AsyncClient(base_url=origin, headers=headers, timeout=180,
+                                  trust_env=False, follow_redirects=False) as http:
+        async with httpx2.AsyncClient(headers=headers, timeout=180, trust_env=False) as mcp_http:
+            async with Client(streamable_http_client(endpoint, http_client=mcp_http)) as client:
+                # This is one bounded observation, not a polling/admission loop.
+                status = await call(client, 'get_scientific_status', {'operation_id': operation_id})
+                save(args.output / 'status.json', status)
+                operation = status.get('operation', status)
+                receipt['state'] = operation['status']
+                save(path, receipt)
+                if operation['status'] != 'succeeded' or not status.get('batch', {}).get('result_published'):
+                    raise RuntimeError('Existing operation is not a published successful result: ' + operation['status'] + '. No model work was submitted.')
+                result = await call(client, 'get_scientific_result', {'operation_id': operation_id})
+                if result.get('operation_id') != operation_id:
+                    raise RuntimeError('Result operation identity differs from requested operation.')
+                save(args.output / 'result.json', result)
+                receipt.update(await collect_outputs(http, result, args.output), state='verified')
+                save(path, receipt)
+                print(json.dumps({'operation_id': operation_id, 'state': 'verified',
+                                  'receipt_file': str(path), 'artifacts': receipt['verified_artifacts'],
+                                  'inference_submitted': False}), flush=True)
+                return receipt
 
 
 async def run(args) -> dict:
@@ -298,19 +364,11 @@ async def run(args) -> dict:
                     if status.get("batch", {}).get("result_published"):
                         result = await call(client, "get_scientific_result", {"operation_id": receipt["operation_id"]})
                         save(args.output / "result.json", result)
-                        if result.get("terminal_status") != "succeeded" or result.get("semantic_validation", {}).get("status") != "passed":
-                            raise RuntimeError("Published result did not pass semantic validation.")
-                        manifest_info = await download(http, result["output_manifest"], args.output / "output-manifest.json")
-                        output_manifest = json.loads((args.output / "output-manifest.json").read_text())
-                        artifacts = []
-                        for index, entry in enumerate(output_manifest.get("entries", [])):
-                            extension = ".artifact"
-                            artifacts.append(await download(http, entry["artifact"], args.output / f"output-{index:02d}{extension}"))
-                        receipt.update(state="verified", output_manifest=manifest_info,
-                                       verified_artifacts=artifacts)
+                        collected = await collect_outputs(http, result, args.output)
+                        receipt.update(state="verified", **collected)
                         save(receipt_path, receipt)
                         print(json.dumps({"model": args.model, "operation_id": receipt["operation_id"],
-                                          "state": "verified", "artifacts": len(artifacts)}))
+                                          "state": "verified", "artifacts": len(collected['verified_artifacts'])}))
                         return receipt
                     if time.monotonic() >= deadline:
                         print(json.dumps({"model": args.model, "operation_id": receipt["operation_id"],
@@ -321,6 +379,14 @@ async def run(args) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    if '--recover-operation-id' in sys.argv:
+        parser.add_argument('--recover-operation-id', required=True)
+        parser.add_argument('--output', required=True, type=Path)
+        args = parser.parse_args()
+        # The lock is held in the existing local receipt-lock area, not S3/FUSE.
+        with receipt_lock(args.output):
+            asyncio.run(recover_completed(args))
+        return
     parser.add_argument("--model", required=True)
     parser.add_argument("--tool", required=True)
     parser.add_argument("--operation", required=True)
