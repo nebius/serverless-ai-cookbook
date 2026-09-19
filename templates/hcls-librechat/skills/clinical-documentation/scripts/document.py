@@ -7,7 +7,7 @@ import json
 import re
 import unicodedata
 
-VERSION = "clinical-documentation/v7"
+VERSION = "clinical-documentation/v8"
 SECTIONS = {
     "history": ("Anamnese", "History"),
     "background": ("Vorgeschichte, Medikation und Allergien", "Background, medication and allergies"),
@@ -16,24 +16,34 @@ SECTIONS = {
     "plan": ("Dokumentiertes Vorgehen", "Recorded plan and follow-up"),
 }
 
-EXTRACT = """Extract clinical documentation from the supplied conversation DATA.
+EXTRACT = """Extract compact exact source-language fact passages from conversation DATA.
 Return JSON only: {"kind":"consultation|excerpt|non_patient|insufficient",
 "facts":[{"section":"history|background|findings|assessment|plan",
-"statement":"one atomic statement in the requested report language",
 "source_ids":["S0000000"],
+"source_phrases":[{"source_id":"S0000000","quote":"exact contiguous source substring"}],
 "uncertain":false,"medication_or_dose":false,"source_anchors":[]}],
 "uncertainties":[{"description":"...","source_ids":["S0000000"]}]}.
-The input contains numbered source segments. Cite the IDs of every segment
-needed to support the entire fact, including the answer to a question. Do NOT
-copy or invent contextual quotes. The program recovers context from IDs;
-the small literal source_anchors required below are checked independently.
+There is NO free-form statement field. For each fact select one to six compact
+contiguous source_phrases, copying their text EXACTLY, including original case,
+spelling, quantities and language. The program constructs the fact only from
+these checked source bytes, joining separate passages with an ellipsis. Prefer
+one short self-contained clause. Keep negation, condition, timing and speaker
+context; include both the question and its answer when neither stands alone.
+Example source 'I have had a cough for three days' permits quote 'a cough for
+three days', NOT 'The patient reports a three-day cough'. Source 'keine Schmerzen'
+must stay 'keine Schmerzen', NOT 'no pain'. Do not add a grammatical wrapper,
+translate, standardize spelling or paraphrase the factual text. The report's
+headings, uncertainty descriptions and review explanations use the requested
+language separately. Cite every source segment needed for context using
+source_ids; each phrase's source_id must be among those IDs. The program recovers
+the complete cited context separately. Do not copy whole segments unnecessarily.
 Use only what was actually said. Preserve negation, timing, quantities, doubt,
 patient versus clinician statements and proposed versus completed actions.
 Questions are NOT findings. An unanswered question is not a negative answer.
 Do not infer an examination, reassuring exclusion, differential diagnosis, age,
 gender, drug, dose, duration or follow-up interval. Do not complete a standard
-regimen from medical knowledge. Quote unclear drug names literally in the
-statement, mark uncertain and request verification in uncertainties; never
+regimen from medical knowledge. Copy unclear names literally in source_phrases,
+mark uncertain and request verification in uncertainties; never
 silently fix them, even when a familiar medicine seems obvious. For example an
 unclear medication string stays verbatim and uncertain, NOT a guessed brand.
 For medication/dose statements, cite the whole relevant instruction including
@@ -47,7 +57,7 @@ normal findings. Extract important facts across the WHOLE provided text.
 For EVERY medication name (including unclear names), dosage, unit, frequency or
 duration in a medication instruction, set medication_or_dose=true and supply
 source_anchors: [{"kind":"medication|dose", "surface":"exact text in your
-statement", "source_id":"S...", "quote":"exact literal source substring",
+selected source_phrases", "source_id":"S...", "quote":"exact literal source substring",
 "uncertain":false}]. Surface and quote must have identical spelling and units
 (case/Unicode composition may differ). No translation, number conversion,
 abbreviation expansion or normalization of these surfaces. Copy unclear names
@@ -55,15 +65,9 @@ literally and set the anchor and fact uncertain. Anchor the whole dose expressio
 not a numeral without its unit/frequency. Include every such surface, even in
 negated or hypothetical statements. For other facts use false and []. The
 program validates these small source spans separately from contextual citations.
-FACT extraction is source-first: reuse the original source words for factual
-content, even when medication_or_dose is false. A deterministic check rejects
-new content words absent from the source, irrespective of both models' labels.
-Do not translate, expand abbreviations, standardize names, convert numbers or
-replace source words by clinical synonyms in facts. Use short exact source
-wording (with adequate context and uncertainty) when a paraphrase would need
-new content words. Ordinary grammatical connectives may change. The report
-headings and review explanations can still use the requested language. Rejected
-proposals and their source context remain in the human review queue.
+Exact source phrases are mandatory even when medication_or_dose is false.
+The program rejects nonliteral phrases independently of either model's labels.
+Rejected proposals and their source context remain in the human review queue.
 At most 50 atomic facts per chunk.
 """
 
@@ -83,6 +87,11 @@ segment to justify a wrong citation. A medication/brand name that was replaced
 by a plausible standardized spelling is UNCLEAR even if you recognize the
 intended drug. Never mark that substitution supported just from phonetics.
 If the source is ambiguous use unclear; do not repair facts or add new facts.
+Facts here are short exact source-language passages, possibly joined by an
+ellipsis. Assess them in the attached full context, not as polished prose. An
+unclear name copied literally and marked uncertain may be supported AS AN
+UNCERTAIN SOURCE QUOTE without confirming what medicine was meant. Never
+convert that uncertainty into a recognized brand, identity or instruction.
 Independently identify every medication name and medication dose/unit/frequency/
 duration in the statement, including negated mentions. Do not trust extraction's
 classification or anchors. Set medication_or_dose and supply source_anchors with
@@ -146,7 +155,10 @@ def completion_schema(stage, data):
         return object_schema({
             "kind": {"type": "string", "enum": ["consultation", "excerpt", "non_patient", "insufficient"]},
             "facts": array_schema(anchored_object({"section": {"type": "string", "enum": list(SECTIONS)},
-                "statement": string, "source_ids": source_ids, "uncertain": {"type": "boolean"}},
+                "source_phrases": array_schema(object_schema({
+                    "source_id": {"type": "string", "enum": [s["id"] for s in data["segments"]]},
+                    "quote": string}), maximum=6, minimum=1),
+                "source_ids": source_ids, "uncertain": {"type": "boolean"}},
                 [s["id"] for s in data["segments"]])),
             "uncertainties": array_schema(object_schema({"description": string, "source_ids": source_ids}))})
     if stage.startswith("review"):
@@ -339,7 +351,8 @@ def source_excerpt_fallbacks(rejected):
     excerpts = {}
     for item in rejected:
         if not (item.get("verdict") == "source_vocabulary_mismatch"
-                or item.get("reason", "").startswith("fact introduces wording absent from its source:")):
+                or item.get("reason", "").startswith(("fact introduces wording absent from its source:",
+                                                      "source phrase "))):
             continue
         candidate = item.get("candidate", {})
         for evidence in candidate.get("evidence", []):
@@ -354,6 +367,28 @@ def source_excerpt_fallbacks(rejected):
     return list(excerpts.values())
 
 
+def phrase_statement(item, evidence):
+    phrases = item.get("source_phrases")
+    if not isinstance(phrases, list) or not 1 <= len(phrases) <= 6:
+        raise ValueError("source phrase selection is required; no free-form factual statement")
+    sources = {e["source_id"]: e for e in evidence}
+    checked = []
+    for phrase in phrases:
+        if not isinstance(phrase, dict):
+            raise ValueError("source phrase is invalid")
+        source = sources.get(phrase.get("source_id"))
+        quote = phrase.get("quote")
+        if not source or not isinstance(quote, str) or len(quote.strip()) < 2:
+            raise ValueError("source phrase must cite a nonempty passage in its cited context")
+        matches = literal_occurrences(quote, source["quote"])
+        if not matches:
+            raise ValueError("source phrase is not an exact literal span in cited input")
+        spans = [{"start": e["start"] + m.start(), "end": e["start"] + m.end()}
+                 for e in source["spans"] for m in matches]
+        checked.append({"source_id": phrase["source_id"], "quote": quote, "spans": spans})
+    return " … ".join(p["quote"] for p in checked), checked
+
+
 def validate_extraction(value, chunk, next_id=1):
     if value.get("kind") not in {"consultation", "excerpt", "non_patient", "insufficient"}:
         raise ValueError("invalid document kind")
@@ -366,16 +401,16 @@ def validate_extraction(value, chunk, next_id=1):
         try:
             if item.get("section") not in SECTIONS or type(item.get("uncertain")) is not bool:
                 raise ValueError("invalid fact fields")
-            if not isinstance(item.get("statement"), str) or not item["statement"].strip():
-                raise ValueError("missing statement")
             evidence = evidence_for(item, chunk)
             candidate = {**item, "evidence": evidence}
-            anchors = source_anchors(item, evidence, item["statement"])
+            statement, phrases = phrase_statement(item, evidence)
+            candidate = {**candidate, "statement": statement}
+            anchors = source_anchors(item, evidence, statement)
             # The existing bounded citation repair may locate another segment,
             # but it cannot rescue a content spelling absent from the input.
-            require_source_vocabulary(item["statement"], [{"quote": chunk["text"]}])
+            require_source_vocabulary(statement, [{"quote": chunk["text"]}])
             facts.append({"id": f"F{i:04}", "section": item["section"],
-                          "statement": item["statement"],
+                          "statement": statement, "source_phrases": phrases,
                           "uncertain": item["uncertain"] or any(a["uncertain"] for a in anchors),
                           "medication_or_dose": item["medication_or_dose"], "source_anchors": anchors,
                           "evidence": evidence})
@@ -459,6 +494,9 @@ def render(document, language):
     note = ("Aus dem Transkript erstellt; vor Übernahme fachlich prüfen. Nicht dokumentiert bedeutet nicht verneint. Die konservative Wortprüfung der Fakten kann auch richtige Umformulierungen, Flexionen oder Übersetzungen zurückhalten. Quellenwörter und wörtliche Anker beweisen keine klinische Richtigkeit."
             if de else "Generated from the transcript; review before use in a clinical record. Not documented does not mean denied. The conservative fact-wording check can withhold valid paraphrases, inflections or translations. Source words and literal anchors do not establish clinical correctness.")
     report = [f"# {title}", "", note, ""]
+    if any(f.get("source_phrases") for f in document["facts"]):
+        report += [("Fakten unten bestehen aus ausgewählten Originalpassagen in der Quellsprache; Auslassungen sind mit … markiert. Dies ist kein frei umformulierter oder übersetzter klinischer Bericht."
+                    if de else "Facts below are selected original passages in the source language; … marks omitted text. This is not a freely paraphrased or translated clinical narrative."), ""]
     if not document["facts"] and document.get("source_excerpts"):
         report += [("Keine Fakten akzeptiert. Dies ist nur eine Quellen-Prüfansicht, kein fertig formulierter Arztbrief."
                     if de else "No facts accepted. This is a source-review view only, not a finished consultation note."), ""]
@@ -514,8 +552,11 @@ def render_review(document, language):
               if de else "These candidates were not accepted as supported report facts. The automated reviewer can be wrong; rejected entries may be correct. Check against the source/recording."), ""]
     for item in document["rejected"]:
         candidate = item.get("candidate", {})
+        proposed = candidate.get("statement", candidate.get("description"))
+        if proposed is None and isinstance(candidate.get("source_phrases"), list):
+            proposed = " … ".join(str(p.get("quote", "")) for p in candidate["source_phrases"] if isinstance(p, dict))
         lines += ["## " + plain(candidate.get("id", item.get("id", "Candidate"))), "",
-                  plain(candidate.get("statement", candidate.get("description", str(candidate)))), "",
+                  plain(proposed if proposed is not None else str(candidate)), "",
                   ("Automatische Begründung: " if de else "Automated reason: ") + plain(item["reason"]), ""]
         for evidence in candidate.get("evidence", []):
             lines += ["> " + plain(evidence["quote"]), ""]

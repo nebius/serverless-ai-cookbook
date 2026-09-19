@@ -18,6 +18,7 @@ def anchor(surface, quote=None, kind='medication', uncertain=False):
 
 def fact(statement, anchors, flagged=None):
     return {'section': 'plan', 'statement': statement, 'uncertain': False,
+            'source_phrases': [{'source_id': 'S1', 'quote': statement}],
             'source_ids': ['S1'], 'medication_or_dose': bool(anchors) if flagged is None else flagged,
             'source_anchors': anchors}
 
@@ -46,13 +47,13 @@ class SourceAnchorTests(unittest.TestCase):
                 self.assertEqual(facts, [])
                 self.assertEqual(rejected[0]['candidate']['statement'], statement)
                 self.assertEqual(rejected[0]['candidate']['evidence'][0]['quote'], text)
-                self.assertIn('differs from literal source', rejected[0]['reason'])
+                self.assertIn('not an exact literal span', rejected[0]['reason'])
 
     def test_invented_source_quote_rejected(self):
         facts, _, rejected, _ = extract('The name sounds like med a sin.',
                                        fact('Take Medicin.', [anchor('Medicin')]))
         self.assertEqual(facts, [])
-        self.assertIn('not a literal span', rejected[0]['reason'])
+        self.assertIn('not an exact literal span', rejected[0]['reason'])
 
     def test_en_de_unclear_names_retained_literally_and_flagged(self):
         for text, name in [('It sounded like med a sin.', 'med a sin'),
@@ -78,15 +79,20 @@ class SourceAnchorTests(unittest.TestCase):
                     for span in a['spans']:
                         self.assertEqual(text[span['start']:span['end']], a['quote'])
 
-    def test_case_and_unicode_render_exact_source_bytes(self):
+    def test_exact_phrases_preserve_source_case_unicode_not_normalized_proposal(self):
         text = 'Not prescribed: cafémed 5 mg.'
         statement = 'Not prescribed: CAFE\u0301MED 5 mg.'
         facts, _, rejected, _ = extract(text, fact(statement, [anchor('CAFE\u0301MED', 'cafémed'),
                                                               anchor('5 mg', kind='dose')]))
+        self.assertEqual(facts, [])
+        self.assertTrue(rejected)
+        item = fact(text, [anchor('cafémed'), anchor('5 mg', kind='dose')])
+        item['statement'] = statement  # Unrecognized free prose cannot replace selected source bytes.
+        facts, _, rejected, _ = extract(text, item)
         self.assertEqual(rejected, [])
         accepted, _ = apply_review(facts, review(facts[0]))
         self.assertEqual(accepted[0]['statement'], text)
-        self.assertEqual(accepted[0]['original_statement'], statement)
+        self.assertEqual(accepted[0]['original_statement'], text)
 
     def test_dose_unit_and_number_conversion_not_silently_normalized(self):
         for source, surface in [('five milligrams', '5 mg'), ('5 mg', '5 g'), ('zweimal täglich', '2x täglich')]:
@@ -131,7 +137,7 @@ class SourceAnchorTests(unittest.TestCase):
             with self.subTest(statement=statement):
                 facts, _, rejected, _ = extract(text, fact(statement, [], flagged=False))
                 self.assertEqual(facts, [])
-                self.assertIn('wording absent', rejected[0]['reason'])
+                self.assertIn('not an exact literal span', rejected[0]['reason'])
                 self.assertEqual(rejected[0]['candidate']['evidence'][0]['quote'], text)
                 # Even a preconstructed fact and a supported second-model verdict
                 # cannot skip the independent check at review/citation repair.
@@ -156,7 +162,7 @@ class SourceAnchorTests(unittest.TestCase):
                      'rehydration solutions like Dioralyte.')
         facts, _, rejected, _ = extract(source, fact(statement, [], flagged=False))
         self.assertEqual(facts, [])
-        self.assertIn('dioralyte', rejected[0]['reason'])
+        self.assertIn('not an exact literal span', rejected[0]['reason'])
         self.assertEqual(rejected[0]['candidate']['statement'], statement)
         self.assertIn('dire light', rejected[0]['candidate']['evidence'][0]['quote'])
         self.assertNotIn('Dioralyte', rejected[0]['candidate']['evidence'][0]['quote'])
@@ -202,8 +208,8 @@ class SourceAnchorTests(unittest.TestCase):
 
     def test_conservative_wording_scope_and_known_false_rejections(self):
         for source, statement in [
-            ('Symptoms improved.', 'The symptoms have improved.'),
-            ('Schmerzen sind besser.', 'Die Schmerzen sind besser.'),
+            ('The symptoms have improved.', 'symptoms have improved.'),
+            ('Die Schmerzen sind besser.', 'Schmerzen sind besser.'),
         ]:
             facts, _, rejected, _ = extract(source, fact(statement, []))
             self.assertEqual(rejected, [])
@@ -223,7 +229,7 @@ class SourceAnchorTests(unittest.TestCase):
         self.assertEqual(introduced_fact_tokens('Take aspirin.', [{'quote': 'Do not take aspirin.'}]), [])
 
     def test_negation_requires_contextual_review_even_with_valid_anchor(self):
-        facts, _, _, _ = extract('Do not take aspirin.', fact('Take aspirin.', [anchor('aspirin')]))
+        facts, _, _, _ = extract('Do not take aspirin.', fact('take aspirin.', [anchor('aspirin')]))
         accepted, rejected = apply_review(facts, review(facts[0], verdict='unsupported'))
         self.assertEqual(accepted, [])
         self.assertEqual(rejected[0]['verdict'], 'unsupported')
@@ -254,6 +260,26 @@ class SourceAnchorTests(unittest.TestCase):
                 self.assertEqual(branch['properties']['source_anchors']['maxItems'], 12 if flagged else 0)
         self.assertEqual(reviewed['properties']['decisions']['minItems'], 1)
         self.assertEqual(reviewed['properties']['decisions']['maxItems'], 1)
+        for branch in extracted['properties']['facts']['items']['anyOf']:
+            self.assertIn('source_phrases', branch['required'])
+            self.assertNotIn('statement', branch['properties'])
+
+    def test_multiple_exact_fact_passages_keep_offsets_and_context(self):
+        text = 'Any blood? No blood. Name unclear: dire light.'
+        item = fact('ignored invented brand', [], flagged=False)
+        item['source_phrases'] = [{'source_id': 'S1', 'quote': 'Any blood?'},
+                                  {'source_id': 'S1', 'quote': 'No blood.'}]
+        facts, _, rejected, _ = extract(text, item)
+        self.assertEqual(rejected, [])
+        self.assertEqual(facts[0]['statement'], 'Any blood? … No blood.')
+        for phrase in facts[0]['source_phrases']:
+            for span in phrase['spans']:
+                self.assertEqual(text[span['start']:span['end']], phrase['quote'])
+        self.assertEqual(facts[0]['evidence'][0]['quote'], text)
+        del item['source_phrases']
+        facts, _, rejected, _ = extract(text, item)
+        self.assertEqual(facts, [])
+        self.assertIn('no free-form factual statement', rejected[0]['reason'])
 
     def test_duplicate_review_decisions_still_fail_instead_of_being_collapsed(self):
         facts, _, _, _ = extract('No aspirin.', fact('No aspirin.', [anchor('aspirin')]))
@@ -281,7 +307,7 @@ class SourceAnchorTests(unittest.TestCase):
             self.assertIn('Discuss med a sin.', render_review(result, 'en'))
 
     def test_old_completed_outputs_are_untouched_and_require_new_directory(self):
-        for version in ('v4', 'v5', 'v6'):
+        for version in ('v4', 'v5', 'v6', 'v7'):
             with self.subTest(version=version), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder)
                 source = root / 'input.txt'
@@ -299,7 +325,7 @@ class SourceAnchorTests(unittest.TestCase):
                         run(args)
                     platform.assert_not_called()
                 self.assertEqual(manifest.read_text(), original)
-                self.assertEqual(VERSION, 'clinical-documentation/v7')
+                self.assertEqual(VERSION, 'clinical-documentation/v8')
 
 
 if __name__ == '__main__':

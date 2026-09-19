@@ -313,7 +313,7 @@ def document_transcript(text, language, reporter, output):
                 "uncertainties": uncertainties, "questions": questions, "rejected": rejected,
                 "source_excerpts": excerpts,
                 "draft_mode": "facts_and_review" if facts else "source_review_only_no_accepted_facts",
-                "validation": "classifier-independent conservative fact-source vocabulary check, literal declared medication/dose anchors and automated contextual review; withheld wording is retained as review-only exact source excerpts, not accepted facts; valid inflections/translations can be withheld and source words do not prove entailment or completeness; not clinical validation"}
+                "validation": "facts constructed only from validated exact source-language phrases, with literal declared medication/dose anchors and automated contextual review; withheld wording retained as review-only source excerpts, not accepted facts; quote selection/context can be wrong and completeness is not established; not clinical validation"}
     report, followup = render(document, language)
     save(output / "document.json", document)
     save(output / "review.json", {"uncertainties": uncertainties, "rejected": rejected})

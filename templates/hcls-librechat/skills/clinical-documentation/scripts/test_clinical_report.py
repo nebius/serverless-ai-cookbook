@@ -16,9 +16,11 @@ class CitationReporter:
         if stage.startswith('extract'):
             return {'kind': 'consultation', 'facts': [
                 {'section': 'history', 'statement': 'Symptoms began yesterday.',
+                 'source_phrases': [{'source_id': 'S1', 'quote': 'Symptoms began yesterday.'}],
                  'source_ids': ['S1'], 'uncertain': False, 'medication_or_dose': False, 'source_anchors': []},
                 {'section': 'plan', 'statement': 'A sample may be collected if symptoms persist.',
-                 'source_ids': ['S1'], 'uncertain': False, 'medication_or_dose': False, 'source_anchors': []}], 'uncertainties': []}
+                 'source_phrases': [{'source_id': 'S2', 'quote': 'A sample may be collected if symptoms persist.'}],
+                 'source_ids': ['S2'], 'uncertain': False, 'medication_or_dose': False, 'source_anchors': []}], 'uncertainties': []}
         if stage.startswith('review'):
             fact = data['facts'][0]
             verdict = ('supported' if fact['id'] == 'F0001' else
@@ -46,7 +48,7 @@ class CitationRepairTests(unittest.TestCase):
         fact = next(f for f in result['facts'] if f['id'] == 'F0002')
         self.assertEqual(fact['statement'], 'A sample may be collected if symptoms persist.')
         self.assertEqual([e['source_id'] for e in fact['evidence']], ['S1', 'S2'])
-        self.assertEqual([e['source_id'] for e in fact['citation_repair']['original_evidence']], ['S1'])
+        self.assertEqual([e['source_id'] for e in fact['citation_repair']['original_evidence']], ['S2'])
         self.assertEqual(sum(stage.startswith('locate') for stage, _ in reporter.calls), 1)
         self.assertTrue(any(stage.endswith('-repaired') for stage, _ in reporter.calls))
 
