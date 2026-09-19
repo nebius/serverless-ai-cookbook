@@ -58,7 +58,33 @@ analysis or requiring an operator to repair its arithmetic and workflow state.
 
 In progress. This is not a final readiness claim.
 
-### 16:53 UTC — final-candidate cohort deployment
+### 17:30 UTC — v52 outcomes and observed-defect repairs
+
+All ten dedicated v52 instances received one unchanged scientific prompt, with
+only fresh r6 output roots. No follow-up instruction repaired a failed study.
+07 aging and09 reuse-only MindEval passed numerical verification and actual UI
+downloads.09's witnessed browser close preceded completion by only0.134seconds,
+not a long-disconnect proof. The remaining results were:
+
+| Scientist | Actual outcome | Repair or next evidence |
+| --- | --- | --- |
+|01|OpenFold2 and comparison finished; final publication referenced a nonexistent CSV|Known helper-output preflight|
+|02|Both Boltz2 calls succeeded; malformed Protenix parameters rejected before inference|Validate exact parameter schema before uploads; expose actionable error|
+|03|Proteina and BoltzGen succeeded; report contained empty tables because generic artifact filenames were guessed|Manifest/hash-aware deterministic design analysis|
+|04|Controlled RF worker eviction became a non-retried application failure|Retain disruption reason on Job; existing two-attempt policy unchanged|
+|05|Four DiffDock calls plus GenMol succeeded; generated Python misread the bindings-file ABI|Exact ABI guidance and deterministic GenMol helper|
+|06|No Study; references pointed at not-yet-existing output directories|Explicit typed future-file references/preflight|
+|08|No Study; normal final response stopped after preparation|Provider finish reason remains unknown; enable existing response-metadata diagnostic on next candidate|
+|10|No Study; write-json used a Markdown filename|Typed JSON-basename validation|
+
+v53 candidate source `77994a39a9d0da6b78c9eb882bee66710bffe7a1` combines the
+client fixes and is building. Backend190 candidate
+`c154d77654a16b5cfdf732f505467ac981b6479f` passed142 focused tests and the target
+API-server policy dry-run; image-only rollout and new RF recovery are pending.
+No token, concurrency, retry, resource, quota or deadline limits were raised.
+Per-user endpoints remain separate. Rene's original client is unchanged.
+
+### 16:53 UTC — candidate cohort deployment
 
 Backend189 remains live: gateway three ready replicas, controller two, and the
 qualified contention/accounting/fit changes are intact. The new client candidate
