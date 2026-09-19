@@ -237,11 +237,18 @@ nebius ai endpoint create \
 (`Token: …`) — copy it into `TOKEN`; it is truncated in `endpoint get` and unrecoverable.
 Pass `--token <value>` to set your own, or `--token-secret <secret-version-id>` for CI.
 
+### Other platforms
+
+Validated on **RTX Pro 6000 Blackwell** (96 GB) in `uk-south2` with the same command:
+`--platform gpu-rtx6000-a --preset 1gpu-24vcpu-218gb` (plus `--parent-id` of a uk-south2
+project). 17 GiB of weights, 67 GiB of KV cache, ready ~14 min after create; request latencies
+within ~1.5× of the H100 figures above. Good fit for preemptible capacity.
+
 ### Other model sizes
 
 | Variant | Change | Platform / preset | Notes |
 | --- | --- | --- | --- |
-| **Cosmos3-Edge** (4B) | `nvidia/Cosmos3-Edge` | `gpu-h100-sxm` / `1gpu-16vcpu-200gb` (validated) or `gpu-l40s-a` / `1gpu-16vcpu-64gb`; NVIDIA also recommends RTX Pro 6000 (`gpu-rtx6000-a` / `1gpu-24vcpu-218gb` where offered) | Same flags, validated with this template's requests on H100. 4.7 GiB of weights, 131k context, ready in ~7 min. Edge **reasons by default** (emits `<think>…</think>` even without the instruction) and spends ~2× Nano's prompt tokens per video — give it `max_tokens ≥ 512` or ask for "only the letter/JSON" when you want a short answer. |
+| **Cosmos3-Edge** (4B) | `nvidia/Cosmos3-Edge` | `gpu-h100-sxm` / `1gpu-16vcpu-200gb` (validated), `gpu-rtx6000-a` / `1gpu-24vcpu-218gb` (uk-south2), or `gpu-l40s-a` / `1gpu-16vcpu-64gb` | Same flags, validated with this template's requests on H100. 4.7 GiB of weights, 131k context, ready in ~7 min. Edge **reasons by default** (emits `<think>…</think>` even without the instruction) and spends ~2× Nano's prompt tokens per video — give it `max_tokens ≥ 512` or ask for "only the letter/JSON" when you want a short answer. |
 | **Cosmos3-Super** (64B) | `nvidia/Cosmos3-Super` and `--tensor-parallel-size 8` | `gpu-h200-sxm` / `8gpu-128vcpu-1600gb` | Highest quality; Nebius offers 1- and 8-GPU presets, so Super runs TP=8. Not validated in this template. |
 
 <!-- /factory:cli -->
