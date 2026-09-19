@@ -55,6 +55,36 @@ test('invalid inputs and missing credentials fail before admitting any work', as
   await assert.rejects(service.platform('key', 'GET', '/unrelated'), /Unsupported/);
   await assert.rejects(service.platform('key', 'DELETE', '/v1/workshop/runs'), /Unsupported/);
 });
+test('no-facts negative retains source/review and exposes actionable outcome without a report or retry', async () => {
+  const service = await setup;
+  const source = Buffer.from('fixture:no-clinical-facts');
+  const job = await service.clinical('user-a', 'test-platform-key', { ...input('no-facts'), bytes: source });
+  const done = await complete(service, job.id);
+  assert.equal(done.status, 'incomplete');
+  assert.equal(done.error_code, 'no_supported_clinical_facts');
+  assert.match(done.error, /^No supported clinical facts were extracted/);
+  assert.match(done.error, /provide fuller material in a new job/);
+  assert.ok(!done.error.includes('private fixture detail'));
+  assert.deepEqual(done.files, ['transcript.txt', 'review.json']);
+  assert.deepEqual(await service.output('user-a', job.id, 'transcript.txt'), source);
+  await assert.rejects(service.output('user-a', job.id, 'report.md'), /not been produced/);
+  const folder = path.join(root, crypto.createHash('sha256').update('user-a').digest('hex'), job.id);
+  assert.equal((await service.read(path.join(folder, 'output/fixture.json'))).attempt, 1);
+  const replay = await service.clinical('user-a', 'test-platform-key', { ...input('no-facts'), bytes: source });
+  assert.equal(replay.error_code, done.error_code);
+  assert.equal((await service.read(path.join(folder, 'output/fixture.json'))).attempt, 1);
+});
+test('unrecognized clinical failures retain generic projection instead of exposing arbitrary detail', async () => {
+  const service = await setup;
+  const job = await service.clinical('user-a', 'test-platform-key', {
+    ...input('other-value-error'), bytes: Buffer.from('fixture:other-value-error'),
+  });
+  const done = await complete(service, job.id);
+  assert.equal(done.status, 'incomplete');
+  assert.equal(done.error_code, undefined);
+  assert.match(done.error, /Workflow incomplete/);
+  assert.ok(!done.error.includes('private fixture detail'));
+});
 test('receipt files do not contain either platform or provider key', async () => {
   const service = await setup;
   const job = await service.clinical('user-a', 'test-platform-key', input('fixture-2'));

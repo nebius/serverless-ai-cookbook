@@ -132,6 +132,16 @@ model errors and truncated JSON are explicit incomplete runs, not blank letters.
 Report the saved operation ID when blocked. Do not repeatedly create new runs
 or change deployment settings. There is no new access policy in this skill.
 
+`no_supported_clinical_facts` is an explicit **incomplete/no-report** outcome,
+not a provider outage or a statement that the patient has no findings. The
+workflow found no supported facts or retained review excerpts from which to
+render a draft. Inspect the unchanged transcript and `review.json`; check for
+non-consultation/insufficient material and obtain fuller source if appropriate.
+Resuming the same source does not add evidence. Do not fabricate a blank or
+normal report, correct the source, or automatically create a new draft. Older
+jobs may show only generic `ValueError`/incomplete; their original receipts are
+not retrospectively rewritten by this change.
+
 ## MCP-only client
 
 In the Scientific AI LibreChat deployment, prefer the `scientific-demos`

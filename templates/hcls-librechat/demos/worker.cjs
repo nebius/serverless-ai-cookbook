@@ -3,6 +3,8 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { read, save } = require('./service.cjs');
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const NO_FACTS_CODE = 'no_supported_clinical_facts';
+const NO_FACTS_DETAIL = 'No supported clinical facts were extracted from this source, so no report was produced. The unchanged transcript and review are retained. Check that the source contains consultation dialogue or provide fuller material in a new job. Resuming the same source does not add evidence.';
 
 async function acquireSlot(dir, keyHash) {
   const root = path.resolve(dir, '../..');
@@ -42,7 +44,7 @@ async function main() {
       `--${request.kind}`, path.join(dir, request.source), '--language', request.language,
       '--base-url', request.platform, '--report-model', request.report_model,
       '--report-provider', request.report_provider, '--output', path.join(dir, 'output')];
-    let code, lastReason;
+    let code, lastReason, noFacts;
     for (let attempt = 0; attempt < 4; attempt++) {
       const child = spawn(process.env.SCIENTIFIC_CLINICAL_PYTHON, args,
         { stdio: ['ignore', log.fd, log.fd], env: process.env });
@@ -51,6 +53,7 @@ async function main() {
       let reported;
       try { reported = JSON.parse(last); } catch { /* non-workflow failure */ }
       lastReason = reported?.reason || '';
+      noFacts = reported?.error_code === NO_FACTS_CODE;
       const transient = /^HTTP (429|502|503|504);/.test(lastReason);
       const timeout = /^(ReadTimeout|ConnectTimeout|ReadError|ConnectError)$/.test(lastReason);
       if (code === 0 || (!transient && !(timeout && attempt === 0)) || attempt === 3) break;
@@ -60,7 +63,9 @@ async function main() {
       await save(path.join(dir, 'status.json'), { ...receipt, status: 'running', provider_retries: attempt + 1 });
     }
     await save(path.join(dir, 'status.json'), { ...receipt, status: code === 0 ? 'completed' : 'incomplete',
-      finished_at: new Date().toISOString(), ...(code ? { error: `${lastReason === 'ReadTimeout' ? 'Report provider timed out. ' : ''}Workflow incomplete. Inspect saved receipts and resume this job; do not re-upload.` } : {}) });
+      finished_at: new Date().toISOString(), ...(code ? noFacts
+        ? { error: NO_FACTS_DETAIL, error_code: NO_FACTS_CODE }
+        : { error: `${lastReason === 'ReadTimeout' ? 'Report provider timed out. ' : ''}Workflow incomplete. Inspect saved receipts and resume this job; do not re-upload.` } : {}) });
   } catch {
     await save(path.join(dir, 'status.json'), { ...receipt, status: 'incomplete', error: 'Clinical worker could not complete.' });
   } finally {

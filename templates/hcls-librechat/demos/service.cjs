@@ -446,7 +446,8 @@ async function status(owner, id) {
   }
   const request = await read(path.join(dir, 'request.json')).catch(() => ({}));
   return { id, status: receipt.status, created_at: receipt.created_at, finished_at: receipt.finished_at,
-    error: receipt.error, files: available, model: REPORT_MODEL,
+    error: receipt.error, ...(receipt.error_code ? { error_code: receipt.error_code } : {}),
+    files: available, model: REPORT_MODEL,
     input_provenance: { kind: request.kind, sha256: request.input_sha256,
       size_bytes: request.input_size_bytes, workspace_file: request.source_workspace },
     url: `/demos?tab=clinical&job=${id}`, clinical_validation: false };

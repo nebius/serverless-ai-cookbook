@@ -45,6 +45,19 @@ from document import (
 )
 
 
+class NoSupportedClinicalFacts(ValueError):
+    """Expected no-report outcome, not a provider failure or a clinical verdict."""
+
+    code = "no_supported_clinical_facts"
+    detail = ("No supported clinical facts were extracted from this source, so no report was produced. "
+              "The unchanged transcript and review are retained. Check that the source contains "
+              "consultation dialogue or provide fuller material in a new job. Resuming the same "
+              "source does not add evidence.")
+
+    def __init__(self):
+        super().__init__(self.detail)
+
+
 def save(path, value):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     content = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, indent=2) + "\n"
@@ -319,7 +332,7 @@ def document_transcript(text, language, reporter, output):
     excerpts = source_excerpt_fallbacks(rejected)
     if not facts and not excerpts:
         save(output / "review.json", {"rejected": rejected, "kinds": kinds, "uncertainties": uncertainties})
-        raise ValueError("no supported clinical facts; transcript retained without a report")
+        raise NoSupportedClinicalFacts()
     # Ask about the entire fact set, not separate chunks that could contain answers.
     question_data = {"language": language, "facts": facts, "uncertainties": [
         {k: v for k, v in item.items() if k != "model_description_for_review"} for item in uncertainties]}
@@ -402,10 +415,16 @@ def run(args, key=None, provider_key=None):
                         facts=len(result["facts"]), rejected=len(result["rejected"]),
                         transcript_sha256=digest(text))
         manifest.pop("error", None)
+        manifest.pop("error_code", None)
+        manifest.pop("error_detail", None)
         save(manifest_path, manifest)
         return result
     except Exception as exc:
         manifest.update(status="incomplete", error=type(exc).__name__)
+        manifest.pop("error_code", None)
+        manifest.pop("error_detail", None)
+        if isinstance(exc, NoSupportedClinicalFacts):
+            manifest.update(error_code=exc.code, error_detail=exc.detail)
         save(manifest_path, manifest)
         raise
     finally:
@@ -447,7 +466,8 @@ def main():
     except (httpx.HTTPError, RuntimeError, ValueError, TypeError, KeyError, OSError) as exc:
         # Do not expose provider URLs, payloads or a bearer in exception traces.
         detail = str(exc) if isinstance(exc, (ValueError, TypeError, RuntimeError)) else type(exc).__name__
-        print(json.dumps({"status": "incomplete", "reason": detail, "output": str(args.output)}))
+        print(json.dumps({"status": "incomplete", "reason": detail, "output": str(args.output),
+                          **({"error_code": exc.code} if isinstance(exc, NoSupportedClinicalFacts) else {})}))
         raise SystemExit(1) from None
 
 
