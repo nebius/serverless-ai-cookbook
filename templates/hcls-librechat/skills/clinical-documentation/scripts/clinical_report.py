@@ -37,6 +37,7 @@ from document import (
     evidence_for,
     render,
     render_review,
+    source_excerpt_fallbacks,
     source_segments,
     validate_extraction,
     validate_questions,
@@ -262,7 +263,7 @@ def document_transcript(text, language, reporter, output):
                 # An incomplete citation can be labelled either unsupported or
                 # unclear. Locate evidence once for both; this never changes
                 # the statement and still requires a fresh full fact review.
-                if dropped and dropped[0].get("verdict") in {"unsupported", "unclear"}:
+                if dropped and dropped[0].get("verdict") in {"unsupported", "unclear", "source_vocabulary_mismatch"}:
                     located = reporter.complete(f"locate-{index:03}-{fact['id']}", LOCATE,
                                                  {**data, "statement": fact["statement"]})
                     if located.get("source_ids"):
@@ -293,12 +294,15 @@ def document_transcript(text, language, reporter, output):
                 if evidence not in prior["evidence"]:
                     prior["evidence"].append(evidence)
     facts = list(unique.values())
-    if not facts:
+    excerpts = source_excerpt_fallbacks(rejected)
+    if not facts and not excerpts:
         save(output / "review.json", {"rejected": rejected, "kinds": kinds, "uncertainties": uncertainties})
         raise ValueError("no supported clinical facts; transcript retained without a report")
     # Ask about the entire fact set, not separate chunks that could contain answers.
     question_data = {"language": language, "facts": facts, "uncertainties": uncertainties}
-    if len(json.dumps(question_data, ensure_ascii=False)) > 60000:
+    if not facts:
+        questions = []
+    elif len(json.dumps(question_data, ensure_ascii=False)) > 60000:
         # Preserve the full report rather than truncating a very long encounter.
         questions = []
         uncertainties.append({"description": "Question synthesis omitted: full fact set exceeds the configured context budget.", "evidence": []})
@@ -307,7 +311,9 @@ def document_transcript(text, language, reporter, output):
     document = {"schema": VERSION, "kind": "consultation" if "consultation" in kinds else kinds[0],
                 "language": language, "transcript_sha256": digest(text), "facts": facts,
                 "uncertainties": uncertainties, "questions": questions, "rejected": rejected,
-                "validation": "literal medication/dose anchors and automated contextual fact review; entity omission/classification can fail; not clinical validation"}
+                "source_excerpts": excerpts,
+                "draft_mode": "facts_and_review" if facts else "source_review_only_no_accepted_facts",
+                "validation": "classifier-independent conservative fact-source vocabulary check, literal declared medication/dose anchors and automated contextual review; withheld wording is retained as review-only exact source excerpts, not accepted facts; valid inflections/translations can be withheld and source words do not prove entailment or completeness; not clinical validation"}
     report, followup = render(document, language)
     save(output / "document.json", document)
     save(output / "review.json", {"uncertainties": uncertainties, "rejected": rejected})

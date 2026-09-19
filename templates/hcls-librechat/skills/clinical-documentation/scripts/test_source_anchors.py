@@ -7,8 +7,8 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from clinical_report import document_transcript, run
-from document import (VERSION, apply_review, completion_schema, render_review,
-                      validate_extraction)
+from document import (VERSION, apply_review, completion_schema, introduced_fact_tokens, render, render_review,
+                      source_excerpt_fallbacks, validate_extraction)
 
 
 def anchor(surface, quote=None, kind='medication', uncertain=False):
@@ -121,10 +121,106 @@ class SourceAnchorTests(unittest.TestCase):
         self.assertEqual(accepted, [])
         self.assertEqual(rejected[0]['verdict'], 'source_anchor_mismatch')
 
-    def test_both_models_omitting_classification_remains_explicit_limitation(self):
-        facts, _, _, _ = extract('med a sin', fact('Medicin', [], flagged=False))
-        accepted, _ = apply_review(facts, review(facts[0]))
-        self.assertEqual(len(accepted), 1)  # No false guarantee of entity recognition.
+    def test_both_false_flags_and_empty_anchors_cannot_authorize_normalized_names(self):
+        for text, statement in [
+            ('There are things like dire light from the pharmacy.', 'Consider Dioralyte.'),
+            ('There are things like dire light from the pharmacy.', 'consider dioralyte.'),
+            ('Sie nennt meta pro lol.', 'Sie nennt Metoprolol.'),
+            ('Der Name war med a sin.', 'Der Name war medicin.'),
+        ]:
+            with self.subTest(statement=statement):
+                facts, _, rejected, _ = extract(text, fact(statement, [], flagged=False))
+                self.assertEqual(facts, [])
+                self.assertIn('wording absent', rejected[0]['reason'])
+                self.assertEqual(rejected[0]['candidate']['evidence'][0]['quote'], text)
+                # Even a preconstructed fact and a supported second-model verdict
+                # cannot skip the independent check at review/citation repair.
+                candidate = dict(rejected[0]['candidate'], id='F0001')
+                accepted, dropped = apply_review([candidate], review(candidate))
+                self.assertEqual(accepted, [])
+                self.assertEqual(dropped[0]['verdict'], 'source_vocabulary_mismatch')
+                self.assertEqual(dropped[0]['review']['medication_or_dose'], False)
+
+    def test_literal_unclear_words_survive_false_classification_without_replacement(self):
+        for text in ['The name is unclear: dire light.', 'Der Name ist unklar: meta pro lol.']:
+            facts, _, rejected, _ = extract(text, fact(text, [], flagged=False))
+            self.assertEqual(rejected, [])
+            accepted, dropped = apply_review(facts, review(facts[0]))
+            self.assertEqual(dropped, [])
+            self.assertEqual(accepted[0]['statement'], text)
+
+    def test_retained_public_f0027_false_classification_cannot_bypass_extraction(self):
+        source = ('making sure you\'re well hydrated so drinking fluids um there are '
+                  'things like dire light you can get from the pharmacy')
+        statement = ('The patient should maintain hydration and consider using oral '
+                     'rehydration solutions like Dioralyte.')
+        facts, _, rejected, _ = extract(source, fact(statement, [], flagged=False))
+        self.assertEqual(facts, [])
+        self.assertIn('dioralyte', rejected[0]['reason'])
+        self.assertEqual(rejected[0]['candidate']['statement'], statement)
+        self.assertIn('dire light', rejected[0]['candidate']['evidence'][0]['quote'])
+        self.assertNotIn('Dioralyte', rejected[0]['candidate']['evidence'][0]['quote'])
+
+    def test_source_excerpt_fallback_deduplicates_quotes_never_renders_rejected_normalization(self):
+        for text, proposed in [('things like dire light from the pharmacy', 'Dioralyte'),
+                               ('der Name ist meta pro lol', 'Metoprolol')]:
+            with self.subTest(text=text):
+                _, _, rejected, _ = extract(text, fact(proposed, [], flagged=False))
+                second = {**rejected[0], 'id': 'F0002'}
+                excerpts = source_excerpt_fallbacks(rejected + [second])
+                self.assertEqual(len(excerpts), 1)
+                self.assertEqual(excerpts[0]['quote'], text)
+                self.assertEqual(excerpts[0]['candidate_ids'], ['F0001', 'F0002'])
+                for span in excerpts[0]['spans']:
+                    self.assertEqual(text[span['start']:span['end']], excerpts[0]['quote'])
+                document = {'kind': 'consultation', 'facts': [], 'rejected': rejected,
+                            'source_excerpts': excerpts, 'uncertainties': [], 'questions': []}
+                for language in ('en', 'de'):
+                    report, _ = render(document, language)
+                    self.assertIn(text, report)
+                    self.assertNotIn(proposed, report)
+                    self.assertIn(proposed, render_review(document, language))
+                self.assertEqual(document['facts'], [])  # Excerpts never become accepted clinical facts.
+
+    def test_all_withheld_facts_produce_explicit_source_only_review_not_empty_note(self):
+        class Reporter:
+            def complete(self, stage, prompt, data):
+                if stage.startswith('extract'):
+                    return {'kind': 'consultation', 'facts': [fact('Dioralyte', [], flagged=False)],
+                            'uncertainties': []}
+                raise AssertionError('No speculative review or questions without accepted facts')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            result = document_transcript('The unclear name is dire light.', 'en', Reporter(), root)
+            self.assertEqual(result['facts'], [])
+            self.assertEqual(result['draft_mode'], 'source_review_only_no_accepted_facts')
+            report = (root / 'report.md').read_text()
+            self.assertIn('No facts accepted.', report)
+            self.assertIn('dire light', report)
+            self.assertNotIn('Dioralyte', report)
+            self.assertIn('Dioralyte', (root / 'review.md').read_text())
+
+    def test_conservative_wording_scope_and_known_false_rejections(self):
+        for source, statement in [
+            ('Symptoms improved.', 'The symptoms have improved.'),
+            ('Schmerzen sind besser.', 'Die Schmerzen sind besser.'),
+        ]:
+            facts, _, rejected, _ = extract(source, fact(statement, []))
+            self.assertEqual(rejected, [])
+            self.assertEqual(len(apply_review(facts, review(facts[0]))[0]), 1)
+        # Supported linguistic equivalents are intentionally not silently inferred.
+        for source, statement in [('Symptoms improve.', 'Symptoms improved.'),
+                                  ('fünf Milligramm', '5 Milligramm'),
+                                  ('five milligrams', '5 milligrams'),
+                                  ('no fever', 'kein Fieber'),
+                                  ('mit starken Schmerzen', 'starke Schmerzen'),
+                                  ('0.5 mg', '5.0 mg')]:
+            with self.subTest(statement=statement):
+                facts, _, rejected, _ = extract(source, fact(statement, [], flagged=False))
+                self.assertEqual(facts, [])
+                self.assertTrue(rejected)
+        # Presence is not entailment: a separate contextual reviewer must catch negation.
+        self.assertEqual(introduced_fact_tokens('Take aspirin.', [{'quote': 'Do not take aspirin.'}]), [])
 
     def test_negation_requires_contextual_review_even_with_valid_anchor(self):
         facts, _, _, _ = extract('Do not take aspirin.', fact('Take aspirin.', [anchor('aspirin')]))
@@ -184,25 +280,26 @@ class SourceAnchorTests(unittest.TestCase):
             self.assertEqual(result['rejected'][0]['verdict'], 'source_anchor_mismatch')
             self.assertIn('Discuss med a sin.', render_review(result, 'en'))
 
-    def test_v4_output_is_untouched_and_requires_new_directory(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            source = root / 'input.txt'
-            source.write_text('Symptoms improved.')
-            output = root / 'existing'
-            output.mkdir()
-            manifest = output / 'run.json'
-            original = json.dumps({'config': {'schema': 'clinical-documentation/v4'}, 'status': 'completed'})
-            manifest.write_text(original)
-            args = SimpleNamespace(report_model='unchanged', audio=None, transcript=source,
-                                   artifact=None, asr_model=None, language='en', report_provider='unchanged',
-                                   base_url='http://unused', output=output)
-            with patch('clinical_report.Platform') as platform:
-                with self.assertRaisesRegex(ValueError, 'document version'):
-                    run(args)
-                platform.assert_not_called()
-            self.assertEqual(manifest.read_text(), original)
-            self.assertEqual(VERSION, 'clinical-documentation/v5')
+    def test_old_completed_outputs_are_untouched_and_require_new_directory(self):
+        for version in ('v4', 'v5', 'v6'):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                source = root / 'input.txt'
+                source.write_text('Symptoms improved.')
+                output = root / 'existing'
+                output.mkdir()
+                manifest = output / 'run.json'
+                original = json.dumps({'config': {'schema': 'clinical-documentation/' + version}, 'status': 'completed'})
+                manifest.write_text(original)
+                args = SimpleNamespace(report_model='unchanged', audio=None, transcript=source,
+                                       artifact=None, asr_model=None, language='en', report_provider='unchanged',
+                                       base_url='http://unused', output=output)
+                with patch('clinical_report.Platform') as platform:
+                    with self.assertRaisesRegex(ValueError, 'document version'):
+                        run(args)
+                    platform.assert_not_called()
+                self.assertEqual(manifest.read_text(), original)
+                self.assertEqual(VERSION, 'clinical-documentation/v7')
 
 
 if __name__ == '__main__':

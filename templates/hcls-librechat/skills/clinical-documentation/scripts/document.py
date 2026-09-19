@@ -7,7 +7,7 @@ import json
 import re
 import unicodedata
 
-VERSION = "clinical-documentation/v5"
+VERSION = "clinical-documentation/v7"
 SECTIONS = {
     "history": ("Anamnese", "History"),
     "background": ("Vorgeschichte, Medikation und Allergien", "Background, medication and allergies"),
@@ -55,6 +55,15 @@ literally and set the anchor and fact uncertain. Anchor the whole dose expressio
 not a numeral without its unit/frequency. Include every such surface, even in
 negated or hypothetical statements. For other facts use false and []. The
 program validates these small source spans separately from contextual citations.
+FACT extraction is source-first: reuse the original source words for factual
+content, even when medication_or_dose is false. A deterministic check rejects
+new content words absent from the source, irrespective of both models' labels.
+Do not translate, expand abbreviations, standardize names, convert numbers or
+replace source words by clinical synonyms in facts. Use short exact source
+wording (with adequate context and uncertainty) when a paraphrase would need
+new content words. Ordinary grammatical connectives may change. The report
+headings and review explanations can still use the requested language. Rejected
+proposals and their source context remain in the human review queue.
 At most 50 atomic facts per chunk.
 """
 
@@ -287,6 +296,64 @@ def grounded_statement(statement, anchors):
     return statement
 
 
+# Closed grammatical vocabulary only; deliberately no medicines, clinical terms,
+# entity dictionary, stemming, fuzzy matching or spelling corrections. This is
+# a conservative fact-extraction check, not a check on free-form report prose.
+_FACT_CONNECTIVES = frozenset("""
+a an the and or but if then than as at by for from in into of on to with without
+is are was were be been being has have had do does did may can could would should
+will shall that this these those it its also only not no
+der die das den dem des ein eine einen einem einer eines und oder aber wenn dann
+als bei für von im in ins am an auf zu zum zur mit ohne ist sind war waren sei
+seien sein gewesen hat haben hatte hatten wird werden wurde wurden kann können
+könnte könnten soll sollen sollte sollten darf dürfen dass dies diese dieser
+dieses diesem diesen auch nur nicht kein keine keinen keinem keiner keines
+""".split())
+_FACT_TOKEN = re.compile(r"\d+(?:[.,]\d+)*|[^\W\d_]+(?:['’][^\W\d_]+)*", re.UNICODE)
+
+
+def introduced_fact_tokens(statement, evidence):
+    """No new content-token spellings; not entailment, completeness or entity recognition.
+
+    Numeric equivalence, inflection and translation are intentionally not inferred.
+    Word order, negation and source/subject attribution still need contextual review.
+    """
+    def tokens(text):
+        return _FACT_TOKEN.findall(unicodedata.normalize("NFC", text).casefold())
+    source = {token for item in evidence for token in tokens(item["quote"])}
+    return sorted(set(tokens(statement)) - source - _FACT_CONNECTIVES)
+
+
+def require_source_vocabulary(statement, evidence):
+    introduced = introduced_fact_tokens(statement, evidence)
+    if introduced:
+        raise ValueError("fact introduces wording absent from its source: " + ", ".join(introduced))
+
+
+def source_excerpt_fallbacks(rejected):
+    """Preserve exact cited input, never a rejected model proposal, as review-only data.
+
+    These are not accepted facts or a corrected interpretation. One excerpt can
+    support several withheld proposals; deduplicate by original source positions.
+    """
+    excerpts = {}
+    for item in rejected:
+        if not (item.get("verdict") == "source_vocabulary_mismatch"
+                or item.get("reason", "").startswith("fact introduces wording absent from its source:")):
+            continue
+        candidate = item.get("candidate", {})
+        for evidence in candidate.get("evidence", []):
+            identity = (evidence["quote"], tuple((s["start"], s["end"]) for s in evidence["spans"]))
+            identifier = candidate.get("id", item.get("id"))
+            if identity not in excerpts:
+                excerpts[identity] = {"id": f"E{len(excerpts) + 1:04}", **evidence,
+                                      "status": "verbatim_source_for_review_not_accepted_fact",
+                                      "candidate_ids": []}
+            if identifier and identifier not in excerpts[identity]["candidate_ids"]:
+                excerpts[identity]["candidate_ids"].append(identifier)
+    return list(excerpts.values())
+
+
 def validate_extraction(value, chunk, next_id=1):
     if value.get("kind") not in {"consultation", "excerpt", "non_patient", "insufficient"}:
         raise ValueError("invalid document kind")
@@ -304,6 +371,9 @@ def validate_extraction(value, chunk, next_id=1):
             evidence = evidence_for(item, chunk)
             candidate = {**item, "evidence": evidence}
             anchors = source_anchors(item, evidence, item["statement"])
+            # The existing bounded citation repair may locate another segment,
+            # but it cannot rescue a content spelling absent from the input.
+            require_source_vocabulary(item["statement"], [{"quote": chunk["text"]}])
             facts.append({"id": f"F{i:04}", "section": item["section"],
                           "statement": item["statement"],
                           "uncertain": item["uncertain"] or any(a["uncertain"] for a in anchors),
@@ -336,6 +406,12 @@ def apply_review(facts, value):
         decision = by_id[fact["id"]]
         if decision.get("verdict") not in {"supported", "unsupported", "unclear"} or not isinstance(decision.get("reason"), str):
             raise ValueError("invalid review decision")
+        try:
+            require_source_vocabulary(fact["statement"], fact["evidence"])
+        except ValueError as exc:
+            rejected.append({"candidate": fact, "verdict": "source_vocabulary_mismatch",
+                             "reason": str(exc), "review": decision})
+            continue
         try:
             anchors = source_anchors(fact, fact["evidence"], fact["statement"])
             reviewed = source_anchors(decision, fact["evidence"], fact["statement"])
@@ -380,9 +456,12 @@ def plain(text):
 def render(document, language):
     de = language == "de"
     title = "Arztbrief – Gesprächsentwurf" if de else "Consultation report – draft"
-    note = ("Aus dem Transkript erstellt; vor Übernahme fachlich prüfen. Nicht dokumentiert bedeutet nicht verneint. Erkennung von Medikamenten/Dosen kann unvollständig sein; wörtliche Quellenanker beweisen keine klinische Richtigkeit."
-            if de else "Generated from the transcript; review before use in a clinical record. Not documented does not mean denied. Medication/dose identification can be incomplete; literal source anchors do not establish clinical correctness.")
+    note = ("Aus dem Transkript erstellt; vor Übernahme fachlich prüfen. Nicht dokumentiert bedeutet nicht verneint. Die konservative Wortprüfung der Fakten kann auch richtige Umformulierungen, Flexionen oder Übersetzungen zurückhalten. Quellenwörter und wörtliche Anker beweisen keine klinische Richtigkeit."
+            if de else "Generated from the transcript; review before use in a clinical record. Not documented does not mean denied. The conservative fact-wording check can withhold valid paraphrases, inflections or translations. Source words and literal anchors do not establish clinical correctness.")
     report = [f"# {title}", "", note, ""]
+    if not document["facts"] and document.get("source_excerpts"):
+        report += [("Keine Fakten akzeptiert. Dies ist nur eine Quellen-Prüfansicht, kein fertig formulierter Arztbrief."
+                    if de else "No facts accepted. This is a source-review view only, not a finished consultation note."), ""]
     if document["rejected"]:
         report += [(f"Prüfliste: {len(document['rejected'])} strittige Einträge stehen in review.md, nicht im Brieftext. Auch korrekte Angaben können dort stehen; Vollständigkeit prüfen."
                     if de else f"Review queue: {len(document['rejected'])} disputed entries are in review.md, not this report body. They may include correct information; check completeness."), ""]
@@ -398,6 +477,15 @@ def render(document, language):
             report.append("Keine Einträge diesem Abschnitt zugeordnet; andere Abschnitte und review.md prüfen."
                           if de else "No entries assigned to this section; check the other sections and review.md.")
         report.append("")
+    if document.get("source_excerpts"):
+        report += ["## " + ("Quellenwortlaut – ungeprüft, nicht als Fakt übernommen" if de
+                            else "Source wording – requires review, not accepted facts"), "",
+                   ("Der Wortlaut bleibt sichtbar, weil die vorgeschlagene Umformulierung zurückgehalten wurde. Diese Auszüge sind keine bestätigten klinischen Aussagen; Sprecher, Kontext und Vollständigkeit prüfen. Die verworfenen Vorschläge stehen nur in review.md."
+                    if de else "The original wording remains visible because the proposed paraphrase was withheld. These excerpts are not confirmed clinical statements; verify speaker, context and completeness. Rejected proposals appear only in review.md."), ""]
+        for excerpt in document["source_excerpts"]:
+            positions = ", ".join(f"{s['start']}–{s['end']}" for s in excerpt["spans"])
+            report += [f"[{excerpt['id']}] {positions} ({', '.join(excerpt['candidate_ids'])}):", "",
+                       "> " + plain(excerpt["quote"]), ""]
     report += ["## " + ("Quellen" if de else "Evidence"), "",
                ("Zeichenpositionen beziehen sich auf transcript.txt (0-basiert, Ende exklusiv)." if de
                 else "Character offsets refer to transcript.txt (zero-based, end exclusive)."), ""]
