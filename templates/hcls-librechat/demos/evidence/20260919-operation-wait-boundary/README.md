@@ -50,6 +50,31 @@ pixels. Per-episode wrist stats are exact; aggregate std differs3.49e-9.
 This verifies returned data integrity, **not agent delivery**, visual-action
 alignment, policy fitness, or the scientific meaning of the lighting change.
 
+### Actual snapshot witness, added after retained-log correlation
+
+Persisted App Logs contain `serving_snapshot_runtime` with mechanism
+`cuda-criu-restored` at04:22:19.287462 for Pod`…-8kgz7` and04:24:34.730482
+for Pod`…-kcppj`. Direct per-Pod log reads independently contain the same
+events. Actual public operation runtime attribution joins them as follows:
+
+| Request | Actual Pod UID | Restore witness |
+| --- | --- | --- |
+| Native`227a8c45…` | `f9a6bf15-9c7f-4366-9887-e295cc211a2c` |04:22:19.287462 |
+| LeRobot child`96febf31…` | `a335b826-434c-471f-a1e5-fcb3b2c4cd01` |04:24:34.730482 |
+| LeRobot child`d5bcbede…` | same`a335b826…` | same Pod startup event |
+
+Both Pods used node`c36d3b47-6536-4feb-aa5e-1b18bcdd4ccf` and the **same**
+physical `GPU-b9790cfd-34f8-8c04-faea-56b5cedc79d7` (preemptible). This proves
+two distinct restored Pods were used over time, not two GPUs or simultaneous
+two-Pod service. Restore is a Pod startup event: the later child's log run-ID
+association does not mean a second restore occurred for that request.
+The LeRobot children reused their restored Pod. None of this repairs the
+incomplete or numerically incorrect customer report.
+
+Protected immutable-input join receipt:
+`Q/robotics-natural179/joined-runtime-evidence.json`, derived read-only from
+the retained public Runs response and three persisted App Logs responses.
+
 ## Deadline diagnosis
 
 Both failed tools supplied `wait_seconds:30`:

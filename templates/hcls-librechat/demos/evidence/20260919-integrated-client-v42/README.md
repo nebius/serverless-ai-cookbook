@@ -45,9 +45,18 @@ Protected receipts (`Q` is the campaign secure-handoff directory):
 - `Q/browser-evidence/workbench-v42-installed-r2/summary.json`
 - `Q/browser-evidence/qualify-v42-installed.py`
 
-These checks submitted no inference and changed no endpoints. A separate
-fresh-image read-only recovery of an already completed real LeRobot bundle is
-pending the backend180 rollout settling; it must be attributed separately.
+These checks submitted no inference and changed no endpoints. After the
+backend's revision181 rollback to179 settled, a separate fresh-image read-only
+recovery passed against the actual public endpoint with the original
+scientist10 key. It recovered operation`4e333485-573f-42ac-af81-a919cdf20913`:
+the683B result and1,988,267B zstd bundle
+SHA256`69d6569f14e8e8c942fb02293a9c8a3d091933acc421aaab9abe60c410b5d04b`.
+All nine extracted files exactly match the independently retained dataset;
+same-operation resume and NumPy/nonfinite-safe export pass. Recovery took
+13.830s with preinstalled zstd1.5.4, no package installation or inference.
+Receipt: `Q/browser-evidence/workbench-v42-fresh-image/summary.json`.
+This is read-only artifact recovery, not acceptance of the failed180 rollout
+or a natural v42 customer session.
 
 ## Controlled deployment handoff
 
