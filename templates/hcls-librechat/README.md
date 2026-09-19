@@ -38,8 +38,24 @@ read-write Object Storage bucket at `/workspace`. Provision secrets separately; 
 put real keys in commands, Git, image layers or chat prompts.
 
 Never delete an existing endpoint without preserving `/data` and `/app/uploads`:
-the self-contained image runs its own MongoDB. Shared gateway credentials do not
-establish tenant isolation; multi-user acceptance needs separate customer keys.
+the self-contained image runs its own MongoDB.
+
+### Deployment ownership: one instance per user
+
+Each user has a **separate LibreChat instance**, its own login, execution
+environment and scoped platform key. This is the supported deployment topology,
+including when several users belong to one tenant. Users in the same tenant may
+intentionally mount the **same tenant bucket**; a shared bucket does not imply a
+shared chat instance or shared inference identity. Models remain centrally hosted
+Apps shared by authorized users, not private model deployments per workbench.
+
+Persisted execution and study-control records must be namespaced by the dedicated
+user identity so two workbenches sharing a bucket do not resume each other's
+work. Shared scientific files remain available according to the tenant's storage
+policy. Credentials are deployment secrets, never files in the shared workspace.
+Acceptance must exercise distinct dedicated instances and verify their request
+attribution and intentional shared storage. Shared-instance user multiplexing is
+outside this architecture and is not a release requirement.
 
 ### Personal instance with an existing tenant bucket
 
