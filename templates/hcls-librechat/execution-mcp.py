@@ -22,6 +22,9 @@ WORKSPACE = os.environ.get('SCIENTIFIC_WORKSPACE', '/workspace')
 # an observation may return earlier but must not race that unchanged deadline.
 MCP_CALL_DEADLINE_SECONDS = 30
 OBSERVATION_TRANSPORT_MARGIN_SECONDS = 5
+EXECUTE_WAIT_DEFAULT_SECONDS = 5
+EXECUTE_WAIT_MAX_SECONDS = 10
+READ_WAIT_DEFAULT_SECONDS = 15
 TEXT = {'type': 'string', 'minLength': 1}
 STEP_COMMON = {'kind': TEXT, 'id': TEXT, 'model': TEXT, 'idempotency_key': TEXT,
                'receipt_directory': {**TEXT, 'description': 'Optional existing workspace receipt directory for explicit recovery; otherwise output_directory/steps/id.'}}
@@ -123,7 +126,7 @@ def read_job(args):
     if not (directory / 'request.json').is_file():
         raise ValueError('Unknown execution job ID.')
     offset = bounded_number(args, 'offset', 0, 2**63 - 1)
-    requested_wait = bounded_number(args, 'wait_seconds', 15, MCP_CALL_DEADLINE_SECONDS)
+    requested_wait = bounded_number(args, 'wait_seconds', READ_WAIT_DEFAULT_SECONDS, MCP_CALL_DEADLINE_SECONDS)
     wait = min(requested_wait, MCP_CALL_DEADLINE_SECONDS - OBSERVATION_TRANSPORT_MARGIN_SECONDS)
     limit = bounded_number(args, 'max_bytes', 4000, 32000)
     deadline = time.monotonic() + wait
@@ -155,12 +158,20 @@ def read_job(args):
                   transport_margin_seconds=OBSERVATION_TRANSPORT_MARGIN_SECONDS,
                   output_path=str(output), more_output=output.exists() and output.stat().st_size > offset + len(data))
     status['observation_guidance'] = (
-        'Observe this same job once with wait_seconds=30; do not issue parallel or duplicate polls for one job.'
+        'Call read_execution for this saved job_id with wait_seconds=30; this is observation, not execute_command. '
+        'execute_command launches work and accepts wait_seconds only from 0 to 10 (default 5). '
+        'Do not issue parallel or duplicate polls for one job.'
         if status['status'] in ('starting', 'running') else
         'Execution is terminal. Do not poll the same completed output again. Inspect saved files for remaining analysis/report work; execution completion alone is not scientific completion.')
     if status['more_output']:
         status['output_guidance'] = ('Full output is retained at output_path. Analyze that file locally and print concise metrics; '
                                      'read another chunk only when its text is needed. Never paste whole datasets or helper source into chat.')
+    if status['status'] in ('starting', 'running'):
+        status['next_observation'] = {
+            'tool_name': 'read_execution',
+            'arguments': {'job_id': job_id, 'wait_seconds': MCP_CALL_DEADLINE_SECONDS,
+                          'offset': status['next_offset']},
+            'guidance': 'Use the exact registered read_execution tool name, including its client suffix; never relaunch.'}
     return status
 
 
@@ -172,7 +183,7 @@ def execute(args):
     if not isinstance(cwd, str) or not Path(cwd).is_absolute() or not Path(cwd).is_dir():
         raise ValueError('cwd must be an existing absolute directory.')
     timeout = bounded_number(args, 'timeout_seconds', 300, 604800)
-    wait = bounded_number(args, 'wait_seconds', 5, 10)
+    wait = bounded_number(args, 'wait_seconds', EXECUTE_WAIT_DEFAULT_SECONDS, EXECUTE_WAIT_MAX_SECONDS)
     ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
     directory = ROOT / str(uuid.uuid4())
     directory.mkdir(mode=0o700)
@@ -246,19 +257,23 @@ TOOLS = [
             'steps': {'type': 'array', 'minItems': 1, 'items': {'oneOf': [NATIVE_STEP_SCHEMA, BATCH_STEP_SCHEMA]}},
             'resume': {'type': 'boolean', 'default': False}}}},
     {'name': 'execute_command',
-     'description': 'Execute Bash as root in this application container. Install packages with apt-get/pip/npm, run Python, download internet resources, read/write any container path and mounted storage. /workspace is the team Object Storage bucket mount and the durable location for team files; use byte copies, not chmod/copystat. This is real execution, not a code suggestion. For long work save job_id and use read_execution; do not submit again. Returns 4000 output bytes by default with a full log file pointer; compute summaries locally instead of dumping source/data. timeout_seconds=0 disables the deadline. Root applies to the container and its mounts, not the cloud host. Never print credentials.',
+     'description': 'Execute Bash as root in this application container. Install packages with apt-get/pip/npm, run Python, download internet resources, read/write any container path and mounted storage. /workspace is the team Object Storage bucket mount and the durable location for team files; use byte copies, not chmod/copystat. This is real execution, not a code suggestion. Launch wait_seconds is 0 to 10, default 5; omit it for normal launches. Do not copy read_execution wait_seconds=30 into this tool. For long work save job_id and use read_execution to observe that same job; do not submit again. Returns 4000 output bytes by default with a full log file pointer; compute summaries locally instead of dumping source/data. timeout_seconds is the separate command deadline; 0 disables that deadline. Root applies to the container and its mounts, not the cloud host. Never print credentials.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': True, 'openWorldHint': True},
      'inputSchema': {'type': 'object', 'additionalProperties': False, 'required': ['command'],
         'properties': {'command': {'type': 'string'}, 'cwd': {'type': 'string'},
             'timeout_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 604800, 'default': 300},
-            'wait_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 10, 'default': 5}}}},
+            'wait_seconds': {'type': 'integer', 'minimum': 0, 'maximum': EXECUTE_WAIT_MAX_SECONDS,
+                'default': EXECUTE_WAIT_DEFAULT_SECONDS,
+                'description': 'Launch-response wait only: 0 to 10 seconds, default 5. Omit for a normal launch. This is not the command timeout or read_execution observation wait. Longer work continues under its saved job_id; call read_execution, never launch it again.'}}}},
     {'name': 'read_execution',
      'description': 'Observe the same command by its job_id, including after reconnecting. For a running scientific workflow request wait_seconds=30 (default 15, maximum 30); effective observation is at most 25 seconds to reserve 5 seconds inside the unchanged 30-second MCP deadline. Returns early on completion/failure/interruption and never extends command deadlines or submits model work. Returns actual wait metadata, status, exit code and bounded output. Pass next_offset to avoid rereading prior logs. Running is not completed analysis; retain this job and original operation IDs. Receipts survive MCP restarts; running processes do not survive container restart.',
      'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
      'inputSchema': {'type': 'object', 'additionalProperties': False, 'required': ['job_id'],
         'properties': {'job_id': {'type': 'string'}, 'offset': {'type': 'integer', 'minimum': 0},
             'max_bytes': {'type': 'integer', 'minimum': 0, 'maximum': 32000},
-            'wait_seconds': {'type': 'integer', 'minimum': 0, 'maximum': 30, 'default': 15}}}},
+            'wait_seconds': {'type': 'integer', 'minimum': 0, 'maximum': MCP_CALL_DEADLINE_SECONDS,
+                'default': READ_WAIT_DEFAULT_SECONDS,
+                'description': 'Existing-job observation only: 0 to 30 seconds, default 15, effective maximum 25 to reserve transport time. execute_command has a different launch maximum of 10.'}}}},
 ]
 
 
