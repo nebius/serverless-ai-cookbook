@@ -1,5 +1,6 @@
 """Explicit negative clinical outcomes, without swallowing genuine failures."""
 import asyncio
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -50,7 +51,12 @@ def fixture_outcome(root, state='no_supported_clinical_facts'):
                 'coverage.json': b'{"supported_facts":0,"complete":false}\n',
                 'run.json': json.dumps({'status': state, 'clinical_validation': False}).encode()}
     if state == 'completed':
-        contents.update({'report.md': b'# Unchanged draft\n', 'document.json': b'{"facts":[]}\n',
+        document = {'schema': 'clinical-documentation/v11',
+                    'transcript_sha256': hashlib.sha256(contents['transcript.txt']).hexdigest(),
+                    'facts': [], 'source_excerpts': [], 'rejected': [],
+                    'source_coverage': [{'final': [{'start': 0, 'end': len(contents['transcript.txt'].decode())}]}]}
+        contents.update({'report.md': b'# Unchanged draft\n', 'document.json': json.dumps(document).encode(),
+                         'review.md': b'# Retained review queue\n',
                          'follow-up.md': b'# Review required\n'})
     files = {}
     for name, raw in contents.items():
@@ -184,7 +190,9 @@ print(json.dumps(result))
         terminal = json.loads(process.stdout)
     assert terminal['state'] == 'completed', terminal.get('failure')
     assert terminal['completed_steps'] == ['clinical', 'report']
-    assert len(terminal['artifacts']) == 4
+    assert len(terminal['artifacts']) >= 4
+    published_paths = {item['path'] for item in terminal['artifacts']}
+    assert {info['path'] for info in terminal['steps']['clinical']['customer_artifacts'].values()} <= published_paths
     for info in terminal['artifacts']:
         verify_file(Path(info['path']), info)
         assert info['size_bytes'] > 0
@@ -196,3 +204,24 @@ print(json.dumps(result))
     assert manifest['scientific_validity_claim'] is False
     assert len(calls) == 1
     assert study.get(started['id'])['state'] == 'completed'
+
+
+def test_positive_draft_defaults_are_delivered_and_measured_in_downstream_report(mounted, monkeypatch):
+    original = fixture_outcome(mounted, 'completed')
+    calls = install_boundary(monkeypatch, original)
+    plan = whole_plan(mounted, False)
+    plan['deliverables'] = [plan['deliverables'][0]]
+    started = study.submit(plan, mounted / 'positive-study')
+    for _ in range(3):
+        terminal = asyncio.run(study.advance(started['id']))
+    assert terminal['state'] == 'completed', terminal.get('failure')
+    assert len(calls) == 1
+    published = {row['path'] for row in terminal['artifacts']}
+    registered = terminal['steps']['clinical']['customer_artifacts']
+    assert len(registered) == 10
+    assert {item['path'] for item in registered.values()} <= published
+    report = next(row for row in terminal['artifacts'] if row['name'] == 'report.md')
+    text = Path(report['path']).read_text()
+    assert 'Accepted source-linked entries' in text
+    assert 'Segments without a selected report phrase' in text
+    assert 'not clinical correctness' in text

@@ -6,6 +6,7 @@ A lost provider response is ambiguous and never silently regenerated on restart.
 """
 import argparse
 import asyncio
+import hashlib
 import importlib.util
 import json
 import mimetypes
@@ -16,6 +17,108 @@ import tempfile
 import threading
 
 from scientific_receipts import load, save, persist_local_file, verify_file
+
+
+CUSTOMER_OUTPUT_ROLES = {
+    'transcript.txt': 'data', 'report.md': 'report', 'document.json': 'data',
+    'review.json': 'data', 'review.md': 'report', 'follow-up.md': 'report',
+    'coverage.json': 'data', 'run.json': 'provenance',
+    'clinical-outcome.json': 'provenance', 'clinical-outcome.md': 'report',
+}
+COMMON_CUSTOMER_OUTPUTS = {'transcript.txt', 'review.json', 'coverage.json', 'run.json'}
+POSITIVE_CUSTOMER_OUTPUTS = {'report.md', 'document.json', 'review.md', 'follow-up.md'}
+NO_REPORT_EXCLUDED = {'report.md', 'document.json', 'follow-up.md'}
+
+
+def customer_artifacts(files, report_produced):
+    """Register only verified customer evidence, never provider-call internals."""
+    required = COMMON_CUSTOMER_OUTPUTS | {'clinical-outcome.json', 'clinical-outcome.md'}
+    if report_produced:
+        required |= POSITIVE_CUSTOMER_OUTPUTS
+    elif NO_REPORT_EXCLUDED & files.keys():
+        raise ValueError('No-report outcome unexpectedly contains clinical draft artifacts.')
+    if required - files.keys():
+        raise ValueError('Clinical customer publication is missing required draft/source/review evidence: '
+                         + ', '.join(sorted(required - files.keys())))
+    selected = {}
+    for name, role in CUSTOMER_OUTPUT_ROLES.items():
+        if name in files:
+            info = files[name]
+            verify_file(Path(info['path']), info)
+            selected[name] = {**info, 'role': role}
+    return selected
+
+
+def outcome_documents(outcome):
+    """Measure existing literal evidence without another model or clinical judgment.
+
+    The established report reader owns span/coverage semantics. These additions
+    do not alter the generated report, source, review queue, or questions.
+    """
+    files = outcome['files']
+    required = COMMON_CUSTOMER_OUTPUTS | (POSITIVE_CUSTOMER_OUTPUTS if outcome['report_produced'] else set())
+    if required - files.keys():
+        raise ValueError('Clinical outcome is missing required source or draft evidence.')
+    for name in required:
+        verify_file(Path(files[name]['path']), files[name])
+    transcript = Path(files['transcript.txt']['path']).read_text(encoding='utf-8')
+    assessment = {
+        'schema': 'scientific-clinical-assessment/v1',
+        'transcript_sha256': hashlib.sha256(transcript.encode()).hexdigest(),
+        'transcript_characters': len(transcript),
+        'clinical_correctness': 'not_established', 'clinical_completeness': 'not_established',
+        'speaker_attribution': 'not_established',
+    }
+    lines = ['# Clinical stage outcome', '', outcome['outcome'], '']
+    if outcome['report_produced']:
+        script = Path(os.environ.get('SCIENTIFIC_CLINICAL_SCRIPT',
+            '/app/skill/clinical-documentation/scripts/clinical_report.py'))
+        helper = Path(os.environ.get('SCIENTIFIC_CLINICAL_REPORT_HELPER', str(script.with_name('study_report.py'))))
+        spec = importlib.util.spec_from_file_location('clinical_outcome_measurements', helper)
+        reader = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(reader)
+        document = json.loads(Path(files['document.json']['path']).read_bytes())
+        assessment.update(reader.selection_report(document, transcript))
+        assessment['helper_sha256'] = hashlib.sha256(helper.read_bytes()).hexdigest()
+        lines.extend(['A clinical draft was produced. The following measurements validate literal source selection, '
+                      'not clinical correctness, speaker identity, or completeness.', '',
+                      '| Measurement | Value |', '| --- | --- |'])
+        for label, key in [('Accepted source-linked entries', 'accepted_facts'),
+                           ('Selected source phrases', 'selected_phrases'),
+                           ('Exact selected span occurrences', 'selected_span_occurrences'),
+                           ('Declared source segments', 'declared_segments'),
+                           ('Segments with a selected phrase', 'segments_with_selected_phrase'),
+                           ('Withheld candidates', 'withheld_candidates'),
+                           ('Retained review excerpts', 'review_excerpts')]:
+            lines.append(f'| {label} | {assessment[key]} |')
+        missing = [row for row in assessment['segments'] if not row['has_selected_phrase']]
+        lines.extend(['', '## Source selection limits', '', assessment['interpretation'], '',
+                      f"Declared segment character gaps: {len(assessment['declared_segment_character_gaps'])}.", '',
+                      'Segments without a selected report phrase (character offsets; not a finding that clinical facts are absent):', ''])
+        lines.extend([f"- [{row['start']}, {row['end']}): cited-context presence={row['has_cited_context']}; "
+                      f"review-excerpt presence={row['has_review_excerpt']}." for row in missing] or
+                     ['- None; this still does not establish completeness.'])
+        lines.extend(['', 'Review report.md and document.json against transcript.txt. Withheld candidates remain in '
+                      'review.json/review.md; uncertain details and suggested questions remain separate in follow-up.md. '
+                      'Teaching narration, self-report and observed findings require human review; literal citations do not establish attribution.'])
+    else:
+        if outcome['outcome'] != 'no_supported_clinical_facts' or not outcome['no_report_explicitly_allowed']:
+            raise ValueError('Only the explicitly permitted no-supported-facts outcome may publish no-report evidence.')
+        if NO_REPORT_EXCLUDED & files.keys():
+            raise ValueError('No-report outcome unexpectedly contains clinical draft artifacts.')
+        review = json.loads(Path(files['review.json']['path']).read_bytes())
+        rejected = review.get('rejected') if isinstance(review, dict) else None
+        assessment.update(status='no_report', accepted_facts=0, selected_phrases=0,
+                          withheld_candidates=len(rejected) if isinstance(rejected, list) else None,
+                          source_selection_coverage='not_applicable_without_a_document')
+        lines.extend(['No supported clinical facts were extracted. No report, document or follow-up was produced. '
+                      'This explicitly permitted no-report outcome is not a finding of absent illness or proof that the '
+                      'source lacks important information. Review unchanged transcript.txt, review.json and coverage.json.', '',
+                      f'Unchanged transcript: {len(transcript)} characters; SHA-256 {assessment["transcript_sha256"]}.',
+                      'A no-report outcome is not a completed clinical assessment.'])
+    measured = {**outcome, 'source_assessment': assessment}
+    return {'clinical-outcome.json': (json.dumps(measured, ensure_ascii=False, sort_keys=True) + '\n').encode(),
+            'clinical-outcome.md': ('\n'.join(lines) + '\n').encode()}
 
 
 class AdmissionUnknown(RuntimeError):

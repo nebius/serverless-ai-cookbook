@@ -80,6 +80,16 @@ do not promise `report.md`, `document.json` or questions from a no-report case.
 No report is not evidence of no illness or no important source information.
 Do not add this permission to positive cases merely to hide an unexpected failure.
 
+Durable clinical outcomes include deterministic source-selection measurements
+from the existing v11 reader, not just a completed flag. Include that measured
+outcome in the study report. Positive clinical stages register their unchanged
+transcript, draft, structured document, review queue, questions, coverage and
+run provenance for final Runs downloads under step-qualified names; permitted
+negative stages register only the files actually produced. Provider-call and
+checkpoint internals are not automatically published. These downloads and
+literal-span counts do not establish speaker attribution, clinical meaning or
+completeness; retain the reported source-selection gaps and review limitations.
+
 For a complete multi-case study, prefer one deterministic assembly step after
 the full transcripts and any clinical documents have been retrieved:
 
