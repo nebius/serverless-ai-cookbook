@@ -216,9 +216,19 @@ const config = {
     },
     'environment-execution': {
       title: 'Environment execution', description: 'Root shell, Python, packages, internet and mounted files.',
-      type: 'stdio', command: 'python3', args: ['/opt/bionemo/execution-mcp.py'],
+      type: 'stdio', command: '/opt/scientific-client/bin/python', args: ['/opt/bionemo/execution-mcp.py'],
       startup: true, timeout: 30000,
       env: { SCIENTIFIC_WORKSPACE: '/workspace',
+        // Stdio transports inherit only their safe default environment and
+        // these explicit bindings, unlike the API/supervisor parent process.
+        // Preserve the same owner precedence and stop-first decision; never
+        // invent a default mode or use the transient LibreChat request ID.
+        ...(process.env.SCIENTIFIC_STUDY_OWNER_MODE ? { SCIENTIFIC_STUDY_OWNER_MODE: '${SCIENTIFIC_STUDY_OWNER_MODE}' } : {}),
+        ...(process.env.SCIENTIFIC_STUDY_OWNER ? { SCIENTIFIC_STUDY_OWNER: '${SCIENTIFIC_STUDY_OWNER}' } : {}),
+        ...(process.env.SEED_DEFAULT_USER_EMAIL ? { SEED_DEFAULT_USER_EMAIL: '${SEED_DEFAULT_USER_EMAIL}' } : {}),
+        ...(process.env.CLINICAL_REPORT_API_KEY ? { CLINICAL_REPORT_API_KEY: '${CLINICAL_REPORT_API_KEY}' } : {}),
+        ...(process.env.NEBIUS_API_KEY ? { NEBIUS_API_KEY: '${NEBIUS_API_KEY}' } : {}),
+        ...(process.env.CLINICAL_REPORT_API_KEY_FILE ? { CLINICAL_REPORT_API_KEY_FILE: '${CLINICAL_REPORT_API_KEY_FILE}' } : {}),
         ...(sharedGatewayKey ? { SCIENTIFIC_MODELS_API_KEY: '${SCIENTIFIC_MODELS_API_KEY}' } : {}),
         SCIENTIFIC_MODELS_API_BASE_URL: '${SCIENTIFIC_MODELS_API_BASE_URL}',
         SCIENTIFIC_MODELS_MCP_URL: '${SCIENTIFIC_MODELS_MCP_URL}' },
