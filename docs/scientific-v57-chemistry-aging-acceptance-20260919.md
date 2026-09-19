@@ -27,8 +27,8 @@ The verifier also retained local capture/path issues:07's planner-created batch 
 
 `U` denotes the protected `scientific-unattended-20260919` evidence root; no credentials, raw cookie values or private payloads are included here.
 
--05 final: `U/independent-v57/scientist-05-final-receipt.json`, SHA256 `bdb8ebfc551a8d91825a339c3cf748057fcd0edc8a61c0241083a8fa013e7c36`.
--07 final: `U/independent-v57/scientist-07-final-receipt.json`, SHA256 `96954c582a2c7789d32ea7c06591f071ff06542f55a31721af31c60a716603d0`.
+- 05 final: `U/independent-v57/scientist-05-final-receipt.json`, SHA256 `bdb8ebfc551a8d91825a339c3cf748057fcd0edc8a61c0241083a8fa013e7c36`.
+- 07 final: `U/independent-v57/scientist-07-final-receipt.json`, SHA256 `96954c582a2c7789d32ea7c06591f071ff06542f55a31721af31c60a716603d0`.
 - Numerical receipts: `scientist-05-numerical-r2.json` SHA256 `1dce2192a16dc201043c44c76ee4de86cc062023a7f534331fd265734ef36a11`; `scientist-07-numerical-r2.json` SHA256 `17eed4f7c478bfc3f03c27984e502f8c81f6eb2623ac9ebd5c150b18bfbc094b`, both under `U/independent-v57`.
 - Actual UI receipts: `U/independent-v57/scientist-{05,07}-browser-r2/download-receipt.json`; hashes `e9ebeacb2bca61f432db3da1c6f58f34da9b2313e858e9ca3ca963db87d8f363` / `82e204ee2807c7cdf78d22d41fba39c2e644b048eeb44f9573558cdea4fe7064`.
 - Report SHA256:05 `6ea5cfbb5e94a0d6798e45f633850b2c2040a1e84a272eb3572ff317c70f3b85`;07 `c982289808d63a23f86ab622714e1c0b7b1672d5d1bdd3cb9f6a6e277656df6b`.
