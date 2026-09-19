@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 04:05 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 04:12 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -27,11 +27,18 @@ Full protected responses, sizes, hashes and equality assertions are retained
 in`Q/browser-evidence/mcp-discovery-r179`. This checks discovery, not model
 inference, planner completion or v41 deployment.
 
-One separately authorized **scripted API/MCP** LeRobot cohort is now pending,
+One separately authorized **scripted API/MCP** LeRobot cohort completed,
 using the immutable v41 helper with recorded sourceSHA1721d401… and the prior
 whole-sequence edge-transfer controls: episodes0/1, high camera only,
 wrist/actions preserved, seed20260919,35steps. Evidence is retained under
-`Q/browser-evidence/scientist-10-scripted-lerobot-r179`. It cannot satisfy the
+`Q/browser-evidence/scientist-10-scripted-lerobot-r179`. Parent3e529cf5… and two
+actual GPU children succeeded, helper wall226.852s. Independent LeRobot reader
+checks all128 rows/6144 nonvideo values, exact wrist MP4bytes/pixels and episode
+timestamps; both raw child videos are64frames/640×480/25FPS. Per-episode wrist
+stats are exact; aggregate std differs3.49e-9. Selected image details change
+beyond lighting, so physical-action/policy fitness remains unproven. See the
+[full evidence and limitations](../20260919-lerobot-public-r179/README.md).
+This cannot satisfy the
 blocked natural LibreChat/v41 acceptance gate. The frozen natural prompt has
 not changed or been submitted; Serverless deployment is still blocked below.
 
