@@ -4,6 +4,7 @@ FROM ${LIBRECHAT_BASE} AS scientific-client
 USER root
 COPY templates/hcls-librechat/ScientificLanding.tsx /app/client/src/components/Chat/Landing.tsx
 COPY templates/hcls-librechat/PoweredByFooter.tsx /app/client/src/components/Chat/Footer.tsx
+COPY templates/hcls-librechat/WorkspaceInlineCode.tsx /app/client/src/components/WorkspaceInlineCode.tsx
 COPY templates/hcls-librechat/patch-client.mjs /tmp/patch-client.mjs
 RUN node /tmp/patch-client.mjs
 COPY templates/hcls-librechat/demos/Demos.tsx /app/client/src/components/ScientificDemos.tsx

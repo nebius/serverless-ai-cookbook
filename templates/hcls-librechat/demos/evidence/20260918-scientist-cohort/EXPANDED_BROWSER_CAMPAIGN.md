@@ -1,6 +1,6 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 01:31 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 01:39 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
@@ -101,8 +101,34 @@ Both use frozen v34, original identities/buckets and unchanged limits. Prompt
 hashes are `639ea1e211c2561be001bd0979d7cb0f96a13a6248d4215acdea11b584e15aac`
 and `67d9b3b24e75570f8697311bcb28939881569a699583ddbcd5f209d8650dbd6d`.
 All earlier failures remain retained; previous07 numerical acceptance is only
-a regression baseline, not inherited by this release. Reports, raw model bytes,
-independent calculations and actual browser downloads remain to be qualified.
+a regression baseline, not inherited by this release.
+
+07 completed one natural turn at01:31:48.920 UTC,150.054s after its persisted
+user message,17 tool calls and zero failed tools. It naturally used the typed
+workflow, both independent aging analyses and report assembler. Downloaded
+raw inputs/results, all32 PhenoAge and17 AltumAge predictions, every exported
+row and original32 NHANES samples independently verify; only one Altum sample
+overlaps between feature orders. The13,279-byte final assembled report SHA256
+`96dc52b8738c21cdde7b2737a7d5579639eb1affae75e016b6624a5bf2d016ee`
+matches independent reconstruction, provenance and actual authenticated browser
+download. Its scientific claims stay scoped to numerical reproducibility, not
+clinical/population validity. Retained usability friction: valid workspace URLs
+are code spans, not clickable anchors. Navigation to that exact URL works.
+Protected acceptance: `scientist-07-v34-independent/final-receipt.json`.
+
+02 returned an honest durable batch-in-progress reply, then resumed with one
+ordinary continuation. Both Boltz2 predictions succeeded, but the first
+Protenix submission was explicitly rejected before admission with
+`scientific_profile_unavailable`, request `255c7295-0006-4f3e-8a15-ee8d233ac280`.
+The second Protenix step was never submitted; the agent's earlier statement
+that both were rejected is imprecise. Exact source/seed7 parameters, manifest,
+idempotency and rejection history remain preserved. Parent investigates the
+unexpected App availability regression. Existing completed work is not repeated.
+Analysis separately failed because the agent reversed the documented
+reference:prediction mapping, then speculated about auth/label chain IDs. No
+RMSD was fabricated; reference comparison/report remain incomplete. A proposed
+diagnostic makes actual chain IDs and direction explicit without autoswapping.
+This is distinct from legitimate batch waiting and required user continuation.
 
 ### Latest release gate: v31 raw results correct, combined report malformed
 

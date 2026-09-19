@@ -90,6 +90,21 @@ def test_no_coordinates_missing_chain_and_invalid_comparison_fail_explicitly():
         analysis.compare(pdb({'A': COORDS[:2]}), pdb({'B': COORDS[:2]}))
 
 
+def test_reversed_chain_map_reports_actual_ids_and_direction_without_swapping():
+    reference = pdb({'E': COORDS, 'I': np.array(COORDS) + [0, 0, 4]})
+    prediction = pdb({'A': COORDS, 'B': np.array(COORDS) + [0, 0, 4]})
+    with pytest.raises(ValueError) as error:
+        analysis.compare(reference, prediction, [('A', 'E'), ('B', 'I')])
+    message = str(error.value)
+    assert 'reference:prediction (REF:PRED)' in message
+    assert 'Requested: A:E, B:I' in message
+    assert "reference protein chains: ['E', 'I']" in message
+    assert "prediction protein chains: ['A', 'B']" in message
+    assert 'not automatically swapped' in message
+    metrics, _ = analysis.compare(reference, prediction, [('E', 'A'), ('I', 'B')])
+    assert metrics['global_ca_rmsd_angstrom'] < 1e-5
+
+
 def correspondence(reference, prediction, count=4):
     return {'schema': 'scientific-residue-correspondence/v1',
             'description': 'Designed backbone was sequence-redesigned without deleting or inserting positions.',

@@ -149,13 +149,15 @@ def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0, residue
     if len({a for a, _ in chain_map}) != len(chain_map) or len({b for _, b in chain_map}) != len(chain_map):
         raise ValueError('Chain mapping must be one-to-one.')
     if any(a not in reference or b not in prediction for a, b in chain_map):
-        raise ValueError('Absent chain mapping; inspect structure chains first.')
+        requested = ', '.join(f'{a}:{b}' for a, b in chain_map)
+        raise ValueError(f'Absent chain mapping. Direction is reference:prediction (REF:PRED). '
+                         f'Requested: {requested}. Available reference protein chains: {list(reference)}; '
+                         f'available prediction protein chains: {list(prediction)}. '
+                         'Choose the scientifically corresponding pairs explicitly; mappings are not automatically swapped.')
     explicit = explicit_pairs(residue_correspondence, reference_text, prediction_text,
                               reference, prediction, chain_map) if residue_correspondence is not None else None
     mapped_ref, mapped_pred, reports, residue_mapping = [], [], [], []
     for ref_id, pred_id in chain_map:
-        if ref_id not in reference or pred_id not in prediction:
-            raise ValueError(f'Absent chain mapping {ref_id}:{pred_id}; inspect structure chains first.')
         ref, pred = reference[ref_id], prediction[pred_id]
         pairs = explicit[(ref_id, pred_id)] if explicit is not None else matched(ref, pred)
         identical = sum(sequence([ref[i]]) == sequence([pred[j]]) and sequence([ref[i]]) != 'X'

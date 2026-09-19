@@ -104,7 +104,10 @@ test('stdio MCP exposes typed tools and rejects absent identity without inferenc
   const aging = messages[1].result.tools.find((tool) => tool.name === 'workbench_analyze_aging');
   assert.deepEqual(aging.inputSchema.properties.model_id.enum, ['phenoage', 'altumage']);
   assert.deepEqual(aging.inputSchema.properties.cohorts.items.required, ['label', 'input_file', 'result_file']);
-  assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_compare_structures'));
+  const structure = messages[1].result.tools.find((tool) => tool.name === 'workbench_compare_structures');
+  assert.match(structure.inputSchema.properties.chain_map.items.description, /REF:PRED/);
+  assert.equal(new RegExp(structure.inputSchema.properties.chain_map.items.pattern).test('E:A'), true);
+  assert.equal(new RegExp(structure.inputSchema.properties.chain_map.items.pattern).test('A:B:C'), false);
   assert.equal(messages[2].result.isError, true);
 });
 test('mounted workspace stays inside its root and round-trips files', async () => {

@@ -81,3 +81,17 @@ resource = resource.replace(resizeOption, `autoResizeIframe: { width: false, hei
               style: { display: 'block', width: '100%', border: 0 },
             } as React.IframeHTMLAttributes<HTMLIFrameElement>,`);
 await writeFile(resourcePath, resource);
+
+// A model may print a valid workspace download URL as inline code instead of a
+// Markdown link. Keep its exact text and use the same authenticated UI route.
+const markdownPath = '/app/client/src/components/Chat/Messages/Content/MarkdownComponents.tsx';
+let markdown = await readFile(markdownPath, 'utf8');
+const inlineCode = `      <code onDoubleClick={handleDoubleClick} className={className}>
+        {children}
+      </code>`;
+if (markdown.split(inlineCode).length !== 3) throw new Error('Unsupported inline Markdown code renderer');
+markdown = "import WorkspaceInlineCode from '~/components/WorkspaceInlineCode';\n" + markdown;
+markdown = markdown.replaceAll(inlineCode, `      <WorkspaceInlineCode onDoubleClick={handleDoubleClick} className={className}>
+        {children}
+      </WorkspaceInlineCode>`);
+await writeFile(markdownPath, markdown);
