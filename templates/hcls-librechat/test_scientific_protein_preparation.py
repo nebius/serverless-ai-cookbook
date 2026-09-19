@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
-from scientific_protein_preparation import prepare
+from scientific_protein_preparation import prepare, structure_helper
 import scientific_study as study
 
 
@@ -117,9 +117,23 @@ def test_worker_chain_uses_prepared_content_not_paths_as_model_inputs(tmp_path, 
         {'id': 'fold', 'kind': 'batch', 'model': 'esmfold2-fast', 'tool': 'submit_esmfold2_fast',
          'operation': 'predict-protein-structure', 'media_type': 'application/json', 'entry_name': 'esmfold2-fast-input',
          'semantic_type': 'esmfold2-fast-input-json/v1', 'idempotency_key': 'fold-frozen', 'display_name': 'Explicit design refolding',
-         'source': {'step': 'fold-prep', 'file': 'input.json'}, 'parameters': {'step': 'fold-prep', 'file': 'parameters.json'}}]
+         'source': {'step': 'fold-prep', 'file': 'input.json'}, 'parameters': {'step': 'fold-prep', 'file': 'parameters.json'}},
+        {'id': 'correspondence', 'kind': 'preparation', 'method': 'design-refold-correspondence', 'arguments': {
+            'design_input': {'step': 'mpnn-prep', 'file': 'input.json'}, 'design_result': {'step': 'mpnn', 'file': 'result.json'},
+            'refold_input': {'step': 'fold-prep', 'file': 'input.json'}, 'refold_parameters': {'step': 'fold-prep', 'file': 'parameters.json'},
+            'prediction': {'step': 'fold', 'file': 'result.json'}, 'design_index': 0, 'structure_index': 0, 'prediction_chain': 'A'}},
+        {'id': 'analysis', 'kind': 'analysis', 'method': 'structure', 'arguments': {
+            'reference': {'step': 'correspondence', 'file': 'reference.pdb'}, 'result': {'step': 'correspondence', 'file': 'prediction-result.json'},
+            'chain_map': ['A:A'], 'residue_map': {'step': 'correspondence', 'file': 'residue-map.json'},
+            'request_file': {'step': 'fold-prep', 'file': 'parameters.json'}}},
+        {'id': 'report', 'kind': 'analysis', 'method': 'report', 'arguments': {'title': 'Design and refold study', 'sections': [
+            {'title': 'Explicit positional correspondence', 'file': {'step': 'correspondence', 'file': 'report.md'}, 'format': 'markdown'},
+            {'title': 'Measured structural agreement', 'file': {'step': 'analysis', 'file': 'report.md'}, 'format': 'markdown'}]}}]
     value = {'schema': study.SCHEMA, 'title': 'Dependent RF design and refold', 'steps': steps,
-             'deliverables': [{'name': 'Preparation provenance report', 'role': 'report', 'source': {'step': 'fold-prep', 'file': 'report.md'}},
+             'deliverables': [{'name': 'Methods and measured results', 'role': 'report', 'source': {'step': 'report', 'file': 'report.md'}},
+                              {'name': 'Metrics', 'role': 'metrics', 'source': {'step': 'analysis', 'file': 'metrics.json'}},
+                              {'name': 'Explicit correspondence', 'role': 'provenance', 'source': {'step': 'correspondence', 'file': 'residue-map.json'}},
+                              {'name': 'Selected sequence', 'role': 'data', 'source': {'step': 'fold-prep', 'file': 'selected.fasta'}},
                               {'name': 'Refold', 'role': 'data', 'source': {'step': 'fold', 'file': 'result.json'}}]}
     seen = []
 
@@ -144,7 +158,10 @@ def test_worker_chain_uses_prepared_content_not_paths_as_model_inputs(tmp_path, 
         else:
             assert json.loads(Path(resolved['source']).read_bytes())['sequences'][0]['sequence'] == 'ACD'
             assert json.loads(Path(resolved['parameters']).read_bytes())['seed'] == 19
-            result = {'structure': backbone()}
+            names = ['ALA', 'CYS', 'ASP']
+            predicted = '\n'.join(line[:17] + names[int(line[22:26]) - 1] + line[20:]
+                                  if line.startswith('ATOM') else line for line in backbone().splitlines()) + '\n'
+            result = {'structure': predicted, 'confidence': 0.8}
         path = tmp_path / (step['id'] + '-result.json')
         path.write_text(json.dumps(result))
         return {'state': 'completed', 'operation_id': step['id'] + '-accepted', 'files': {'result.json': study.measure(path)}}
@@ -154,8 +171,12 @@ def test_worker_chain_uses_prepared_content_not_paths_as_model_inputs(tmp_path, 
         finished = asyncio.run(study.advance(started['id'], model_runner=remote))
     assert finished['state'] == 'completed'
     assert seen == ['rf-frozen', 'mpnn-frozen', 'fold-frozen']
-    assert len(finished['completed_steps']) == 5
+    assert len(finished['completed_steps']) == 8
     assert json.loads(Path(finished['manifest']['path']).read_bytes())['operations'] == ['rf-accepted', 'mpnn-accepted', 'fold-accepted']
+    metrics = json.loads(Path(finished['steps']['analysis']['files']['metrics.json']['path']).read_bytes())
+    assert metrics['mapped_residues'] == 3 and metrics['matched_identical_residues'] == 1
+    assert metrics['correspondence_method'] == 'explicit-provenance'
+    assert metrics['model_confidence_not_reference_agreement'] == {'retained_source_result.confidence': 0.8}
 
 
 def test_preparation_schema_uses_actual_native_bounds():
@@ -167,3 +188,109 @@ def test_preparation_schema_uses_actual_native_bounds():
     assert validator.is_valid({'id': 'prep', 'kind': 'preparation', 'method': 'proteinmpnn-input', 'arguments': args})
     args['num_sequences'] = 9
     assert not validator.is_valid({'id': 'prep', 'kind': 'preparation', 'method': 'proteinmpnn-input', 'arguments': args})
+
+
+def correspondence_fixture(tmp_path):
+    reference = tmp_path / 'reference.pdb'
+    reference.write_text(backbone())
+    inverse = tmp_path / 'inverse'
+    inverse.mkdir()
+    prepare('proteinmpnn-input', mpnn_args(reference), inverse)
+    designs = tmp_path / 'designs.json'
+    designs.write_text(json.dumps({'mfasta': '>input seed=7\nAAA\n>sample=1\nCDE\n>sample=2\nACD\n'}))
+    fold = tmp_path / 'fold'
+    fold.mkdir()
+    prepare('esmfold2-fast-input', {'design_input': str(inverse / 'input.json'),
+        'design_result': str(designs), 'design_index': 0, 'seed': 19}, fold)
+    # Same geometry, entirely changed sequence. A sequence-identity-only fit
+    # cannot map this design, but actual query-position provenance can.
+    prediction = tmp_path / 'prediction.json'
+    names = ['CYS', 'ASP', 'GLU']
+    predicted = '\n'.join(line[:17] + names[int(line[22:26]) - 1] + line[20:]
+                          if line.startswith('ATOM') else line for line in backbone().splitlines()) + '\n'
+    prediction.write_text(json.dumps({'structure': predicted, 'confidence': 0.7}))
+    args = {'design_input': str(inverse / 'input.json'), 'design_result': str(designs),
+            'refold_input': str(fold / 'input.json'), 'refold_parameters': str(fold / 'parameters.json'),
+            'prediction': str(prediction), 'design_index': 0, 'structure_index': 0, 'prediction_chain': 'A'}
+    return args
+
+
+def test_correspondence_covers_changed_sequence_positions_with_exact_hashes(tmp_path):
+    args = correspondence_fixture(tmp_path)
+    output = tmp_path / 'correspondence'
+    output.mkdir()
+    metadata = prepare('design-refold-correspondence', args, output)
+    correspondence = json.loads((output / 'residue-map.json').read_bytes())
+    reference = (output / 'reference.pdb').read_text()
+    prediction = (output / 'prediction.structure').read_text()
+    assert metadata['selection']['mapped_residues'] == 3
+    assert correspondence['reference_sha256'] == hashlib.sha256(reference.encode()).hexdigest()
+    assert correspondence['prediction_sha256'] == hashlib.sha256(prediction.encode()).hexdigest()
+    metrics, _ = structure_helper().compare(reference, prediction, [('A', 'A')], residue_correspondence=correspondence)
+    assert metrics['correspondence_method'] == 'explicit-provenance'
+    assert metrics['mapped_residues'] == 3 and metrics['matched_identical_residues'] == 0
+    assert metrics['global_ca_rmsd_angstrom'] < 1e-12
+    assert structure_helper().confidence_fields(json.loads((output / 'prediction-result.json').read_bytes())) == {'retained_source_result.confidence': 0.7}
+
+
+def test_correspondence_consumes_published_mmcif_and_confidence_without_new_transport(tmp_path):
+    import io
+    from Bio.PDB import MMCIFIO, PDBParser
+    args = correspondence_fixture(tmp_path)
+    value = json.loads(Path(args['prediction']).read_bytes())
+    writer = MMCIFIO()
+    writer.set_structure(PDBParser(QUIET=True).get_structure('prediction', io.StringIO(value['structure'])))
+    output_text = io.StringIO()
+    writer.save(output_text)
+    coordinate_bytes = output_text.getvalue().encode()
+    confidence_bytes = b'{"ptm":0.75}'
+    entries = []
+    for index, (data, role, media) in enumerate([
+        (coordinate_bytes, 'protein-structure-mmcif/v1', 'chemical/x-mmcif'),
+        (confidence_bytes, 'structure-confidence-json/v1', 'application/json')]):
+        (tmp_path / f'output-{index:02d}.artifact').write_bytes(data)
+        entries.append({'semantic_type': role, 'artifact': {'media_type': media, 'compression': 'none',
+            'sha256': hashlib.sha256(data).hexdigest(), 'size_bytes': len(data)}})
+    manifest = tmp_path / 'output-manifest.json'
+    manifest.write_text(json.dumps({'schema': 'fs2-serve.nebius.ai/scientific-artifact-manifest/v1', 'entries': entries}))
+    args['prediction'] = str(manifest)
+    output = tmp_path / 'correspondence'
+    output.mkdir()
+    metadata = prepare('design-refold-correspondence', args, output)
+    assert metadata['selection']['mapped_residues'] == 3
+    assert (output / 'prediction.structure').read_bytes() == coordinate_bytes
+    retained = json.loads((output / 'prediction-result.json').read_bytes())
+    assert structure_helper().confidence_fields(retained) == {'retained_source_result.confidence_artifacts[0].ptm': 0.75}
+    (tmp_path / 'output-01.artifact').write_bytes(b'{"ptm":1}')
+    with pytest.raises((ValueError, RuntimeError)):
+        prepare('design-refold-correspondence', args, output)
+
+
+@pytest.mark.parametrize('change', ['wrong-design', 'wrong-query', 'wrong-parameter-sequence', 'missing-ca', 'wrong-returned-sequence', 'wrong-chain'])
+def test_correspondence_rejects_unproven_or_incomplete_mapping(tmp_path, change):
+    args = correspondence_fixture(tmp_path)
+    if change == 'wrong-design':
+        args['design_index'] = 1
+    elif change == 'wrong-chain':
+        args['prediction_chain'] = 'B'
+    elif change == 'wrong-query':
+        path = Path(args['refold_input'])
+        value = json.loads(path.read_bytes())
+        value['sequences'][0]['sequence'] = 'ACD'
+        path.write_text(json.dumps(value))
+    elif change == 'wrong-parameter-sequence':
+        path = Path(args['refold_parameters'])
+        value = json.loads(path.read_bytes())
+        value['sequence'] = 'ACD'
+        path.write_text(json.dumps(value))
+    else:
+        path = Path(args['prediction'])
+        value = json.loads(path.read_bytes())
+        value['structure'] = (value['structure'].replace('CYS', 'ALA') if change == 'wrong-returned-sequence' else
+                              '\n'.join(line for line in value['structure'].splitlines() if not (line.startswith('ATOM') and line[12:16].strip() == 'CA' and int(line[22:26]) == 1)))
+        path.write_text(json.dumps(value))
+    output = tmp_path / 'correspondence'
+    output.mkdir()
+    with pytest.raises(ValueError):
+        prepare('design-refold-correspondence', args, output)
+    assert not (output / 'residue-map.json').exists()

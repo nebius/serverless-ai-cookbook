@@ -29,14 +29,15 @@ HERE = Path(__file__).parent
 SCHEMA = 'scientific-workflow/v2'
 FINAL = {'completed', 'failed', 'cancelled', 'needs_attention'}
 MODEL_KINDS = {'native', 'batch'}
-PROTEIN_METHODS = {'proteinmpnn-input', 'esmfold2-fast-input'}
-LOCAL_METHODS = {'write-json', 'parquet-export', 'structure', 'docking', 'docking-batch', 'aging', 'report', 'clinical-study'} | PROTEIN_METHODS
+PROTEIN_METHODS = {'proteinmpnn-input', 'esmfold2-fast-input', 'design-refold-correspondence'}
+LOCAL_METHODS = {'write-json', 'python-script', 'parquet-export', 'structure', 'docking', 'docking-batch', 'aging', 'report', 'clinical-study'} | PROTEIN_METHODS
 HELPERS = {name: HERE / filename for name, filename in {
     'structure': 'structure-analysis.py', 'docking': 'molecule-analysis.py',
     'docking-batch': 'molecule-analysis.py', 'aging': 'aging-analysis.py', 'report': 'report-assembly.py'}.items()}
 HELPERS['clinical-study'] = Path(os.environ.get('SCIENTIFIC_CLINICAL_REPORT_HELPER',
     '/app/skill/clinical-documentation/scripts/study_report.py'))
 HELPERS.update({name: HERE / 'scientific_protein_preparation.py' for name in PROTEIN_METHODS})
+HELPERS['python-script'] = HERE / 'scientific_study.py'
 
 
 def workspace():
@@ -112,6 +113,8 @@ def input_references(step):
     if kind in MODEL_KINDS:
         return [step[key] for key in ('input', 'source', 'parameters', 'source_artifact') if key in step]
     args, method = step.get('arguments', {}), step['method']
+    if method == 'python-script':
+        return [args['script'], *[item['file'] for item in args['inputs']]]
     if method == 'write-json':
         def embedded(value):
             if isinstance(value, dict):
@@ -124,6 +127,8 @@ def input_references(step):
         return [args['backbone']]
     if method == 'esmfold2-fast-input':
         return [args['design_input'], args['design_result']]
+    if method == 'design-refold-correspondence':
+        return [args[key] for key in ('design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction')]
     if method in {'structure', 'docking'}:
         return [args[key] for key in ('reference', 'prediction', 'result', 'residue_map', 'request_file') if key in args]
     if method == 'docking-batch':
@@ -161,7 +166,7 @@ def validate(plan):
     if not isinstance(plan.get('steps'), list) or not plan['steps']:
         raise ValueError('A study needs ordered preparation/model/analysis steps.')
     earlier, inputs = set(), {}
-    workflow = workflow_module()
+    workflow = workflow_module() if any(step.get('kind') in MODEL_KINDS for step in plan['steps']) else None
     for step in plan['steps']:
         identifier = step.get('id') if isinstance(step, dict) else None
         if not isinstance(identifier, str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', identifier) or identifier in earlier:
@@ -220,9 +225,11 @@ def validate(plan):
 def validate_local_arguments(method, args):
     fields = {
         'write-json': ({'filename', 'value'}, set()),
+        'python-script': ({'script', 'inputs', 'parameters', 'outputs'}, set()),
         'parquet-export': ({'source', 'formats'}, set()),
         'proteinmpnn-input': ({'backbone', 'structure_index', 'chain', 'num_sequences', 'seed', 'sampling_temp', 'omit_aas'}, set()),
         'esmfold2-fast-input': ({'design_input', 'design_result', 'design_index', 'seed'}, set()),
+        'design-refold-correspondence': ({'design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction', 'design_index', 'structure_index', 'prediction_chain'}, set()),
         'structure': ({'reference', 'chain_map'}, {'prediction', 'result', 'structure_index', 'residue_map', 'request_file'}),
         'docking': ({'reference', 'same_coordinate_frame'}, {'prediction', 'result', 'threshold_queries'}),
         'docking-batch': ({'runs', 'same_coordinate_frame'}, {'threshold_queries'}),
@@ -238,6 +245,18 @@ def validate_local_arguments(method, args):
         raise ValueError('Docking analysis requires an explicit unchanged receptor coordinate frame.')
     if method == 'write-json' and (not isinstance(args['filename'], str) or Path(args['filename']).name != args['filename'] or not args['filename'].endswith('.json')):
         raise ValueError('write-json filename must be a JSON basename.')
+    if method == 'python-script':
+        names = [item['name'] for item in args['inputs']]
+        if len(names) != len(set(names)):
+            raise ValueError('python-script input binding names must be unique.')
+        reserved = {'script.py', 'script-provenance.json', 'input-bindings.json'}
+        for name in args['outputs']:
+            if Path(name).is_absolute() or '..' in Path(name).parts or '\\' in name or name in reserved:
+                raise ValueError('python-script output names must be relative scratch files and cannot replace script/provenance/bindings evidence.')
+        script = path_in_workspace(args['script'])
+        if not script.is_file():
+            raise ValueError('python-script source must already exist before study admission.')
+        compile(script.read_text(), str(script), 'exec')
     if method == 'parquet-export' and (not isinstance(args['formats'], list) or not args['formats'] or
             any(item not in {'npz', 'hdf5', 'zip', 'sqlite'} for item in args['formats']) or len(set(args['formats'])) != len(args['formats'])):
         raise ValueError('parquet-export formats must be a unique nonempty list of npz, hdf5, zip, sqlite.')
@@ -371,6 +390,48 @@ def local_command(method, args, scratch):
     return command
 
 
+def run_python_script(args, scratch, generation):
+    """The existing scientific Python environment, with frozen code and files.
+
+    This is an explicitly declared preparation/analysis phase, not an LLM loop
+    or alternate model client. Model requests remain native/batch plan stages.
+    """
+    script = path_in_workspace(args['script'])
+    inputs = {item['name']: path_in_workspace(item['file']) for item in args['inputs']}
+    measured = {'script': measure(script), 'inputs': {name: measure(path) for name, path in inputs.items()}}
+    output = scratch / 'script-output'
+    output.mkdir()
+    bindings = scratch / 'input-bindings.json'
+    bindings.write_bytes(canonical({'schema': 'scientific-python-bindings/v1',
+        'inputs': {name: str(path) for name, path in inputs.items()}, 'parameters': args['parameters']}) + b'\n')
+    # Run the exact frozen bytes copied to local scratch, preserving the original
+    # source hash and avoiding in-place source changes during interpreter reads.
+    source = scratch / 'script.py'
+    source.write_bytes(script.read_bytes())
+    verify_file(source, measured['script'])
+    environment = {name: value for name, value in os.environ.items()
+                   if not any(word in name.upper() for word in ('KEY', 'SECRET', 'TOKEN', 'PASSWORD', 'CREDENTIAL'))}
+    completed = subprocess.run([sys.executable, str(source), '--inputs', str(bindings), '--output-dir', str(output)],
+        cwd=scratch, env=environment, capture_output=True, timeout=120, preexec_fn=stop_with_parent)
+    if completed.returncode:
+        (generation / 'diagnostic.txt').write_bytes(f'Python analysis exited {completed.returncode}.\n'.encode() + completed.stderr[-8192:])
+        raise RuntimeError(f'Saved Python analysis failed; diagnostic retained at {generation / "diagnostic.txt"}.')
+    verify_file(script, measured['script'])
+    for name, path in inputs.items():
+        verify_file(path, measured['inputs'][name])
+    files = {}
+    for name in args['outputs']:
+        candidate = (output / name).resolve()
+        if not candidate.is_relative_to(output) or not candidate.is_file() or not candidate.stat().st_size:
+            raise ValueError(f'Declared Python output {name!r} is missing, empty or outside its private output directory; study is not complete.')
+        files[name] = candidate
+    provenance = scratch / 'script-provenance.json'
+    provenance.write_bytes(canonical({'schema': 'scientific-python-analysis/v1', **measured,
+        'parameters': args['parameters'], 'outputs': {name: {key: value for key, value in measure(path).items() if key != 'path'} for name, path in files.items()},
+        'interpreter': sys.executable, 'scientific_validity_claim': False}) + b'\n')
+    return {**files, 'script.py': source, 'input-bindings.json': bindings, 'script-provenance.json': provenance}
+
+
 def run_local(step, record):
     method, args = step['method'], resolve(step['arguments'], record)
     for value in input_references({'kind': step['kind'], 'method': method, 'arguments': args}):
@@ -381,14 +442,17 @@ def run_local(step, record):
     generation.mkdir(parents=True)
     with tempfile.TemporaryDirectory(prefix='scientific-study-phase-') as temporary:
         scratch = Path(temporary)
+        selected_files = None
         if method == 'write-json':
             (scratch / args['filename']).write_bytes(canonical(args['value']) + b'\n')
         elif method == 'parquet-export':
             export_parquet(path_in_workspace(args['source']), scratch, args['formats'])
         elif method in PROTEIN_METHODS:
             from scientific_protein_preparation import prepare
-            prepare(method, {key: str(path_in_workspace(value)) if key in {'backbone', 'design_input', 'design_result'} else value
+            prepare(method, {key: str(path_in_workspace(value)) if key in {'backbone', 'design_input', 'design_result', 'refold_input', 'refold_parameters', 'prediction'} else value
                              for key, value in args.items()}, scratch)
+        elif method == 'python-script':
+            selected_files = run_python_script(args, scratch, generation)
         else:
             command = local_command(method, args, scratch)
             # No secrets or API keys are needed by deterministic analysis.
@@ -400,9 +464,9 @@ def run_local(step, record):
                 (generation / 'diagnostic.txt').write_bytes(completed.stderr[-8192:])
                 raise RuntimeError(f'Deterministic {method} helper failed; retained diagnostic at {generation / "diagnostic.txt"}.')
         files = {}
-        for source in sorted(scratch.rglob('*')):
+        sources = selected_files or {str(source.relative_to(scratch)): source for source in sorted(scratch.rglob('*')) if source.is_file()}
+        for name, source in sources.items():
             if source.is_file():
-                name = str(source.relative_to(scratch))
                 files[name] = persist_local_file(source, generation / name)
         if not files:
             raise RuntimeError('Deterministic phase produced no files.')

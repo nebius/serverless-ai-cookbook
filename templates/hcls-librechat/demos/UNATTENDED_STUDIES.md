@@ -44,6 +44,8 @@ Supported phases reuse installed implementations:
 | preparation/parquet-export | Numeric Arrow/Parquet → NPZ, HDF5, ZIP/CSV, closed SQLite; independently reopen/compare every field |
 | preparation/proteinmpnn-input | Explicit returned backbone/index/chain → actual ProteinMPNN input JSON, preserving declared seed/temperature/count |
 | preparation/esmfold2-fast-input | Exact original ProteinMPNN input + selected generated FASTA row → refolding source JSON and parameters; no implicit sequence choice |
+| preparation/design-refold-correspondence | Exact original design/query/returned chain → full hash-bound query-position residue map for the existing structure evaluator |
+| preparation or analysis/python-script | Saved hash-frozen scientific Python source and declared files → private scratch outputs, verified publication and retained source/provenance; unchanged 120-second phase budget |
 | native | `invoke-native.py` with unchanged model/input/idempotency identity |
 | batch | `invoke-scientific-batch.py` with published input contract and verified artifact transport |
 | clinical | Existing bounded clinical runner, explicit model at the existing Token Factory provider, audio/artifact/transcript input |
@@ -94,13 +96,61 @@ there is no additional download transport or guessed artifact ID.
 Follow with `esmfold2-fast-input` referencing both this original `input.json` and
 the actual ProteinMPNN `result.json`, with explicit zero-based `design_index`
 and seed. Its `input.json` and `parameters.json` feed the existing ESMFold2-Fast
-batch phase. Declare the final structural analysis/report separately. Input
+batch phase. Then use `design-refold-correspondence` with `design_input`,
+`design_result`, `refold_input`, `refold_parameters`, `prediction` and explicit
+zero-based `design_index`, `structure_index`, and `prediction_chain`. The
+prediction can be an inline result, coordinate file, or the existing batch
+output manifest and verified sibling artifacts (PDB or mmCIF). It validates the
+exact selected designed sequence against the saved query and every returned
+C-alpha position. Its `reference.pdb`, `prediction-result.json` and
+`residue-map.json` feed the existing `structure` phase using `reference`,
+`result`, `residue_map` and explicit reference:prediction `chain_map`.
+Original confidence data remains separate from reference agreement. This is
+not a sequence-identity-only fit or an arbitrary observed-output tolerance.
+Declare the final structural analysis/report separately. Input
 FASTA rows are excluded from generated-design indexes; indexes are not seeds.
 These single-chain adapters require complete N/CA/C/O coordinates and explicit
 chain selection. Numbering gaps, insertions, noncanonical residues, mismatched
 source sequences and ambiguous multi-chain splitting stop with a useful error,
 not inferred scientific policy. Every preparation saves its measured source
 hashes, selection and original sampling settings in `provenance.json`.
+
+### Other scientific analysis, without another model turn
+
+Prefer the installed deterministic helpers above. For other scientific work,
+save source before launch and declare `method: "python-script"` with:
+
+```json
+{
+  "script": "/workspace/study/analyze.py",
+  "inputs": [{"name": "model_result", "file": {"step": "model", "file": "result.json"}}],
+  "parameters": {"reference_prefix": "ACGT"},
+  "outputs": ["metrics.json", "report.md"]
+}
+```
+
+The script accepts `--inputs FILE --output-dir DIRECTORY`. The bindings file is
+JSON with `schema: scientific-python-bindings/v1`, `inputs` mapping names to
+resolved verified file paths, and the exact `parameters` object. Read original
+data from those inputs; write and close every declared output under the private
+seekable output directory. It is the installed scientific Python interpreter
+(NumPy, Biopython, RDKit, Arrow/Pandas, HDF5), not a new shell or model client.
+Hosted inference belongs in explicit native/batch/clinical phases, not this
+analysis stage. Source code must already exist at study submission; source and
+existing input hashes are frozen then. Earlier-step inputs are resolved and
+verified only after their dependencies finish. External input files needed by
+the script must be declared rather than discovered from mutable ambient state.
+
+The unchanged 120-second per-phase subprocess budget applies. Every declared
+file must be nonempty before publication; missing, changed, or incomplete output
+fails visibly. The exact `script.py`, `input-bindings.json` and
+`script-provenance.json` publish with the outputs. Declared files may be nested
+relative paths; create their subdirectories in scratch. The existing immutable
+generation publisher and receipt determine completion. Restart does not rerun
+a committed script phase; an interrupted uncommitted local computation can
+rerun against the same frozen inputs in a new private scratch directory. This
+is not a guarantee of scientific correctness or a mechanism for external side
+effects. Do not rely on an arbitrary analysis script to submit paid work.
 
 ## Lifecycle and recovery
 
@@ -179,3 +229,13 @@ Explicit design index 0 reproduces the original selected sequence SHA256
 `f261e7b6a86fdc69bb21c507ea33a612b71255324ab23cd4b5314288235a3d75`.
 It is a preparation/recovery test without new inference, not a live whole-study
 or biological-quality claim.
+
+The correspondence follow-up replays the actual retained 48-residue refold and
+maps all 48 query positions, although only one residue is identical to the
+original generated backbone sequence. The unchanged structure evaluator reports
+global C-alpha RMSD 2.101842663898239 Å with explicit provenance. It does not
+silently switch to the one-residue identity-only fit. Script-phase tests also
+perform real suffix-only GC and RDKit QED calculations, reject changed source or
+inputs and missing/empty outputs, and kill/restart the worker after the script
+receipt while proving the completed script is not reexecuted. These are offline
+implementation gates, not inherited natural-client acceptance.
