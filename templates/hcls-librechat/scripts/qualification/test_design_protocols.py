@@ -5,11 +5,12 @@ import tarfile
 import tempfile
 import unittest
 
+import gemmi
 import numpy as np
 
 from design_protocol_cases import bundle, framework_pattern, trim_terminal_unresolved
-from design_protocol_metrics import aligned_rmsd, distinct_pattern_assignment, measure_structure
-from evaluators import evaluate
+from design_protocol_metrics import aligned_rmsd, distinct_pattern_assignment, measure_structure, sequence_constraint_chains
+from evaluators import evaluate, parse_chain
 
 
 def pdb(length, translation=0, mutate=None):
@@ -23,7 +24,56 @@ def pdb(length, translation=0, mutate=None):
     return "\n".join(lines + ["TER", "END", ""])
 
 
+def polymer_cif(*, missing=10, coordinate_mutation=None, sequence_mutation=None):
+    structure = gemmi.read_pdb_string(pdb(20, mutate=coordinate_mutation))
+    chain = structure[0][0]
+    for residue in chain:
+        residue.subchain = "A"
+        residue.entity_id = "1"
+        residue.label_seq = residue.seqid.num
+    if missing is not None:
+        del chain[missing - 1]
+    entity = gemmi.Entity("1")
+    entity.entity_type = gemmi.EntityType.Polymer
+    entity.polymer_type = gemmi.PolymerType.PeptideL
+    entity.subchains = ["A"]
+    entity.full_sequence = ["GLY" if i == sequence_mutation else "ALA" for i in range(1, 21)]
+    structure.entities.append(entity)
+    return structure.make_mmcif_document().as_string()
+
+
 class DesignProtocolTests(unittest.TestCase):
+    def test_emitted_sequence_keeps_missing_interior_residue_without_inventing_coordinates(self):
+        text = polymer_cif()
+        original = parse_chain(text, "A")
+        views, coverage = sequence_constraint_chains(text, {"A": original})
+        self.assertEqual(len(original["sequence"]), 19)
+        self.assertEqual(views["A"]["sequence"], "A" * 20)
+        self.assertIs(views["A"]["coordinates"], original["coordinates"])
+        self.assertEqual(coverage["A"]["missing_coordinate_positions"], [10])
+        expected = {"protocol": "nanobody-anything", "designed_patterns": ["A" * 20]}
+        measured = measure_structure(text, expected, Path("."))
+        self.assertTrue(measured["constraints_pass"])
+        self.assertEqual(measured["geometry"]["chains"][0]["residues"], 19)
+        self.assertFalse(measure_structure(text, {**expected, "designed_patterns": ["A" * 20] * 2}, Path("."))["constraints_pass"])
+
+    def test_real_fixed_mutation_is_not_rescued_by_full_sequence_metadata(self):
+        expected = {"protocol": "nanobody-anything", "designed_patterns": ["A" * 20]}
+        self.assertFalse(measure_structure(polymer_cif(coordinate_mutation=5, sequence_mutation=5), expected, Path("."))["constraints_pass"])
+        # An unobserved fixed residue is still constrained by its emitted sequence.
+        self.assertFalse(measure_structure(polymer_cif(sequence_mutation=10), expected, Path("."))["constraints_pass"])
+
+    def test_contradictory_sequence_or_duplicate_label_positions_fail(self):
+        for text in (polymer_cif(coordinate_mutation=5), polymer_cif(sequence_mutation=5)):
+            with self.assertRaisesRegex(ValueError, "contradicts"):
+                sequence_constraint_chains(text, {"A": parse_chain(text, "A")})
+        text = polymer_cif()
+        block = gemmi.cif.read_string(text).sole_block()
+        labels = block.find_values("_atom_site.label_seq_id")
+        labels[4] = labels[3]
+        with self.assertRaisesRegex(ValueError, "contradicts"):
+            sequence_constraint_chains(block.as_string(), {"A": parse_chain(text, "A")})
+
     def test_target_trims_only_unresolved_termini_not_internal_positions(self):
         self.assertEqual(trim_terminal_unresolved("ACDEFGH", [2, 3, 6]), "CDEFG")
         self.assertEqual(trim_terminal_unresolved("ACDEFGH", [1, 7]), "ACDEFGH")

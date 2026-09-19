@@ -28,6 +28,71 @@ def distinct_pattern_assignment(chains, patterns):
     return assign(0, set())
 
 
+def sequence_constraint_chains(text, chains):
+    """Use emitted polymer sequences, not guessed residues, for sequence checks.
+
+    Pinned BoltzGen writes unresolved residues to entity_poly_seq but omits their
+    atoms. Coordinate arrays remain untouched and geometry uses those arrays.
+    Explicit label_seq positions join every observed residue to its declared
+    sequence; contradictory or ambiguous metadata must not rescue a mismatch.
+    """
+    from evaluators import is_coordinate_cif
+    result = {chain: dict(value) for chain, value in chains.items()}
+    coverage = {chain: {"sequence_basis": "observed_C_alpha_residues",
+                        "missing_coordinate_positions": "unknown_without_polymer_sequence"} for chain in chains}
+    if not is_coordinate_cif(text):
+        return result, coverage
+    block = gemmi.cif.read_string(text).sole_block()
+    polymer = block.get_mmcif_category("_entity_poly_seq.")
+    if not polymer:
+        return result, coverage
+    positions = {}
+    for entity, number, monomer in zip(polymer["entity_id"], polymer["num"], polymer["mon_id"], strict=True):
+        number = int(number)
+        letter = gemmi.find_tabulated_residue(monomer).one_letter_code
+        if number < 1 or letter not in "ACDEFGHIKLMNPQRSTVWY" or len(letter) != 1:
+            raise ValueError("Polymer sequence needs explicit canonical residue positions")
+        mapping = positions.setdefault(entity, {})
+        if number in mapping:
+            raise ValueError("Ambiguous polymer sequence residue position")
+        mapping[number] = letter
+    asym = block.get_mmcif_category("_struct_asym.")
+    entities = dict(zip(asym["id"], asym["entity_id"], strict=True))
+    model = gemmi.make_structure_from_block(block)[0]
+    for chain in model:
+        if chain.name not in result:
+            continue
+        residues = [r for r in chain if r.het_flag == "A" or r.name == "MSE"]
+        subchains = {r.subchain for r in residues}
+        if len(subchains) != 1:
+            raise ValueError("Ambiguous protein chain to polymer entity mapping")
+        entity = entities.get(next(iter(subchains)))
+        if entity not in positions:
+            continue  # No full sequence was emitted for this chain; do not invent one.
+        mapping = positions[entity]
+        ordered = sorted(mapping)
+        if ordered != list(range(ordered[0], ordered[-1] + 1)):
+            raise ValueError("Polymer sequence itself has unspecified interior positions")
+        seen, observed_ca = set(), set()
+        for residue in residues:
+            position = residue.label_seq
+            letter = gemmi.find_tabulated_residue(residue.name).one_letter_code
+            if position in seen or mapping.get(position) != letter:
+                raise ValueError("Observed residue contradicts emitted polymer sequence label_seq mapping")
+            seen.add(position)
+            if any(a.name == "CA" for a in residue):
+                observed_ca.add(position)
+        if not observed_ca:
+            raise ValueError("Polymer sequence without observed coordinates cannot satisfy geometry")
+        result[chain.name]["sequence"] = "".join(mapping[position] for position in ordered)
+        coverage[chain.name] = {"sequence_basis": "emitted_entity_poly_seq_validated_against_observed_label_seq",
+                                "entity_id": entity, "sequence_positions": ordered,
+                                "observed_C_alpha_positions": sorted(observed_ca),
+                                "missing_coordinate_positions": sorted(set(mapping) - observed_ca),
+                                "coordinates_invented": False}
+    return result, coverage
+
+
 def measure_structure(text, expected, root):
     from evaluators import design_metrics, is_coordinate_cif, parse_chain, protein_chain_ids
     chains = {c: parse_chain(text, c) for c in protein_chain_ids(text)}
@@ -55,9 +120,11 @@ def measure_structure(text, expected, root):
                         constraints_pass=exact_sequence and rmsd <= expected["motif_ca_rmsd_limit"])
         designed = list(chains)
     else:
-        targets = [c for c, value in chains.items() if value["sequence"] == expected.get("target_sequence")]
+        sequence_chains, coverage = sequence_constraint_chains(text, chains)
+        measured["sequence_coordinate_coverage"] = coverage
+        targets = [c for c, value in sequence_chains.items() if value["sequence"] == expected.get("target_sequence")]
         target_ok = "target_sequence" not in expected or len(targets) == 1
-        designed = distinct_pattern_assignment({c: value for c, value in chains.items() if c not in targets}, expected["designed_patterns"])
+        designed = distinct_pattern_assignment({c: value for c, value in sequence_chains.items() if c not in targets}, expected["designed_patterns"])
         measured.update(target_sequence_exact=target_ok, assigned_designed_chains=designed,
                         fixed_framework_and_length_match=designed is not None,
                         constraints_pass=target_ok and designed is not None)
