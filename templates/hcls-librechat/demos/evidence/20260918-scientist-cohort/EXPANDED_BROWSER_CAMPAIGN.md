@@ -1,11 +1,37 @@
 # Expanded natural-browser campaign — live evidence ledger
 
-Checkpoint: 2026-09-19 00:12 UTC. This is an **incomplete qualification**, not a
+Checkpoint: 2026-09-19 00:30 UTC. This is an **incomplete qualification**, not a
 customer-readiness declaration. The parent twelve-hour campaign started at
 18:04 UTC and has a 2026-09-19 06:04 UTC review checkpoint. API-scale cohorts are
 tracked separately; do not count their requests as natural browser interactions.
 
 ## Topology and evidence boundaries
+
+### Latest release gate: v31 raw results correct, combined report malformed
+
+Fresh scientist06 v31 used typed sequential admission and multi-run analysis
+naturally. Five operations completed in99.387085 seconds from first admission
+to last completion; all16 pose values, mappings,16 molecule rows and exact
+requests/hashes independently verify. Four bounded observations returned
+without MCP timeouts. One read-only continuation was still required.
+
+The final combined report is **not accepted**: its four summary rows contain
+seven cells under eight headers, shifting values into wrong columns. The
+original7,996-byte report hash is
+`5ace12999d384d2c81c40ce296161a428f8663a89d221ad181fcd1009282893c`.
+A self-recovered rank_facts KeyError exposed our compact-versus-saved schema
+inconsistency; a separate f-string syntax error and incorrect interim count
+remain preserved. Independent evidence is in protected
+`scientist-06-chemistry-v31-independent-verification.json` and full chat/files.
+
+v32 candidate keeps compact/saved rank-facts layout identical, allows analysis
+output_directory, and assembles existing Markdown/CSV files without regenerating
+numbers. It preserves Markdown bytes and CSV numeric strings, rejects shifted
+CSV widths, records UTF-8 byte/hash lineage, and explicitly does not validate
+scientific narrative.16 Python,27 Node and21 seed/config tests pass. A preview
+and read-only natural recovery of the saved study remain pending. No new
+DiffDock inference is planned until the parent's independently diagnosed
+seed-propagation runtime fix is qualified. No limits were raised.
 
 ### Latest release gate: v29 narrative failure, v30 observation repair, v31 candidate
 

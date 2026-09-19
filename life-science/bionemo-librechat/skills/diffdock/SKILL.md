@@ -64,6 +64,11 @@ hashes. Never call all-pose counts top-ranked selections or infer group identity
 from filenames. Reuse the deterministic combined report; an optional narrative
 must agree with the explicit denominators and retain non-comparable poses.
 
+For a combined study report use `workbench_assemble_report` with the existing
+deterministic Markdown and CSV sections. It preserves numerical strings and
+checks table widths; it does not validate an optional narrative. Choose a new
+output directory, preserving earlier reports and their failures.
+
 For a single run use `workbench_compare_docking`. Supply workspace-relative
 `reference_file`, `result_file` (or predicted SDF `prediction_file`), and
 `same_coordinate_frame: true` only after confirming that frame. It invokes the

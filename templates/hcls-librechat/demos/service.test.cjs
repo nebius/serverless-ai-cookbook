@@ -88,7 +88,7 @@ test('stdio MCP exposes typed tools and rejects absent identity without inferenc
     { id: 3, method: 'tools/call', params: { name: 'clinical_list_jobs' } } ].map((item) => JSON.stringify({ jsonrpc: '2.0', ...item })).join('\n') + '\n');
   assert.equal(await new Promise((resolve) => child.on('exit', resolve)), 0);
   const messages = stdout.trim().split('\n').map(JSON.parse);
-  assert.equal(messages[1].result.tools.length, 22);
+  assert.equal(messages[1].result.tools.length, 23);
   assert.ok(messages[1].result.tools.every((tool) => tool.inputSchema.additionalProperties === false));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'workbench_track_operation'));
   assert.ok(messages[1].result.tools.some((tool) => tool.name === 'clinical_report_from_workspace'));
@@ -97,6 +97,10 @@ test('stdio MCP exposes typed tools and rejects absent identity without inferenc
   assert.deepEqual(dockingBatch.inputSchema.properties.runs.items.required, ['run_id', 'reference_file']);
   assert.equal(dockingBatch.inputSchema.properties.runs.maxItems, 16);
   assert.equal(dockingBatch.inputSchema.properties.same_coordinate_frame.const, true);
+  assert.equal(dockingBatch.inputSchema.properties.output_directory.type, 'string');
+  const report = messages[1].result.tools.find((tool) => tool.name === 'workbench_assemble_report');
+  assert.deepEqual(report.inputSchema.required, ['title', 'output_directory', 'sections']);
+  assert.deepEqual(report.inputSchema.properties.sections.items.properties.format.enum, ['markdown', 'csv']);
   const aging = messages[1].result.tools.find((tool) => tool.name === 'workbench_analyze_aging');
   assert.deepEqual(aging.inputSchema.properties.model_id.enum, ['phenoage', 'altumage']);
   assert.deepEqual(aging.inputSchema.properties.cohorts.items.required, ['label', 'input_file', 'result_file']);

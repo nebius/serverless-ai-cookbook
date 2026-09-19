@@ -11,7 +11,18 @@ const fail = (message) => Object.assign(new Error(message), { status: 400 });
 const PYTHON = process.env.SCIENTIFIC_ANALYSIS_PYTHON || '/opt/scientific-client/bin/python';
 const HELPERS = process.env.SCIENTIFIC_ANALYSIS_HELPERS || '/opt/bionemo';
 
+function outputPrefix(args, fallback) {
+  if (args.output_directory === undefined) return fallback;
+  const value = args.output_directory;
+  if (typeof value !== 'string' || !value.trim() || value.length > 1000 || path.isAbsolute(value)
+      || value.includes('\0') || value.split('/').some((part) => part === '..')) {
+    throw fail('output_directory must be a nonempty workspace-relative directory. Existing different files are never overwritten.');
+  }
+  return value.replace(/\/+$/, '');
+}
+
 async function compare(kind, key, args, storage) {
+  outputPrefix(args, '');
   if (!['docking', 'structure'].includes(kind)) throw fail('Unknown analysis method.');
   if (kind === 'docking' && args.same_coordinate_frame !== true) {
     throw fail('Confirm the reference and predictions share the unchanged receptor coordinate frame.');
@@ -73,7 +84,7 @@ async function compare(kind, key, args, storage) {
     }
     const metricsBytes = await fs.readFile(path.join(temporary, 'metrics.json'));
     const metrics = JSON.parse(metricsBytes);
-    const prefix = `.scientific-analysis/${kind}/${helperHash}/${hash(metricsBytes)}`;
+    const prefix = outputPrefix(args, `.scientific-analysis/${kind}/${helperHash}/${hash(metricsBytes)}`);
     const files = {};
     for (const name of await fs.readdir(temporary)) {
       if (!/^(metrics\.json|residue-mapping\.json|prediction\.(pdb|cif)|methods\.md|report\.md|rows\.csv)$/.test(name)) continue;
@@ -102,6 +113,7 @@ async function compare(kind, key, args, storage) {
 }
 
 async function dockingBatch(key, args, storage) {
+  outputPrefix(args, '');
   if (args.same_coordinate_frame !== true || !Array.isArray(args.runs) || !args.runs.length || args.runs.length > 16) {
     throw fail('Supply one to sixteen saved runs and explicitly confirm their shared receptor coordinate frames.');
   }
@@ -151,7 +163,7 @@ async function dockingBatch(key, args, storage) {
     }
     const bytes = await fs.readFile(path.join(temporary, 'metrics.json'));
     const metrics = JSON.parse(bytes);
-    const prefix = `.scientific-analysis/docking-batch/${helperHash}/${hash(bytes)}`;
+    const prefix = outputPrefix(args, `.scientific-analysis/docking-batch/${helperHash}/${hash(bytes)}`);
     const files = {};
     for (const name of ['metrics.json', 'rows.csv', 'report.md']) {
       const content = await fs.readFile(path.join(temporary, name));
@@ -167,13 +179,14 @@ async function dockingBatch(key, args, storage) {
       metrics: { schema: metrics.schema, method: metrics.method, summary: metrics.summary, groups: metrics.groups,
         all_poses_comparable: metrics.all_poses_comparable,
         runs: metrics.runs.map((run) => ({ run_id: run.run_id, group_id: run.group_id,
-          rank_facts: run.metrics.rank_facts, requested_pose_count: run.metrics.requested_pose_count,
-          comparable_pose_count: run.metrics.comparable_pose_count })), limitations: metrics.limitations },
+          metrics: { rank_facts: run.metrics.rank_facts, requested_pose_count: run.metrics.requested_pose_count,
+            comparable_pose_count: run.metrics.comparable_pose_count } })), limitations: metrics.limitations },
       evidence_guidance: 'Reuse report.md and rows.csv as the complete cross-run docking deliverable. Every group has explicit run, all-pose and top-ranked-pose denominators; never substitute one for another. Threshold counts are unrounded descriptive queries, not clinical/scientific pass criteria. Highest-confidence/best-RMSD overlap includes ties. File size_bytes is the exact UTF-8 byte count, not a character count. Optional interpretation must agree with these saved aggregates and preserve non-comparable poses.' };
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 
 async function aging(key, args, storage) {
+  outputPrefix(args, '');
   if (!['phenoage', 'altumage'].includes(args.model_id)
       || !Array.isArray(args.cohorts) || !args.cohorts.length || args.cohorts.length > 8) {
     throw fail('Choose an aging model and one to eight explicitly labelled input/result file pairs.');
@@ -215,7 +228,7 @@ async function aging(key, args, storage) {
     }
     const bytes = await fs.readFile(path.join(temporary, 'metrics.json'));
     const metrics = JSON.parse(bytes);
-    const prefix = `.scientific-analysis/aging/${helperHash}/${hash(bytes)}`;
+    const prefix = outputPrefix(args, `.scientific-analysis/aging/${helperHash}/${hash(bytes)}`);
     const files = {};
     for (const name of ['metrics.json', 'rows.csv', 'report.md']) {
       files[name] = await storage.retainWorkspaceBytes(key, `${prefix}/${name}`, await fs.readFile(path.join(temporary, name)));
@@ -237,4 +250,42 @@ async function aging(key, args, storage) {
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 
-module.exports = { compare, dockingBatch, aging };
+async function assembleReport(key, args, storage) {
+  if (!args.output_directory) throw fail('Choose a new workspace-relative report output_directory.');
+  const prefix = outputPrefix(args, '');
+  if (!Array.isArray(args.sections) || !args.sections.length || args.sections.length > 16) throw fail('Choose one to sixteen existing report sections.');
+  const sources = [];
+  for (const section of args.sections) {
+    if (!['markdown', 'csv'].includes(section.format)) throw fail('Section format must be markdown or csv.');
+    const file = await storage.workspaceGet(key, section.file);
+    if (file.size_bytes > 64 * 1024 * 1024) throw fail('Report section exceeds64 MiB.');
+    const bytes = await fs.readFile(file.absolute);
+    sources.push({ ...file, sha256: hash(bytes), size_bytes: bytes.length, title: section.title, format: section.format });
+  }
+  const helper = path.join(HELPERS, 'report-assembly.py');
+  const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'scientific-report-'));
+  try {
+    const manifest = path.join(temporary, 'manifest.json');
+    await fs.writeFile(manifest, JSON.stringify({ title: args.title,
+      sections: sources.map((source) => ({ title: source.title, format: source.format, file: source.absolute })) }));
+    try { await (storage.execute || execute)(PYTHON, [helper, '--manifest', manifest, '--output-dir', temporary],
+      { timeout: 50000, maxBuffer: 65536 }); }
+    catch (error) { throw fail(`Report assembly failed; no scientific validation claimed: ${String(error.stderr || error.message).slice(-2000)}`); }
+    for (const file of sources) {
+      if (hash(await fs.readFile(file.absolute)) !== file.sha256) throw fail('Report source changed during assembly; no document accepted.');
+    }
+    const bytes = await fs.readFile(path.join(temporary, 'report.md'));
+    const provenance = JSON.parse(await fs.readFile(path.join(temporary, 'provenance.json')));
+    if (provenance.report_sha256 !== hash(bytes) || provenance.report_size_bytes !== bytes.length) throw fail('Report byte verification failed.');
+    provenance.helper_sha256 = hash(await fs.readFile(helper));
+    provenance.workspace_sources = sources.map((source) => ({ file: source.normalized, sha256: source.sha256, size_bytes: source.size_bytes }));
+    const files = { 'report.md': await storage.retainWorkspaceBytes(key, `${prefix}/report.md`, bytes),
+      'provenance.json': await storage.retainWorkspaceBytes(key, `${prefix}/provenance.json`, Buffer.from(JSON.stringify(provenance, null, 2))) };
+    return { document_assembled: true, inference_submitted: false, scientific_claims_validated: false,
+      files, sections: provenance.sections.map(({ title, format, row_count, column_count, source_sha256 }) =>
+        ({ title, format, row_count, column_count, source_sha256 })),
+      evidence_guidance: 'Markdown sections are preserved verbatim and CSV values rendered in original order with exact checked column widths. Use this actual report rather than rewriting its numerical tables. File lineage and document construction are verified; scientific correctness and optional narrative claims still need review.' };
+  } finally { await fs.rm(temporary, { recursive: true, force: true }); }
+}
+
+module.exports = { compare, dockingBatch, aging, assembleReport };

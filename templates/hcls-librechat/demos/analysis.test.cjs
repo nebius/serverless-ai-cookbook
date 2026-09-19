@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const crypto = require('node:crypto');
 process.env.SCIENTIFIC_ANALYSIS_HELPERS = path.resolve(__dirname, '..');
-const { compare, dockingBatch, aging } = require('./analysis.cjs');
+const { compare, dockingBatch, aging, assembleReport } = require('./analysis.cjs');
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 
 async function fixture(run) {
@@ -39,6 +39,43 @@ async function fixture(run) {
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 }
 const args = { reference_file: 'reference.sdf', result_file: 'result.json', same_coordinate_frame: true };
+test('report assembly uses existing files, preserves UTF-8 and exact CSV cells without inference', () => fixture(async ({ dir, storage, retained }) => {
+  await fs.writeFile(path.join(dir, 'reference.sdf'), '# Verified method — Å\r\nUnchanged.\r\n');
+  await fs.writeFile(path.join(dir, 'result.json'), 'run,rank,overlap\na,1,false\nb,1,true\n');
+  storage.execute = async (_, argv, options) => {
+    assert.equal(options.timeout, 50000);
+    return require('node:util').promisify(require('node:child_process').execFile)('python3', argv, options);
+  };
+  const result = await assembleReport('fixture-key', { title: 'Complete study', output_directory: 'study/report-v2',
+    sections: [{ title: 'Method', format: 'markdown', file: 'reference.sdf' },
+      { title: 'Exact rows', format: 'csv', file: 'result.json' }] }, storage);
+  const bytes = retained['study/report-v2/report.md'];
+  assert.match(bytes.toString(), /\| a \| 1 \| false \|/);
+  assert.ok(bytes.includes(await fs.readFile(path.join(dir, 'reference.sdf'))));
+  assert.equal(result.files['report.md'].sha256, hash(bytes));
+  assert.equal(result.files['report.md'].size_bytes, bytes.length);
+  assert.equal(result.sections[1].row_count, 2);
+  assert.equal(result.sections[1].column_count, 3);
+  const provenance = JSON.parse(retained['study/report-v2/provenance.json']);
+  assert.equal(provenance.workspace_sources[0].sha256, hash(await fs.readFile(path.join(dir, 'reference.sdf'))));
+  assert.equal(result.inference_submitted, false);
+  assert.equal(result.scientific_claims_validated, false);
+  assert.equal(result.document_assembled, true);
+  await fs.writeFile(path.join(dir, 'result.json'), 'run,rank,overlap\na,false\n');
+  await assert.rejects(assembleReport('fixture-key', { title: 'Broken', output_directory: 'study/broken',
+    sections: [{ title: 'Rows', format: 'csv', file: 'result.json' }] }, storage), /row width/);
+  assert.equal(retained['study/broken/report.md'], undefined);
+  await assert.rejects(assembleReport('fixture-key', { title: 'Escape', output_directory: '../outside', sections: [] }, storage), /workspace-relative/);
+}));
+test('report source mutation is rejected before publication', () => fixture(async ({ dir, storage, retained }) => {
+  storage.execute = async (_, argv, options) => {
+    await require('node:util').promisify(require('node:child_process').execFile)('python3', argv, options);
+    await fs.writeFile(path.join(dir, 'reference.sdf'), 'mutated');
+  };
+  await assert.rejects(assembleReport('fixture-key', { title: 'Study', output_directory: 'study/new',
+    sections: [{ title: 'Method', format: 'markdown', file: 'reference.sdf' }] }, storage), /changed during assembly/);
+  assert.deepEqual(retained, {});
+}));
 test('multi-run docking uses existing helper once and retains true UTF-8 bytes and explicit denominators', () => fixture(async ({ storage, retained }) => {
   let executed = 0;
   storage.execute = async (_, argv, options) => {
@@ -54,7 +91,7 @@ test('multi-run docking uses existing helper once and retains true UTF-8 bytes a
     await fs.writeFile(path.join(folder, 'report.md'), '# Report — RMSD Å\n');
     await fs.writeFile(path.join(folder, 'rows.csv'), 'run,rank\nfirst,1\n');
   };
-  const result = await dockingBatch('fixture-key', { same_coordinate_frame: true,
+  const result = await dockingBatch('fixture-key', { same_coordinate_frame: true, output_directory: 'study/docking',
     runs: ['first', 'second'].map((run_id) => ({ run_id, group_id: 'target', reference_file: 'reference.sdf', result_file: 'result.json' })) }, storage);
   assert.equal(executed, 1);
   assert.equal(result.metrics.summary.top_ranked_poses.pose_count, 2);
@@ -63,9 +100,15 @@ test('multi-run docking uses existing helper once and retains true UTF-8 bytes a
   assert.notEqual(bytes.length, bytes.toString().length);
   assert.equal(result.files['report.md'].sha256, hash(bytes));
   assert.equal(result.provenance.inputs['0_result_file'].sha256, hash('{}'));
+  assert.equal(result.files['report.md'].relative_path, 'study/docking/report.md');
+  const full = JSON.parse(retained[result.files['metrics.json'].relative_path]);
+  assert.deepEqual(result.metrics.runs[0].metrics.rank_facts, full.runs[0].metrics.rank_facts);
+  assert.equal(result.metrics.runs[0].rank_facts, undefined);
   assert.equal(result.inference_submitted, false);
   await assert.rejects(dockingBatch('fixture-key', { same_coordinate_frame: true,
     runs: [{ run_id: 'same' }, { run_id: 'same' }] }, storage), /distinct/);
+  assert.equal(executed, 1);
+  await assert.rejects(dockingBatch('fixture-key', { output_directory: '../outside' }, storage), /workspace-relative/);
   assert.equal(executed, 1);
 }));
 test('typed docking adapter preserves actual helper metrics and exact byte/hash lineage', () => fixture(async ({ storage, retained }) => {

@@ -534,6 +534,7 @@ async function clinicalOutput(owner, key, id, filename) {
 async function analyzeWorkspace(kind, key, args) {
   const analysis = require('./analysis.cjs');
   return kind === 'aging' ? analysis.aging(key, args, { workspaceGet, retainWorkspaceBytes })
+    : kind === 'report' ? analysis.assembleReport(key, args, { workspaceGet, retainWorkspaceBytes })
     : kind === 'docking-batch' ? analysis.dockingBatch(key, args, { workspaceGet, retainWorkspaceBytes })
     : analysis.compare(kind, key, args, { workspaceGet, retainWorkspaceBytes });
 }

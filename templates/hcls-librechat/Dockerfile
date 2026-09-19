@@ -55,6 +55,7 @@ COPY templates/hcls-librechat/upload-artifact.py /opt/bionemo/upload-artifact.py
 COPY templates/hcls-librechat/scripts/scientific-batch-acceptance.py /opt/bionemo/invoke-scientific-batch.py
 COPY templates/hcls-librechat/structure-analysis.py /opt/bionemo/structure-analysis.py
 COPY templates/hcls-librechat/molecule-analysis.py /opt/bionemo/molecule-analysis.py
+COPY templates/hcls-librechat/report-assembly.py /opt/bionemo/report-assembly.py
 COPY templates/hcls-librechat/aging-analysis.py /opt/bionemo/aging-analysis.py
 COPY templates/hcls-librechat/scripts/qualification/evaluators.py /opt/bionemo/qualification_evaluators.py
 COPY --from=aging-reference /opt/aging-reference /opt/bionemo/aging-reference
