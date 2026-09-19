@@ -9,7 +9,8 @@ const compiled = ts.transpileModule(fs.readFileSync(`${__dirname}/../WorkspaceIn
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 vm.runInNewContext(compiled, { module: moduleUnderTest, exports: moduleUnderTest.exports, URL,
-  require: (name) => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : {} });
+  require: (name) => name === 'react/jsx-runtime' ? { jsx, jsxs: jsx }
+    : name === 'react' ? { default: { isValidElement: () => false } } : {} });
 const { workspaceCodeHref, workspaceCodeLinks, WorkspaceCodeBlockLinks, default: Component } = moduleUnderTest.exports;
 
 test('exact natural code-span URL becomes a same-origin link without changing text', () => {

@@ -20,11 +20,25 @@ export function workspaceCodeHref(children: unknown): string | undefined {
   return url.pathname + url.search;
 }
 
+/** Read passive syntax-highlight spans without changing the rendered code. */
+function highlightedCodeText(value: unknown, depth = 0): string | undefined {
+  if (depth > 32) return undefined;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    const parts = value.map((part) => highlightedCodeText(part, depth + 1));
+    return parts.every((part) => part !== undefined) ? parts.join('') : undefined;
+  }
+  if (React.isValidElement<{ children?: React.ReactNode; className?: string }>(value)
+    && value.type === 'span'
+    && Object.keys(value.props).every((key) => key === 'children' || key === 'className')) {
+    return highlightedCodeText(value.props.children, depth + 1);
+  }
+  return undefined;
+}
+
 /** Add navigation only to a block containing complete workspace URL lines. */
 export function workspaceCodeLinks(children: unknown): Array<{ href: string; label: string }> {
-  const text = typeof children === 'string' ? children
-    : Array.isArray(children) && children.every((part) => typeof part === 'string')
-      ? children.join('') : undefined;
+  const text = highlightedCodeText(children);
   if (!text) return [];
   const lines = text.split(/\r?\n/u).filter((line) => line !== '');
   if (!lines.length) return [];
