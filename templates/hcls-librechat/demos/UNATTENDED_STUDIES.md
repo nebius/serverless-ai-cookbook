@@ -41,10 +41,28 @@ frozen before admission. A changed plan cannot take over an existing output.
 returns a compact list by default. Select only required `methods` for their
 exact launcher schemas and guaranteed versus conditional output filenames.
 It includes a small versioned file-plan example, not a fixture-specific plan.
-Write longer files in bounded logical pieces; never put an entire scientific
-program plus whole-study plan into one model tool argument. This changes no
-tool/provider budget or runtime policy. Only v1 plan files retain legacy
-native/batch-only behavior.
+For longer plans, `compose_scientific_workflow_mcp_environment-execution` accepts
+small groups of the **same** typed steps and deliverables, avoiding a generated
+shell program just to serialize JSON. Create with `draft_directory`, `title`,
+and initial steps/deliverables. Edit with the returned `current_sha256` as
+`expected_sha256`. Existing IDs/names replace in place; new ones append in the
+supplied order. Explicit removals are supported; the composer never reorders
+scientific dependencies. Several related steps can share one call.
+
+`finalize: true` can accompany the last group. It invokes the existing complete
+study validator and returns `finalized`, `validation_error`, and the immutable
+`plan_file`/SHA256. Partial or invalid plans remain drafts and submit no inference.
+Only then call the existing launcher with `plan_file` and `output_directory`;
+admission revalidates and freezes current input/helper bytes as before. Reading
+with only `draft_directory` recovers its current receipt. Exact repeated edits
+return their retained revision without rolling back later edits. Stale edits
+fail without changing the draft. Plan revisions use the existing closed-file
+verified publisher and journal, not a second workflow engine or distributed lock.
+
+Python stages still reference an existing saved script, not inline source.
+Write unsupported-science source in bounded logical pieces; never put an entire
+program plus plan into one argument. This changes no tool/provider budget or
+runtime policy. Only v1 plan files retain legacy native/batch-only behavior.
 
 Supported phases reuse installed implementations:
 

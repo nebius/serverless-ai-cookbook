@@ -63,7 +63,7 @@ COPY templates/hcls-librechat/structure-analysis.py /opt/bionemo/structure-analy
 COPY templates/hcls-librechat/molecule-analysis.py /opt/bionemo/molecule-analysis.py
 COPY templates/hcls-librechat/report-assembly.py /opt/bionemo/report-assembly.py
 COPY templates/hcls-librechat/aging-analysis.py /opt/bionemo/aging-analysis.py
-COPY templates/hcls-librechat/scientific_study.py templates/hcls-librechat/scientific_study_schema.py templates/hcls-librechat/scientific_preparation.py templates/hcls-librechat/scientific_protein_preparation.py templates/hcls-librechat/scientific_clinical.py templates/hcls-librechat/scientific-study-worker.py /opt/bionemo/
+COPY templates/hcls-librechat/scientific_study.py templates/hcls-librechat/scientific_study_schema.py templates/hcls-librechat/scientific_workflow_draft.py templates/hcls-librechat/scientific_preparation.py templates/hcls-librechat/scientific_protein_preparation.py templates/hcls-librechat/scientific_clinical.py templates/hcls-librechat/scientific-study-worker.py /opt/bionemo/
 COPY templates/hcls-librechat/scripts/qualification/evaluators.py /opt/bionemo/qualification_evaluators.py
 COPY --from=aging-reference /opt/aging-reference /opt/bionemo/aging-reference
 RUN python3 -m venv /opt/scientific-client \

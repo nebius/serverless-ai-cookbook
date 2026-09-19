@@ -15,7 +15,7 @@ import subprocess
 import sys
 import time
 import uuid
-from scientific_study_schema import STUDY_SCHEMA, PHASE_OUTPUTS, describe_workflow
+from scientific_study_schema import STUDY_SCHEMA, DRAFT_SCHEMA, PHASE_OUTPUTS, describe_workflow
 
 ROOT = Path(os.environ.get('SCIENTIFIC_EXECUTION_DIR', '/data/hcls-execution'))
 WORKSPACE = os.environ.get('SCIENTIFIC_WORKSPACE', '/workspace')
@@ -412,7 +412,16 @@ def upload_worker(plan_path):
         print(json.dumps({'id': item['id'], 'artifact_file': str(artifact_file), 'artifact': artifact}), flush=True)
 
 
+def compose_scientific_workflow(arguments):
+    from scientific_workflow_draft import compose
+    return compose(arguments)
+
+
 TOOLS = [
+    {'name': 'compose_scientific_workflow',
+     'description': 'Build the existing scientific-workflow/v2 plan in compact typed groups, without shell/JSON serialization or inference. Create with draft_directory, title and initial steps/deliverables. Subsequent edits use expected_sha256=current_sha256 from the latest receipt; upsert steps by id and deliverables by name. Include several related steps per call, not one call per step. finalize=true may accompany the last group and runs the SAME complete-plan validator as admission. Only finalized=true is ready: pass returned immutable plan_file to run_scientific_workflow with final output_directory. Draft-directory-only reads recover a lost reply; exact repeated edits reuse their revision, never roll the head back. Scripts remain existing workspace file references, never inline programs. Original model settings, call identities, budgets and admission behavior are unchanged.',
+     'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': False},
+     'inputSchema': DRAFT_SCHEMA},
     {'name': 'describe_scientific_workflow',
      'description': 'Read-only compact discovery for the existing durable whole-study launcher. Omit methods for available phase names; select only needed methods for the exact SAME typed step schemas, guaranteed versus conditional output filenames, and a concise file-backed v2 example. Prefer this to reading helper implementation or unrelated catalogs. Does not inspect patient data, submit work, alter files or select model settings.',
      'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
@@ -438,7 +447,7 @@ TOOLS = [
                     'media_type': {**TEXT, 'description': 'Actual source MIME accepted by the live model contract.'},
                     'idempotency_key': {'type': 'string', 'minLength': 8, 'maxLength': 200}}}}}}},
     {'name': 'run_scientific_workflow',
-     'description': 'Preferred whole-study launch: supply inline study OR plan_file pointing to existing scientific-workflow/v2 JSON, plus output_directory. Both use the same immutable plan, input validation and persistent worker. Prefer file-backed plans for longer studies: write source/plan files in bounded logical pieces, then submit their path, not a giant script inside tool arguments. Include ordered preparation, native/batch/clinical, deterministic analysis and final deliverables. File references are existing workspace paths or {step,file}; native result.json and batch output-manifest.json preserve their verified sibling artifacts. Supported mindeval analysis consumes full saved record paths directly and publishes exact transcripts, scores, counts and report without catalog or new model calls. The worker continues after chat disconnect or process restart, serializes admission, and publishes verified final files in Runs. Do NOT ask for mechanical continue to run declared phases. Repeating the same plan/output returns the same study; unknown admissions stop for inspection. Only legacy steps or scientific-workflow/v1 plan files omit whole-study analysis. No budgets are increased; completion is not scientific validation.',
+     'description': 'Preferred whole-study launch: supply inline study OR plan_file pointing to existing scientific-workflow/v2 JSON, plus output_directory. Both use the same immutable plan, input validation and persistent worker. Prefer compose_scientific_workflow for longer plans: small typed groups produce a validated immutable plan_file, not a giant script inside tool arguments. Include ordered preparation, native/batch/clinical, deterministic analysis and final deliverables. File references are existing workspace paths or {step,file}; native result.json and batch output-manifest.json preserve their verified sibling artifacts. Supported mindeval analysis consumes full saved record paths directly and publishes exact transcripts, scores, counts and report without catalog or new model calls. The worker continues after chat disconnect or process restart, serializes admission, and publishes verified final files in Runs. Do NOT ask for mechanical continue to run declared phases. Repeating the same plan/output returns the same study; unknown admissions stop for inspection. Only legacy steps or scientific-workflow/v1 plan files omit whole-study analysis. No budgets are increased; completion is not scientific validation.',
      'annotations': {'readOnlyHint': False, 'destructiveHint': False, 'openWorldHint': True},
      'inputSchema': {'type': 'object', 'additionalProperties': False,
         'required': ['output_directory'], 'oneOf': [{'required': ['steps'], 'not': {'anyOf': [{'required': ['plan_file']}, {'required': ['study']}]}},
@@ -487,6 +496,7 @@ def main():
             elif method == 'tools/call':
                 params = request['params']
                 handler = {'execute_command': execute, 'read_execution': read_job,
+                           'compose_scientific_workflow': compose_scientific_workflow,
                            'describe_scientific_workflow': lambda args: describe_workflow(args.get('methods')),
                            'run_scientific_workflow': run_scientific_workflow,
                            'recover_scientific_results': recover_scientific_results,

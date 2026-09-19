@@ -75,12 +75,35 @@ const plan = {schema: 'scientific-workflow/v2', title: 'Offline rendered-stdio s
   deliverables: [{name: 'measurement.json', role: 'data', source: {step: 'prepare', file: 'measurement.json'}},
     {name: 'report.md', role: 'report', source: {step: 'report', file: 'report.md'}},
     {name: 'provenance.json', role: 'provenance', source: {step: 'report', file: 'provenance.json'}}]};
-async function runCase(label, values, expectedError) {
+async function runCase(label, values, expectedError, useComposer = false) {
   const options = configure(values);
   assert(!('SCIENTIFIC_STUDY_OWNER_MODE' in getDefaultEnvironment()));
-  const client = await connect(options);
-  const args = {study: plan, output_directory: path.join(root, label)};
+  let client = await connect(options);
+  let args = {study: plan, output_directory: path.join(root, label)};
   try {
+    if (useComposer) {
+      const directory = path.join(root, label + '-draft');
+      const first = unpack(await client.callTool({name: 'compose_scientific_workflow', arguments: {
+        draft_directory: directory, title: plan.title, steps: plan.steps.slice(0, 1), deliverables: plan.deliverables}}));
+      assert.equal(first.finalized, false);
+      assert.equal(first.inference_submitted, false);
+      const noStudy = parentPython('import json, scientific_study as s; print(json.dumps(s.list_studies()))');
+      assert.deepEqual(noStudy, []);
+      await client.close();
+      client = await connect(options); // A fresh filtered stdio process reads the saved draft.
+      const recovered = unpack(await client.callTool({name: 'compose_scientific_workflow', arguments: {draft_directory: directory}}));
+      assert.equal(recovered.sha256, first.sha256);
+      const edit = {draft_directory: directory, expected_sha256: recovered.current_sha256,
+        steps: plan.steps.slice(1), finalize: true};
+      const finalized = unpack(await client.callTool({name: 'compose_scientific_workflow', arguments: edit}));
+      assert.equal(finalized.finalized, true);
+      assert.deepEqual(JSON.parse(fs.readFileSync(finalized.plan_file)), plan);
+      assert.equal(digest(fs.readFileSync(finalized.plan_file)), finalized.sha256);
+      const replay = unpack(await client.callTool({name: 'compose_scientific_workflow', arguments: edit}));
+      assert.equal(replay.replayed, true);
+      assert.equal(replay.sha256, finalized.sha256);
+      args = {plan_file: finalized.plan_file, output_directory: args.output_directory};
+    }
     const raw = await client.callTool({name: 'run_scientific_workflow', arguments: args});
     if (expectedError) {
       assert.equal(raw.isError, true);
@@ -128,7 +151,8 @@ async function runCase(label, values, expectedError) {
       }
       observations.push({case: label, state: reread.state, owner_namespace: before.owner,
         study_id: accepted.id, artifact_count: reread.artifacts.length, idempotent: true,
-        disconnected_worker_completion: true, reconnected_read_verified: true});
+        disconnected_worker_completion: true, reconnected_read_verified: true,
+        grouped_composer: useComposer, draft_process_restart_recovered: useComposer});
     } finally { await reconnected.close(); }
   } finally { await client.close(); }
 }
@@ -179,6 +203,7 @@ async function main() {
   await omittedBindingRegression();
   await runCase('email-first', {SCIENTIFIC_STUDY_OWNER_MODE: 'first-instance', SEED_DEFAULT_USER_EMAIL: 'first@example.test'});
   await runCase('explicit-stopped', {SCIENTIFIC_STUDY_OWNER_MODE: 'stopped-predecessor', SCIENTIFIC_STUDY_OWNER: 'stable-explicit-owner', SEED_DEFAULT_USER_EMAIL: 'ignored@example.test'});
+  await runCase('composer-first', {SCIENTIFIC_STUDY_OWNER_MODE: 'first-instance', SEED_DEFAULT_USER_EMAIL: 'composer@example.test'}, undefined, true);
   await runCase('missing-mode', {SEED_DEFAULT_USER_EMAIL: 'first@example.test'}, /stop-first deployment preflight/);
   await runCase('invalid-mode', {SCIENTIFIC_STUDY_OWNER_MODE: 'invalid-mode', SEED_DEFAULT_USER_EMAIL: 'first@example.test'}, /stop-first deployment preflight/);
   await runCase('missing-owner', {SCIENTIFIC_STUDY_OWNER_MODE: 'first-instance'}, /dedicated-user identity/);

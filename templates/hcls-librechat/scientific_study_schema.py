@@ -74,12 +74,27 @@ STEPS = [NATIVE, BATCH, CLINICAL,
         'items': object_schema({'title': TEXT, 'file': FILE, 'format': {'enum': ['markdown', 'csv', 'operation-timing', 'recorded-export', 'rgb-statistics', 'mindeval-runs']}})}})),
     local('clinical-study', object_schema({'plan_file': FILE})),
     local('mindeval', object_schema({'title': TEXT, 'records': {'type': 'array', 'minItems': 1,
-        'items': FILE, 'description': 'Full saved MindEval run files with state.config, state.transcript and retained judgment. No catalog/model calls. Publishes report.md, scores.csv, runs.csv, measurements.json, provenance.json, exact records/ and full transcripts/.'}})),
+        'items': FILE, 'description': 'Full native saved run JSON: state.config, state.transcript[{role,content,...}], and optional state.judgment.judgment mapping criterion names to scores. This nested native judgment shape is directly supported: do NOT transform it into judgment.scores or write a custom parser. Preserves original records/transcripts, identities, supplied criterion rows, descriptive within-profile pairing, missing cells and judge-family limitations. No catalog/model calls.'}})),
 ]
+DELIVERABLE = object_schema({'name': TEXT,
+    'role': {'enum': ['report', 'data', 'metrics', 'provenance', 'support']}, 'source': FILE})
 STUDY_SCHEMA = object_schema({'schema': {'const': 'scientific-workflow/v2'}, 'title': TEXT,
     'steps': {'type': 'array', 'minItems': 1, 'items': {'oneOf': STEPS}},
-    'deliverables': {'type': 'array', 'minItems': 1, 'items': object_schema({
-        'name': TEXT, 'role': {'enum': ['report', 'data', 'metrics', 'provenance', 'support']}, 'source': FILE})}})
+    'deliverables': {'type': 'array', 'minItems': 1, 'items': DELIVERABLE}})
+DRAFT_SCHEMA = object_schema({
+    'draft_directory': {**TEXT, 'description': 'Workspace directory for verified draft receipts and immutable plan revisions, not the final output directory.'},
+    'expected_sha256': {'type': 'string', 'pattern': '^[0-9a-f]{64}$',
+                        'description': 'Required for edits to an existing draft: copy current_sha256 from its latest receipt.'},
+    'title': TEXT,
+    'steps': {'type': 'array', 'minItems': 1, 'items': {'oneOf': STEPS},
+              'description': 'One small related group of complete typed steps. Upsert by id; existing order is retained and new IDs append in supplied order.'},
+    'deliverables': {'type': 'array', 'minItems': 1, 'items': DELIVERABLE,
+                     'description': 'Upsert declared final files by name; references may target steps added in a later draft edit.'},
+    'remove_steps': {'type': 'array', 'minItems': 1, 'uniqueItems': True, 'items': TEXT},
+    'remove_deliverables': {'type': 'array', 'minItems': 1, 'uniqueItems': True, 'items': TEXT},
+    'finalize': {'type': 'boolean', 'default': False,
+                 'description': 'Validate the complete v2 plan and existing inputs using the unchanged admission validator. May accompany the last group. Does not submit inference.'},
+}, ['draft_directory'])
 
 # Discovery and validation use the same argument definitions, not a second
 # loosely documented plan language. Lists apply only to successful phases;
@@ -119,9 +134,11 @@ def describe_workflow(methods=None):
                          'always_on_success': PHASE_OUTPUTS[name][0], 'conditional': PHASE_OUTPUTS[name][1]} for name in methods},
         'submission': {'tool': 'run_scientific_workflow_mcp_environment-execution',
                        'arguments': {'plan_file': '/workspace/research/plan.json', 'output_directory': '/workspace/research/final'}},
+        'draft_composer': {'tool': 'compose_scientific_workflow_mcp_environment-execution',
+            'guidance': 'Create with draft_directory, title and a compact group of typed steps/deliverables. Add related groups with expected_sha256=current_sha256; finalize=true can accompany the last group. Pass its finalized plan_file to the existing launcher. Draft-directory-only reads recover a lost reply. No inference is submitted by composition.'},
         'plan_file_example': {'schema': 'scientific-workflow/v2', 'title': 'Retained measurements',
             'steps': [{'id': 'report', 'kind': 'analysis', 'method': 'report', 'arguments': {
                 'title': 'Retained measurements', 'sections': [{'title': 'Measured rows', 'format': 'csv', 'file': '/workspace/research/measurements.csv'}]}}],
             'deliverables': [{'name': name, 'role': role, 'source': {'step': 'report', 'file': name}}
                              for name, role in [('report.md', 'report'), ('provenance.json', 'provenance')]]},
-        'guidance': 'Example paths are placeholders: use actual existing files and user-authorized phases. Write longer plan/script files in bounded logical pieces, validate complete JSON, then submit once. File references are paths, not automatic content conversion. Declare only guaranteed outputs. Read-only reuse needs no provider catalog. Current model input/settings still come from its exact live published schema.'}
+        'guidance': 'Example paths are placeholders: use actual existing files and user-authorized phases. Prefer the draft composer for longer plans; save unsupported-science Python source in bounded logical pieces before referencing it. File references are paths, not automatic content conversion. Declare only guaranteed outputs. Read-only reuse needs no provider catalog. Current model input/settings still come from its exact live published schema.'}
