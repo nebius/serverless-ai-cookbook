@@ -1,0 +1,745 @@
+{
+  "schema": "natural-clinical-v42-three-cohort-evidence/v1",
+  "recorded_at": "2026-09-19T05:25:19.604269+00:00",
+  "scope": "Three isolated scientist08 browser conversations; no broad production or clinical qualification.",
+  "endpoint_id": "aiendpoint-e00h0p3h5hddp0ktay",
+  "source_commit": "7674a107eeeb2fce5782030c872adad91e966add",
+  "image_tag": "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:r0919-v42-7674a10",
+  "image_index": "sha256:ffc003193e5e26886ad1c5f3278b2e6a07e6c1dd51234131c8da901b0256fc81",
+  "image_amd64": "sha256:c024118c6b9a8d5d1972d871dd011e34bb9e81c249408921f0e0f1f86b0e185b",
+  "identity_evidence": {
+    "path": "browser-evidence/workbench-v42-installed-r2/summary.json",
+    "bytes": 3621,
+    "sha256": "ec2e91921b734be3e9f1c485124b2d927773f60901e87e30ade0e83c1d76162d"
+  },
+  "planner": {
+    "model": "deepseek-ai/DeepSeek-V4-Pro-0813",
+    "reasoning_effort": "low",
+    "max_output_tokens": 8192,
+    "context_tokens": 131072,
+    "changed": false
+  },
+  "backend_boundary": {
+    "helm182_start": "2026-09-19T05:05:48.23772438Z",
+    "settled_by": "2026-09-19T05:10:17Z",
+    "cp_only": true,
+    "model_runtime_changes": false,
+    "scope": "English conversation spans rollout; its first failed turn ended before Helm start. Both actual report drafts and negative job began after settled boundary."
+  },
+  "cohorts": [
+    {
+      "name": "english",
+      "conversation_id": "b12aa8d4-6abb-511e-ac32-865abd7ecb3e",
+      "job_id": "a88ad83ff0a2bb9d66ef7ac98d9ac90f",
+      "internal_run_id": "clinical-df7d27e098544cff890e4447bd466b30",
+      "prompt_sha256": "5e9fa713d63b455f70e1af39f1095268322515c811ae3e5eabcd8079baf192bc",
+      "previous_prompt_sha256": "cc748e007be2d78b94e73118c11c84d60e2cf1edb0c1a59133e2cf0d0083f241",
+      "prompt_change": "output directory only",
+      "user_turns": 3,
+      "ordinary_continuations": 2,
+      "first_user_at": "2026-09-19T05:02:44.709Z",
+      "final_assistant_at": "2026-09-19T05:16:15.397Z",
+      "user_to_final_seconds": 810.688,
+      "status": "completed",
+      "error_code": null,
+      "job_created_at": "2026-09-19T05:11:46.724Z",
+      "job_finished_at": "2026-09-19T05:12:24.586Z",
+      "source_bytes": 6817,
+      "source_sha256": "e511be3353a9cdad1d2d2f10e7000ec7b9f2986e01ed3785f10723d99e3ffbee",
+      "new_asr_calls": 0,
+      "new_draft_attempts": 1,
+      "browser_downloads": [
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/FINAL-STUDY-REPORT.md",
+          "bytes": 5829,
+          "sha256": "0d2224dde658abf525f05778be85bb43a40210759af39179b047788e14c41cc0",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/README.md",
+          "bytes": 686,
+          "sha256": "aa51871b7d82e6ad530a0c503153c519d0439381ff8b1d4144d8ef1f6e73a9b2",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/document.json",
+          "bytes": 79844,
+          "sha256": "9437dd76d0611d615f934b4ff200fdb5f8742fd7b06b00afb6bc7095016c1b5c",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/follow-up.md",
+          "bytes": 2519,
+          "sha256": "1820381b8bcc896db6117f9be2240ca490a2d5e26ac016d1c159b2cc436e67c5",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/methods-and-limitations.md",
+          "bytes": 7270,
+          "sha256": "f11941c254c36cdcb216d3ec527951116b3401b0c87ae7da3a87085c319def30",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/reference-comparison.json",
+          "bytes": 2847,
+          "sha256": "e041501a55d8096cb90bf11bfc627af3c21986fce5426547c271c5761a824cbb",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/report.md",
+          "bytes": 33105,
+          "sha256": "5a6a6a5208086c81586cc8870bb715fc83cecb4bc1503c6e7d54ec192ecf09b0",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/review.json",
+          "bytes": 12601,
+          "sha256": "6c596e275cf4c72b62b43ce88c50d6939482e4b7dc1b5d152d82258d895dd44b",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/review.md",
+          "bytes": 6656,
+          "sha256": "72173288c32291d8f72cd6acd622b446c13d8db06f69b2a68978572d2d6014e9",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/run.json",
+          "bytes": 1042,
+          "sha256": "5fdb9c0761ecb01c569601f0bbd3190ffef72e2e9986095434c3eee17745fdd8",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/transcript.txt",
+          "bytes": 6817,
+          "sha256": "e511be3353a9cdad1d2d2f10e7000ec7b9f2986e01ed3785f10723d99e3ffbee",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/english-downloads/wer-summary.json",
+          "bytes": 6114,
+          "sha256": "be8b781a2bd463d520491ef5bd0040911a2ba41208a349216d9ac69d8be67c99",
+          "equals_retained_api_or_workspace": true
+        }
+      ],
+      "evidence": [
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/messages.json",
+          "bytes": 781798,
+          "sha256": "8992abe4f069f77f7daf4b30530f482cfd11a322d92aa60b0e8df50d38666c3e"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/clinical-jobs.json",
+          "bytes": 824,
+          "sha256": "5144fd4eb7c3e5cc134953228ff5b04e9e0064efdfc45c9540f84e3969a72af7"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/receipt.json",
+          "bytes": 1849,
+          "sha256": "609819dc58e9694995ec2250f7264896349e7f44d5d6ec43bd660e5d31d11b49"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-workspace-final/receipt.json",
+          "bytes": 12828,
+          "sha256": "bd7356f22feae053dd41d1195d1876970ff07af8fe53dd91ffdfe0708ad1894b"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/clinical/a88ad83ff0a2bb9d66ef7ac98d9ac90f/document.json",
+          "bytes": 79844,
+          "sha256": "9437dd76d0611d615f934b4ff200fdb5f8742fd7b06b00afb6bc7095016c1b5c"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/clinical/a88ad83ff0a2bb9d66ef7ac98d9ac90f/follow-up.md",
+          "bytes": 2519,
+          "sha256": "1820381b8bcc896db6117f9be2240ca490a2d5e26ac016d1c159b2cc436e67c5"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/clinical/a88ad83ff0a2bb9d66ef7ac98d9ac90f/report.md",
+          "bytes": 33105,
+          "sha256": "5a6a6a5208086c81586cc8870bb715fc83cecb4bc1503c6e7d54ec192ecf09b0"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/clinical/a88ad83ff0a2bb9d66ef7ac98d9ac90f/review.json",
+          "bytes": 12601,
+          "sha256": "6c596e275cf4c72b62b43ce88c50d6939482e4b7dc1b5d152d82258d895dd44b"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/clinical/a88ad83ff0a2bb9d66ef7ac98d9ac90f/review.md",
+          "bytes": 6656,
+          "sha256": "72173288c32291d8f72cd6acd622b446c13d8db06f69b2a68978572d2d6014e9"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/clinical/a88ad83ff0a2bb9d66ef7ac98d9ac90f/run.json",
+          "bytes": 1042,
+          "sha256": "5fdb9c0761ecb01c569601f0bbd3190ffef72e2e9986095434c3eee17745fdd8"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-english-final/clinical/a88ad83ff0a2bb9d66ef7ac98d9ac90f/transcript.txt",
+          "bytes": 6817,
+          "sha256": "e511be3353a9cdad1d2d2f10e7000ec7b9f2986e01ed3785f10723d99e3ffbee"
+        }
+      ],
+      "source_selection": {
+        "selected_fact_count": 32,
+        "rejected_count": 9,
+        "review_excerpt_count": 7,
+        "literal_phrase_count": 32,
+        "segment_assessments": {
+          "validated_phrase": 19,
+          "model_excluded": 1
+        }
+      },
+      "outcome": "draft_delivered_literal_source_checks_passed_not_clinical_validation",
+      "job_duration_seconds": 37.72007,
+      "natural_coverage_helper_used": true
+    },
+    {
+      "name": "german_full",
+      "conversation_id": "7c368317-1936-5ccd-98f1-03b0bfa6cff5",
+      "job_id": "3212df03283a1338598e54397793172d",
+      "internal_run_id": "clinical-50941a5d33244fec800876adaa52cf91",
+      "prompt_sha256": "84b6a245addb06c2ec570769cddfd7be3ed4ed4ea2af8a042710b5cbe952f872",
+      "previous_prompt_sha256": "ee604cf70bf78a54599852a778e415e50916df36e18063f43f4b9e6c7af86769",
+      "prompt_change": "output directory only",
+      "user_turns": 1,
+      "ordinary_continuations": 0,
+      "first_user_at": "2026-09-19T05:17:03.647Z",
+      "final_assistant_at": "2026-09-19T05:19:14.630Z",
+      "user_to_final_seconds": 130.983,
+      "status": "completed",
+      "error_code": null,
+      "job_created_at": "2026-09-19T05:17:20.262Z",
+      "job_finished_at": "2026-09-19T05:18:16.521Z",
+      "source_bytes": 4798,
+      "source_sha256": "c0c0aeebaef6383955d8fb4e98d34820d0a90c675302ec6bbb522bab4bb729e8",
+      "new_asr_calls": 0,
+      "new_draft_attempts": 1,
+      "browser_downloads": [
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-full-downloads/document.json",
+          "bytes": 72730,
+          "sha256": "05f77a721de6ff75ea39e82462b2882ad29b7da27770f0eb8c6e8b2214c3561f",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-full-downloads/follow-up.md",
+          "bytes": 3064,
+          "sha256": "e71f55b55c1be52a98183ef7a5074dc90335360722b4754813bf9ff2d33b6a1b",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-full-downloads/report.md",
+          "bytes": 29673,
+          "sha256": "7da277e0285d16435241fe71f9572bd4fb2d628240f9e051b6a0a34a1cdb3a3f",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-full-downloads/review.json",
+          "bytes": 15033,
+          "sha256": "cdfcec5fbc8d33dca18663c2c7f9d9aba32ea8cbcc920a4dc12260bcf6d51a17",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-full-downloads/review.md",
+          "bytes": 7504,
+          "sha256": "c3f95ca2d6122883cf05ebbdbe61b6d1583b1e66ec9ab43b49c1b8ced2641cb2",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-full-downloads/run.json",
+          "bytes": 1053,
+          "sha256": "9fedcb00ac46c3f333ecbac7f1418a328a38a40701c23567d51cda27d6bbef5c",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-full-downloads/transcript.txt",
+          "bytes": 4798,
+          "sha256": "c0c0aeebaef6383955d8fb4e98d34820d0a90c675302ec6bbb522bab4bb729e8",
+          "equals_retained_api_or_workspace": true
+        }
+      ],
+      "evidence": [
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/messages.json",
+          "bytes": 208410,
+          "sha256": "0d5cd774cf8b7b90718751f1f09e12847b0ee8debd5d1080c1d3dd44fe03b55c"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/clinical-jobs.json",
+          "bytes": 1618,
+          "sha256": "20b2121f1b9835a1b0ddd2adb37c0999b804482528cf986277eae65784cf7402"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/receipt.json",
+          "bytes": 1858,
+          "sha256": "0aeaf4c4f9f85b3bd6f3ddaa29bc48487424a0f11aa912fe6de0a964f3c5a948"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-workspace-final/receipt.json",
+          "bytes": 2116,
+          "sha256": "e06aa240000ddcb85618d0b4b0faeafdec170112206c2d0150468b1a15b0fc7f"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/clinical/3212df03283a1338598e54397793172d/document.json",
+          "bytes": 72730,
+          "sha256": "05f77a721de6ff75ea39e82462b2882ad29b7da27770f0eb8c6e8b2214c3561f"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/clinical/3212df03283a1338598e54397793172d/follow-up.md",
+          "bytes": 3064,
+          "sha256": "e71f55b55c1be52a98183ef7a5074dc90335360722b4754813bf9ff2d33b6a1b"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/clinical/3212df03283a1338598e54397793172d/report.md",
+          "bytes": 29673,
+          "sha256": "7da277e0285d16435241fe71f9572bd4fb2d628240f9e051b6a0a34a1cdb3a3f"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/clinical/3212df03283a1338598e54397793172d/review.json",
+          "bytes": 15033,
+          "sha256": "cdfcec5fbc8d33dca18663c2c7f9d9aba32ea8cbcc920a4dc12260bcf6d51a17"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/clinical/3212df03283a1338598e54397793172d/review.md",
+          "bytes": 7504,
+          "sha256": "c3f95ca2d6122883cf05ebbdbe61b6d1583b1e66ec9ab43b49c1b8ced2641cb2"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/clinical/3212df03283a1338598e54397793172d/run.json",
+          "bytes": 1053,
+          "sha256": "9fedcb00ac46c3f333ecbac7f1418a328a38a40701c23567d51cda27d6bbef5c"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-full-final/clinical/3212df03283a1338598e54397793172d/transcript.txt",
+          "bytes": 4798,
+          "sha256": "c0c0aeebaef6383955d8fb4e98d34820d0a90c675302ec6bbb522bab4bb729e8"
+        }
+      ],
+      "source_selection": {
+        "selected_fact_count": 26,
+        "rejected_count": 10,
+        "review_excerpt_count": 8,
+        "literal_phrase_count": 26,
+        "segment_assessments": {
+          "validated_phrase": 13,
+          "rejected_selection": 1
+        }
+      },
+      "outcome": "draft_delivered_literal_source_checks_passed_not_clinical_validation",
+      "job_duration_seconds": 56.133605,
+      "narrator_selected_as_patient_fact": false,
+      "independent_source_measurement": {
+        "path": "browser-evidence/scientist-08-v42-german-full-independent/measurement.json",
+        "bytes": 7403,
+        "sha256": "a3952277f25207cb1b9201f3df034bab8a4e0c3880adb46e6148cad197a0341c"
+      },
+      "natural_coverage_helper_used": false
+    },
+    {
+      "name": "german_negative",
+      "conversation_id": "087bf6ee-6ec6-5c73-94e1-e8e1f1546eeb",
+      "job_id": "975ca7485fd2d95a7c29cc711644f4af",
+      "internal_run_id": "clinical-491e954f7f0a4314bbf98b007f08d639",
+      "prompt_sha256": "9d3f4736e77ff9ed9bdc8d42c596cd4c3dd0f0f00862690e5c8e00b56a415823",
+      "previous_prompt_sha256": "3f60d1caf1944c5558a1e7da2a61060f3a1a0e7e6a353c42007dbbef19627a13",
+      "prompt_change": "output directory only",
+      "user_turns": 1,
+      "ordinary_continuations": 0,
+      "first_user_at": "2026-09-19T05:20:11.370Z",
+      "final_assistant_at": "2026-09-19T05:21:21.467Z",
+      "user_to_final_seconds": 70.097,
+      "status": "incomplete",
+      "error_code": "no_supported_clinical_facts",
+      "job_created_at": "2026-09-19T05:20:33.837Z",
+      "job_finished_at": "2026-09-19T05:20:37.959Z",
+      "source_bytes": 162,
+      "source_sha256": "ecf9a586ece9c373ba38d721cc9301ddc05e66e8d4b3aa28179dadc63f0c267f",
+      "new_asr_calls": 0,
+      "new_draft_attempts": 1,
+      "browser_downloads": [
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-negative-downloads/review.json",
+          "bytes": 862,
+          "sha256": "7e6c8a05f365bb496b035f33fbc1b9168b0a58924e147f5096dd7e4cf7e4627e",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-negative-downloads/run.json",
+          "bytes": 1263,
+          "sha256": "05af5f9bf86a8f9e3c6a85b8dd276027b659b69d18649189d1973c5cab587972",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-negative-downloads/transcript.txt",
+          "bytes": 162,
+          "sha256": "ecf9a586ece9c373ba38d721cc9301ddc05e66e8d4b3aa28179dadc63f0c267f",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-negative-downloads/workspace-interpretation.json",
+          "bytes": 1334,
+          "sha256": "b075d59a61b63d0630f478f9fbaeaf72ca1a25a159956d52caa4f283813897ff",
+          "equals_retained_api_or_workspace": true
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-browser/german-negative-downloads/workspace-report.md",
+          "bytes": 1231,
+          "sha256": "4d7fafab36fec4948ba3e2f1b945362a78e02d1dee733ea254fe35fcba79d456",
+          "equals_retained_api_or_workspace": true
+        }
+      ],
+      "evidence": [
+        {
+          "path": "browser-evidence/scientist-08-v42-german-negative-final/messages.json",
+          "bytes": 54271,
+          "sha256": "0af3fac1f995fcb6e81cf33f3f02f524fe53a3f5953f95603a2c55e986167cb2"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-negative-final/clinical-jobs.json",
+          "bytes": 2694,
+          "sha256": "91d94a3b85961c9619a231baf58b35a2882638dbf5c765646743cb4018e0e060"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-negative-final/receipt.json",
+          "bytes": 1610,
+          "sha256": "bfe89c164146a759150d216d09af32402290afb1601990e77c47b9d1e90bf33c"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-negative-workspace-final/receipt.json",
+          "bytes": 1367,
+          "sha256": "99f8d68ec505c18314036b95aac0575876cd743528161b0f934e4a3cc278d9eb"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-negative-final/clinical/975ca7485fd2d95a7c29cc711644f4af/review.json",
+          "bytes": 862,
+          "sha256": "7e6c8a05f365bb496b035f33fbc1b9168b0a58924e147f5096dd7e4cf7e4627e"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-negative-final/clinical/975ca7485fd2d95a7c29cc711644f4af/run.json",
+          "bytes": 1263,
+          "sha256": "05af5f9bf86a8f9e3c6a85b8dd276027b659b69d18649189d1973c5cab587972"
+        },
+        {
+          "path": "browser-evidence/scientist-08-v42-german-negative-final/clinical/975ca7485fd2d95a7c29cc711644f4af/transcript.txt",
+          "bytes": 162,
+          "sha256": "ecf9a586ece9c373ba38d721cc9301ddc05e66e8d4b3aa28179dadc63f0c267f"
+        }
+      ],
+      "outcome": "expected_no_supported_facts_no_provider_report",
+      "agent_workspace_report": "Explicitly labelled limitations note; not a provider-created clinical report.",
+      "duration_basis": "Public job created_at to finished_at; incomplete run has no completed_at.",
+      "job_duration_seconds": 4.122
+    }
+  ],
+  "counts": {
+    "new_native_asr": 0,
+    "reused_prior_native_asr": 4,
+    "new_artifact_uploads": 2,
+    "new_clinical_jobs": 3,
+    "completed_drafts": 2,
+    "expected_no_report": 1,
+    "actual_browser_downloads": 24
+  },
+  "native_reuse_ids": [
+    "1b7d1d5d-7bdf-48e9-91a4-42ea7622df4a",
+    "4c6506a1-4117-47f6-9aaf-9030495f55fd",
+    "e5fc49d0-8752-46a9-87de-944c8d0d8aec",
+    "ee3941d4-983b-447c-bb88-daa60c392746"
+  ],
+  "new_uploads": [
+    {
+      "id": "40b1a481-cf7b-456a-952b-e46d77aa8693",
+      "model_id": "nemotron-speech-multilingual-0-6b",
+      "protocol": "scientific-artifact-upload-v1",
+      "status": "succeeded",
+      "accepted_at": "2026-09-19T05:04:37.627937Z",
+      "completed_at": "2026-09-19T05:04:45.107983Z"
+    },
+    {
+      "id": "4eddefee-fdc1-4dee-a851-a875765dbb0a",
+      "model_id": "nemotron-speech-en-0-6b",
+      "protocol": "scientific-artifact-upload-v1",
+      "status": "succeeded",
+      "accepted_at": "2026-09-19T05:04:05.023995Z",
+      "completed_at": "2026-09-19T05:04:15.720845Z"
+    }
+  ],
+  "measurement_replays": [
+    {
+      "name": "source-selection",
+      "kind": "coverage",
+      "exact_bytes_reproduced": true,
+      "measurement_sha256": "0cbacbfb95f8ed52062b5e2ee109608c0cbbbef151a639253aabda71339dcef8",
+      "measurement": {
+        "accepted_facts": 32,
+        "selected_phrases": 32,
+        "selected_span_occurrences": 32,
+        "declared_segments": 20,
+        "segments_with_selected_phrase": 19,
+        "declared_segment_character_gaps": [],
+        "segments": [
+          {
+            "start": 0,
+            "end": 359,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 359,
+            "end": 711,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 711,
+            "end": 1068,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": true
+          },
+          {
+            "start": 1068,
+            "end": 1424,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 1424,
+            "end": 1772,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": true
+          },
+          {
+            "start": 1772,
+            "end": 2127,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": true
+          },
+          {
+            "start": 2127,
+            "end": 2481,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": true
+          },
+          {
+            "start": 2481,
+            "end": 2839,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 2839,
+            "end": 3196,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 3196,
+            "end": 3552,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 3552,
+            "end": 3909,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": true
+          },
+          {
+            "start": 3909,
+            "end": 4268,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 4268,
+            "end": 4626,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": true
+          },
+          {
+            "start": 4626,
+            "end": 4985,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 4985,
+            "end": 5342,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 5342,
+            "end": 5699,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": true
+          },
+          {
+            "start": 5699,
+            "end": 6056,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 6056,
+            "end": 6415,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 6415,
+            "end": 6771,
+            "has_selected_phrase": true,
+            "has_cited_context": true,
+            "has_review_excerpt": false
+          },
+          {
+            "start": 6771,
+            "end": 6817,
+            "has_selected_phrase": false,
+            "has_cited_context": false,
+            "has_review_excerpt": false
+          }
+        ],
+        "withheld_candidates": 9,
+        "review_excerpts": 7,
+        "source_span_probes": [],
+        "clinical_completeness": "not_established",
+        "interpretation": "A selected phrase does not cover every fact in its segment. Context/review presence is not selection as a report fact. Probe absence means literal absence, not proof of semantic omission. Rendered visibility and clinical meaning require separate review."
+      }
+    },
+    {
+      "name": "wer-nemotron-en",
+      "kind": "wer",
+      "exact_bytes_reproduced": true,
+      "measurement_sha256": "46b495d8827b6c842e02291c81de04d02b71c6fa7edc4123b32df45baf236188",
+      "measurement": {
+        "reference_tokens": 1412,
+        "hypothesis_tokens": 1366,
+        "substitutions": 92,
+        "deletions": 108,
+        "insertions": 62,
+        "correct": 1212,
+        "edit_distance": 262,
+        "wer": 0.18555240793201133
+      }
+    },
+    {
+      "name": "wer-nemotron-multi-de",
+      "kind": "wer",
+      "exact_bytes_reproduced": true,
+      "measurement_sha256": "d782baecb63750ef56522031e431473ba48e905011b97092bcf1791a817026b4",
+      "measurement": {
+        "reference_tokens": 25,
+        "hypothesis_tokens": 24,
+        "substitutions": 2,
+        "deletions": 1,
+        "insertions": 0,
+        "correct": 22,
+        "edit_distance": 3,
+        "wer": 0.12
+      }
+    },
+    {
+      "name": "wer-nemotron-multi-en",
+      "kind": "wer",
+      "exact_bytes_reproduced": true,
+      "measurement_sha256": "9943a1da8e737888c1e0e9fd9ee1042869141fa1f2464456ae8c67afffb0db09",
+      "measurement": {
+        "reference_tokens": 1412,
+        "hypothesis_tokens": 1329,
+        "substitutions": 122,
+        "deletions": 138,
+        "insertions": 55,
+        "correct": 1152,
+        "edit_distance": 315,
+        "wer": 0.22308781869688385
+      }
+    },
+    {
+      "name": "wer-parakeet-en",
+      "kind": "wer",
+      "exact_bytes_reproduced": true,
+      "measurement_sha256": "5d958a916c90d9452c77c9962976b8b48388c2b873517237b777aaa0b2732246",
+      "measurement": {
+        "reference_tokens": 1412,
+        "hypothesis_tokens": 1243,
+        "substitutions": 124,
+        "deletions": 193,
+        "insertions": 24,
+        "correct": 1095,
+        "edit_distance": 341,
+        "wer": 0.2415014164305949
+      }
+    }
+  ],
+  "measurement_evidence": {
+    "path": "browser-evidence/scientist-08-v42-independent-final/receipt.json",
+    "bytes": 7112,
+    "sha256": "fe814fd9b4091464b3edc0ac527b0bca7efecdb2a48ff8f638aa45df92e9b671"
+  },
+  "residuals": [
+    {
+      "kind": "client_delivery",
+      "detail": "English first turn ended without usable answer; second stopped interim. Two ordinary continuations needed; original tool/shell/concurrency errors retained. No provider finish reason was exposed in persisted message."
+    },
+    {
+      "kind": "incorrect_ad_hoc_analysis",
+      "detail": "reference-comparison.json accepted_fact_count=0 vs actual32; ad hoc walker searched source.text, not canonical facts[].source_phrases/statement. Pinned coverage measurement correctly32.",
+      "evidence": {
+        "path": "browser-evidence/scientist-08-v42-workspace-final/workspace/scientist-08/medical-nlp-study-v42/reference-comparison.json",
+        "bytes": 2847,
+        "sha256": "e041501a55d8096cb90bf11bfc627af3c21986fce5426547c271c5761a824cbb"
+      }
+    },
+    {
+      "kind": "unsupported_omission_claim",
+      "detail": "English prose calls alcohol absent because one candidate was rejected, despite accepted F0039 drink alcohol no. Exact-form rejection is not semantic absence."
+    },
+    {
+      "kind": "unsupported_causal_explanation",
+      "detail": "English prose links Parakeet deletions to lowercase/unpunctuated output although stated WER normalization casefolds and strips edge punctuation."
+    },
+    {
+      "kind": "coverage_method_confusion",
+      "detail": "German agent skipped automated coverage for lack of human reference. This justifies no WER, not skipping source-selection accounting; separate operator-only offline measurement is not natural delivery."
+    },
+    {
+      "kind": "clinical_utility_limits",
+      "detail": "Extractive drafts retain ASR mistakes, self-report/section and question/speaker ambiguity, incomplete selections and repetitive context. Literal spans and segment counts do not prove clinical correctness/completeness."
+    }
+  ],
+  "preservation": {
+    "historical_v36_v39_failures_unchanged": true,
+    "source_or_customer_output_correction": false,
+    "manual_method_coaching": false,
+    "new_limits_or_endpoint_mutations": false,
+    "independent_harness_correction": {
+      "path": "browser-evidence/scientist-08-v42-german-full-final/harness-first-attempt.json",
+      "bytes": 475,
+      "sha256": "53bb041aea2de0dabd91ecae2c060283156e875093cdee4921f98bb460e50c4a"
+    },
+    "timestamp_note": "Progress directory suffix0514 was mistaken; it is not an as-of timestamp. All cohort timings derive from persisted messages/operations."
+  },
+  "clinical_ready": false,
+  "platform_ready": false,
+  "further_model_admissions": false
+}
