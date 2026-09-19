@@ -14,6 +14,7 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import re
 import subprocess
 import tarfile
 
@@ -243,6 +244,80 @@ def analyze(
     }
 
 
+def constraint_observation(result, row):
+    """Explain recorded constraints without changing selections or evaluator results."""
+    geometry = row['geometry']
+    observed = [chain['chain'] for chain in geometry['chains']]
+    selected = result['requested_constraints'].get('binder_chain')
+    reasons = []
+    if selected and selected not in observed:
+        reasons.append(f'Requested binder chain {selected} absent; no remapping was performed')
+    for chain in geometry['chains']:
+        if chain['chain'] == selected and chain.get('within_requested_length') is False:
+            reasons.append(f"Selected chain {selected} fails the requested length bounds")
+    if row.get('target_sequence_exact_unique') is False:
+        reasons.append('Reference target sequence does not have exactly one observed chain match')
+    if geometry.get('constraint_pass') is False and not reasons:
+        reasons.append('Recorded evaluator constraint verdict is false; no unrecorded rejection cause inferred')
+    if geometry.get('constraint_pass') is None and not reasons:
+        reasons.append('Constraint verdict unavailable; no success inferred')
+    return {'requested_binder_chain': selected, 'observed_chains': observed,
+            'constraint_pass': geometry.get('constraint_pass'),
+            'constraint_reason': '; '.join(reasons) or 'No recorded constraint failure; not biological validation',
+            'target_sequence_exact_unique': row.get('target_sequence_exact_unique')}
+
+
+def render_observations(result):
+    def cell(value):
+        return json.dumps(value, ensure_ascii=False, allow_nan=False).replace('|', '&#124;').replace('\n', ' ')
+    lines = ['## Recorded constraint verdicts', '',
+             'These are the unchanged requested selections and recorded evaluator verdicts. '
+             'A missing requested chain is an analysis-selection mismatch, not a platform admission failure. '
+             'No chain is remapped and no biological success follows from a pass.', '',
+             '| Artifact / member | Observed chains | Requested binder | Constraint pass | Target exact unique | Reason |',
+             '| --- | --- | --- | --- | --- | --- |']
+    for row in result['structures']:
+        observation = constraint_observation(result, row)
+        lines.append('| ' + ' | '.join(cell(value) for value in [
+            [row['artifact_name'], row['member']], observation['observed_chains'],
+            observation['requested_binder_chain'], observation['constraint_pass'],
+            observation['target_sequence_exact_unique'], observation['constraint_reason']]) + ' |')
+    if not result['structures']:
+        lines.append('| No coordinate outputs | [] | null | unknown | unknown | No coordinate verdict available |')
+    selected = result['requested_constraints'].get('binder_chain')
+    lines += ['', '## Observed sequence diversity', '',
+              f"Requested binder chain: {cell(selected)}. Recorded unique sequences for that exact chain: "
+              f"{cell(result['explicit_binder_unique_sequences'])}. "
+              'Null means no explicit chain was selected; zero with an absent selected chain does not measure model-wide diversity.']
+    if result['linked_designs']:
+        predictions = result['linked_designs']['predictions']
+        unique = len({row['sequence_sha256'] for row in predictions})
+        lines.append(f'Provenance-linked design sequence hashes: {unique} unique / {len(predictions)} design rows. '
+                     'Raw/refolded pairs are not counted twice; no sequence-distance or experimental claim.')
+    lines += ['', '## Retained model-native scores and filter metadata', '',
+              'Exact published values and row order only; no normalization, invented confidence, '
+              'cross-model leaderboard or inference of hidden rejected candidates. '
+              'A source filter flag is not the analysis constraint verdict above.', '',
+              '| Source artifact | Field | Values in published row order |', '| --- | --- | --- |']
+    shown = 0
+    for item in result['metadata_unmodified_values']:
+        rows = item['content'].get('csv_rows')
+        if not isinstance(rows, list):
+            continue
+        lines.append(f"| {cell(item['artifact_name'])} | published row count | {len(rows)} |")
+        fields = sorted({key for row in rows for key in row
+                         if re.search(r'score|confidence|plddt|ptm|pae|rmsd|filter|reject', key, re.I)})
+        for field in fields:
+            lines.append(f"| {cell(item['artifact_name'])} | {cell(field)} | {cell([row.get(field) for row in rows])} |")
+            shown += 1
+    if not shown:
+        lines.append('| No recognized published score/filter columns | unavailable | No confidence inferred |')
+    lines += ['', 'All original CSV/JSON metadata remains in measurements.json. '
+              'Missing rejection rows/reasons are unavailable, not zero; a filtered final artifact count '
+              'cannot establish the number of accepted/rejected search candidates.', '']
+    return '\n'.join(lines)
+
+
 def publish(result, output):
     output.mkdir(parents=True, exist_ok=True)
     (output / "measurements.json").write_text(
@@ -260,10 +335,13 @@ def publish(result, output):
                 "sequence_sha256",
                 "adjacent_ca_median_angstrom",
                 "ca_step_outside_2_5_to_4_5_fraction",
+                "requested_binder_chain", "constraint_pass", "constraint_reason",
+                "target_sequence_exact_unique", "within_requested_length",
             ],
         )
         writer.writeheader()
         for row in result["structures"]:
+            observation = constraint_observation(result, row)
             for chain in row["geometry"]["chains"]:
                 writer.writerow(
                     {
@@ -279,6 +357,9 @@ def publish(result, output):
                         "ca_step_outside_2_5_to_4_5_fraction": chain[
                             "ca_step_outside_2_5_to_4_5_fraction"
                         ],
+                        **{key: observation[key] for key in ('requested_binder_chain', 'constraint_pass',
+                           'constraint_reason', 'target_sequence_exact_unique')},
+                        'within_requested_length': chain.get('within_requested_length'),
                     }
                 )
     linked = result["linked_designs"]
@@ -291,6 +372,7 @@ def publish(result, output):
             f"refold screen: {linked['self_refolded_geometry_pass_count']}/{linked['design_count']}.\n\n"
         )
     text += "See inventory.csv for every coordinate chain and measurements.json for exact hashes, provenance joins, source scores and constraints.\n\n"
+    text += render_observations(result) + '\n'
     text += "\n".join("- " + item for item in result["limitations"]) + "\n"
     (output / "report.md").write_text(text)
 
