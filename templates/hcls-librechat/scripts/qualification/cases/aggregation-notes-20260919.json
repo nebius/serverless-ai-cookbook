@@ -1,0 +1,33 @@
+{
+  "schema": "fs2.qualification-campaign-annotations/v1",
+  "as_of": "2026-09-19T02:18:00Z",
+  "operations": {},
+  "manual_interventions": [
+    {
+      "summary": "Actual-client studies required operator/user continuations and repairs; for example scientist06 v28 completed five calls but needed continuation and delivered a numerically incorrect narrative. The later repaired runs do not erase that journey. This is a bounded sourced example, not an exhaustive intervention count.",
+      "source": {
+        "path": "/home/tux/worktrees/scientific-ai-workbench-v2-20260918/templates/hcls-librechat/demos/evidence/20260918-scientist-cohort/EXPANDED_BROWSER_CAMPAIGN.md",
+        "sha256": "fd99cdaf2560b379d5c63da9f04ef7aada3d282750e0db3b144a091f41d0dba3",
+        "line": 440
+      }
+    }
+  ],
+  "client_report_findings": [
+    {
+      "summary": "Scientist08 on v36: four ASR calls succeeded, but downstream report fact F0027 changed literal transcript 'dire light' into 'Dioralyte'. Extraction and review both set medication_or_dose=false and source_anchors=[], so the medication provenance gate was bypassed. This is a clinical source-grounding/report failure, not an ASR service failure. Original report and review remain retained; no clinical-readiness claim.",
+      "source": {
+        "path": "/home/tux/secure-handoff/scientific-qualification-20260918/browser-evidence/scientist-08-v36-draft/clinical/a943693cb734fc8fdad7f513c30b3b16/document.json",
+        "sha256": "3f525c47e930b4297e1a2124d53c775fa577195b1b809075de06fabbd1a9df65"
+      }
+    }
+  ],
+  "isolated_evidence": [
+    {
+      "summary": "DiffDock candidate 9766b4fb: 48 isolated calls across two H100 processes produced 192 poses. Matched-order cross-process coordinates/confidences are exact; within-process repeats satisfy frozen tolerances but are not all byte-identical. Only 6/12 distinct complex-seed top-ranked poses are within 2 angstrom, and the approximately 705.87 angstrom rank4 outlier remains. These are not public admissions or additional campaign operation IDs. Other isolated model studies are not inventoried by this entry.",
+      "source": {
+        "path": "/home/tux/worktrees/fs2-cosmos-stockholm-remediation-20260917/k8s-inference/models/structure/runtime/diffdock-seeded/qualification/retained-r6-r7.json",
+        "sha256": "e65773bf3554fc578fd928038a9a8fe1e961050801c5b7878ef8814303c7aa77"
+      }
+    }
+  ]
+}
