@@ -1,0 +1,2599 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "draft_directory"
+  ],
+  "properties": {
+    "draft_directory": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Workspace directory for verified draft receipts and immutable plan revisions, not the final output directory."
+    },
+    "expected_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "Required for edits to an existing draft: copy current_sha256 from its latest receipt."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "model",
+              "input",
+              "idempotency_key"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "native"
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "input": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "step",
+                      "file"
+                    ],
+                    "properties": {
+                      "step": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "file": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ],
+                "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Preserve this exact original input reference for request provenance; native does not publish a new input.json output."
+              },
+              "idempotency_key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "tool_name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Exact native tool_name from the model schema used to author this input. Preserved in the immutable plan and client identity; never add missing scientific fields or select a different contract silently. Without a selector the client requires one uniquely matching native schema."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "model",
+              "tool",
+              "operation",
+              "media_type",
+              "entry_name",
+              "semantic_type",
+              "idempotency_key",
+              "display_name",
+              "source",
+              "parameters"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "batch"
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "tool": {
+                "type": "string",
+                "minLength": 1
+              },
+              "operation": {
+                "type": "string",
+                "minLength": 1
+              },
+              "media_type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "entry_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "semantic_type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "idempotency_key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "display_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "step",
+                      "file"
+                    ],
+                    "properties": {
+                      "step": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "file": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ],
+                "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+              },
+              "parameters": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "step",
+                      "file"
+                    ],
+                    "properties": {
+                      "step": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "file": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ],
+                "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. The parameters JSON file contains only the model parameters object from submit-tool input_schema.properties.parameters, never a full scientific-run envelope; the batch client validates before uploads and does not unwrap it."
+              },
+              "compression": {
+                "type": "string",
+                "minLength": 1
+              },
+              "service_class": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_artifact": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "step",
+                      "file"
+                    ],
+                    "properties": {
+                      "step": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "file": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ],
+                "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "source",
+              "source_type",
+              "language",
+              "report_model"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "const": "clinical"
+              },
+              "source": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "step",
+                      "file"
+                    ],
+                    "properties": {
+                      "step": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "file": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                ],
+                "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+              },
+              "source_type": {
+                "enum": [
+                  "audio",
+                  "transcript",
+                  "artifact"
+                ]
+              },
+              "language": {
+                "enum": [
+                  "en",
+                  "de"
+                ]
+              },
+              "report_model": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Explicit clinical model on the existing Token Factory provider; no automatic model swap. The tested draft profile is Qwen/Qwen3-235B-A22B-Instruct-2507."
+              },
+              "asr_model": {
+                "enum": [
+                  "nemotron-speech-en-0-6b",
+                  "nemotron-speech-multilingual-0-6b"
+                ]
+              },
+              "allow_no_report": {
+                "type": "boolean",
+                "default": false,
+                "description": "Set true only when the user explicitly allows an unsupported-source/no-report outcome for this stage. Only no_supported_clinical_facts may then complete without a report, preserving unchanged transcript, review, coverage and run evidence. Provider, malformed-output, storage and unknown-admission failures still stop the study. Consume clinical-outcome.json or clinical-outcome.md downstream; report.md/document.json are conditional, never fabricate them."
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "write-json"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "filename",
+                  "value"
+                ],
+                "properties": {
+                  "filename": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[^/]*\\.json$",
+                    "not": {
+                      "pattern": "\\n$"
+                    },
+                    "description": "Exact JSON basename ending .json, without directory components. This helper writes JSON, not Markdown; use a declared saved Python-script output or report helper for Markdown."
+                  },
+                  "value": {}
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "python-script"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "script",
+                  "inputs",
+                  "parameters",
+                  "outputs"
+                ],
+                "properties": {
+                  "script": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Existing workspace Python source, hash-frozen before admission; not a generated later-step file. CLI receives --inputs <bindings.json path> --output-dir <private directory>; parse arguments, then json.loads(Path(args.inputs).read_text()). Read source paths from bindings[\"inputs\"][name], not JSON from argv itself. Discovery includes the exact CLI example."
+                  },
+                  "inputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "name",
+                        "file"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        }
+                      }
+                    }
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "description": "Immutable scientific parameters supplied in the saved bindings JSON."
+                  },
+                  "outputs": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "parquet-export"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source",
+                  "formats"
+                ],
+                "properties": {
+                  "source": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "formats": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "enum": [
+                        "npz",
+                        "hdf5",
+                        "zip",
+                        "sqlite"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "robotics-analysis"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source_video",
+                  "source_archive",
+                  "native_result",
+                  "manifest_file",
+                  "selected_cameras"
+                ],
+                "properties": {
+                  "source_video": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "source_archive": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "native_result": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Exact native result.json with verified scientific-native-file/v1 MP4 metadata; never guess sibling filenames."
+                  },
+                  "manifest_file": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Exact LeRobot batch output-manifest.json; reads hash-verified output-NN.artifact archive siblings. Compares all recorded values/types, episode timestamps, every camera and decoded video; geometry/action validity remain unproven."
+                  },
+                  "selected_cameras": {
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "variant_index": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "default": 0
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "evo2-continuation"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "reference_file",
+                  "cases"
+                ],
+                "properties": {
+                  "reference_file": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Exact FASTA or plain DNA reference; measurements preserve its raw hash and do not infer likelihood/variant scores."
+                  },
+                  "reference_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "cases": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "start_zero_based",
+                        "input_file",
+                        "result_file",
+                        "operation_file"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "start_zero_based": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "input_file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        },
+                        "result_file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        },
+                        "operation_file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        },
+                        "sequence_mode": {
+                          "enum": [
+                            "suffix",
+                            "prefix-and-suffix"
+                          ],
+                          "default": "suffix"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "proteinmpnn-input"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "backbone",
+                  "structure_index",
+                  "chain",
+                  "num_sequences",
+                  "seed",
+                  "sampling_temp",
+                  "omit_aas"
+                ],
+                "properties": {
+                  "backbone": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. For a future batch backbone use {step,file:\"output-manifest.json\"} with explicit structure_index; the helper selects and hash-verifies the declared coordinate entry, not an artifact index."
+                  },
+                  "structure_index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "chain": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "selection"
+                        ],
+                        "properties": {
+                          "selection": {
+                            "const": "sole-protein-chain"
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Exact chain ID, or explicitly request the sole observed protein chain; zero/multiple chains fail, never guess A."
+                  },
+                  "num_sequences": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  },
+                  "seed": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2147483647
+                  },
+                  "sampling_temp": {
+                    "type": "number",
+                    "minimum": 0.01,
+                    "maximum": 1
+                  },
+                  "omit_aas": {
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                      "enum": [
+                        "A",
+                        "C",
+                        "D",
+                        "E",
+                        "F",
+                        "G",
+                        "H",
+                        "I",
+                        "K",
+                        "L",
+                        "M",
+                        "N",
+                        "P",
+                        "Q",
+                        "R",
+                        "S",
+                        "T",
+                        "V",
+                        "W",
+                        "Y",
+                        "X"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "esmfold2-fast-input"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "design_input",
+                  "design_result",
+                  "design_index",
+                  "seed"
+                ],
+                "properties": {
+                  "design_input": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "design_result": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "design_index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "seed": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2147483647
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "design-refold-correspondence"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "design_input",
+                  "design_result",
+                  "refold_input",
+                  "refold_parameters",
+                  "prediction",
+                  "design_index",
+                  "structure_index",
+                  "prediction_chain"
+                ],
+                "properties": {
+                  "design_input": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "design_result": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "refold_input": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "refold_parameters": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "prediction": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. For a future batch prediction use {step,file:\"output-manifest.json\"} with explicit structure_index; correspondence retains the selected coordinates and same-operation confidence provenance."
+                  },
+                  "confidence_result": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Optional exact same-operation output-manifest.json for a selected coordinate file. A direct {step,file} coordinate from a completed batch producer automatically carries that producer's recorded manifest after hash verification; explicit workspace files require explicit metadata. Never changes selected coordinates or infers confidence from geometry."
+                  },
+                  "design_index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "structure_index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "prediction_chain": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "selection"
+                        ],
+                        "properties": {
+                          "selection": {
+                            "const": "sole-protein-chain"
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Exact chain ID, or explicitly request the sole observed protein chain; zero/multiple chains fail, never guess A."
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "structure"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "reference"
+                ],
+                "properties": {
+                  "reference": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "prediction": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "result": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "confidence_result": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Optional exact same-operation batch output-manifest.json or paired prediction-result.json. Confidence is joined only by matching structure bytes/SHA256 and a unique manifest/sample row; never by filenames or rank. Prefer correspondence prediction-result.json as result to retain confidence. A registered correspondence prediction.structure automatically carries its verified paired envelope; arbitrary coordinate files do not."
+                  },
+                  "chain_map": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "structure_index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "residue_map": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "request_file": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Bind the original native input or batch request.json whenever reporting requested seeds/sampling settings. Filenames, coordinate indices and report headings are not request provenance. Omission is recorded as unknown, not inferred from context."
+                  }
+                },
+                "oneOf": [
+                  {
+                    "required": [
+                      "result"
+                    ],
+                    "not": {
+                      "required": [
+                        "prediction"
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "prediction"
+                    ],
+                    "not": {
+                      "required": [
+                        "result"
+                      ]
+                    }
+                  }
+                ],
+                "anyOf": [
+                  {
+                    "required": [
+                      "chain_map"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "residue_map"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "docking"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "reference",
+                  "same_coordinate_frame"
+                ],
+                "properties": {
+                  "reference": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "prediction": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "result": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "same_coordinate_frame": {
+                    "const": true
+                  },
+                  "threshold_queries": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "confidence_above",
+                        "rmsd_below_angstrom"
+                      ],
+                      "properties": {
+                        "confidence_above": {
+                          "type": "number"
+                        },
+                        "rmsd_below_angstrom": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                },
+                "oneOf": [
+                  {
+                    "required": [
+                      "result"
+                    ],
+                    "not": {
+                      "required": [
+                        "prediction"
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "prediction"
+                    ],
+                    "not": {
+                      "required": [
+                        "result"
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "docking-batch"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "runs",
+                  "same_coordinate_frame"
+                ],
+                "properties": {
+                  "runs": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "run_id",
+                        "reference_file"
+                      ],
+                      "properties": {
+                        "run_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "group_id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "reference_file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        },
+                        "result_file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        },
+                        "prediction_file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        }
+                      },
+                      "oneOf": [
+                        {
+                          "required": [
+                            "result_file"
+                          ],
+                          "not": {
+                            "required": [
+                              "prediction_file"
+                            ]
+                          }
+                        },
+                        {
+                          "required": [
+                            "prediction_file"
+                          ],
+                          "not": {
+                            "required": [
+                              "result_file"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "same_coordinate_frame": {
+                    "const": true
+                  },
+                  "threshold_queries": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "confidence_above",
+                        "rmsd_below_angstrom"
+                      ],
+                      "properties": {
+                        "confidence_above": {
+                          "type": "number"
+                        },
+                        "rmsd_below_angstrom": {
+                          "type": "number"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "aging"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "model",
+                  "cohorts"
+                ],
+                "properties": {
+                  "model": {
+                    "enum": [
+                      "phenoage",
+                      "altumage"
+                    ]
+                  },
+                  "cohorts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "label",
+                        "input_file",
+                        "result_file"
+                      ],
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "input_file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        },
+                        "result_file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        }
+                      }
+                    }
+                  },
+                  "coefficient_version": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reference_ages": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "genmol"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "input_file",
+                  "result_file"
+                ],
+                "properties": {
+                  "input_file": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Original raw GenMol request JSON, with smiles and num_molecules; preserves actual scoring/defaults."
+                  },
+                  "result_file": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Raw GenMol result JSON with molecules:[{smiles,score}]. Deterministically measures validity, unique/duplicate/returned counts, QED and Crippen LogP, underfill and unavailable scores; no new inference or recursive envelope guessing."
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "protein-design-analysis"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "manifest_file"
+                ],
+                "properties": {
+                  "manifest_file": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}. Exact batch output-manifest.json; verified output-NN.artifact siblings are read from the same directory in manifest order using declared media types, not filename extensions. Measures all artifacts; no new inference or efficacy claim."
+                  },
+                  "binder_chain": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "binder_length_min": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "binder_length_max": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "target_reference": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  },
+                  "target_chain": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "dependentRequired": {
+                  "target_reference": [
+                    "target_chain"
+                  ],
+                  "target_chain": [
+                    "target_reference"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "report"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "title",
+                  "sections"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S",
+                    "not": {
+                      "pattern": "[\\r\\n]"
+                    },
+                    "description": "Meaningful nonblank one-line heading without CR/LF. No arbitrary character-length cap; preserved verbatim."
+                  },
+                  "sections": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 16,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "title",
+                        "file",
+                        "format"
+                      ],
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "\\S",
+                          "not": {
+                            "pattern": "[\\r\\n]"
+                          },
+                          "description": "Meaningful nonblank one-line heading without CR/LF. No arbitrary character-length cap; preserved verbatim."
+                        },
+                        "file": {
+                          "oneOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "step",
+                                "file"
+                              ],
+                              "properties": {
+                                "step": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "file": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              }
+                            }
+                          ],
+                          "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                        },
+                        "format": {
+                          "enum": [
+                            "markdown",
+                            "csv",
+                            "operation-timing",
+                            "recorded-export",
+                            "rgb-statistics",
+                            "mindeval-runs"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "clinical-study"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "plan_file"
+                ],
+                "properties": {
+                  "plan_file": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "step",
+                          "file"
+                        ],
+                        "properties": {
+                          "step": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "file": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    ],
+                    "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "method",
+              "arguments"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "preparation",
+                  "analysis"
+                ]
+              },
+              "method": {
+                "const": "mindeval"
+              },
+              "arguments": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "title",
+                  "records"
+                ],
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "\\S",
+                    "not": {
+                      "pattern": "[\\r\\n]"
+                    },
+                    "description": "Meaningful nonblank one-line heading without CR/LF. No arbitrary character-length cap; preserved verbatim."
+                  },
+                  "records": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "step",
+                            "file"
+                          ],
+                          "properties": {
+                            "step": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "file": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        }
+                      ],
+                      "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+                    },
+                    "description": "Full native saved run JSON: state.config, state.transcript[{role,content,...}], and optional state.judgment.judgment mapping criterion names to scores. This nested native judgment shape is directly supported: do NOT transform it into judgment.scores or write a custom parser. Preserves original records/transcripts, identities, supplied criterion rows, descriptive within-profile pairing, missing cells and judge-family limitations. No catalog/model calls."
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "description": "One small related group of complete typed steps. Upsert by id; existing order is retained and new IDs append in supplied order."
+    },
+    "deliverables": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "role",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "enum": [
+              "report",
+              "data",
+              "metrics",
+              "provenance",
+              "support"
+            ]
+          },
+          "source": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "step",
+                  "file"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "file": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            ],
+            "description": "Existing workspace file or exact earlier-step published file reference {step,file}; paths do not transform data. Future outputs are not existing files: never predict worker paths or pass a steps directory. For Python analysis bind each required output as its own named inputs item with file:{step,file}."
+          }
+        }
+      },
+      "description": "Upsert declared final files by name; references may target steps added in a later draft edit."
+    },
+    "remove_steps": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "remove_deliverables": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "finalize": {
+      "type": "boolean",
+      "default": false,
+      "description": "Validate the complete v2 plan and existing inputs using the unchanged admission validator. May accompany the last group. Does not submit inference."
+    }
+  }
+}

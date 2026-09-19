@@ -1,5 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import studyAdmissionAcknowledgement from './scientific-study-admission.cjs';
+import workflowValidation from './scientific-workflow-validation.cjs';
+const mcpPath = '/app/api/server/services/MCP.js';
+await writeFile(mcpPath, workflowValidation.patchFactory(await readFile(mcpPath, 'utf8')));
 const path = '/app/api/server/services/ToolService.js';
 let source = await readFile(path, 'utf8');
 const anchor = '  const filteredTools = agent.tools?.filter((tool) => {';
