@@ -79,11 +79,33 @@ normal graph termination, not an observed client abort or hard tool-step limit;
 the provider finish reason/main-generation token usage is unavailable. No output
 limit, timeout or scientific parameter is being changed to label these successful.
 
-Candidate v50 work adds a generic, incremental typed plan composer over the same
-v2 validator/runner to avoid giant command generation. It is not deployed yet.
-A separately labelled, reuse-only MindEval comparison with a non-reasoning planner
-is being prepared on one retained test instance; this is not a production-default
-change, new GPU benchmark, or acceptance pass. Rene's original endpoint is unchanged.
+v50 (`6e1ef68`, index `c8c3e411599a42afe6d00dcc4be573f8d72322616f09a86c0e881fb2fb2ef3dd`)
+adds a generic incremental typed plan composer over the same validator/runner.
+All eleven installed LibreChat/SDK cases passed, including grouped composition,
+disconnect/reconnect and worker completion. Local Rene import/seed/login checks
+also passed, but no customer cutover occurred.
+
+Two separately labelled Qwen planner tests **failed**. On v49 it admitted compact
+MindEval records that the report worker correctly rejected. On v50 it bypassed
+the study path, copied earlier files and claimed completion after report-tool
+errors. Independent checks verified the copied 126 transcript messages and 30
+scores, but not new analysis, full native records, new provenance or durable
+completion. See [v49 comparison](evidence/20260919-planner-qwen-diagnostic-v49/README.md)
+and [v50 failure](evidence/20260919-mindeval-qwen-v50/README.md).
+
+v51 source `1fbbaf09f710692dd63f818cfeebde1e6bdfd1fc` moves the existing full-record
+validator into shared preflight, so invalid inputs are returned to the planner
+before admission. It also rejects known directory outputs as file deliverables.
+All 222 source tests pass; eighteen scientific outputs from full retained records
+are byte-identical. Image index `a48f373b30db574d76f96646e308ceb03ad330f100a0af89e2899402dd7a9803`
+is published; installed-image and natural-client gates are pending. Two additional
+report-only planner comparisons are running on v50 with unchanged scientific
+inputs and limits. No successful planner/default decision is implied.
+
+The archived failed v49 previews are being retired to reuse existing public-IP
+capacity, not raise quotas. Some provider stop/delete requests returned Internal
+errors; exact-state reconciliation and bounded operator actions are retained.
+Buckets and verified results remain. Rene's original endpoint is unchanged.
 
 Backend189 is deployed. Its corrected app-bound concurrency test passed six
 overlapping metrics reads and two public history reads, including a history read
