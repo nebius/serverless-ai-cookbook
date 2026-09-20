@@ -38,8 +38,25 @@ build, nothing to install locally:
 ```
 
 **Serve the result** with the [Cosmos 3 Generator](../endpoint-cosmos3-generator/README.md)
-template: mount the same bucket read-only into the endpoint and replace `nvidia/Cosmos3-Nano`
-in the command with `/data/cosmos3-sft/<run-id>/diffusers`.
+template — validated: mount the same bucket read-only and point `vllm serve` at the folder.
+
+```bash
+nebius ai endpoint create \
+  --name cosmos3-finetuned-generator \
+  --image vllm/vllm-omni:cosmos3 \
+  --public --auth token \
+  --platform gpu-h200-sxm --preset 1gpu-16vcpu-200gb \
+  --container-port 8000 --shm-size 32Gi --disk-size 500Gi \
+  --volume "$BUCKET:/data:ro" \
+  --container-command vllm \
+  --args "serve /data/cosmos3-sft/<run-id>/diffusers --omni --model-class-name Cosmos3OmniDiffusersPipeline --no-guardrails --host 0.0.0.0 --port 8000 --init-timeout 1800"
+```
+
+The served model id is the path (`/data/cosmos3-sft/<run-id>/diffusers`, read it from
+`/v1/models`); requests are otherwise identical to the Generator template's. Observed: ready
+~6 min after create (30 GB read from the mount), text-to-image 4 s, an 81-frame 720p clip 66 s
+on one H200 — and the outputs carry the training domain (BridgeData's toy-kitchen scenes and
+gripper) even after the 20-iteration smoke run.
 
 ## How to run it
 
