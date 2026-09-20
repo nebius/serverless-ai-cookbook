@@ -116,3 +116,22 @@ Asset `scientific-ai-skills-2026.09.20.1.tar.gz` SHA-256:
 `46db30fa4efde41d9cd1568fe6cc92711dde11b5dff0371cab71311294fa5786`.
 `SHA256SUMS` is published alongside it. The release receipt commit only updates
 documentation; the packaged skill bytes and image source remain the commit above.
+
+Post-publication customer-path check: downloaded both release assets anonymously
+using HTTPS (no GitHub token), verified `SHA256SUMS`, extracted into a fresh
+directory, verified all bundle hashes, installed all 31 skills into a new
+customer directory and reran the portable suite: **114 passed + 31 subtests**.
+The installed ASR helper ran against a synthetic German negation/dose fixture
+and returned WER `0.5`, keyword miss rate `1.0`, and clinical correctness
+`not_assessed`, as expected. The public `main` manifest and release tag were
+read back successfully. `main`, the integration branch and release tag pointed
+to `1c93007cd1e27ca2aae6a37ba2be42c071b5c559` at publication.
+
+Navigation follow-up: the live website's existing Get the Skills URL still
+targets the historical workbench branch and its old skill directory. The
+canonical public destination is now
+https://github.com/rene-tech/serverless-ai-cookbook/tree/main/skills/scientific-ai .
+The website checkout contains unrelated in-progress visual changes; no website
+source, deployment or those changes were modified during this skills release.
+Use the canonical link or release asset in customer handoffs until that pointer
+is updated in the website's next controlled release.
