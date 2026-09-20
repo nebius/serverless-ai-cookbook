@@ -7,7 +7,8 @@
 # Image: nvidia/cuda:13.0.2-cudnn-devel-ubuntu24.04 (public). Env knobs (all optional):
 #   RECIPE        nano | edge | super          (default nano)
 #   MAX_ITER      training iterations          (default 500 = NVIDIA's recipe; 20 for a smoke test)
-#   SAVE_ITER     checkpoint interval          (default 100)
+#   SAVE_ITER     checkpoint interval          (default = MAX_ITER: one final checkpoint; each DCP
+#                 checkpoint of Nano with optimizer state is ~200 GiB, so intermediate saves need disk)
 #   NPROC         GPUs to use                  (default: all visible)
 #   OUTPUT_DIR    where results are copied     (default /data/cosmos3-sft)
 #   RUN_ID        result sub-folder            (default run-<timestamp>)
@@ -16,7 +17,7 @@
 #   HF_TOKEN      only needed for gated datasets/models
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
-RECIPE="${RECIPE:-nano}"; MAX_ITER="${MAX_ITER:-500}"; SAVE_ITER="${SAVE_ITER:-100}"
+RECIPE="${RECIPE:-nano}"; MAX_ITER="${MAX_ITER:-500}"; SAVE_ITER="${SAVE_ITER:-$MAX_ITER}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/cosmos3-sft}"; RUN_ID="${RUN_ID:-run-$(date +%Y%m%d-%H%M%S)}"
 FRAMEWORK_REF="${FRAMEWORK_REF:-96303bb0bdd1}"      # NVIDIA/cosmos-framework "Release 2026-09-20"
 COSMOS_REF="${COSMOS_REF:-main}"                     # nvidia/cosmos (recipes)
@@ -60,7 +61,7 @@ CHECKPOINT_DIR="$PWD/checkpoints/$MODEL"
 [ -d "$CHECKPOINT_DIR" ] || python -m cosmos_framework.scripts.convert_model_to_dcp -o "$CHECKPOINT_DIR" --checkpoint-path "$MODEL"
 export BASE_CHECKPOINT_PATH="$CHECKPOINT_DIR" WAN_VAE_PATH="$VAE_PATH"
 
-log "4/6 train: recipe=$RECIPE max_iter=$MAX_ITER save_iter=$SAVE_ITER gpus=$NPROC"
+log "4/6 train: recipe=$RECIPE max_iter=$MAX_ITER save_iter=$SAVE_ITER gpus=$NPROC (free disk: $(df -h /workspace | awk 'NR==2{print $4}'))"
 TOML_RUN="$PWD/toml/sft_config/run.toml"
 python - "$TOML" "$TOML_RUN" "$MAX_ITER" "$SAVE_ITER" "$RUN_ID" <<'PY'
 import re, sys
@@ -79,14 +80,18 @@ IMAGINAIRE_OUTPUT_ROOT="$OUTPUT_ROOT" torchrun --nproc_per_node="$NPROC" -m cosm
 
 log "5/6 export + convert"
 RUN_DIR=$(ls -d "$OUTPUT_ROOT"/cosmos3/sft/"$RUN_ID"* | head -1)
-CKPT="$RUN_DIR/checkpoints/$(cat "$RUN_DIR/checkpoints/latest_checkpoint.txt")"
+LATEST=$(cat "$RUN_DIR/checkpoints/latest_checkpoint.txt"); CKPT="$RUN_DIR/checkpoints/$LATEST"
+# free disk before export: wheel cache, DCP copy of the base model, and every checkpoint but the latest
+rm -rf "$UV_CACHE_DIR" "$CHECKPOINT_DIR"
+for d in "$RUN_DIR"/checkpoints/iter_*; do [ "$(basename "$d")" = "$LATEST" ] || rm -rf "$d"; done
+echo "  latest checkpoint: $LATEST ($(du -sh "$CKPT" | cut -f1)); free disk: $(df -h /workspace | awk 'NR==2{print $4}')"
 python -m cosmos_framework.scripts.export_model --checkpoint-path "$CKPT" --config-file "$RUN_DIR/config.yaml" -o "$RUN_DIR/model"
 python -m cosmos_framework.scripts.convert_model_to_diffusers --checkpoint-path "$RUN_DIR/model" -o "$RUN_DIR/diffusers"
 
 log "6/6 copy results → $OUTPUT_DIR/$RUN_ID"
 DEST="$OUTPUT_DIR/$RUN_ID"; mkdir -p "$DEST"
-cp -r "$RUN_DIR/diffusers" "$DEST/diffusers"
-cp -r "$RUN_DIR/model" "$DEST/model"
+cp -r "$RUN_DIR/diffusers" "$DEST/diffusers"          # the servable artifact first
+[ "${KEEP_SAFETENSORS:-false}" = "true" ] && cp -r "$RUN_DIR/model" "$DEST/model"
 cp "$RUN_DIR/config.yaml" "$DEST/config.yaml"; cp "$TOML_RUN" "$DEST/sft.toml"
 find "$RUN_DIR" -maxdepth 2 -name "*.log" -exec cp {} "$DEST/" \; 2>/dev/null || true
 du -sh "$DEST"/* | sed 's/^/  /'
