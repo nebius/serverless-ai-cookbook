@@ -10,12 +10,15 @@ COPY life-science/bionemo-librechat/artifact-mcp.py /opt/bionemo/artifact-mcp.py
 COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 COPY life-science/bionemo-librechat/tavily-mcp.mjs /opt/bionemo/tavily-mcp.mjs
 COPY life-science/bionemo-librechat/tutorials.md /opt/bionemo/tutorials.md
+COPY life-science/bionemo-librechat/scientific-agent-instructions.md /opt/bionemo/scientific-agent-instructions.md
 COPY life-science/bionemo-librechat/seed-workbench.js /app/seed-workbench.js
 COPY skills/scientific-ai/ /app/skill
+COPY life-science/bionemo-librechat/recording-skills/ /app/skill
 COPY life-science/bionemo-librechat/entrypoint.sh /usr/local/bin/bionemo-librechat-entrypoint
 RUN chmod 0755 /usr/local/bin/bionemo-librechat-entrypoint /opt/bionemo/*.py /opt/bionemo/*.mjs \
+ && rm -rf /app/skill/mindeval-workflows \
  && mkdir -p /workspace/shared/bionemo-artifacts /data/db /app/uploads /app/logs \
- && printf '%s\n' 'The default BioNeMo Workbench landing page contains grouped tutorial cards that start tool-enabled chats.' > /app/README-BIONEMO.txt
+ && printf '%s\n' 'The Scientific AI Platform landing page starts general, tool-enabled scientific demo workflows with interactive results.' > /app/README-SCIENTIFIC-AI.txt
 RUN npm run build:client
 ENV HOST=0.0.0.0 PORT=3080 NODE_ENV=production MONGO_URI=mongodb://127.0.0.1:27017/LibreChat CONFIG_PATH=/app/librechat.yaml DEPLOYMENT_SKILLS_DIR=/app/skill ALLOW_REGISTRATION=true ALLOW_EMAIL_LOGIN=true ENDPOINTS=agents,custom BIONEMO_WORKSPACE_ROOT=/workspace/shared BIONEMO_ARTIFACT_ROOT=/workspace/shared/bionemo-artifacts
 EXPOSE 3080

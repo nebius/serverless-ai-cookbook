@@ -220,13 +220,13 @@ requestAnimationFrame(reportHeight); new ResizeObserver(reportHeight).observe(do
 def tool_definition():
     return {
         'name': 'protein_viewer',
-        'description': 'Render a PDB or mmCIF structure in an inline BioNeMo viewer with rotation, zoom, reset, and representation controls.',
+        'description': 'Render a PDB or mmCIF structure in an inline Scientific AI viewer with rotation, zoom, reset, and representation controls.',
         'inputSchema': {
             'type': 'object',
             'properties': {
                 'structure_format': {'type': 'string', 'enum': ['pdb', 'cif']},
                 'structure_text': {'type': 'string', 'description': 'PDB or mmCIF file contents. Use only for small inline structures.'},
-                'structure_path': {'type': 'string', 'description': 'A PDB or mmCIF file saved by the BioNeMo artifact relay under the configured BioNeMo artifact workspace.'},
+                'structure_path': {'type': 'string', 'description': 'A PDB or mmCIF file saved by the Scientific AI artifact relay under the configured Scientific AI artifact workspace.'},
                 'title': {'type': 'string', 'description': 'Optional label shown above the viewer.'},
             },
             'required': ['structure_format'],
@@ -238,7 +238,7 @@ def call_viewer(arguments):
     structure_format = arguments.get('structure_format')
     structure_text = arguments.get('structure_text')
     structure_path = arguments.get('structure_path')
-    title = arguments.get('title', 'BioNeMo structure')
+    title = arguments.get('title', 'Scientific AI structure')
     if structure_format not in {'pdb', 'cif'}:
         raise ValueError('structure_format must be pdb or cif')
     if structure_text is not None and structure_path is not None:
@@ -248,7 +248,7 @@ def call_viewer(arguments):
             raise ValueError('structure_path must be a string')
         candidate = pathlib.Path(structure_path).resolve()
         if ARTIFACT_ROOT not in candidate.parents or not candidate.is_file():
-            raise ValueError(f'structure_path must be a saved BioNeMo artifact under {ARTIFACT_ROOT}')
+            raise ValueError(f'structure_path must be a saved Scientific AI artifact under {ARTIFACT_ROOT}')
         if candidate.stat().st_size > 4 * 1024 * 1024:
             raise ValueError('structure artifact is too large for the inline viewer')
         structure_text = candidate.read_text(encoding='utf-8')

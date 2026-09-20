@@ -15,7 +15,7 @@ tools=[tool("shell_exec",f"Execute a command in the owner-controlled Serverless 
 for line in sys.stdin:
  try:
   q=json.loads(line); i=q.get("id"); m=q.get("method")
-  if m=="initialize": reply(i,{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"bionemo-instance-admin","version":"1.0"}})
+  if m=="initialize": reply(i,{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"serverInfo":{"name":"scientific-ai-instance-admin","version":"1.0"}})
   elif m=="ping": reply(i,{})
   elif m=="notifications/initialized": continue
   elif m=="tools/list": reply(i,{"tools":tools})

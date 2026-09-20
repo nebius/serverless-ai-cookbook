@@ -1,11 +1,11 @@
-# BioNeMo Research Workbench
+# Scientific AI Platform
 
 ## Start here
 
-The default chat is the tools-enabled **BioNeMo Research Workbench** on
-GLM-5.3-Flash. Its landing page presents four grouped tutorial cards. Clicking
-one starts a tool-enabled chat for Protein Folding & Structure, Docking &
-Molecular Design, Sequence & MSA, or Genomics & Cell Biology. Every tutorial
+The default chat is the tools-enabled **Scientific AI Platform** assistant on
+GLM-5.3-Flash. Its landing page presents four grouped demo cards. Clicking one
+starts a tool-enabled chat for model discovery, protein structure, molecular
+design, or visual scientific workflows. Every demo
 first queries the live catalog, then lists the available models in that group,
 shows a bounded example, and offers a reproducible benchmark across comparable
 models, skills, and MCP calls. They do not spend model capacity until the user
@@ -31,11 +31,17 @@ OpenFold3. Treat scores as hypotheses requiring wet-lab validation.
 Evo2 generates DNA/RNA sequence outputs. MSA Search produces alignments, and
 the MSA-to-structure tutorial passes one bounded alignment into OpenFold3.
 
-## Genomics and cell biology
+## Imaging, cell biology, and visual media
 
 AlphaGenome, scVI/scANVI, Cellpose, ESM2/ESM-C, and Parabricks services are
 available through the model MCP catalog where configured. Large files should be
 uploaded or staged, never pasted into prompts.
+
+Use the dedicated workflows for chest X-ray reasoning, CT segmentation,
+Cellpose microscopy overlays, scVI/scANVI UMAP plots, and SAM2 image or video
+masks. Wan and Cosmos provide generated video where available. ACE-Step can
+produce an instrumental soundtrack when it appears in the live catalog. Speech
+workflows retain full transcripts and timing segments for uploaded recordings.
 
 ## Full model inventory
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep large BioNeMo MCP artifacts out of the language-model tool stream."""
+"""Keep large Scientific AI gateway artifacts out of the language-model tool stream."""
 
 import base64
 import hashlib
@@ -37,11 +37,11 @@ def tool(name, description, schema):
 TOOLS = [
     tool(
         'bionemo_artifact_download',
-        'Download one BioNeMo MCP artifact to the local workbench without placing its contents in the chat. Use this for PDB/mmCIF structure artifacts, then call protein_viewer with the returned structure_path.',
+        'Download one Scientific AI gateway artifact to the local workbench without placing its contents in the chat. Use this for PDB/mmCIF structure artifacts, then call protein_viewer with the returned structure_path.',
         {
             'type': 'object',
             'properties': {
-                'job_id': {'type': 'string', 'description': 'The exact 32-character job ID returned by BioNeMo MCP.'},
+                'job_id': {'type': 'string', 'description': 'The exact 32-character job ID returned by Scientific AI gateway.'},
                 'artifact_id': {'type': 'string', 'description': 'The exact 32-character artifact ID from job_status.'},
                 'filename_hint': {'type': 'string', 'description': 'Optional safe display filename, for example boltz2.cif.'},
             },
@@ -50,11 +50,11 @@ TOOLS = [
     ),
     tool(
         'bionemo_json_summary',
-        'Fetch a JSON BioNeMo artifact inside the instance and return only compact confidence, affinity, ranking, and timing values. Never use clawbio_model_fetch for a response JSON artifact.',
+        'Fetch a JSON Scientific AI artifact inside the instance and return only compact confidence, affinity, ranking, and timing values. Never use clawbio_model_fetch for a response JSON artifact.',
         {
             'type': 'object',
             'properties': {
-                'job_id': {'type': 'string', 'description': 'The exact 32-character job ID returned by BioNeMo MCP.'},
+                'job_id': {'type': 'string', 'description': 'The exact 32-character job ID returned by Scientific AI gateway.'},
                 'artifact_id': {'type': 'string', 'description': 'The exact 32-character JSON artifact ID from job_status.'},
             },
             'required': ['job_id', 'artifact_id'],
@@ -62,7 +62,7 @@ TOOLS = [
     ),
     tool(
         'bionemo_upload_local_file',
-        'Stream a file already present on this Serverless instance into the tenant-scoped BioNeMo upload service. Use this instead of clawbio_input_stage_local: the hosted gateway intentionally cannot read this instance’s filesystem. The returned job_id and artifact_id can be used as an InputReference in a typed BioNeMo model tool.',
+        'Stream a file already present on this Serverless instance into the tenant-scoped Scientific AI upload service. Use this instead of clawbio_input_stage_local: the hosted gateway intentionally cannot read this instance’s filesystem. The returned job_id and artifact_id can be used as an InputReference in a typed Scientific AI model tool.',
         {
             'type': 'object',
             'properties': {
@@ -85,16 +85,16 @@ def validate_id(value, label):
 
 def result_value(message):
     if not isinstance(message, dict):
-        raise ValueError('BioNeMo MCP returned an invalid JSON-RPC response')
+        raise ValueError('Scientific AI gateway returned an invalid JSON-RPC response')
     if message.get('error'):
-        raise ValueError(f"BioNeMo MCP error: {message['error'].get('message', 'unknown error')}")
+        raise ValueError(f"Scientific AI gateway error: {message['error'].get('message', 'unknown error')}")
     result = message.get('result')
     if not isinstance(result, dict):
-        raise ValueError('BioNeMo MCP returned no tool result')
+        raise ValueError('Scientific AI gateway returned no tool result')
     if result.get('isError'):
         content = result.get('content') or []
         detail = next((item.get('text') for item in content if isinstance(item, dict) and isinstance(item.get('text'), str)), 'tool failed')
-        raise ValueError(f'BioNeMo MCP tool failed: {detail}')
+        raise ValueError(f'Scientific AI gateway tool failed: {detail}')
     structured = result.get('structuredContent')
     if isinstance(structured, dict):
         return structured.get('result', structured)
@@ -104,7 +104,7 @@ def result_value(message):
                 return json.loads(item['text'])
             except json.JSONDecodeError:
                 return item['text']
-    raise ValueError('BioNeMo MCP returned no readable tool content')
+    raise ValueError('Scientific AI gateway returned no readable tool content')
 
 
 def upstream_tool(name, arguments):
@@ -112,7 +112,7 @@ def upstream_tool(name, arguments):
     url = os.environ.get('BIONEMO_MCP_URL', '')
     key = os.environ.get('BIONEMO_MCP_API_KEY', '')
     if not url.startswith('https://') or not key:
-        raise ValueError('BioNeMo MCP is not configured for artifact relay')
+        raise ValueError('Scientific AI gateway is not configured for artifact relay')
     rpc_id += 1
     payload = json.dumps({
         'jsonrpc': '2.0', 'id': f'artifact-{rpc_id}', 'method': 'tools/call',
@@ -131,15 +131,15 @@ def upstream_tool(name, arguments):
         with urllib.request.urlopen(request, timeout=120) as response:
             body = response.read(MAX_ARTIFACT_BYTES + 262144)
     except urllib.error.HTTPError as error:
-        raise ValueError(f'BioNeMo MCP returned HTTP {error.code}') from error
+        raise ValueError(f'Scientific AI gateway returned HTTP {error.code}') from error
     except urllib.error.URLError as error:
-        raise ValueError(f'BioNeMo MCP is unreachable: {error.reason}') from error
+        raise ValueError(f'Scientific AI gateway is unreachable: {error.reason}') from error
     if len(body) > MAX_ARTIFACT_BYTES + 262144:
-        raise ValueError('BioNeMo MCP response exceeded the relay limit')
+        raise ValueError('Scientific AI gateway response exceeded the relay limit')
     try:
         return result_value(json.loads(body.decode('utf-8')))
     except json.JSONDecodeError as error:
-        raise ValueError('BioNeMo MCP returned invalid JSON') from error
+        raise ValueError('Scientific AI gateway returned invalid JSON') from error
 
 
 def file_sha256(path):
@@ -173,7 +173,7 @@ def default_media_type(path, purpose):
 def upload_base_url():
     url = os.environ.get('BIONEMO_MCP_URL', '').rstrip('/')
     if not url.startswith('https://') or not url.endswith('/mcp'):
-        raise ValueError('BioNeMo MCP upload service is not configured')
+        raise ValueError('Scientific AI gateway upload service is not configured')
     return url[:-4]
 
 
@@ -183,7 +183,7 @@ def upload_local_file(arguments):
     if not isinstance(raw_path, str) or not raw_path:
         raise ValueError('path must be a non-empty string')
     if purpose not in {'protein_structure', 'microscopy_image', 'single_cell_anndata', 'genomics_reference', 'genomics_reads', 'genomics_index'}:
-        raise ValueError('purpose must be one of the supported BioNeMo upload purposes')
+        raise ValueError('purpose must be one of the supported Scientific AI upload purposes')
     path = pathlib.Path(raw_path).expanduser().resolve()
     if not path.is_file():
         raise ValueError('path must identify a readable regular file on this instance')
@@ -206,21 +206,21 @@ def upload_local_file(arguments):
         'idempotency_key': idempotency_key,
     })
     if not isinstance(session, dict):
-        raise ValueError('BioNeMo MCP returned an invalid upload session')
+        raise ValueError('Scientific AI gateway returned an invalid upload session')
     upload_path = session.get('upload_path')
     upload_id = session.get('upload_id')
     offset = session.get('offset_bytes')
     if not isinstance(upload_path, str) or not upload_path.startswith('/upload/v1/') or not isinstance(upload_id, str) or not isinstance(offset, int):
-        raise ValueError('BioNeMo MCP upload session is incomplete')
+        raise ValueError('Scientific AI gateway upload session is incomplete')
     state = session.get('state')
     artifact_id = session.get('artifact_id')
     job_id = session.get('job_id')
     if state not in {'ready', 'created', 'uploading'}:
-        raise ValueError(f'BioNeMo MCP upload is {state or "unavailable"}')
+        raise ValueError(f'Scientific AI gateway upload is {state or "unavailable"}')
     if state != 'ready':
         key = os.environ.get('BIONEMO_MCP_API_KEY', '')
         if not key:
-            raise ValueError('BioNeMo MCP upload credentials are unavailable')
+            raise ValueError('Scientific AI gateway upload credentials are unavailable')
         with path.open('rb') as handle:
             handle.seek(offset)
             while offset < size_bytes:
@@ -246,12 +246,12 @@ def upload_local_file(arguments):
                         artifact_id = response.headers.get('Upload-Artifact-ID', artifact_id)
                         job_id = response.headers.get('Upload-Job-ID', job_id)
                 except urllib.error.HTTPError as error:
-                    raise ValueError(f'BioNeMo upload failed with HTTP {error.code}') from error
+                    raise ValueError(f'Scientific AI upload failed with HTTP {error.code}') from error
                 if next_offset is None or not next_offset.isdigit() or int(next_offset) != offset + len(chunk):
-                    raise ValueError('BioNeMo upload returned an invalid offset')
+                    raise ValueError('Scientific AI upload returned an invalid offset')
                 offset = int(next_offset)
     if state != 'ready' or not isinstance(artifact_id, str) or not isinstance(job_id, str):
-        raise ValueError('BioNeMo upload did not finalize successfully')
+        raise ValueError('Scientific AI upload did not finalize successfully')
     return {
         'path': str(path), 'bytes': size_bytes, 'sha256': sha256,
         'upload_id': upload_id, 'job_id': job_id, 'artifact_id': artifact_id,
@@ -264,7 +264,7 @@ def fetch_artifact(job_id, artifact_id):
         'job_id': job_id, 'artifact_id': artifact_id, 'representation': 'metadata', 'offset': 0, 'length': 1,
     })
     if not isinstance(metadata, dict):
-        raise ValueError('BioNeMo MCP returned malformed artifact metadata')
+        raise ValueError('Scientific AI gateway returned malformed artifact metadata')
     total = metadata.get('bytes')
     checksum = metadata.get('sha256')
     if not isinstance(total, int) or total < 1 or total > MAX_ARTIFACT_BYTES:
@@ -279,24 +279,24 @@ def fetch_artifact(job_id, artifact_id):
             'length': min(CHUNK_BYTES, total - offset),
         })
         if not isinstance(fetched, dict) or fetched.get('artifact_id') != artifact_id or fetched.get('offset') != offset:
-            raise ValueError('BioNeMo MCP returned an inconsistent artifact chunk')
+            raise ValueError('Scientific AI gateway returned an inconsistent artifact chunk')
         encoded = fetched.get('data')
         if not isinstance(encoded, str):
-            raise ValueError('BioNeMo MCP returned artifact data in an invalid encoding')
+            raise ValueError('Scientific AI gateway returned artifact data in an invalid encoding')
         try:
             chunk = base64.b64decode(encoded, validate=True)
         except Exception as error:
-            raise ValueError('BioNeMo MCP returned invalid base64 artifact data') from error
+            raise ValueError('Scientific AI gateway returned invalid base64 artifact data') from error
         if len(chunk) != fetched.get('returned_bytes') or not chunk:
-            raise ValueError('BioNeMo MCP returned an invalid artifact chunk length')
+            raise ValueError('Scientific AI gateway returned an invalid artifact chunk length')
         chunks.append(chunk)
         offset += len(chunk)
         expected_next = offset if offset < total else None
         if fetched.get('next_offset') != expected_next:
-            raise ValueError('BioNeMo MCP returned a discontinuous artifact chunk')
+            raise ValueError('Scientific AI gateway returned a discontinuous artifact chunk')
     content = b''.join(chunks)
     if len(content) != total or hashlib.sha256(content).hexdigest() != checksum:
-        raise ValueError('BioNeMo MCP artifact failed integrity verification')
+        raise ValueError('Scientific AI gateway artifact failed integrity verification')
     return metadata, content
 
 

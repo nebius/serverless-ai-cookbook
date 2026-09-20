@@ -1,7 +1,7 @@
 version: 1.3.15
 cache: true
 interface:
-  customWelcome: 'BioNeMo Workbench: choose Protein Folding, Docking & Design, Sequence & MSA, or Genomics & Cell Biology. Ask “list models”, “start a benchmark”, or “show the tutorials”.'
+  customWelcome: 'Scientific AI Platform: explore hosted models, run reproducible scientific workflows, and turn verified results into interactive visualizations.'
   modelSelect: true
   parameters: true
   agents:
@@ -53,19 +53,19 @@ endpoints:
 modelSpecs:
   prioritize: true
   list:
-    - name: 'bionemo-workbench'
-      label: 'BioNeMo Workbench · GLM-5.3 Flash'
-      description: 'Tools-enabled research workbench with the BioNeMo catalog, Tavily, skills, instant tutorial chats, instance tools, and an inline protein viewer.'
+    - name: 'scientific-ai-platform'
+      label: 'Scientific AI Platform · GLM-5.3 Flash'
+      description: 'Scientific assistant with Token Factory, Tavily, hosted model Apps, durable bucket workflows, and interactive result viewers.'
       default: true
       showOnLanding: true
       conversation_starters:
-        - 'Protein Folding & Structure tutorial: list the live models in this group, show a bounded example, then design a comparable benchmark and render one successful structure inline.'
-        - 'Docking & Molecular Design tutorial: list the live models in this group, show a bounded example, then design a comparable benchmark using the related skills and MCP tools.'
-        - 'Sequence & MSA tutorial: list the live models in this group, show a bounded example, then design a comparable benchmark using the related skills and MCP tools.'
-        - 'Genomics & Cell Biology tutorial: list the live models in this group, show a bounded example, then design a comparable benchmark using the related skills and MCP tools.'
+        - 'Show me the live Scientific AI model catalog, grouped by use case, with the best visual demo for each group.'
+        - 'Fold one protein with three available structure models, compare the results, and render the structures interactively. Plan first; wait for me before running compute.'
+        - 'Build a molecular docking demo from a protein and ligand, including ranked poses, a comparison table, and an interactive 3D view. Plan first.'
+        - 'Show the best visual workflows for microscopy, chest X-ray, single-cell UMAP, SAM2 video tracking, synthetic physical-AI data, and speech transcription.'
       preset:
         endpoint: agents
-        agent_id: 'agent_bionemo_workbench'
+        agent_id: 'agent_scientific_ai_platform'
 mcpServers:
   bionemo-models:
     type: streamable-http
