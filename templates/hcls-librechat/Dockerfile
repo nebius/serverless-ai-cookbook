@@ -25,8 +25,15 @@ RUN python3 -m venv /tmp/aging-reference-builder \
 FROM ${LIBRECHAT_BASE} AS clawbio-runtime
 USER root
 COPY templates/hcls-librechat/clawbio/requirements.lock /tmp/clawbio-requirements.lock
+COPY templates/hcls-librechat/clawbio/requirements-build.lock /tmp/clawbio-build.lock
+# Annoy (used by Scrublet) is distributed as a source extension. Keep its
+# headers/compiler in this builder stage, not the final workbench layer.
+RUN apt-get update && apt-get install -y --no-install-recommends python3-dev g++ \
+ && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/clawbio-venv \
- && /opt/clawbio-venv/bin/pip install --no-cache-dir --require-hashes -r /tmp/clawbio-requirements.lock \
+ && /opt/clawbio-venv/bin/pip install --no-cache-dir --require-hashes -r /tmp/clawbio-build.lock \
+ && ANNOY_COMPILER_ARGS='-D_CRT_SECURE_NO_WARNINGS,-fpermissive,-O3,-ffast-math,-fno-associative-math,-DANNOYLIB_MULTITHREADED_BUILD,-std=c++14' \
+    /opt/clawbio-venv/bin/pip install --no-cache-dir --use-pep517 --no-build-isolation --require-hashes -r /tmp/clawbio-requirements.lock \
  && /opt/clawbio-venv/bin/pip check
 
 FROM ${LIBRECHAT_BASE}
