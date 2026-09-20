@@ -129,7 +129,7 @@ const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => model
     description: endpoint === 'Nebius Token Factory'
         ? 'Public Token Factory · scientific tools and web research'
         : 'Scientific tools · connect your provider key',
-    mcpServers: ['bionemo-models', 'scientific-demos', 'tavily', 'structure-viewer', 'environment-execution'], skills: true, artifacts: true,
+    mcpServers: ['scientific-ai-apps', 'scientific-demos', 'tavily', 'structure-viewer', 'environment-execution'], skills: true, artifacts: true,
     preset: { endpoint, model, modelLabel: label, promptPrefix: instructions,
       ...(endpoint === 'openAI' ? { useResponsesApi: true } : {}),
     },
@@ -141,7 +141,7 @@ modelSpecs.push({ name: 'nebius-scientific-ai-agent', label: 'Nebius Scientific 
   group: 'Scientific workspace', groupIcon: '/assets/token-factory.svg',
   iconURL: '/assets/token-factory.svg', showOnLanding: false, showIconInHeader: true,
   default: true, skills: true,
-  mcpServers: ['bionemo-models', 'scientific-demos', 'tavily', 'structure-viewer', 'environment-execution'],
+  mcpServers: ['scientific-ai-apps', 'scientific-demos', 'tavily', 'structure-viewer', 'environment-execution'],
   preset: { endpoint: 'agents', agent_id: 'agent_nebius_scientific_ai' } });
 modelSpecs.push(...[
   ['clinical-report', 'Clinical Report Draft', 'agent_clinical_report'],
@@ -221,19 +221,19 @@ const config = {
       env: { SCIENTIFIC_MODELS_API_BASE_URL: '${SCIENTIFIC_MODELS_API_BASE_URL}',
         SCIENTIFIC_MODELS_API_KEY: sharedGatewayKey ? '${SCIENTIFIC_MODELS_API_KEY}' : '{{SCIENTIFIC_MODELS_API_KEY}}' },
       ...(!sharedGatewayKey ? { customUserVars: { SCIENTIFIC_MODELS_API_KEY: {
-        title: 'Scientific platform API key', description: 'Use your own scientific model-access key for result visualization.', sensitive: true,
+        title: 'Scientific AI API key', description: 'Use your own App-access key for result visualization.', sensitive: true,
       } } } : {}),
       timeout: 60000,
     },
     tavily: { type: 'stdio', command: 'node', args: ['/opt/bionemo/tavily-mcp.mjs'],
       env: { TAVILY_API_KEY: '${TAVILY_API_KEY}' } },
-    'bionemo-models': {
-      title: 'Scientific models', description: 'Protein, molecule, sequence, imaging and scientific batch tools.',
+    'scientific-ai-apps': {
+      title: 'Scientific AI Apps', description: 'Authorized model and workflow Apps for protein, molecule, sequence, imaging, speech, media, robotics and scientific batch work.',
       type: 'streamable-http', url: '${SCIENTIFIC_MODELS_MCP_URL}',
       startup: sharedGatewayKey, requiresOAuth: false,
       headers: { Authorization: sharedGatewayKey ? 'Bearer ${SCIENTIFIC_MODELS_API_KEY}' : 'Bearer {{SCIENTIFIC_MODELS_API_KEY}}' },
       ...(!sharedGatewayKey ? { customUserVars: { SCIENTIFIC_MODELS_API_KEY: {
-        title: 'Scientific platform API key', description: 'Your model-access key, without the Bearer prefix.', sensitive: true,
+        title: 'Scientific AI API key', description: 'Your App-access key, without the Bearer prefix.', sensitive: true,
       } } } : {}),
       initTimeout: 30000, timeout: 120000, serverInstructions: true,
     },

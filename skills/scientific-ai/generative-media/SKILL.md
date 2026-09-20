@@ -72,7 +72,7 @@ input schema: its specialized contract already selects the mode. The separate
 generic `cosmos3_nano_generate_media_native` contract requires an explicit mode.
 Do not mix the generic and specialized inputs or depend on catalog ordering.
 For a direct call, load only that exact tool with tool_search's existing
-`max_results:1`, `fields:["name"]`, `mcp_server:"bionemo-models"` parameters.
+`max_results:1`, `fields:["name"]`, `mcp_server:"scientific-ai-apps"` parameters.
 A file-based workflow does not need the direct model tools loaded into chat.
 Queued whole-study admission is not evidence that either model call has been
 submitted. Describe the Study as queued/in progress until its actual phase

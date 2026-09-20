@@ -1,11 +1,13 @@
 ---
 name: tavily-research
-description: Research current public scientific evidence with the configured Tavily MCP tools, return source links, and hand a bounded evidence summary into BioNeMo workflows. Use for literature or web discovery, research-first drug and protein demos, source verification, or any request that needs current cited context before model inference.
+description: Research current public scientific evidence with the configured Tavily MCP tools, return source links, and hand a bounded evidence summary into Scientific AI workflows. Use for literature or web discovery, research-first drug and protein demos, source verification, or any request that needs current cited context before model inference.
 license: Apache-2.0 AND CC-BY-4.0
 ---
 
 
-Availability note (2026-09-09): a Tavily MCP server is not wired in the current Nebius Scientific AI Agent config (scientific gateway + GROMACS only). If its tools are absent, say so and skip web research rather than fabricating sources.
+Use the configured Tavily MCP server when its tools are available. If the client
+does not expose them or its key is unavailable, say so and skip live web research
+rather than fabricating sources.
 
 # Tavily research
 
@@ -22,7 +24,7 @@ Availability note (2026-09-09): a Tavily MCP server is not wired in the current 
 4. Record the title and URL for every source used. Distinguish source claims
    from inference, note disagreements or weak evidence, and prefer primary
    publications or authoritative public databases.
-5. Give the BioNeMo step only the concise facts it needs. Do not paste entire
+5. Give the next Scientific AI App only the concise facts it needs. Do not paste entire
    pages or raw search output into model inputs.
 
 ## Research-first model workflows

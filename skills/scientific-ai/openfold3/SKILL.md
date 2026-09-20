@@ -7,7 +7,7 @@ license: Apache-2.0 AND CC-BY-4.0
 # openfold3 (native)
 
 Public model ID `openfold3`; typed tool `infer_openfold3_native` on the
-`bionemo-models` MCP server (LibreChat suffixes tool IDs). Keep this distinct
+`scientific-ai-apps` MCP server (LibreChat suffixes tool IDs). Keep this distinct
 from the batch model `openfold3-openbind` (different runtime and run document;
 see `scientific-batch`). Call `get_model_schema` when unsure — its live schema
 and example win over this skill.

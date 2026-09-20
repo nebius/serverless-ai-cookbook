@@ -7,7 +7,7 @@ license: Apache-2.0 AND CC-BY-4.0
 # aging models (native): altumage, phenoage
 
 Typed tools `infer_altumage_native` and `infer_phenoage_native` on the
-`bionemo-models` MCP server (LibreChat suffixes tool IDs). Shared rules:
+`scientific-ai-apps` MCP server (LibreChat suffixes tool IDs). Shared rules:
 `scientific-gateway`. Both are strict, exact-field contracts; call
 `get_model_schema` for the live schema — its example wins over this skill.
 

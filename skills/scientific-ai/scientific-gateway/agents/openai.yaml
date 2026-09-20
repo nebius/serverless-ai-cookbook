@@ -1,11 +1,11 @@
 interface:
-  display_name: "Scientific Model Gateway"
+  display_name: "Scientific AI Apps"
   short_description: "Use hosted models through typed MCP tools"
   default_prompt: "Use $scientific-gateway to run a hosted model and retrieve its outputs."
 dependencies:
   tools:
     - type: "mcp"
-      value: "bionemo-models"
+      value: "scientific-ai-apps"
       description: "Authorized typed model, operation, and artifact tools"
       transport: "streamable_http"
       url: "https://89.169.99.188/mcp"

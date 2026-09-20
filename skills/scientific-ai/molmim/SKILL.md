@@ -6,7 +6,7 @@ license: Apache-2.0 AND CC-BY-4.0
 
 # molmim (native)
 
-Public model ID `molmim`; MCP typed tool `molmim_run_native` (the server is `bionemo-models`; LibreChat suffixes tool IDs). Shared rules: `scientific-gateway`.
+Public model ID `molmim`; MCP typed tool `molmim_run_native` (the server is `scientific-ai-apps`; LibreChat suffixes tool IDs). Shared rules: `scientific-gateway`.
 
 ## Payload contract (verified against the deployed adapter, 2026-09-09)
 

@@ -84,7 +84,7 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
         <p className="mb-3 text-xs font-medium text-text-secondary">Models, data, literature and reproducible runs in one workspace</p>
         <h2 className="text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl">Turn a scientific question into traceable work.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
-          Search with Tavily, explore hosted scientific models, inspect structures in 3D,
+          Search with Tavily, explore Scientific AI Apps, inspect structures in 3D,
           run Python, install packages, work with your bucket, and reconnect to durable model runs.
         </p>
       </header>

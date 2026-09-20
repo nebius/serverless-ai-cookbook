@@ -14,6 +14,8 @@ Open **Getting started & example prompts** on the chat home page, or
 and concrete protein, molecule, speech, aging-clock and image examples. It uses
 the versioned `examples/v1/` pack in your bucket, not hidden event fixtures.
 See [GETTING_STARTED.md](GETTING_STARTED.md) for the same setup and recovery steps.
+The [naming contract](NAMING.md) defines the product, App and MCP names used by
+the client and explains the one retained legacy alias.
 The [general-client candidate receipt](GENERAL_CLIENT_RELEASE_20260920.md) records
 the published image, exact UI tests and the live-upgrade work still required.
 

@@ -7,7 +7,7 @@ license: Apache-2.0 AND CC-BY-4.0
 # msa-search (native)
 
 Public model ID `msa-search-pdb70` (ColabFold MSA fallback against PDB70);
-typed tool `msa_search_native` on the `bionemo-models` MCP server (LibreChat
+typed tool `msa_search_native` on the `scientific-ai-apps` MCP server (LibreChat
 suffixes tool IDs). Shared rules: `scientific-gateway`. Call `get_model_schema`
 when unsure — its live schema and example win over this skill.
 

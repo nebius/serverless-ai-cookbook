@@ -19,8 +19,8 @@ if (contextTokens !== undefined && (!Number.isInteger(contextTokens) || contextT
   throw new Error('Explicit context ceiling must be an integer of at least 1024 tokens');
 }
 
-const scientificModelsServerName = 'bionemo-models';
-const mcpTool = (name) => `${name}_mcp_${scientificModelsServerName}`;
+const scientificAppsServerName = 'scientific-ai-apps';
+const mcpTool = (name) => `${name}_mcp_${scientificAppsServerName}`;
 const scientificCatalogTools = [
   'get_model_schema', 'invoke_model', 'cancel_operation', 'acknowledge_operation',
   'submit_scientific_run', 'get_scientific_status', 'cancel_scientific_run',
@@ -106,8 +106,8 @@ For any proposed benchmark, fix inputs, preprocessing, random seeds, compute set
       // Caller authorization remains at the platform. A fixed model-name list
       // silently hid new Apps (including Cosmos video/LeRobot and speech).
       // Model-specific schemas remain deferred by scientific-tool-options.
-      tools: [`${Constants.mcp_all}_mcp_${scientificModelsServerName}`, ...workbenchTools, ...clinicalWorkflowTools],
-      mcpServerNames: [scientificModelsServerName, 'scientific-demos', 'tavily'],
+      tools: [`${Constants.mcp_all}_mcp_${scientificAppsServerName}`, ...workbenchTools, ...clinicalWorkflowTools],
+      mcpServerNames: [scientificAppsServerName, 'scientific-demos', 'tavily'],
       conversation_starters: [
         'Show the scientific model catalog grouped by protein structure, docking and design, imaging, genomics, and generative models.',
         'Help me choose a model and a reproducible benchmark for my scientific task.',
@@ -124,7 +124,7 @@ For a comparison, record input sequence, MSA/template treatment, preprocessing, 
 
 Predictions and confidence metrics are research outputs. Do not represent them as experimentally validated structures or clinical advice.`,
       tools: structureTools,
-      mcpServerNames: [scientificModelsServerName, 'tavily'],
+      mcpServerNames: [scientificAppsServerName, 'tavily'],
       conversation_starters: [
         'List the live protein folding and structure models, their inputs, and model-specific limits.',
         'Prepare one small protein sequence benchmark across Boltz2, OpenFold2, and OpenFold3. Explain the comparison before running anything.',
@@ -139,7 +139,7 @@ Predictions and confidence metrics are research outputs. Do not represent them a
 
 Then give one concrete, bounded example and a benchmark plan: use the same prepared receptor/ligand or sequence, a fixed reference set, matched preprocessing, ranked-pose or design metrics, wall time, completion rate, and held-out experimental validation when available. Before running anything, state inputs, protonation and preparation assumptions, intended metric, resource cost, and evaluation plan. Request confirmation before compute, preserve operation IDs, and distinguish a model score from experimental binding or functional validation.`,
       tools: molecularDesignTools,
-      mcpServerNames: [scientificModelsServerName, 'tavily'],
+      mcpServerNames: [scientificAppsServerName, 'tavily'],
       conversation_starters: [
         'List the available docking and molecular-design models with their live operations.',
         'Outline a reproducible DiffDock docking benchmark without submitting it yet.',
@@ -153,7 +153,7 @@ Then give one concrete, bounded example and a benchmark plan: use the same prepa
 
 Treat every result as research-only. Do not give a diagnosis, triage decision, or clinical recommendation. Before a run, request de-identified input and explain validation against a held-out reference standard, calibration and subgroup analysis, uncertainty review, and qualified clinician oversight. A benchmark must record sensitivity/specificity or Dice/IoU as appropriate, p50/p95 latency, failures, and image-quality exclusions.`,
       tools: biomedicalImagingTools,
-      mcpServerNames: [scientificModelsServerName, 'tavily'],
+      mcpServerNames: [scientificAppsServerName, 'tavily'],
       conversation_starters: [
         'List the live biomedical imaging models and the inputs they accept.',
         'Explain a research-only CT segmentation evaluation workflow with validation and human review.',
@@ -167,7 +167,7 @@ Treat every result as research-only. Do not give a diagnosis, triage decision, o
 
 For evaluations, specify cohort definition, train/test separation, protected data handling, confounders, metrics, confidence intervals, subgroup analysis, and a baseline. Benchmark candidates on the same held-out cohort or sequence set; report missing data rules and failure rate. Obtain confirmation before invoking compute and retain operation identifiers for reproducibility.`,
       tools: genomicsTools,
-      mcpServerNames: [scientificModelsServerName, 'tavily'],
+      mcpServerNames: [scientificAppsServerName, 'tavily'],
       conversation_starters: [
         'List the live genomics and biological-age models and their required inputs.',
         'Design a reproducible evaluation for a biological-age model with a held-out cohort.',
@@ -181,10 +181,10 @@ For evaluations, specify cohort definition, train/test separation, protected dat
 
 For acceptance, use complete representative recordings and reference transcripts where licensing permits. Measure WER or MER, terminology accuracy, diarization if supported, real-time factor, partial/final latency, failures and long-session behavior. Preserve transcript evidence and unanswered questions. Do not diagnose or silently repair uncertain source speech.`,
       tools: [...['list_models', 'list_scientific_models', 'get_model_schema'].map(mcpTool), ...workbenchTools],
-      mcpServerNames: [scientificModelsServerName, 'scientific-demos', 'tavily'],
+      mcpServerNames: [scientificAppsServerName, 'scientific-demos', 'tavily'],
       conversation_starters: [
         'Show the real-time transcription requirements and how a connected model would be evaluated.',
-        'Which live scientific models currently support audio transcription?',
+        'Which live Scientific AI Apps currently support audio transcription?',
       ],
     },
   ];

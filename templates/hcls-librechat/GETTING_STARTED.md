@@ -36,6 +36,78 @@ evidence of clinical efficacy. Some models require specific grants or licenses.
 The exact live schema and recipe decide the actual input and output contract.
 Do not shorten a recording or silently switch a model to make a test pass.
 
+## How every example works
+
+The cards prepare an editable chat prompt. **Copying a prompt does not submit
+inference.** The agent first checks the caller-visible Scientific AI Apps,
+reads the selected App's live schema and verifies the sample path. Before it
+submits anything, it should show the exact input, expected output and destination
+directory. One logical request gets one idempotency identity and one durable run
+or operation ID. If the browser disconnects, resume that ID from **Runs**; do not
+create a duplicate. Completed files belong under `/workspace/my-studies/`, never
+inside the read-only example source directory.
+
+### 1. Explore my workspace
+
+- **Purpose:** learn what this user can actually access before spending GPU time.
+- **Reads:** caller-scoped Apps plus `/workspace/examples/v1/README.md` and its
+  manifest when the starter pack is mounted.
+- **Produces:** three suitable examples with their source inputs and expected
+  deliverables. It submits no model request and creates no scientific result.
+- **Failure boundary:** a missing key, mount or manifest is reported explicitly;
+  the agent must not invent a path, model grant or replacement bucket.
+
+### 2. Fold a sample protein
+
+- **App:** OpenFold2, only when it is visible to the caller and its current
+  schema accepts the selected public sequence recipe.
+- **Produces:** the original operation ID, terminal state, actual returned
+  structure file and every confidence field the App explicitly returns. The 3D
+  viewer is used only when the result format is supported.
+- **Interpretation:** confidence is a model output, not experimental structure
+  validation, function or binding evidence.
+
+### 3. Generate a few molecules
+
+- **App:** GenMol with the starter recipe's bounded candidate count and current
+  live input contract.
+- **Produces:** the returned molecules, including exact SMILES where present,
+  the run identity and a downloadable result file with input provenance.
+- **Interpretation:** generated structures and measured output fields do not
+  establish binding, efficacy, safety or synthesizability.
+
+### 4. Transcribe a teaching consultation
+
+- **Input:** the complete public English recording and its supplied human
+  reference transcript. The example must not shorten or replace the recording.
+- **Produces:** a complete model transcript, timing/segment metadata when the
+  selected App returns it, a reference comparison, provenance and download links.
+- **Interpretation:** this example evaluates transcription only. It does not
+  create a medical report, diagnosis or clinical recommendation.
+
+### 5. Try a synthetic aging-clock example
+
+- **App:** PhenoAge, using only the synthetic laboratory profile and the exact
+  units declared by the recipe and live schema.
+- **Produces:** the numerical App result together with the complete normalized
+  input profile, units, model identity and run provenance.
+- **Interpretation:** it is a software and transport example, not an assessment
+  of a real person or evidence of biological age or health.
+
+### 6. Segment a teaching image
+
+- **App:** SAM 2 when authorized, with the starter pack's synthetic image and
+  declared point/box prompts.
+- **Produces:** the operation ID, original input and prompts, complete mask or
+  overlay artifacts, and verified download links.
+- **Interpretation:** describe only what the returned mask contains. The example
+  does not establish clinical accuracy or generalize to an undisclosed modality.
+
+The broader research cards can guide literature review, CT and chest X-ray
+research, Cellpose microscopy, single-cell UMAP, generated media, robotics and
+other authorized Apps. They are not silently counted as completed starter
+examples: each needs its own live schema, suitable data and acceptance evidence.
+
 ## Bring your own data
 
 Upload through **Workspace** and tell the agent the resulting `/workspace/`

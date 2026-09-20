@@ -4,7 +4,8 @@ Install this entire versioned bundle in your agent's skill directory. Configure
 the hosted Scientific AI MCP endpoint and your user API key in that client's
 secret/configuration mechanism. Use the endpoint issued by your operator, not a
 hard-coded example IP. Skills do not contain keys, grant models or create cloud
-accounts. The model MCP's name may differ from `bionemo-models` in your client.
+accounts. The MCP server is named `scientific-ai-apps` in the maintained
+LibreChat client; another client may assign a different local connection name.
 
 The portable core is caller-scoped discovery, `get_model_schema`, named model
 tools and operation/batch/artifact lifecycle tools. Use their exact registered

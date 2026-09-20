@@ -4,10 +4,10 @@ const { createRequire } = require('node:module');
 const appRequire = createRequire('/app/package.json');
 const { formatMCPServerTools } = appRequire('@librechat/api');
 const input = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-const formatted = formatMCPServerTools('bionemo-models', input.tools);
+const formatted = formatMCPServerTools('scientific-ai-apps', input.tools);
 const bytes = (value) => Buffer.byteLength(JSON.stringify(value));
 const rows = input.tools.map((tool) => {
-  const value = formatted[`${tool.name}_mcp_bionemo-models`];
+  const value = formatted[`${tool.name}_mcp_scientific-ai-apps`];
   return { name: tool.name, original_bytes: bytes(tool.inputSchema),
     serialized_bytes: bytes(value), parameters_bytes: bytes(value.function.parameters),
     root_definitions: Object.keys(tool.inputSchema.$defs || {}).length };
@@ -22,7 +22,7 @@ async function main() {
   const exact = new Tokenizer(encoding);
   const started = performance.now();
   for (const row of rows) {
-    const serialized = JSON.stringify(formatted[`${row.name}_mcp_bionemo-models`]);
+    const serialized = JSON.stringify(formatted[`${row.name}_mcp_scientific-ai-apps`]);
     row.pinned_token_count = counter(new SystemMessage(serialized));
     const fullStarted = performance.now();
     row.full_tokenizer_count = exact.count(serialized);

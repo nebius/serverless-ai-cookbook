@@ -6,7 +6,7 @@ license: Apache-2.0 AND CC-BY-4.0
 
 # genmol (native)
 
-Public model ID `genmol`; MCP typed tool `genmol_generate_native` (the server is `bionemo-models`; LibreChat suffixes tool IDs). Shared rules: `scientific-gateway`.
+Public model ID `genmol`; MCP typed tool `genmol_generate_native` (the server is `scientific-ai-apps`; LibreChat suffixes tool IDs). Shared rules: `scientific-gateway`.
 
 ## Payload contract (qualification clarification, 2026-09-18)
 

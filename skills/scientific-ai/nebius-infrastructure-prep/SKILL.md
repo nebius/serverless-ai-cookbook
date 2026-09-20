@@ -12,7 +12,7 @@ bundle does not redistribute that private upstream repository. Prepare a concret
 infrastructure project, configuration, commands and benchmark plan using current
 public documentation when those skills are absent. Check whether this client
 has a local executor; do not assume root or access to a customer's cloud account.
-The scientific-model gateway and Token Factory
+The Scientific AI MCP server and Token Factory
 credentials are not credentials for the participant's cloud project.
 
 Ask only for the details needed: workload, success metric, operating system,

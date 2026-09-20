@@ -9,18 +9,18 @@ const options = require('../scientific-tool-options.cjs');
 const count = require('../scientific-token-count.cjs');
 async function main() {
   const { tools } = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-  const catalog = api.formatMCPServerTools('bionemo-models', tools);
+  const catalog = api.formatMCPServerTools('scientific-ai-apps', tools);
   const loaded = await api.loadToolDefinitions({ userId: 'test', agentId: 'test',
-    tools: [`${Constants.mcp_all}_mcp_bionemo-models`],
-    toolOptions: options({ tools: [`${Constants.mcp_all}_mcp_bionemo-models`] }),
+    tools: [`${Constants.mcp_all}_mcp_scientific-ai-apps`],
+    toolOptions: options({ tools: [`${Constants.mcp_all}_mcp_scientific-ai-apps`] }),
     provider: 'openAI', deferredToolsEnabled: true, programmaticToolsEnabled: false,
-    codeExecutionEnabled: false, mcpServerNames: ['bionemo-models'],
+    codeExecutionEnabled: false, mcpServerNames: ['scientific-ai-apps'],
   }, { isBuiltInTool: () => false, getOrFetchMCPServerTools: async () => catalog });
   for (const name of ['cosmos3_nano_video_to_video', 'submit_cosmos3_lerobot_augmentation',
     'infer_phenoage_native', 'infer_parakeet_realtime_eou_120m_v1_native']) {
-    assert.equal(loaded.toolRegistry.get(name + '_mcp_bionemo-models')?.defer_loading, true, name);
+    assert.equal(loaded.toolRegistry.get(name + '_mcp_scientific-ai-apps')?.defer_loading, true, name);
   }
-  assert.notEqual(loaded.toolRegistry.get('get_model_schema_mcp_bionemo-models')?.defer_loading, true);
+  assert.notEqual(loaded.toolRegistry.get('get_model_schema_mcp_scientific-ai-apps')?.defer_loading, true);
   assert.equal(loaded.hasDeferredTools, true);
   assert.ok(loaded.toolDefinitions.some((tool) => tool.name === 'tool_search'));
   const { Tokenizer } = appRequire('ai-tokenizer');

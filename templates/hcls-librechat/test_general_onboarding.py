@@ -49,6 +49,49 @@ def test_onboarding_is_baked_into_both_entry_paths():
     assert "fetch(" not in guide and "axios" not in guide
 
 
+def test_every_visible_starter_example_has_detailed_documentation():
+    guide = (ROOT / "ScientificGettingStarted.tsx").read_text()
+    documentation = (ROOT / "GETTING_STARTED.md").read_text()
+    normalized_documentation = " ".join(documentation.replace("**", "").split())
+    examples = [
+        ("tour", "Explore my workspace"),
+        ("protein", "Fold a sample protein"),
+        ("molecule", "Generate a few molecules"),
+        ("speech", "Transcribe a teaching consultation"),
+        ("aging", "Try a synthetic aging-clock example"),
+        ("image", "Segment a teaching image"),
+    ]
+    for example_id, title in examples:
+        assert f"id: '{example_id}'" in guide
+        assert title in guide
+        assert title in documentation
+    for contract in [
+        "Copying a prompt does not submit inference",
+        "one durable run",
+        "resume that ID",
+        "/workspace/my-studies/",
+        "must not invent",
+    ]:
+        assert contract in normalized_documentation
+
+
+def test_active_client_uses_canonical_scientific_ai_app_naming():
+    naming = (ROOT / "NAMING.md").read_text()
+    normalized_naming = " ".join(naming.replace("**", "").split())
+    active_paths = [
+        ROOT / "render-config.mjs",
+        ROOT / "seed-workbench.js",
+        ROOT / "scientific-tool-options.cjs",
+        ROOT.parents[1] / "life-science/bionemo-librechat/scientific-agent-instructions.md",
+    ]
+    active = "\n".join(path.read_text() for path in active_paths)
+    assert "scientific-ai-apps" in active
+    assert "bionemo-models" not in active
+    assert "Nebius Scientific AI" in normalized_naming
+    assert "NVIDIA BioNeMo" in normalized_naming
+    assert "BioNeMo is" in normalized_naming and "never the name" in normalized_naming
+
+
 def test_runtime_copy_has_no_event_destination_or_campaign_banner():
     for name in ["render-config.mjs", "ScientificLanding.tsx", "ScientificGettingStarted.tsx",
                  "demos/Demos.tsx", "demos/seed.cjs", "scripts/deploy.sh"]:

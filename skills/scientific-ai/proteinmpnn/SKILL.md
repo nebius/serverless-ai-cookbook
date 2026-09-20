@@ -7,7 +7,7 @@ license: Apache-2.0 AND CC-BY-4.0
 # proteinmpnn (native)
 
 Public model ID `proteinmpnn`; typed tool `infer_proteinmpnn_native` on the
-`bionemo-models` MCP server (LibreChat suffixes tool IDs). Shared lifecycle
+`scientific-ai-apps` MCP server (LibreChat suffixes tool IDs). Shared lifecycle
 rules: `scientific-gateway`. Call `get_model_schema` when unsure — its live
 schema and example win over this skill.
 

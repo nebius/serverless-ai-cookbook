@@ -1,6 +1,6 @@
 ---
 name: scientific-agent-tutorials
-description: Start a scientific research workflow by choosing a model family, preparing a schema-accurate example, or benchmarking related models through the scientific model gateway.
+description: Start a scientific research workflow by choosing an App or model family, preparing a schema-accurate example, or benchmarking related models through Scientific AI Apps.
 license: Apache-2.0 AND CC-BY-4.0
 ---
 

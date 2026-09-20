@@ -1,4 +1,13 @@
-# Scientific AI skills 2026.09.20.2 — source integration
+# Scientific AI skills 2026.09.20.3 — canonical platform naming
+
+The portable skills now call the complete hosted surface **Nebius Scientific AI
+Apps** and use the maintained LibreChat connection ID `scientific-ai-apps`.
+NVIDIA BioNeMo remains identified where it is genuinely the model ecosystem,
+source or Agent Toolkit compatibility layer; it is no longer presented as the
+name of the complete MCP server or catalog. This is a naming and client-contract
+release. It does not claim new model inference qualification or deploy an image.
+
+## Previous source integration: 2026.09.20.2
 
 Updated the portable ClawBio catalog for the optional pinned native CPU/hosted-App
 extension in the full LibreChat image. The public core remains 31 skills;

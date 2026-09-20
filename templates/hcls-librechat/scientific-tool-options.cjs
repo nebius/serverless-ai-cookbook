@@ -11,7 +11,7 @@ const core = new Set([
 ]);
 
 module.exports = function scientificToolOptions(agent, loadedTools = []) {
-  const suffix = '_mcp_bionemo-models';
+  const suffix = '_mcp_scientific-ai-apps';
   const options = { ...agent.tool_options };
   // A first request may hold an mcp_all server pin until the catalog is loaded.
   // Predeclare the known model tools as well as any discovered additions.

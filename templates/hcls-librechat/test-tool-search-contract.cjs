@@ -8,7 +8,7 @@ const { performLocalSearch, ToolSearchToolSchema } = require(
 const names = ['cosmos3_nano_transfer_video', 'cosmos3_nano_video_to_video',
   'cosmos3_nano_image_to_video', 'cosmos3_nano_text_to_video',
   'cosmos3_nano_generate_media_native', 'submit_cosmos3_lerobot_augmentation'];
-const tools = names.map(name => ({ name: `${name}_mcp_bionemo-models`,
+const tools = names.map(name => ({ name: `${name}_mcp_scientific-ai-apps`,
   description: 'Generate or transform scientific video and recorded robot media.',
   parameters: { type: 'object', properties: { input: { type: 'string' } } } }));
 
@@ -21,9 +21,9 @@ test('existing schema allows exact one-result name loading, unchanged defaults',
 
 test('canonical and registered exact tool names import only the intended schema', () => {
   for (const name of names) {
-    for (const query of [name, `${name}_mcp_bionemo-models`]) {
+    for (const query of [name, `${name}_mcp_scientific-ai-apps`]) {
       const result = performLocalSearch(tools, query, ['name'], 1);
-      assert.deepEqual(result.tool_references.map(row => row.tool_name), [`${name}_mcp_bionemo-models`]);
+      assert.deepEqual(result.tool_references.map(row => row.tool_name), [`${name}_mcp_scientific-ai-apps`]);
     }
   }
 });

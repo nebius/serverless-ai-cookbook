@@ -136,13 +136,14 @@ def test_footer_is_powered_by_nvidia() -> None:
 @pytest.mark.parametrize("shared_key", [False, True])
 def test_rendered_gateway_authentication(tmp_path, shared_key) -> None:
     config, output = render_config(tmp_path, **({"SCIENTIFIC_MODELS_API_KEY": "synthetic-test-credential"} if shared_key else {}))
-    assert set(config["mcpServers"]) == {"bionemo-models", "tavily", "structure-viewer", "environment-execution", "scientific-demos"}
+    assert set(config["mcpServers"]) == {"scientific-ai-apps", "tavily", "structure-viewer", "environment-execution", "scientific-demos"}
     demos = config["mcpServers"]["scientific-demos"]
     assert demos["startup"] is False
     assert demos["env"]["SCIENTIFIC_MODELS_API_KEY"] == "{{SCIENTIFIC_MODELS_API_KEY}}"
     assert demos["env"]["LIBRECHAT_USER_ID"] == "{{LIBRECHAT_USER_ID}}"
     assert demos["customUserVars"]["SCIENTIFIC_MODELS_API_KEY"]["sensitive"] is True
-    gateway = config["mcpServers"]["bionemo-models"]
+    gateway = config["mcpServers"]["scientific-ai-apps"]
+    assert gateway["title"] == "Scientific AI Apps"
     assert gateway["type"] == "streamable-http"
     assert gateway["url"] == "${SCIENTIFIC_MODELS_MCP_URL}"
     assert gateway["requiresOAuth"] is False
@@ -163,16 +164,16 @@ def test_model_tools_are_deferred_without_changing_other_options() -> None:
     script = r"""
 const assert = require('node:assert/strict');
 const options = require(process.argv[1]);
-const input = {tools: ['get_model_schema_mcp_bionemo-models', 'infer_openfold2_native_mcp_bionemo-models', 'tavily_search_mcp_tavily'],
-  tool_options: {'infer_openfold2_native_mcp_bionemo-models': {describe_intent: true}}};
+const input = {tools: ['get_model_schema_mcp_scientific-ai-apps', 'infer_openfold2_native_mcp_scientific-ai-apps', 'tavily_search_mcp_tavily'],
+  tool_options: {'infer_openfold2_native_mcp_scientific-ai-apps': {describe_intent: true}}};
 const result = options(input);
-assert.equal(result['infer_openfold2_native_mcp_bionemo-models'].defer_loading, true);
-assert.equal(result['infer_openfold2_native_mcp_bionemo-models'].describe_intent, true);
-assert.equal(result['get_model_schema_mcp_bionemo-models'], undefined);
-assert.equal(result['list_models_mcp_bionemo-models'].defer_loading, true);
-assert.equal(result['get_operation_result_mcp_bionemo-models'].defer_loading, true);
+assert.equal(result['infer_openfold2_native_mcp_scientific-ai-apps'].defer_loading, true);
+assert.equal(result['infer_openfold2_native_mcp_scientific-ai-apps'].describe_intent, true);
+assert.equal(result['get_model_schema_mcp_scientific-ai-apps'], undefined);
+assert.equal(result['list_models_mcp_scientific-ai-apps'].defer_loading, true);
+assert.equal(result['get_operation_result_mcp_scientific-ai-apps'].defer_loading, true);
 assert.equal(result['tavily_search_mcp_tavily'], undefined);
-assert.equal(input.tool_options['infer_openfold2_native_mcp_bionemo-models'].defer_loading, undefined);
+assert.equal(input.tool_options['infer_openfold2_native_mcp_scientific-ai-apps'].defer_loading, undefined);
 """
     subprocess.run(['node', '-e', script, str(ROOT / 'scientific-tool-options.cjs')], check=True)
 
@@ -233,7 +234,7 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     for agent in agents:
         assert agent["skills_enabled"] is True
         assert instructions.read_text().strip() in agent["instructions"]
-        assert set(agent["mcpServerNames"]) == {"bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"}
+        assert set(agent["mcpServerNames"]) == {"scientific-ai-apps", "scientific-demos", "tavily", "structure-viewer", "environment-execution"}
         assert "tavily_search_mcp_tavily" in agent["tools"]
         assert "workbench_track_operation_mcp_scientific-demos" in agent["tools"]
         assert "run_scientific_workflow_mcp_environment-execution" in agent["tools"]
@@ -276,10 +277,10 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
         if item["group"] == "Scientific workspace":
             assert item["preset"] == {"endpoint": "agents", "agent_id": "agent_nebius_scientific_ai"}
             assert item["default"] is True
-            assert item["mcpServers"] == ["bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"]
+            assert item["mcpServers"] == ["scientific-ai-apps", "scientific-demos", "tavily", "structure-viewer", "environment-execution"]
             continue
         assert item["skills"] is True
-        assert item["mcpServers"] == ["bionemo-models", "scientific-demos", "tavily", "structure-viewer", "environment-execution"]
+        assert item["mcpServers"] == ["scientific-ai-apps", "scientific-demos", "tavily", "structure-viewer", "environment-execution"]
         assert INSTRUCTIONS.read_text().strip() in item["preset"]["promptPrefix"]
         assert item["preset"]["model"] not in {"evo2-40b", "boltz2", "openfold2", "sdxl", "nv-segment-ct"}
         assert "agent_id" not in item["preset"]
@@ -315,7 +316,7 @@ def test_model_grouped_tutorials_are_seeded() -> None:
     assert "agent_biomedical_imaging" in seeder
     assert "agent_genomics_aging" in seeder
     assert "agent_audio_transcription_tutorial" in seeder
-    assert "scientificModelsServerName" in seeder
+    assert "scientificAppsServerName" in seeder
     assert "boltz2_predict_native" in seeder
     assert "segment_ct_native" in seeder
     assert "Do not give a diagnosis" in seeder

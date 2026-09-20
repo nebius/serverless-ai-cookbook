@@ -1,4 +1,4 @@
-# fs2 gateway client contract
+# Scientific AI Apps client contract
 
 This reference supplements `SKILL.md`. Live `tools/list` and
 `get_model_schema` remain authoritative for the caller and deployment.
