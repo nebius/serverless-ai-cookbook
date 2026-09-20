@@ -62,6 +62,13 @@ def test_storage_profile_is_configurable(tmp_path):
     )
 
 
+def test_recording_completion_budget_is_explicit(tmp_path):
+    result = command(tmp_path, 'false')
+    assert result.returncode == 0 and result.stderr == ''
+    arguments = json.loads(result.stdout)
+    assert 'SCIENTIFIC_CHAT_MAX_OUTPUT_TOKENS=16384' in arguments
+
+
 def test_private_explicit_ssh_is_not_silently_removed(tmp_path):
     result = command(tmp_path, 'false', ssh=True)
     assert result.returncode == 0

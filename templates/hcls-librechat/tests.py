@@ -234,6 +234,7 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     assert demo_tools <= set(general['tools'])
     for agent in agents:
         assert agent["skills_enabled"] is True
+        assert agent["model_parameters"]["max_tokens"] == 16384
         assert instructions.read_text().strip() in agent["instructions"]
         assert set(agent["mcpServerNames"]) == {"scientific-ai-apps", "scientific-demos", "tavily", "structure-viewer", "environment-execution"}
         assert "tavily_search_mcp_tavily" in agent["tools"]

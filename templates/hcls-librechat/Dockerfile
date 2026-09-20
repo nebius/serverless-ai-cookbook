@@ -86,7 +86,12 @@ COPY templates/hcls-librechat/scientific_study.py templates/hcls-librechat/scien
 COPY templates/hcls-librechat/scripts/qualification/evaluators.py /opt/bionemo/qualification_evaluators.py
 COPY --from=aging-reference /opt/aging-reference /opt/bionemo/aging-reference
 RUN python3 -m venv /opt/scientific-client \
- && /opt/scientific-client/bin/pip install --no-cache-dir mcp==2.2.0 httpx2==2.12.0 httpx==0.28.1 jsonschema==4.26.0 numpy==2.2.6 biopython==1.85 gemmi==0.7.3 rdkit==2025.3.6 h5py==3.13.0 pyarrow==21.0.0 pandas==2.2.3
+ && /opt/scientific-client/bin/pip install --no-cache-dir \
+    mcp==2.2.0 httpx2==2.12.0 httpx==0.28.1 jsonschema==4.26.0 \
+    numpy==2.2.6 scipy==1.17.1 pandas==2.2.3 pyarrow==21.0.0 \
+    biopython==1.85 gemmi==0.7.3 rdkit==2025.3.6 h5py==3.13.0 \
+    nibabel==5.4.2 scikit-image==0.26.0 matplotlib==3.11.2 Pillow==12.3.0 \
+ && /opt/scientific-client/bin/python -c 'import matplotlib, nibabel, scipy, skimage; from PIL import Image'
 COPY life-science/bionemo-librechat/viewer-mcp.py /opt/bionemo/viewer-mcp.py
 COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 RUN node /opt/hcls-librechat/patch-server.mjs
