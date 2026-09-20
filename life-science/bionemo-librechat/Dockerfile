@@ -17,6 +17,7 @@ COPY life-science/bionemo-librechat/recording-skills/ /app/skill
 COPY life-science/bionemo-librechat/entrypoint.sh /usr/local/bin/bionemo-librechat-entrypoint
 RUN chmod 0755 /usr/local/bin/bionemo-librechat-entrypoint /opt/bionemo/*.py /opt/bionemo/*.mjs \
  && rm -rf /app/skill/mindeval-workflows \
+ && sed -i 's/historical event catalog/stale example catalog/g' /app/skill/scientific-gateway/references/client-contract.md \
  && mkdir -p /workspace/shared/bionemo-artifacts /data/db /app/uploads /app/logs \
  && printf '%s\n' 'The Scientific AI Platform landing page starts general, tool-enabled scientific demo workflows with interactive results.' > /app/README-SCIENTIFIC-AI.txt
 RUN npm run build:client
