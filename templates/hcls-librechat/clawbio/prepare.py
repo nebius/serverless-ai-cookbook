@@ -17,6 +17,29 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 
+def adapt_source(name: str, data: bytes) -> bytes:
+    """Bound PyDESeq2 workers without changing any statistical calculation.
+
+    Default multiprocessing.cpu_count() sees host CPUs, not the small customer's
+    CPU/memory allocation. Strict anchors make an upstream update fail visibly.
+    """
+    if name != "skills/rnaseq-de/rnaseq_de.py":
+        return data
+    text = data.decode()
+    changes = [
+        ("import math\n", "import math\nimport os\n", 1),
+        ("            refit_cooks=True,\n",
+         '            refit_cooks=True,\n            n_cpus=int(os.environ.get("SCIENTIFIC_CLAWBIO_CPUS", "1")),\n', 2),
+        ("stats = DeseqStats(dds, contrast=[factor, numerator, denominator])",
+         'stats = DeseqStats(dds, contrast=[factor, numerator, denominator], n_cpus=int(os.environ.get("SCIENTIFIC_CLAWBIO_CPUS", "1")))', 1),
+    ]
+    for before, after, count in changes:
+        if text.count(before) != count:
+            raise ValueError("Pinned RNA-seq CPU-limit adaptation no longer matches upstream")
+        text = text.replace(before, after)
+    return text.encode()
+
+
 def git(source: Path, *args: str) -> bytes:
     return subprocess.check_output(["git", "-C", str(source), *args])
 
@@ -41,7 +64,8 @@ def prepare(source: Path, destination: Path) -> dict:
     destination.mkdir(parents=True)
     root = destination / "source"
     manifest = {"schema": "scientific-ai/clawbio-bundle/v1", "repository": selection["repository"],
-                "revision": revision, "skills": {}, "excluded": selection["excluded"], "files": {}}
+                "revision": revision, "skills": {}, "excluded": selection["excluded"], "files": {},
+                "source_adaptations": {}}
     paths = git(source, "ls-tree", "-r", "--name-only", revision).decode().splitlines()
     for name in paths:
         path = Path(name)
@@ -51,6 +75,13 @@ def prepare(source: Path, destination: Path) -> dict:
         if not keep or any(part.startswith(".") or part == "__pycache__" for part in path.parts):
             continue
         data = git(source, "show", f"{revision}:{name}")
+        adapted = adapt_source(name, data)
+        if adapted != data:
+            manifest["source_adaptations"][name] = {
+                "upstream_sha256": hashlib.sha256(data).hexdigest(),
+                "reason": "Explicit PyDESeq2 n_cpus from SCIENTIFIC_CLAWBIO_CPUS, default one; no method change",
+            }
+        data = adapted
         target = root / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)

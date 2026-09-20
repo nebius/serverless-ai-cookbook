@@ -62,6 +62,12 @@ analysis filesystem. The integration creates no storage credentials.
   rejects valid RNA-seq `--counts` inputs without a redundant `--input`.
 - Python packages are hash-locked in an isolated venv. Existing Scientific AI,
   MCP and clinical-client dependency environments remain unchanged.
+- PyDESeq2 gets an explicit worker limit: one by default, configurable with
+  `SCIENTIFIC_CLAWBIO_CPUS` to match the actual instance allocation. This avoids
+  spawning a worker per host CPU inside a small container. The only upstream
+  source adaptation changes this parallelism setting, not the statistical method;
+  its original and adapted hashes are recorded. Scrublet and SomaData are included;
+  optional CellTypist model downloads remain outside this installation.
 - PLINK 1.9 is installed as a separate distribution package. Native tabix/libcurl
   uses a valid CA bundle, retaining TLS verification.
 - Article retrieval is headless with explicit file-type selection. It verifies

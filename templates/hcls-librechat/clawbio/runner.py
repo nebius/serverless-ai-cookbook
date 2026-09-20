@@ -18,6 +18,12 @@ def main(argv=None):
     parser.add_argument("skill", nargs="?")
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
+    try:
+        workers = int(os.environ.get("SCIENTIFIC_CLAWBIO_CPUS", "1"))
+        if workers < 1:
+            raise ValueError()
+    except ValueError:
+        parser.error("SCIENTIFIC_CLAWBIO_CPUS must be a positive integer")
     manifest = json.loads((ROOT / "manifest.json").read_text())
     if args.action == "list":
         print(json.dumps({"revision": manifest["revision"], "skills": [
@@ -60,7 +66,8 @@ def main(argv=None):
         out.mkdir(parents=True, exist_ok=True)
         workdir = out
     env = {**os.environ, "PYTHONPATH": str(source), "MPLBACKEND": "Agg",
-           "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "NUMBA_NUM_THREADS": "1",
+           "SCIENTIFIC_CLAWBIO_CPUS": str(workers),
+           "OPENBLAS_NUM_THREADS": str(workers), "OMP_NUM_THREADS": str(workers), "NUMBA_NUM_THREADS": str(workers),
            "PLINK_BIN": os.environ.get("PLINK_BIN", "plink1.9")}
     # The manylinux pysam wheel's libcurl can otherwise use a missing build-host
     # CA path. Keep verification enabled and use the bundled certificate roots.

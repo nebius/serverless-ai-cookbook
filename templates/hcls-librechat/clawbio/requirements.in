@@ -23,3 +23,5 @@ rocrate==0.15.1
 opentelemetry-sdk==1.44.0
 igraph==0.11.9
 leidenalg==0.10.2
+scrublet==0.2.3
+somadata==1.2.6

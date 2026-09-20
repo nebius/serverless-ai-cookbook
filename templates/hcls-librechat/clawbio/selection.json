@@ -20,6 +20,12 @@
   ],
   "support_source": ["ukb-ppp-region-fetch"],
   "adaptations": {
+    "rnaseq-de": {
+      "limitations": "PyDESeq2 worker count is explicitly bounded to one by default so small CPU workbenches do not spawn a process per host CPU. SCIENTIFIC_CLAWBIO_CPUS may be increased to match the instance allocation; statistical methods are unchanged."
+    },
+    "scrna-orchestrator": {
+      "limitations": "Local Scanpy/Leiden and Scrublet doublet detection are installed. Optional CellTypist annotation/model downloads are not configured; use existing hosted annotation Apps where appropriate and do not silently invent cell labels."
+    },
     "article-data-fetcher": {
       "adapter": "article-data-fetcher",
       "limitations": "Headless adapter uses the upstream public API with non_interactive=True. Requires an explicit identifier and file-type selection; inspect the paper's data-availability statement first. External repositories may need access or be unavailable. Demo mode is not enabled because the upstream demo prompts on stdin."
