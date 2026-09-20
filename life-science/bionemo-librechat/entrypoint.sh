@@ -20,4 +20,7 @@ fi
 
 if [ ! -f /data/db/WiredTiger ]; then mongod --dbpath /data/db --bind_ip 127.0.0.1 --fork --logpath /data/mongod.log --noauth; else mongod --dbpath /data/db --bind_ip 127.0.0.1 --fork --logpath /data/mongod.log --noauth; fi
 node /app/seed-workbench.js
+if [ -n "${SEED_DEFAULT_USER_EMAIL:-}" ] && [ -n "${SEED_DEFAULT_USER_PASSWORD:-}" ]; then
+  node /app/seed-user.js
+fi
 exec node /app/api/server/index.js

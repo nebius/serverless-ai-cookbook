@@ -12,6 +12,7 @@ COPY life-science/bionemo-librechat/tavily-mcp.mjs /opt/bionemo/tavily-mcp.mjs
 COPY life-science/bionemo-librechat/tutorials.md /opt/bionemo/tutorials.md
 COPY life-science/bionemo-librechat/scientific-agent-instructions.md /opt/bionemo/scientific-agent-instructions.md
 COPY life-science/bionemo-librechat/seed-workbench.js /app/seed-workbench.js
+COPY life-science/bionemo-librechat/seed-user.js /app/seed-user.js
 COPY skills/scientific-ai/ /app/skill
 COPY life-science/bionemo-librechat/recording-skills/ /app/skill
 COPY life-science/bionemo-librechat/entrypoint.sh /usr/local/bin/bionemo-librechat-entrypoint
