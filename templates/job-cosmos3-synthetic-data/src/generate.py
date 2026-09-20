@@ -3,8 +3,9 @@
 
 Reads a JSONL prompt list, submits clips to the async /v1/videos API (image-to-video when a
 line has an "image", text-to-video otherwise), keeps a few jobs in flight, downloads each MP4
-into OUTPUT_DIR/<RUN_ID>/ and appends one manifest line per clip. Clips whose MP4 already
-exists are skipped, so a preempted job resumes where it stopped.
+into OUTPUT_DIR/<RUN_ID>/ with a JSON sidecar per clip, and writes manifest.jsonl once at the
+end. Clips whose MP4 already exists are skipped, so a preempted job resumes where it stopped.
+Every file is written exactly once: mounted buckets are object storage and reject appends.
 
 Configuration is by environment variables (see README):
   PROMPTS      path or URL of the prompts.jsonl              (default: bundled sample set)
@@ -128,10 +129,17 @@ def status(job_id):
     return json.loads(api("GET", f"/v1/videos/{job_id}", timeout=30))
 
 
+def write_once(path, text):
+    """Bucket mounts reject append/overwrite; if the file exists, write a timestamped sibling."""
+    if path.exists():
+        path = path.with_name(f"{path.stem}-{time.strftime('%Y%m%d-%H%M%S')}{path.suffix}")
+    path.write_text(text)
+    return path
+
+
 def main():
     out = OUTPUT_DIR / RUN_ID
     out.mkdir(parents=True, exist_ok=True)
-    manifest = out / "manifest.jsonl"
     wait_for_server()
     clips = load_clips()
     todo = [c for c in clips if not (out / f"{c['id']}.mp4").exists()]
@@ -165,8 +173,7 @@ def main():
                        "prompt": clip["prompt"], "image": clip.get("image"), "seed": clip["seed"],
                        **{k: params[k] for k in ("num_frames", "size", "fps", "num_inference_steps", "guidance_scale", "flow_shift", "generate_sound")},
                        "model": MODEL, "render_seconds": round(time.time() - t0, 1)}
-                with manifest.open("a") as f:
-                    f.write(json.dumps(rec) + "\n")
+                (out / f"{clip['id']}.json").write_text(json.dumps(rec, indent=1))   # sidecar, write-once
                 done += 1
                 log(f"clip {done}/{len(clips)} {clip['id']} {params['num_frames']}f {params['size']} {rec['render_seconds']}s → {path}")
                 del inflight[job_id]
@@ -175,10 +182,14 @@ def main():
                 log(f"FAILED {clip['id']}: {failed[-1][1]}")
                 del inflight[job_id]
     elapsed = time.time() - t_start
-    summary = {"run_id": RUN_ID, "rendered": done, "skipped_existing": len(clips) - done - len(failed), "failed": failed,
+    records = [json.loads(p.read_text()) for p in sorted(out.glob("*.json")) if p.stem not in ("summary",) and not p.stem.startswith("summary-") and not p.stem.startswith("manifest")]
+    if records:
+        mpath = write_once(out / "manifest.jsonl", "".join(json.dumps(r) + "\n" for r in records))
+        log(f"manifest: {len(records)} clips → {mpath}")
+    summary = {"run_id": RUN_ID, "rendered_this_run": done, "total_clips_on_disk": len(records), "failed": failed,
                "elapsed_seconds": round(elapsed), "output": str(out), "model": MODEL, "defaults": DEFAULTS}
-    (out / "summary.json").write_text(json.dumps(summary, indent=2))
-    log(f"done: {done} rendered, {len(failed)} failed, {elapsed/60:.1f} min → {out}")
+    write_once(out / "summary.json", json.dumps(summary, indent=2))
+    log(f"done: {done} rendered this run, {len(records)} total, {len(failed)} failed, {elapsed/60:.1f} min → {out}")
     sys.exit(1 if failed else 0)
 
 
