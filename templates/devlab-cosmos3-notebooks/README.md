@@ -47,10 +47,18 @@ You need at least one endpoint to talk to:
    - set `JUPYTER_TOKEN` to a random 16-character alphanumeric string (this is your JupyterLab sign-in token; keep it),
    - paste the endpoint FQDNs and tokens into `COSMOS3_REASONER_URL` / `COSMOS3_REASONER_TOKEN` (and the Generator pair if you have one),
    - create. First start takes ~3 minutes (pip install + clone).
-2. **Open** the DevLab's managed URL (console → DevLab → Network → *Public Devlabs*) and sign in
-   with the Jupyter token.
+2. **Open** the DevLab's managed URL — `https://port8888-<id>.tunnel.applications.<region>.nebius.cloud`
+   (console → DevLab → Network → *Public Devlabs*, or `status.public_endpoints[0]` in the CLI) — and
+   sign in with the Jupyter token. Without it the route answers `403`.
 3. **Run `00_cosmos3_on_nebius.ipynb`** top to bottom, then open
    `cosmos/cookbooks/cosmos3/reasoner/run_with_vllm_nebius.ipynb` for NVIDIA's full tour.
+
+**Which of NVIDIA's notebooks work here.** NVIDIA wrote them for one GPU machine: the *client*
+notebooks (`run_with_vllm`, `run_with_vllm_omni`, `run_with_sglang`, `run_with_tensorrt_llm`,
+`run_with_nim`) call a server on `localhost`, so they only need their base URL changed to your
+endpoint — that is what this DevLab is for. The *in-process* notebooks (`run_with_diffusers`,
+`run_with_transformers`, `run_with_cosmos_framework`) load the model onto the notebook's own GPU
+and need a GPU DevLab with the Cosmos Framework installed; they are out of scope on this CPU DevLab.
 
 Generator notebooks under `cosmos/cookbooks/cosmos3/generator/` shell out to `curl` against
 `http://localhost:8000`; point them at your Generator FQDN and add
@@ -89,7 +97,7 @@ nebius ai devlab create \
   --container-command bash \
   --args '-c "wget -qO /tmp/bootstrap.sh https://raw.githubusercontent.com/nebius/serverless-ai-cookbook/main/templates/devlab-cosmos3-notebooks/src/bootstrap.sh && bash /tmp/bootstrap.sh"'
 
-nebius ai devlab get <devlab-id>      # the managed HTTPS URL is in the status
+nebius ai devlab get <devlab-id> --format jsonpath='{.status.public_endpoints[0]}'   # managed HTTPS URL
 nebius ai devlab logs <devlab-id>     # look for "reasoner self-test OK"
 ```
 
