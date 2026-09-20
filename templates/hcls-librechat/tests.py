@@ -262,13 +262,13 @@ def test_chat_choices_keep_scientific_capabilities_and_exclude_native_models(tmp
     config, _ = render_config(tmp_path)
     specs = config["modelSpecs"]["list"]
     assert {item["group"] for item in specs} == {
-        "Scientific workspace", "Public Token Factory", "OpenAI", "Claude", "Clinical demos"}
+        "Scientific workspace", "Public Token Factory", "OpenAI", "Claude", "Research workflows"}
     assert len([item for item in specs if item["group"] == "Dedicated Token Factory"]) == 0
     assert len([item for item in specs if item["group"] == "Public Token Factory"]) > 2
     assert len([item for item in specs if item["default"]]) == 1
     assert len({item["name"] for item in specs}) == len(specs)
     for item in specs:
-        if item["group"] == "Clinical demos":
+        if item["group"] == "Research workflows":
             assert item["preset"]["endpoint"] == "agents"
             assert item["preset"]["agent_id"] in {"agent_clinical_report", "agent_mindeval_workshop"}
             assert item["mcpServers"] == ["scientific-demos"]
@@ -335,12 +335,12 @@ def test_default_model_and_visible_workbench(tmp_path) -> None:
 
 
 def test_team_bucket_context_is_injected(tmp_path) -> None:
-    config, _ = render_config(tmp_path, TEAM_ID="stockholm-team-01",
-                              TEAM_BUCKET_NAME="stockholm-hackathon-team-01")
+    config, _ = render_config(tmp_path, TEAM_ID="research-lab",
+                              TEAM_BUCKET_NAME="fs2-research-lab-example")
     public = next(item for item in config["modelSpecs"]["list"] if item["group"] == "Public Token Factory")
     prompt = public["preset"]["promptPrefix"]
-    assert "stockholm-team-01's dedicated scientific workspace" in prompt
-    assert "stockholm-hackathon-team-01 is mounted read-write at /workspace" in prompt
+    assert "research-lab's dedicated scientific workspace" in prompt
+    assert "fs2-research-lab-example is mounted read-write at /workspace" in prompt
     custom = config["endpoints"]["custom"]
     assert len(custom) == 1
     assert custom[0]["baseURL"] == "https://api.tokenfactory.nebius.com/v1"

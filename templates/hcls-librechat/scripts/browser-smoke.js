@@ -14,7 +14,8 @@ async (page) => {
     const select = async (group, label) => {
       await page.getByTestId('model-selector-button').click();
       const groups = await page.getByRole('option').allTextContents();
-      check(['Scientific workspace', 'Public Token Factory', 'OpenAI', 'Claude', 'Clinical demos'].every((name) => groups.includes(name)), 'Expected scientific and provider groups are missing');
+      check(['Scientific workspace', 'Public Token Factory', 'OpenAI', 'Claude', 'Research workflows'].every((name) => groups.includes(name)), 'Expected scientific and provider groups are missing');
+      check(!groups.some((name) => /Dedicated|Hackathon|Stockholm/i.test(name)), 'Retired event group is visible');
       await page.getByRole('option', { name: group, exact: true }).click();
       await page.getByRole('menuitem').filter({ hasText: label }).click();
     };

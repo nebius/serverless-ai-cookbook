@@ -43,11 +43,6 @@ const publicTokenFactoryModels = [
   ['nvidia/nemotron-3-super-120b-a12b', 'Nemotron 3 Super'],
 ];
 
-const dedicatedTokenFactoryModels = [
-  ['dedicated/LongevityHack2026/GLM-5.3-Flash-FP8-6f1F49', 'GLM 5.3 Flash · Dedicated'],
-  ['dedicated/LongevityHack2026/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4-prQAQn', 'Nemotron 3 Super · Dedicated'],
-];
-
 // LibreChat cannot infer context sizes for several new Token Factory model IDs.
 // An unknown model otherwise falls back to 32k, which is smaller than the
 // scientific instructions plus tool schemas and causes every user message to
@@ -69,8 +64,6 @@ const tokenFactoryContext = new Map([
   ['nvidia/Nemotron-3_5-Lightning', 1048576],
   ['nvidia/Nemotron-3-Ultra-550b-a55b', 1048576],
   ['nvidia/nemotron-3-super-120b-a12b', 1048576],
-  ['dedicated/LongevityHack2026/GLM-5.3-Flash-FP8-6f1F49', 1048576],
-  ['dedicated/LongevityHack2026/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4-prQAQn', 1048576],
 ]);
 
 const makeTokenConfig = (models) => Object.fromEntries(models.map(([id]) => [id, {
@@ -113,10 +106,9 @@ if (configuredChatModel) {
   }
 }
 
-// Personal installations need not depend on retired event-only endpoints.
-const dedicatedChatEnabled = process.env.SCIENTIFIC_DEDICATED_CHAT_ENABLED === 'true';
+// The reusable client has no event-owned endpoints. A stale environment flag
+// must not resurrect retired model IDs when an existing instance is upgraded.
 const providerModels = [
-  { endpoint: 'Nebius Token Factory Dedicated', group: 'Dedicated Token Factory', models: dedicatedTokenFactoryModels },
   { endpoint: 'Nebius Token Factory', group: 'Public Token Factory', models: availablePublicTokenModels },
   { endpoint: 'openAI', group: 'OpenAI', models: [
     ['gpt-6-astra', 'GPT-6 Astra'], ['gpt-5.6', 'GPT-5.6 Sol'],
@@ -126,7 +118,7 @@ const providerModels = [
     ['claude-opus-5', 'Claude Opus 5'], ['claude-sonnet-5', 'Claude Sonnet 5'],
     ['claude-haiku-4-5', 'Claude Haiku 4.5'],
   ] },
-].filter(({ endpoint }) => dedicatedChatEnabled || endpoint !== 'Nebius Token Factory Dedicated');
+];
 
 const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => models.map(([model, label], index) => {
   return {
@@ -134,9 +126,7 @@ const modelSpecs = providerModels.flatMap(({ endpoint, group, models }) => model
     label, group, groupIcon: endpoint === 'anthropic' ? 'anthropic' : endpoint === 'openAI' ? 'openAI' : '/assets/token-factory.svg',
     iconURL: endpoint === 'anthropic' || endpoint === 'openAI' ? endpoint : '/assets/token-factory.svg',
     default: false, showOnLanding: false, showIconInHeader: true,
-    description: endpoint === 'Nebius Token Factory Dedicated'
-      ? 'Dedicated event capacity · scientific tools and web research'
-      : endpoint === 'Nebius Token Factory'
+    description: endpoint === 'Nebius Token Factory'
         ? 'Public Token Factory · scientific tools and web research'
         : 'Scientific tools · connect your provider key',
     mcpServers: ['bionemo-models', 'scientific-demos', 'tavily', 'structure-viewer', 'environment-execution'], skills: true, artifacts: true,
@@ -155,8 +145,8 @@ modelSpecs.push({ name: 'nebius-scientific-ai-agent', label: 'Nebius Scientific 
   preset: { endpoint: 'agents', agent_id: 'agent_nebius_scientific_ai' } });
 modelSpecs.push(...[
   ['clinical-report', 'Clinical Report Draft', 'agent_clinical_report'],
-  ['mindeval-workshop', 'MindEval Workshop', 'agent_mindeval_workshop'],
-].map(([name, label, agent_id]) => ({ name, label, group: 'Clinical demos',
+  ['mindeval-workshop', 'Conversation Evaluation', 'agent_mindeval_workshop'],
+].map(([name, label, agent_id]) => ({ name, label, group: 'Research workflows',
   iconURL: '/assets/token-factory.svg', showOnLanding: false, default: false,
   skills: true, mcpServers: ['scientific-demos'],
   preset: { endpoint: 'agents', agent_id } })));
@@ -174,22 +164,13 @@ const config = {
   },
   endpoints: {
     agents: {
-      allowedProviders: ['Nebius Token Factory Dedicated', 'Nebius Token Factory', 'openAI', 'anthropic'],
+      allowedProviders: ['Nebius Token Factory', 'openAI', 'anthropic'],
       capabilities: ['skills', 'tools', 'artifacts', 'context', 'chain', 'deferred_tools'],
       recursionLimit: 30, maxRecursionLimit: 50, toolApproval: { enabled: false },
     },
     openAI: { titleConvo: true, titleModel: 'gpt-5.6-luna' },
     anthropic: { titleConvo: true, titleModel: 'claude-haiku-4-5' },
     custom: [{
-      name: 'Nebius Token Factory Dedicated',
-      iconURL: '/assets/token-factory.svg',
-      apiKey: process.env.NEBIUS_API_KEY ? '${NEBIUS_API_KEY}' : 'user_provided',
-      baseURL: 'https://api.tokenfactory.us-central1.nebius.com/v1',
-      models: { default: dedicatedTokenFactoryModels.map(([id]) => id), fetch: false },
-      tokenConfig: makeTokenConfig(dedicatedTokenFactoryModels),
-      titleConvo: true, titleModel: dedicatedTokenFactoryModels[0][0],
-      modelDisplayLabel: 'Nebius Dedicated', dropParams: ['stop'],
-    }, {
       name: 'Nebius Token Factory',
       iconURL: '/assets/token-factory.svg',
       apiKey: process.env.NEBIUS_API_KEY ? '${NEBIUS_API_KEY}' : 'user_provided',
@@ -203,7 +184,7 @@ const config = {
   modelSpecs: { prioritize: true, enforce: false, list: modelSpecs },
   mcpServers: {
     'scientific-demos': {
-      title: 'Scientific workbench', description: 'Durable run tracking, workspace status, clinical drafts and controlled workshop experiments.',
+      title: 'Scientific workbench', description: 'Durable run tracking, workspace files, clinical drafts and conversation evaluation.',
       type: 'stdio', command: 'node', args: ['/opt/hcls-librechat/demos/mcp.cjs'],
       startup: false, timeout: 60000,
       env: { LIBRECHAT_USER_ID: '{{LIBRECHAT_USER_ID}}',
@@ -211,7 +192,7 @@ const config = {
         SCIENTIFIC_MODELS_API_BASE_URL: '${SCIENTIFIC_MODELS_API_BASE_URL}',
         NEBIUS_API_KEY: '${NEBIUS_API_KEY}' },
       customUserVars: { SCIENTIFIC_MODELS_API_KEY: {
-        title: 'Scientific AI API key', description: 'Your personal/team platform key, also configurable in the demo panel.', sensitive: true,
+        title: 'Scientific AI API key', description: 'Your personal platform key, also configurable in the Apps panel.', sensitive: true,
       } }, serverInstructions: true,
     },
     'environment-execution': {
@@ -258,11 +239,6 @@ const config = {
     },
   },
 };
-
-if (!dedicatedChatEnabled) {
-  config.endpoints.custom = config.endpoints.custom.filter(({ name }) => name !== 'Nebius Token Factory Dedicated');
-  config.endpoints.agents.allowedProviders = config.endpoints.agents.allowedProviders.filter((name) => name !== 'Nebius Token Factory Dedicated');
-}
 
 // JSON is valid YAML and preserves multiline instructions and literal key references.
 await writeFile(outputPath, JSON.stringify(config, null, 2) + '\n', { mode: 0o600 });

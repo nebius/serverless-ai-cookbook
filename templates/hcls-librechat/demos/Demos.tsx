@@ -7,6 +7,7 @@ import { request } from 'librechat-data-provider';
 import { compareBatch, comparisonCsv } from './scientific-comparison';
 import type { WorkshopRun as Run } from './scientific-comparison';
 import { runDisplay, studyDisplay } from './scientific-run-display';
+import GettingStarted from './ScientificGettingStarted';
 
 type Job = { id: string; status: string; created_at: string; error?: string; files: string[] };
 type Catalog = { catalog: { judge_model: string; data: { id: string; clinician_eligible: boolean; patient_eligible: boolean }[] };
@@ -81,8 +82,8 @@ function workspaceSelection(params: URLSearchParams) {
   return { directory, file };
 }
 
-const workbenchTabs = [['apps', 'Apps'], ['runs', 'Runs'], ['workspace', 'Workspace'],
-  ['clinical', 'Clinical Report'], ['mindeval', 'MindEval']] as const;
+const workbenchTabs = [['getting-started', 'Getting started'], ['apps', 'Apps'], ['runs', 'Runs'], ['workspace', 'Workspace'],
+  ['clinical', 'Clinical Report'], ['mindeval', 'Conversation Evaluation']] as const;
 function WorkbenchHeader({ tab, choose }: { tab: string; choose: (tab: string) => void }) {
   return <><header className="mb-6 flex flex-wrap items-center justify-between gap-4">
     <div><p className="text-xs text-text-secondary">NEBIUS SCIENTIFIC AI</p><h1 className="text-2xl font-semibold">Scientific AI Workbench</h1></div>
@@ -215,6 +216,10 @@ function CoreWorkbench({ tab, choose }: { tab: string; choose: (tab: string) => 
 export default function Demos() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') || 'apps';
+  if (tab === 'getting-started') return <main className="mx-auto w-full max-w-6xl overflow-y-auto p-4 sm:p-8">
+    <WorkbenchHeader tab={tab} choose={(next) => setParams({ tab: next })} />
+    <GettingStarted />
+  </main>;
   if (['apps', 'runs', 'workspace'].includes(tab)) return <CoreWorkbench tab={tab} choose={(next) => setParams({ tab: next })} />;
   return <ClinicalAndMindEval />;
 }
@@ -306,7 +311,7 @@ function ClinicalAndMindEval() {
       {preview && <pre className="whitespace-pre-wrap rounded-xl border border-border-medium p-4 text-sm">{preview}</pre>}
     </> : <>
       <h2 className="text-xl font-semibold">Build · Simulate · Evaluate</h2>
-      <p className="my-3 text-sm text-text-secondary">Sword AI Summit · Porto · 3 October 2026. Fixed patient and judge; change only the clinician for comparable text runs. Private MindGuard v2 is awaiting its event artifact and is not selectable.</p>
+      <p className="my-3 text-sm text-text-secondary">Compare simulated consultations with MindEval. Keep the patient, judge and profiles fixed while changing the clinician. Only models authorized by your current catalog are selectable. Scores are research measurements, not clinical validation.</p>
       <Button className="mb-3" variant="outline" onClick={() => { setReplay(!replay); setBatchId(''); setRunId(''); }}>{replay ? 'Return to live runs' : 'Open recorded example (no inference)'}</Button>
       {replay && <p role="status" className="my-2 rounded border border-border-medium p-3">RECORDED EXAMPLE · 16 September 2026 · Six clinicians, one synthetic profile. This is not live traffic or a full benchmark; use it to practice reading judgments if live inference is unavailable.</p>}
       {catalog.data && !replay && <>

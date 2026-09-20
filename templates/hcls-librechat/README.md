@@ -1,11 +1,19 @@
 # Nebius Scientific AI Agent
 
 A scientific workspace built on pinned LibreChat. Public Nebius Token Factory
-is the default conversational provider; old event-dedicated deployments are
-opt-in. Users can also bring OpenAI or Anthropic credentials. The existing
+is the default conversational provider. Retired event-specific endpoints are
+not part of the reusable client. Users can also bring OpenAI or Anthropic credentials. The existing
 `agent_nebius_scientific_ai` agent is enhanced, not replaced: scientific Apps,
 research skills, Tavily, structure viewing, execution, durable run tracking and
 workspace discovery stay attached when the chat LLM changes.
+
+## Getting started as a user
+
+Open **Getting started & example prompts** on the chat home page, or
+`/demos?tab=getting-started`. The guide includes a no-inference workspace tour
+and concrete protein, molecule, speech, aging-clock and image examples. It uses
+the versioned `examples/v1/` pack in your bucket, not hidden event fixtures.
+See [GETTING_STARTED.md](GETTING_STARTED.md) for the same setup and recovery steps.
 
 Six general research cards prepare editable prompts for literature-backed
 reproduction, structures, molecular/protein design, genomics/aging, clinical
@@ -83,7 +91,6 @@ or migrating an existing endpoint. In addition to the variables above:
 ```bash
 export NEBIUS_PROFILE='<authorized CLI profile>'
 export ENDPOINT_NAME='<unique personal endpoint name>'
-export SCIENTIFIC_DEDICATED_CHAT_ENABLED=false
 export TEAM_ID='<tenant name>'
 export TEAM_BUCKET_NAME='<existing bucket discovered from GET /v1/storage>'
 export S3_CREDENTIAL_SECRET_SELECTOR='<secret with S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY>'
@@ -98,9 +105,8 @@ with `region` and `endpoint_url`, even when credentials come from MysteryBox.
 belongs in that file. The script mounts the bucket read-write at `/workspace`
 using the existing user's S3 credentials. Mongo, encrypted plugin credentials
 and clinical job working directories remain on the endpoint disk, not S3/FUSE.
-The personal login option disables open registration. Setting
-`SCIENTIFIC_DEDICATED_CHAT_ENABLED=false` removes event-only deployments from the
-picker and makes a public Token Factory model the default.
+The personal login option disables open registration. The client uses public
+Token Factory models and ignores the retired dedicated-event environment flag.
 
 `SERVERLESS_PUBLIC_IP` defaults to `true` for backward compatibility. Set it to
 `false` to request a private-IP endpoint with its managed public HTTPS URL.
@@ -133,11 +139,11 @@ its image to work around this limitation.
 
 ## What is configured
 
-- **Chat models:** GLM 5.3 Flash on public Token Factory is the default. Old
-  dedicated event deployments appear only when explicitly enabled. The public
+- **Chat models:** the seeded agent defaults to Qwen3 235B on public Token Factory;
+  deployments can explicitly select another discovered model. The public
   allowlist is intersected with authenticated discovery at startup
   (configured-list fallback). OpenAI
-  and Claude remain optional and require a participant-supplied provider key.
+  and Claude remain optional and require a user-supplied provider key.
 - **Scientific Apps:** available only through the gateway tools. The Apps page
   merges `/v1/models` and `/v1/scientific-models` for the current caller; it has
   no static availability list. Model-specific

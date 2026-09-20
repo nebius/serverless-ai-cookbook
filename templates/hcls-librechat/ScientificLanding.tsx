@@ -5,6 +5,7 @@ import { Atom, BookOpen, Server, Dna, FlaskConical, ScanLine, ArrowUpRight, Chec
 import { useChatContext, useChatFormContext } from '~/Providers';
 import { useGetStartupConfig } from '~/data-provider';
 import { useRequiresKey } from '~/hooks';
+import { workspaceTourPrompt } from '../ScientificGettingStarted';
 
 const workflows = [
   {
@@ -60,7 +61,7 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
   const spec = startupConfig?.modelSpecs?.list?.find((item) => item.name === conversation?.spec);
   const modelLabel = spec?.label || conversation?.model || 'your selected LLM';
 
-  const chooseWorkflow = (workflow: (typeof workflows)[number]) => {
+  const chooseWorkflow = (workflow: { id: string; prompt: string }) => {
     methods.setValue('text', workflow.prompt, { shouldDirty: true });
     setSelected(workflow.id);
     requestAnimationFrame(() => {
@@ -87,6 +88,16 @@ export default function ScientificLanding(_props: { centerFormOnLanding: boolean
           run Python, install packages, work with your bucket, and reconnect to durable model runs.
         </p>
       </header>
+
+      <aside aria-label="First visit" className="mb-5 rounded-xl border border-border-medium bg-surface-secondary p-4">
+        <h3 className="font-semibold">New here? Start with your sample data.</h3>
+        <p className="mt-2 text-sm leading-6 text-text-secondary">Check your model access, explore the examples in your bucket, then run one example and download its results.</p>
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
+          <Button variant="outline" data-starter="tour" onClick={() => chooseWorkflow({ id: 'tour', prompt: workspaceTourPrompt })}>Prepare a workspace tour</Button>
+          <Link className="underline" to="/demos?tab=getting-started">Getting started &amp; example prompts</Link>
+        </div>
+        <p className="mt-2 text-xs text-text-secondary">This prepares a chat prompt; it does not start model inference.</p>
+      </aside>
 
       <nav aria-label="Scientific workbench" className="mb-5 grid gap-3 sm:grid-cols-3">
         <Link to="/demos?tab=apps" className="rounded-xl border border-border-medium bg-surface-secondary p-4 hover:bg-surface-hover"><strong>Apps</strong><p className="mt-1 text-sm text-text-secondary">See exactly which models your key can use.</p></Link>
