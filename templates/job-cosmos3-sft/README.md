@@ -67,7 +67,7 @@ with dense captions; NVIDIA's sample set is the reference for the layout.
 | --- | --- | --- |
 | `RECIPE` | `nano` | `edge` (2B full SFT, cheaper) or `super` (LoRA on the 64B model) — NVIDIA's three recipes |
 | `MAX_ITER` | `500` (NVIDIA's recipe); the 1-click link sets `20` | smoke run first, then `500`; warm-up and LR schedule are rescaled to match |
-| `SAVE_ITER` | `100` | checkpoint interval |
+| `SAVE_ITER` | `= MAX_ITER` (one final checkpoint) | a Nano DCP checkpoint with optimizer state is ~200 GiB and takes ~12 min to write; intermediate saves need a bigger `--disk-size` |
 | `NPROC` | all GPUs | number of `torchrun` ranks |
 | `DATASET_PATH` | NVIDIA's BridgeData2 subset | your JSONL dataset dir under `/data` |
 | `OUTPUT_DIR` | `/data/cosmos3-sft` | results root in the bucket |
@@ -81,8 +81,13 @@ with dense captions; NVIDIA's sample set is the reference for the layout.
 
 > ⚠️ **Preemptible and not resumable.** The launcher redoes installation and download after a
 > restart, so it runs with `--restart-policy never`. Use preemptible for smoke runs; for the
-> full 500-iteration recipe untick *Preemptible*. Checkpoints (`SAVE_ITER`) stay on the job's
-> disk and are lost with the VM — only the exported result is copied to the bucket.
+> full 500-iteration recipe untick *Preemptible*. Checkpoints stay on the job's disk and are
+> lost with the VM — only the exported result is copied to the bucket.
+
+> 💾 **Disk.** 500 GiB fits: framework + caches (~35 GiB), the converted base model (~32 GiB),
+> **one** ~200 GiB training checkpoint, and the exports. Before exporting, the launcher deletes
+> the wheel cache, the base-model copy and all but the latest checkpoint. If you set `SAVE_ITER`
+> below `MAX_ITER`, raise `--disk-size` by ~200 GiB per extra checkpoint kept.
 
 > ⚠️ **Guardrails.** Training does not use them. If you run framework *inference* on the
 > result, its guardrails need `HF_TOKEN` with access to the gated guardrail models, or
@@ -118,7 +123,8 @@ the container with `--ipc=host`). The 8×H100 preset has 1.6 TB of RAM, so 128 G
 
 ## Troubleshooting
 
-- **Stuck at `2/6` for a long time** — `uv sync` downloads ~20 GiB of wheels (torch, flash-attention, transformer-engine). Ten to fifteen minutes is normal on first run.
+- **`No space left on device` during export** — too many checkpoints on disk. Keep `SAVE_ITER = MAX_ITER` (default) or raise `--disk-size` (~200 GiB per Nano checkpoint).
+- **Slow `Checkpoint save completed: Time taken: 7xx seconds`** — normal: a full-state DCP checkpoint of Nano is ~200 GiB.
 - **`torch.cuda.device_count()` prints fewer GPUs than expected** — check the preset; `NPROC` defaults to all visible GPUs.
 - **NCCL or shared-memory errors at training start** — raise `--shm-size`; the console form's default is too small for 8 ranks.
 - **Job ends FAILED after preemption** — expected with `--restart-policy never`; rerun, or untick *Preemptible* for long runs.
