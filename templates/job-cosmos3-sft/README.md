@@ -1,0 +1,126 @@
+# Cosmos 3 Post-Training (SFT)
+
+<!-- factory:deploy -->
+
+<a href="https://console.nebius.com/serverless/job/create?image=nvidia%2Fcuda%3A13.0.2-cudnn-devel-ubuntu24.04&amp;command=bash%20-c%20%22apt-get%20update%20-qq%20%26%26%20apt-get%20install%20-y%20-qq%20curl%20ca-certificates%20%3E%2Fdev%2Fnull%20%26%26%20curl%20-fsSL%20https%3A%2F%2Fraw.githubusercontent.com%2Fnebius%2Fserverless-ai-cookbook%2Fmain%2Ftemplates%2Fjob-cosmos3-sft%2Fsrc%2Frun.sh%20-o%20%2Ftmp%2Frun.sh%20%26%26%20bash%20%2Ftmp%2Frun.sh%22&amp;platform=gpu-h100-sxm&amp;preset=8gpu-128vcpu-1600gb&amp;volume=%2Fdata&amp;diskSize=500GiB&amp;preemptible=true&amp;env=MAX_ITER%3D20"><img src="../assets/create-job.svg" alt="Create Job" width="138" height="20"></a>
+
+<!-- /factory:deploy -->
+
+<!-- factory:intro -->
+
+Fine-tunes the Cosmos3-Nano video generator on captioned robot videos with NVIDIA's Cosmos Framework SFT recipe on an 8×H100 node, exports the result as a Diffusers pipeline into your bucket — ready to serve with the Generator endpoint template.
+
+**License:** [OpenMDW-1.1](https://openmdw.ai/license/1-1/) · **Source:** [Cosmos Framework](https://github.com/NVIDIA/cosmos-framework) · [NVIDIA Cosmos recipes](https://github.com/nvidia/cosmos/tree/main/cookbooks/cosmos3/generator/audiovisual/finetune)
+
+<!-- /factory:intro -->
+
+## What you get
+
+A Serverless **Job** that runs NVIDIA's `vision_sft_nano` recipe end to end — no image to
+build, nothing to install locally:
+
+1. Installs Cosmos Framework (pinned release) on the public CUDA 13 image.
+2. Downloads the training data — by default NVIDIA's
+   [BridgeData2 subset](https://huggingface.co/datasets/nvidia/BridgeData2-Subset-Synthetic-Captions)
+   (1,324 robot-manipulation clips with structured captions, not gated) — and the Wan2.2 VAE.
+3. Converts the `nvidia/Cosmos3-Nano` base checkpoint and trains with FSDP on all 8 GPUs
+   (`MAX_ITER` iterations; NVIDIA's recipe is 500).
+4. Exports the last checkpoint to Hugging Face safetensors and converts it to a **Diffusers**
+   pipeline.
+5. Copies everything to the bucket mounted at `/data`, then exits:
+
+```text
+/data/cosmos3-sft/<run-id>/
+  diffusers/        serve this: vllm serve /path/diffusers --omni --model-class-name Cosmos3OmniDiffusersPipeline
+  model/            Hugging Face safetensors export
+  config.yaml       resolved training config
+  sft.toml          the recipe as run (with your MAX_ITER / SAVE_ITER)
+```
+
+**Serve the result** with the [Cosmos 3 Generator](../endpoint-cosmos3-generator/README.md)
+template: mount the same bucket read-only into the endpoint and replace `nvidia/Cosmos3-Nano`
+in the command with `/data/cosmos3-sft/<run-id>/diffusers`.
+
+## How to run it
+
+1. **Click Create Job.** Pick the **bucket** to mount at `/data` and raise **shared memory**
+   to 128 GiB if the form offers it (the link cannot preset it; eight `torchrun` ranks need
+   more than the default). Everything else is prefilled; the link sets `MAX_ITER=20`, a
+   **smoke run** that proves the pipeline in about an hour. For NVIDIA's full recipe change
+   the env to `MAX_ITER=500`.
+2. **Watch** with `nebius ai job logs <aijob-id> --follow`. The launcher logs six stages
+   (`1/6 system packages` … `6/6 copy results`); the training loop prints loss per iteration.
+3. **Collect** the `diffusers/` folder from the bucket, or serve it directly as above.
+
+### Bring your own data
+
+Cosmos Framework trains from a JSONL dataset (one clip per line with `vision_path` and
+structured `caption_json` windows) — see NVIDIA's
+[JSONL dataset format](https://github.com/NVIDIA/cosmos-framework/blob/main/docs/dataset_jsonl.md).
+Upload your dataset directory (with `train/video_dataset_file.jsonl` and the videos) to the
+bucket and set env `DATASET_PATH=/data/my-dataset`. The default recipe expects 256px clips
+with dense captions; NVIDIA's sample set is the reference for the layout.
+
+### Knobs (env vars in the form or `--env` in the CLI)
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `RECIPE` | `nano` | `edge` (2B full SFT, cheaper) or `super` (LoRA on the 64B model) — NVIDIA's three recipes |
+| `MAX_ITER` | `500` (NVIDIA's recipe); the 1-click link sets `20` | smoke run first, then `500`; warm-up and LR schedule are rescaled to match |
+| `SAVE_ITER` | `100` | checkpoint interval |
+| `NPROC` | all GPUs | number of `torchrun` ranks |
+| `DATASET_PATH` | NVIDIA's BridgeData2 subset | your JSONL dataset dir under `/data` |
+| `OUTPUT_DIR` | `/data/cosmos3-sft` | results root in the bucket |
+| `RUN_ID` | `run-<timestamp>` | result sub-folder |
+| `FRAMEWORK_REF` | pinned release commit | Cosmos Framework git ref |
+| `HF_TOKEN` | unset | only for gated datasets or models |
+
+### Observed results
+
+<!-- filled from the validation run -->
+
+> ⚠️ **Preemptible and not resumable.** The launcher redoes installation and download after a
+> restart, so it runs with `--restart-policy never`. Use preemptible for smoke runs; for the
+> full 500-iteration recipe untick *Preemptible*. Checkpoints (`SAVE_ITER`) stay on the job's
+> disk and are lost with the VM — only the exported result is copied to the bucket.
+
+> ⚠️ **Guardrails.** Training does not use them. If you run framework *inference* on the
+> result, its guardrails need `HF_TOKEN` with access to the gated guardrail models, or
+> `--no-guardrails`.
+
+<!-- factory:cli -->
+
+## CLI alternative
+
+```bash
+BUCKET=$(nebius storage bucket get-by-name --name <your-bucket> --format jsonpath='{.metadata.id}')
+
+nebius ai job create \
+  --name cosmos3-sft-$(date +%Y%m%d-%H%M%S) \
+  --image nvidia/cuda:13.0.2-cudnn-devel-ubuntu24.04 \
+  --platform gpu-h100-sxm \
+  --preset 8gpu-128vcpu-1600gb \
+  --preemptible \
+  --restart-policy never \
+  --timeout 6h \
+  --shm-size 128Gi \
+  --disk-size 500Gi \
+  --volume "$BUCKET:/data:rw" \
+  --env MAX_ITER=500 \
+  --container-command bash \
+  --args '-c "apt-get update -qq && apt-get install -y -qq curl ca-certificates >/dev/null && curl -fsSL https://raw.githubusercontent.com/nebius/serverless-ai-cookbook/main/templates/job-cosmos3-sft/src/run.sh -o /tmp/run.sh && bash /tmp/run.sh"'
+```
+
+`--shm-size` matters: eight `torchrun` ranks exchange tensors through `/dev/shm` (NVIDIA runs
+the container with `--ipc=host`). The 8×H100 preset has 1.6 TB of RAM, so 128 GiB is safe.
+
+<!-- /factory:cli -->
+
+## Troubleshooting
+
+- **Stuck at `2/6` for a long time** — `uv sync` downloads ~20 GiB of wheels (torch, flash-attention, transformer-engine). Ten to fifteen minutes is normal on first run.
+- **`torch.cuda.device_count()` prints fewer GPUs than expected** — check the preset; `NPROC` defaults to all visible GPUs.
+- **NCCL or shared-memory errors at training start** — raise `--shm-size`; the console form's default is too small for 8 ranks.
+- **Job ends FAILED after preemption** — expected with `--restart-policy never`; rerun, or untick *Preemptible* for long runs.
+- **Out of memory on smaller GPUs** — the Nano full fine-tune is tuned for 8×80 GB. Use `RECIPE=edge`, or `RECIPE=super` (LoRA) only on 8×H200.
+- **Want to train the Reasoner instead?** — NVIDIA's `reasoner/finetune` recipes follow the same framework; point `COSMOS_REF`/recipe paths at them (not wrapped by this template yet).
