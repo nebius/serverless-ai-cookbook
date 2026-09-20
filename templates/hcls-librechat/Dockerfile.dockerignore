@@ -1,0 +1,16 @@
+# Build from the repository root, but send only this workbench and its seed.
+**
+!templates/
+!templates/hcls-librechat/
+!templates/hcls-librechat/**
+!life-science/
+!life-science/bionemo-librechat/
+!life-science/bionemo-librechat/**
+**/.git
+**/.env*
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/*.log
+**/output/
+**/evidence/

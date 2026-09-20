@@ -22,6 +22,13 @@ RUN python3 -m venv /tmp/aging-reference-builder \
  && /tmp/aging-reference-builder/bin/pip install --no-cache-dir numpy==2.2.6 pandas==2.2.3 scikit-learn==1.7.2 \
  && /tmp/aging-reference-builder/bin/python /tmp/prepare-aging-reference.py --output /opt/aging-reference
 
+FROM ${LIBRECHAT_BASE} AS clawbio-runtime
+USER root
+COPY templates/hcls-librechat/clawbio/requirements.lock /tmp/clawbio-requirements.lock
+RUN python3 -m venv /opt/clawbio-venv \
+ && /opt/clawbio-venv/bin/pip install --no-cache-dir --require-hashes -r /tmp/clawbio-requirements.lock \
+ && /opt/clawbio-venv/bin/pip check
+
 FROM ${LIBRECHAT_BASE}
 
 ARG HCLS_IMAGE_REVISION=unknown
@@ -34,7 +41,7 @@ USER root
 COPY --from=scientific-client /app/client/dist /app/client/dist
 # zstd is the published scientific/LeRobot archive transport, not an optional
 # notebook-only dependency. Keep it available after a fresh deployment.
-RUN apt-get update && apt-get install -y --no-install-recommends zstd \
+RUN apt-get update && apt-get install -y --no-install-recommends zstd plink1.9 \
  && zstd --version \
  && rm -rf /var/lib/apt/lists/*
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
@@ -90,6 +97,14 @@ COPY life-science/bionemo-librechat/skills/ /app/skill/
 COPY templates/hcls-librechat/skills/ /app/skill/
 # Prepared from the pinned official repository; private source stays out of Git.
 COPY templates/hcls-librechat/vendor/nebius-skills/ /app/skill/
+# Reproducibly prepared from clawbio/selection.json. No bot, extra MCP server,
+# live credentials or GPU model weights. Python dependencies stay isolated.
+COPY --from=clawbio-runtime /opt/clawbio-venv /opt/clawbio-venv
+COPY templates/hcls-librechat/vendor/clawbio/source/ /opt/clawbio/source/
+COPY templates/hcls-librechat/vendor/clawbio/manifest.json /opt/clawbio/manifest.json
+COPY templates/hcls-librechat/vendor/clawbio/qualification.json /opt/clawbio/qualification.json
+COPY templates/hcls-librechat/clawbio/runner.py templates/hcls-librechat/clawbio/adapters.py templates/hcls-librechat/clawbio/requirements.lock /opt/clawbio/
+COPY templates/hcls-librechat/vendor/clawbio/skills/ /app/skill/
 RUN cd /app/skill && rm -rf boltz2-nim openfold2-nim openfold3-nim diffdock-nim \
       genmol-nim molmim-nim msa-search-nim evo2-nim proteinmpnn-nim \
       rfdiffusion-nim bionemo-workbench-tutorials
