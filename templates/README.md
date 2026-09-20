@@ -300,3 +300,29 @@ Templates are quick-start configurations to help you serve models and run jobs i
 </tr>
 </tbody>
 </table>
+
+## DevLabs
+
+### 📓 Notebooks
+
+<table width="960" border="1" cellpadding="8" cellspacing="0" style="table-layout:fixed;width:960px;min-width:960px;border-collapse:collapse;">
+<colgroup>
+  <col width="220">
+  <col width="160">
+  <col width="580">
+</colgroup>
+<thead>
+<tr>
+  <th width="220" align="left">Template</th>
+  <th width="160" align="center">Deploy</th>
+  <th width="580" align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/65df9200dc3292a8983e5017/Vs5FPVCH-VZBipV3qKTuy.png" width="20" height="20" alt="Cosmos 3 Notebooks" align="absmiddle">&nbsp;<a href="devlab-cosmos3-notebooks/README.md"><strong>Cosmos 3 Notebooks</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/devlab/create?image=quay.io%2Fjupyter%2Fminimal-notebook%3Anotebook-7.5.6&amp;command=bash%20-c%20%22wget%20-qO%20%2Ftmp%2Fbootstrap.sh%20https%3A%2F%2Fraw.githubusercontent.com%2Fnebius%2Fserverless-ai-cookbook%2Fmain%2Ftemplates%2Fdevlab-cosmos3-notebooks%2Fsrc%2Fbootstrap.sh%20%26%26%20bash%20%2Ftmp%2Fbootstrap.sh%22&amp;targetPort=8888&amp;platform=cpu-d3&amp;preset=4vcpu-16gb&amp;env=JUPYTER_TOKEN%3DREPLACE_WITH_16_CHARS&amp;env=COSMOS3_REASONER_URL%3D&amp;env=COSMOS3_REASONER_TOKEN%3D&amp;env=COSMOS3_GENERATOR_URL%3D&amp;env=COSMOS3_GENERATOR_TOKEN%3D"><img src="./assets/create-devlab.svg" alt="Create DevLab" width="138" height="20"></a></td>
+  <td width="580" valign="middle">JupyterLab on a small CPU DevLab with NVIDIA's Cosmos 3 cookbooks cloned in and a quickstart notebook wired to your Cosmos 3 Reasoner and Generator endpoints.</td>
+</tr>
+</tbody>
+</table>
