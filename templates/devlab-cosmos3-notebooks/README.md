@@ -24,12 +24,19 @@ work/
   00_cosmos3_on_nebius.ipynb        start here: endpoint check, a Reasoner caption, a Generator image + async video
   nebius_endpoints.json             the endpoint URLs/tokens the DevLab was created with
   cosmos/cookbooks/cosmos3/         NVIDIA's cookbooks (Reasoner + Generator notebooks, prompt guide, sample assets)
-  cosmos/…/reasoner/run_with_vllm_nebius.ipynb   NVIDIA's full Reasoner tour, re-pointed at your endpoint
+  cosmos/…/reasoner/run_with_vllm_nebius.ipynb   NVIDIA's full Reasoner tour, re-pointed at your endpoint (see below)
 ```
 
 The bootstrap installs `openai`, `requests`, `pillow`, clones `nvidia/cosmos`, writes the two
 Nebius notebooks (only if absent, so your edits survive restarts), self-tests the Reasoner
 endpoint, and starts JupyterLab behind the DevLab's managed HTTPS route.
+
+**What the `_nebius` copy changes** — NVIDIA's `run_with_vllm.ipynb` is left untouched; the copy
+gets a new first cell that reads the endpoint URL and token from the environment, every
+`base_url="http://localhost:800x/v1"` becomes the endpoint, `api_key="EMPTY"` becomes the bearer
+token, and media references change from `file://` paths (which only a server on the same machine
+could read) to the public GitHub URLs of the same sample assets. Prompts, sampling and model names
+are unchanged.
 
 ## Before you click
 
