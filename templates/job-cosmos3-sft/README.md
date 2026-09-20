@@ -77,7 +77,29 @@ with dense captions; NVIDIA's sample set is the reference for the layout.
 
 ### Observed results
 
-<!-- filled from the validation run -->
+Smoke run (`RECIPE=nano`, `MAX_ITER=20`) on a preemptible **8×H200** node in us-central1,
+500 GiB disk, output to a mounted bucket — job `COMPLETED`, exit 0:
+
+| Stage | Measured |
+| --- | --- |
+| Provisioning + image pull | ~6 min |
+| Framework install (`uv sync`, torch 2.10 + cu130) | < 1 min |
+| Dataset + VAE download, base checkpoint → DCP | ~8 min |
+| Training | first iteration 83 s (compile), then **12.8 s / iteration** (8 GPUs, FSDP, 45k packed tokens) |
+| Checkpoint save (full state, 165 GiB) | ~12 min |
+| Export to safetensors + Diffusers conversion | ~3 min |
+| Copy `diffusers/` (30 GB) to the bucket | < 1 min |
+| **Total** | **~37 min**, of which ~4 min is the 20-iteration training itself |
+
+Extrapolation for NVIDIA's full recipe (`MAX_ITER=500`, one final checkpoint): ~2 h of training
+plus the ~30 min of fixed costs above, so about 2.5 hours on 8×H200 (H100 is the recipe's
+reference hardware and should be similar).
+
+### Other platforms
+
+The 1-click link targets NVIDIA's reference hardware, 8×H100 in eu-north1. The run above used
+`--platform gpu-h200-sxm --preset 8gpu-128vcpu-1600gb` in us-central1 (same preset name);
+8×H100 in eu-north1 was not allocatable within the wait window on the day of testing.
 
 > ⚠️ **Preemptible and not resumable.** The launcher redoes installation and download after a
 > restart, so it runs with `--restart-policy never`. Use preemptible for smoke runs; for the
