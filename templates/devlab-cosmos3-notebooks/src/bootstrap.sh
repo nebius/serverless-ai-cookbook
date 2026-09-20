@@ -32,15 +32,19 @@ PY
 
 # Nebius copy of NVIDIA's Reasoner notebook: same cells, but the OpenAI client points at the endpoint
 python - <<'PY'
-import json, pathlib, re
+import json, os, pathlib, re
 src = pathlib.Path("/home/jovyan/work/cosmos/cookbooks/cosmos3/reasoner/run_with_vllm.ipynb")
 dst = pathlib.Path("/home/jovyan/work/cosmos/cookbooks/cosmos3/reasoner/run_with_vllm_nebius.ipynb")
 if src.exists() and not dst.exists():
     nb = json.loads(src.read_text())
+    ref = os.environ.get("COSMOS_REF", "main")
     setup = ("import json, os\n"
+             "from pathlib import Path\n"
              "_cfg = json.load(open('/home/jovyan/work/nebius_endpoints.json'))\n"
              "REASONER_BASE = (os.environ.get('COSMOS3_REASONER_URL') or _cfg['COSMOS3_REASONER_URL']).rstrip('/') + '/v1'\n"
              "REASONER_KEY = os.environ.get('COSMOS3_REASONER_TOKEN') or _cfg['COSMOS3_REASONER_TOKEN'] or 'EMPTY'\n"
+             f"NEBIUS_ASSET_BASE = 'https://raw.githubusercontent.com/nvidia/cosmos/{ref}/cookbooks/cosmos3/reasoner/assets'\n"
+             "# The endpoint cannot read this DevLab's disk, so media go as public URLs of the same assets.\n"
              "print('Reasoner endpoint:', REASONER_BASE)\n")
     nb["cells"].insert(0, {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [], "source": setup})
     n = 0
@@ -49,9 +53,13 @@ if src.exists() and not dst.exists():
         s = "".join(c["source"])
         s2 = re.sub(r'base_url\s*=\s*["\']http://localhost:\d+/v1["\']', "base_url=REASONER_BASE", s)
         s2 = re.sub(r'api_key\s*=\s*["\']EMPTY["\']', "api_key=REASONER_KEY", s2)
+        # asset_url(): public URL instead of file:// (the helper cell defines it)
+        s2 = re.sub(r'return asset_path\(name\)\.resolve\(\)\.as_uri\(\)', 'return f"{NEBIUS_ASSET_BASE}/{name}"', s2)
+        # direct file:// URIs built from local asset paths
+        s2 = re.sub(r'(?:Path\()?(\w+_path)\)?\.resolve\(\)\.as_uri\(\)', r'asset_url(Path(\1).name)', s2)
         if s2 != s: n += 1; c["source"] = s2
     dst.write_text(json.dumps(nb, indent=1))
-    print(f"[cosmos3-devlab] wrote {dst.name} ({n} cells re-pointed at the Nebius endpoint)")
+    print(f"[cosmos3-devlab] wrote {dst.name} ({n} cells re-pointed at the Nebius endpoint, media as public URLs)")
 PY
 
 # Quickstart notebook: connectivity check, one Reasoner call, one Generator call
