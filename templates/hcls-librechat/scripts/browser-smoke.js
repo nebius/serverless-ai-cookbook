@@ -21,6 +21,17 @@ async (page) => {
     };
     await select('Public Token Factory', 'GLM 5.3 Flash');
     const chosenModel = await page.getByTestId('model-selector-button').innerText();
+    const checkSend = async () => {
+      const send = page.getByRole('button', { name: 'Send message', exact: true });
+      // A first-time installation without a provider key must explain the
+      // missing key and disable send; this UI-only suite submits no inference.
+      if (await send.isDisabled()) {
+        await page.getByRole('status').filter({ hasText: 'Connect your provider key' }).waitFor();
+        check(await page.getByRole('textbox', { name: 'Message input' }).isDisabled(), 'Disabled send has no missing-key explanation');
+      } else {
+        await send.click({ trial: true });
+      }
+    };
     const prompts = [];
     for (const card of await page.locator('[data-workflow]').all()) {
       const text = await card.innerText();
@@ -30,7 +41,7 @@ async (page) => {
       check(await page.getByTestId('model-selector-button').innerText() === chosenModel, 'Workflow changed LLM');
       prompts.push(await page.getByRole('textbox', { name: 'Message input' }).inputValue());
       check(prompts.at(-1).length > 120, 'Workflow did not prepare a substantive scientific prompt');
-      await page.getByRole('button', { name: 'Send message', exact: true }).click({ trial: true });
+      await checkSend();
       if (await card.getAttribute('data-workflow') === 'infra') {
         const panel = page.getByRole('complementary', { name: 'Infrastructure setup handoff' });
         check((await panel.innerText()).includes('not connected'), 'Infrastructure setup misrepresents account access');
@@ -54,7 +65,7 @@ async (page) => {
       check(!(await dialog.innerText()).includes('Current key: never expires'), 'Missing key displayed as configured');
       await page.getByRole('button', { name: 'Close', exact: true }).click();
     }
-    await select('Scientific workspace', 'Nebius Scientific AI Agent');
+    await select('Public Token Factory', 'GLM 5.3 Flash');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForFunction(() => document.documentElement.scrollWidth <= innerWidth);
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Mobile horizontal overflow');
@@ -64,7 +75,7 @@ async (page) => {
     await page.keyboard.press('Escape');
     await page.locator('[data-workflow="literature"]').click();
     check((await page.getByRole('textbox', { name: 'Message input' }).inputValue()).length > 120, 'Mobile workflow is inaccessible');
-    await page.getByRole('button', { name: 'Send message', exact: true }).click({ trial: true });
+    await checkSend();
     const sendBox = await page.getByRole('button', { name: 'Send message', exact: true }).boundingBox();
     check(sendBox && sendBox.y >= 0 && sendBox.y + sendBox.height <= 844, 'Mobile draft hides Send below the viewport');
     await page.screenshot({ path: 'output/playwright/after-mobile.png' });

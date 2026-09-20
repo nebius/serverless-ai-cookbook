@@ -14,6 +14,8 @@ Open **Getting started & example prompts** on the chat home page, or
 and concrete protein, molecule, speech, aging-clock and image examples. It uses
 the versioned `examples/v1/` pack in your bucket, not hidden event fixtures.
 See [GETTING_STARTED.md](GETTING_STARTED.md) for the same setup and recovery steps.
+The [general-client candidate receipt](GENERAL_CLIENT_RELEASE_20260920.md) records
+the published image, exact UI tests and the live-upgrade work still required.
 
 Six general research cards prepare editable prompts for literature-backed
 reproduction, structures, molecular/protein design, genomics/aging, clinical

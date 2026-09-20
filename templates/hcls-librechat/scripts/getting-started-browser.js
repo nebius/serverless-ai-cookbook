@@ -2,7 +2,7 @@
 // playwright-cli -s=<session> run-code --filename <this file>
 async (page) => {
   const assert = (condition, message) => { if (!condition) throw new Error(message); };
-  const origin = new URL(page.url()).origin;
+  const origin = await page.evaluate(() => location.origin);
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   const submitted = [];
   const watch = request => {
@@ -34,7 +34,7 @@ async (page) => {
     assert(!/Stockholm|LongevityHack|Sword AI Summit|3 October 2026/.test(await page.locator('body').innerText()), 'Event branding remains');
     await page.screenshot({path: 'output/playwright/getting-started-desktop.png', fullPage: true});
     await page.getByRole('link', {name: 'Open sample files'}).click();
-    assert(new URL(page.url()).searchParams.get('path') === 'examples/v1', 'Sample link lost the bucket prefix');
+    assert(await page.evaluate(() => new URL(location.href).searchParams.get('path')) === 'examples/v1', 'Sample link lost the bucket prefix');
     await page.getByRole('button', {name: 'Getting started', exact: true}).click();
     await page.reload();
     await page.getByRole('heading', {name: 'Your first scientific run'}).waitFor();
