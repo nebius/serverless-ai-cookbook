@@ -10,7 +10,7 @@ import pytest
 SCRIPT = Path(__file__).parent / 'scripts/deploy.sh'
 
 
-def command(tmp_path, public_ip=None, ssh=False):
+def command(tmp_path, public_ip=None, ssh=False, s3_profile=None):
     executable = tmp_path / 'nebius'
     executable.write_text('#!/usr/bin/env python3\nimport json,sys\nprint(json.dumps(sys.argv[1:]))\n')
     executable.chmod(0o700)
@@ -25,6 +25,8 @@ def command(tmp_path, public_ip=None, ssh=False):
         SEED_DEFAULT_USER_EMAIL='fixture@example.invalid', TEAM_BUCKET_NAME='fixture-bucket', TEAM_ID='fixture')
     if public_ip is not None:
         environment['SERVERLESS_PUBLIC_IP'] = public_ip
+    if s3_profile is not None:
+        environment['S3_AWS_PROFILE'] = s3_profile
     if ssh:
         key = tmp_path / 'fixture.pub'
         key.write_text('ssh-ed25519 public-fixture test-only\n')
@@ -49,6 +51,15 @@ def test_private_without_ssh_retains_application_and_volume_settings(tmp_path):
     assert '--ssh-key' not in arguments
     assert arguments[arguments.index('--container-port') + 1] == '3080'
     assert arguments[arguments.index('--volume') + 1] == 's3://fixture-bucket:/workspace:rw:default@secret-fixture'
+
+
+def test_storage_profile_is_configurable(tmp_path):
+    result = command(tmp_path, 'false', s3_profile='eu-north1-recording')
+    assert result.returncode == 0 and result.stderr == ''
+    arguments = json.loads(result.stdout)
+    assert arguments[arguments.index('--volume') + 1] == (
+        's3://fixture-bucket:/workspace:rw:eu-north1-recording@secret-fixture'
+    )
 
 
 def test_private_explicit_ssh_is_not_silently_removed(tmp_path):

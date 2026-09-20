@@ -98,13 +98,15 @@ export ENDPOINT_NAME='<unique personal endpoint name>'
 export TEAM_ID='<tenant name>'
 export TEAM_BUCKET_NAME='<existing bucket discovered from GET /v1/storage>'
 export S3_CREDENTIAL_SECRET_SELECTOR='<secret with S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY>'
+export S3_AWS_PROFILE='<local profile for this bucket region>'
 export SEED_DEFAULT_USER_EMAIL='<personal login email>'
 export USER_PASSWORD_SECRET_SELECTOR='<secret with SEED_DEFAULT_USER_PASSWORD>'
 export SSH_PUBLIC_KEY_FILE='<operator public key file>'
 ```
 
-For the S3 mount, the CLI also needs a `default` AWS **configuration** profile
-with `region` and `endpoint_url`, even when credentials come from MysteryBox.
+For the S3 mount, the CLI also needs an AWS **configuration** profile with
+`region` and `endpoint_url`, even when credentials come from MysteryBox. Set
+`S3_AWS_PROFILE` to its name; it defaults to `default` for compatibility.
 `AWS_CONFIG_FILE` can point to a task-local configuration file; no credential
 belongs in that file. The script mounts the bucket read-write at `/workspace`
 using the existing user's S3 credentials. Mongo, encrypted plugin credentials

@@ -1,14 +1,25 @@
-// Keep lifecycle/discovery tools ready; load each model's typed schema on demand.
-// This changes only LibreChat's context loading, never gateway authorization or calls.
-const core = new Set([
-  'get_model_schema', 'invoke_model',
-  'cancel_operation', 'acknowledge_operation',
-  'submit_scientific_run', 'get_scientific_status', 'cancel_scientific_run',
-  'list_scientific_events', 'get_scientific_artifact', 'get_scientific_result',
-  'begin_scientific_artifact_upload', 'put_scientific_artifact_bytes',
-  'finalize_scientific_artifact_upload', 'download_scientific_artifact',
-  'read_scientific_artifact_bytes',
+// Keep only the two compact discovery primitives ready. Every execution,
+// lifecycle, analysis and model-specific schema remains searchable and is
+// loaded only when the agent needs it. This changes LibreChat context loading,
+// never gateway authorization, tool visibility or calls.
+const alwaysReady = new Set([
+  'get_model_schema_mcp_scientific-ai-apps',
+  'workbench_list_apps_mcp_scientific-demos',
 ]);
+const deferableSuffixes = [
+  '_mcp_scientific-ai-apps',
+  '_mcp_scientific-demos',
+  '_mcp_environment-execution',
+  '_mcp_structure-viewer',
+  '_mcp_tavily',
+];
+
+function shouldDefer(name) {
+  return typeof name === 'string' &&
+    deferableSuffixes.some((suffix) => name.endsWith(suffix)) &&
+    !alwaysReady.has(name) &&
+    !name.startsWith('mcp_all_mcp_');
+}
 
 module.exports = function scientificToolOptions(agent, loadedTools = []) {
   const suffix = '_mcp_scientific-ai-apps';
@@ -32,8 +43,7 @@ module.exports = function scientificToolOptions(agent, loadedTools = []) {
     options[name] = { ...options[name], defer_loading: true };
   }
   for (const name of [...(agent.tools ?? []), ...loadedTools.map((tool) => tool.name)]) {
-    if (name?.endsWith(suffix) && !core.has(name.slice(0, -suffix.length)) &&
-        name !== `mcp_all${suffix}`) {
+    if (shouldDefer(name)) {
       options[name] = { ...options[name], defer_loading: true };
     }
   }
@@ -42,8 +52,7 @@ module.exports = function scientificToolOptions(agent, loadedTools = []) {
   // catalog. This affects context loading only, never tool ACLs or validation.
   return new Proxy(options, { get(target, name, receiver) {
     const value = Reflect.get(target, name, receiver);
-    if (typeof name === 'string' && name.endsWith(suffix) &&
-        !core.has(name.slice(0, -suffix.length)) && name !== `mcp_all${suffix}`) {
+    if (shouldDefer(name)) {
       return { ...value, defer_loading: true };
     }
     return value;

@@ -66,7 +66,11 @@ fi
 if [[ -n "${TEAM_BUCKET_NAME:-}" ]]; then
   : "${S3_CREDENTIAL_SECRET_SELECTOR:?Set the MysteryBox selector with S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY}"
   : "${TEAM_ID:?Set TEAM_ID for the mounted workspace owner}"
-  CREATE_CMD+=(--volume "s3://${TEAM_BUCKET_NAME}:/workspace:rw:default@${S3_CREDENTIAL_SECRET_SELECTOR}"
+  # The CLI loads regional endpoint settings from this local AWS profile, then
+  # replaces its credentials with the selected MysteryBox secret. Operator
+  # machines are not required to call that profile "default".
+  S3_AWS_PROFILE="${S3_AWS_PROFILE:-default}"
+  CREATE_CMD+=(--volume "s3://${TEAM_BUCKET_NAME}:/workspace:rw:${S3_AWS_PROFILE}@${S3_CREDENTIAL_SECRET_SELECTOR}"
     --env "TEAM_ID=$TEAM_ID" --env "TEAM_BUCKET_NAME=$TEAM_BUCKET_NAME")
 fi
 

@@ -113,7 +113,8 @@ def test_personal_installation_can_use_public_chat_without_event_capacity(tmp_pa
 
 def test_personal_serverless_mount_keeps_database_off_object_storage():
     deploy = (ROOT / "scripts/deploy.sh").read_text()
-    assert 's3://${TEAM_BUCKET_NAME}:/workspace:rw:default@${S3_CREDENTIAL_SECRET_SELECTOR}' in deploy
+    assert 'S3_AWS_PROFILE="${S3_AWS_PROFILE:-default}"' in deploy
+    assert 's3://${TEAM_BUCKET_NAME}:/workspace:rw:${S3_AWS_PROFILE}@${S3_CREDENTIAL_SECRET_SELECTOR}' in deploy
     assert '--env "ALLOW_REGISTRATION=false"' in deploy
     assert '--env-secret "SEED_DEFAULT_USER_PASSWORD=$USER_PASSWORD_SECRET_SELECTOR"' in deploy
     assert ':/data' not in deploy
@@ -172,7 +173,7 @@ assert.equal(result['infer_openfold2_native_mcp_scientific-ai-apps'].describe_in
 assert.equal(result['get_model_schema_mcp_scientific-ai-apps'], undefined);
 assert.equal(result['list_models_mcp_scientific-ai-apps'].defer_loading, true);
 assert.equal(result['get_operation_result_mcp_scientific-ai-apps'].defer_loading, true);
-assert.equal(result['tavily_search_mcp_tavily'], undefined);
+assert.equal(result['tavily_search_mcp_tavily'].defer_loading, true);
 assert.equal(input.tool_options['infer_openfold2_native_mcp_scientific-ai-apps'].defer_loading, undefined);
 """
     subprocess.run(['node', '-e', script, str(ROOT / 'scientific-tool-options.cjs')], check=True)
