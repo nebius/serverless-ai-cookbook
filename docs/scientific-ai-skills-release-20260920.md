@@ -150,6 +150,9 @@ inspection confirmed Rene's endpoint `aiendpoint-e00hf15nz04eqt6b9q` still runs
 main Node server is the container's foreground process and skills are loaded
 at startup; replacing this with the v61 application is not a skills-only change.
 No live LibreChat process, database, bucket or customer endpoint was stopped or
-modified. A controlled existing-instance rollout remains separate, with scope
-(Rene only or all users) awaiting the user's choice. Preserve chats/credentials,
-bucket bindings and any active studies when performing that rollout.
+modified. On 2026-09-20 the user explicitly deferred all existing-instance
+upgrades: leave Rene's and other users' running instances unchanged. This is a
+deliberate scope decision, not an outstanding deployment action for this release.
+Any future rollout requires a new request and must preserve chats/credentials,
+bucket bindings and active studies. New deployments continue to use the tested
+skills image by default; the public download and website link are already live.
