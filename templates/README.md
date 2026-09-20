@@ -248,6 +248,30 @@ Templates are quick-start configurations to help you serve models and run jobs i
 
 ## Jobs
 
+### 🎬 Synthetic Data
+
+<table width="960" border="1" cellpadding="8" cellspacing="0" style="table-layout:fixed;width:960px;min-width:960px;border-collapse:collapse;">
+<colgroup>
+  <col width="220">
+  <col width="160">
+  <col width="580">
+</colgroup>
+<thead>
+<tr>
+  <th width="220" align="left">Template</th>
+  <th width="160" align="center">Deploy</th>
+  <th width="580" align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/65df9200dc3292a8983e5017/Vs5FPVCH-VZBipV3qKTuy.png" width="20" height="20" alt="Cosmos 3 Synthetic Data" align="absmiddle">&nbsp;<a href="job-cosmos3-synthetic-data/README.md"><strong>Cosmos 3 Synthetic Data</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/job/create?image=vllm%2Fvllm-omni%3Acosmos3&amp;command=curl%20-fsSL%20https%3A%2F%2Fraw.githubusercontent.com%2Fnebius%2Fserverless-ai-cookbook%2Fmain%2Ftemplates%2Fjob-cosmos3-synthetic-data%2Fsrc%2Frun.sh%20-o%20%2Ftmp%2Frun.sh%20%26%26%20bash%20%2Ftmp%2Frun.sh&amp;platform=gpu-rtx6000-a&amp;preset=1gpu-24vcpu-218gb&amp;volume=%2Fdata&amp;diskSize=500GiB&amp;preemptible=true"><img src="./assets/create-job.svg" alt="Create Job" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Batch image-to-video / text-to-video generation with Cosmos3-Nano (OpenMDW-1.1) into an Object Storage bucket on a preemptible RTX Pro 6000; resumable, shardable.</td>
+</tr>
+</tbody>
+</table>
+
 ### 🏋️ Fine-tuning
 
 <table width="960" border="1" cellpadding="8" cellspacing="0" style="table-layout:fixed;width:960px;min-width:960px;border-collapse:collapse;">
