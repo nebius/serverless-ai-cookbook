@@ -6,7 +6,12 @@ set -euo pipefail
 : "${SCIENTIFIC_MODELS_API_KEY_SECRET_SELECTOR:?Set SCIENTIFIC_MODELS_API_KEY_SECRET_SELECTOR to a MysteryBox secret whose payload key is SCIENTIFIC_MODELS_API_KEY}"
 : "${TOKEN_FACTORY_SECRET_SELECTOR:?Set TOKEN_FACTORY_SECRET_SELECTOR to a MysteryBox secret whose payload key is NEBIUS_API_KEY}"
 : "${TAVILY_SECRET_SELECTOR:?Set TAVILY_SECRET_SELECTOR to a MysteryBox secret whose payload key is TAVILY_API_KEY}"
-: "${IMAGE:?Set IMAGE to the tested release tag or digest}"
+# New deployments get the tested public skills release by default. An explicit
+# IMAGE still selects a separately qualified customer/runtime override.
+DEPLOY_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=release-image.sh
+source "$DEPLOY_SCRIPT_DIR/release-image.sh"
+IMAGE="${IMAGE:-$SCIENTIFIC_AI_RELEASE_IMAGE}"
 
 # One user-owned supervisor, not a distributed lock on an S3 mount.
 case "${SCIENTIFIC_STUDY_OWNER_MODE:-}" in

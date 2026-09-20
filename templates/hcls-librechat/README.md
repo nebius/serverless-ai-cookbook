@@ -27,12 +27,23 @@ export NEBIUS_SUBNET_ID='vpcsubnet-...'
 export SCIENTIFIC_MODELS_API_KEY_SECRET_SELECTOR='nebius-scientific-model-gateway'
 export TOKEN_FACTORY_SECRET_SELECTOR='<secret selector with NEBIUS_API_KEY>'
 export TAVILY_SECRET_SELECTOR='<secret selector with TAVILY_API_KEY>'
-export IMAGE='cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/hcls/nebius-scientific-ai-agent:<release-tag>'
+# IMAGE is optional: the deployment script defaults to the tested skills release.
+# Set it only when choosing a separately qualified runtime override.
 # Only for a user who has no active study supervisor:
 export SCIENTIFIC_STUDY_OWNER_MODE='first-instance'
 
 ./templates/hcls-librechat/scripts/deploy.sh
 ```
+
+The default is `cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:skills-20260920-v1`,
+digest `sha256:01a9363e53e6cc7e7592af892c960e99410d201c70365c20f8a85b10efe4d94a`.
+Its 31 preinstalled customer skills come from the same
+[canonical public directory](https://github.com/rene-tech/serverless-ai-cookbook/tree/main/skills/scientific-ai)
+as the website's **Get the Skills** button. Operators maintain this selection in
+`scripts/release-image.sh`. Existing running instances do not auto-upgrade when
+this default changes; upgrading their application requires a separate controlled
+rollout preserving chats, credentials and workspace bindings. In particular,
+this v61-based image is not a skills-only replacement for an older v11 runtime.
 
 The script creates a public CPU D3 endpoint on port `3080`; LibreChat keeps its
 own email/password sign-in page reachable. Dedicated deployments mount a user or team's

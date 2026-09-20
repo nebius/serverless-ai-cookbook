@@ -70,6 +70,37 @@ def test_serverless_and_librechat_auth_are_separated() -> None:
     assert 'GROMACS' not in deploy
 
 
+@pytest.mark.parametrize("override", [None, "example.invalid/customer:qualified-runtime"])
+def test_deployment_selects_tested_skills_image_and_preserves_explicit_override(override):
+    env = {
+        "PATH": os.environ["PATH"],
+        "NEBIUS_PROJECT_ID": "project-test",
+        "NEBIUS_SUBNET_ID": "subnet-test",
+        "SCIENTIFIC_MODELS_API_KEY_SECRET_SELECTOR": "test-gateway-selector",
+        "TOKEN_FACTORY_SECRET_SELECTOR": "test-provider-selector",
+        "TAVILY_SECRET_SELECTOR": "test-search-selector",
+        "SCIENTIFIC_STUDY_OWNER_MODE": "first-instance",
+        "SEED_DEFAULT_USER_EMAIL": "test@example.invalid",
+        "TEAM_BUCKET_NAME": "test-bucket",
+        "TEAM_ID": "test-tenant",
+        "S3_CREDENTIAL_SECRET_SELECTOR": "test-storage-selector",
+        "USER_PASSWORD_SECRET_SELECTOR": "test-password-selector",
+    }
+    if override:
+        env["IMAGE"] = override
+    # Export a shell mock: never call the real provider or create infrastructure.
+    result = subprocess.run(
+        ["bash", "-c", 'nebius() { printf "%s\\n" "$@"; }; export -f nebius; bash "$1"',
+         "deployment-test", str(ROOT / "scripts/deploy.sh")],
+        env=env, check=True, capture_output=True, text=True,
+    )
+    args = result.stdout.splitlines()
+    assert args[:3] == ["ai", "endpoint", "create"]
+    assert args[args.index("--image") + 1] == (
+        override or "cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:skills-20260920-v1"
+    )
+
+
 def test_personal_installation_can_use_public_chat_without_event_capacity(tmp_path):
     config, _ = render_config(tmp_path, SCIENTIFIC_DEDICATED_CHAT_ENABLED="false")
     defaults = [item for item in config["modelSpecs"]["list"] if item["default"]]

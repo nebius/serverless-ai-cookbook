@@ -127,11 +127,29 @@ and returned WER `0.5`, keyword miss rate `1.0`, and clinical correctness
 read back successfully. `main`, the integration branch and release tag pointed
 to `1c93007cd1e27ca2aae6a37ba2be42c071b5c559` at publication.
 
-Navigation follow-up: the live website's existing Get the Skills URL still
-targets the historical workbench branch and its old skill directory. The
-canonical public destination is now
+## Website and default preinstallation follow-up — 07:41 UTC
+
+The public website now links **Get the Skills** directly to
 https://github.com/rene-tech/serverless-ai-cookbook/tree/main/skills/scientific-ai .
-The website checkout contains unrelated in-progress visual changes; no website
-source, deployment or those changes were modified during this skills release.
-Use the canonical link or release asset in customer handoffs until that pointer
-is updated in the website's next controlled release.
+The link-only website release preserves all existing design and catalog assets;
+its source and deployment receipt live in `rene-tech/nebius-scientific-ai-platform`,
+`docs/skills-canonical-link-20260920.md`. The destination was read without GitHub
+authentication: HTTP 200, manifest version `2026.09.20.1`, 31 skills.
+
+`templates/hcls-librechat/scripts/deploy.sh` now defaults to the tested image
+above, selected by the public `scripts/release-image.sh`. An explicit `IMAGE`
+still wins. The old placeholder-registry example was removed. Verification:
+**23 workbench configuration tests passed**, including two provider-mocked
+deployment executions proving default and explicit image selection; shell
+syntax passed. The image's real skill loader again retrieved **31 skills,
+17 resources and all 57 verified files** without model calls.
+
+This changes new deployments, not existing running endpoints. Read-only live
+inspection confirmed Rene's endpoint `aiendpoint-e00hf15nz04eqt6b9q` still runs
+`lc:r0918-v11-029d8f3` with the older skill tree and no release manifest. Its
+main Node server is the container's foreground process and skills are loaded
+at startup; replacing this with the v61 application is not a skills-only change.
+No live LibreChat process, database, bucket or customer endpoint was stopped or
+modified. A controlled existing-instance rollout remains separate, with scope
+(Rene only or all users) awaiting the user's choice. Preserve chats/credentials,
+bucket bindings and any active studies when performing that rollout.
