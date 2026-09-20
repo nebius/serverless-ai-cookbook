@@ -84,5 +84,35 @@ No model inference, customer account change, endpoint replacement, snapshot
 benchmark or medical validation is implied. Known adapter/client gaps remain
 listed in `skills/scientific-ai/RELEASE.md` and in the relevant skill.
 
-Completed verification and published artifact identifiers are recorded below
-after final-image acceptance.
+## Completed checks and artifacts
+
+- Skill-creator validation: **31/31 valid**.
+- Portable package, native-contract and clinical-helper suite: **114 passed**,
+  plus **31 clinical subtests** (Python 3.12).
+- Affected workbench integration/regression suite: **88 passed** inside the
+  workbench image's Python 3.11 scientific environment. This includes clinical
+  customer outputs/negative outcomes, media guidance, robotics analysis, batch
+  client and seeded/configuration behavior.
+- Historical test entry point: **20 passed**; it now executes portable tests
+  without `/home/tux` paths or the old manually patched MCP tool snapshot.
+- Real LibreChat loader on the final built image at 06:28 UTC: **31 skills,
+  17 attached resources**, all looked up through actual skill/file APIs and
+  all **57 inventoried files** hash-verified. No model calls made.
+- Live catalog: **37 visible / 37 covered / 0 unmapped**.
+- Archive: deterministic rebuild, extracted verification, install/reinstall,
+  tampered-file rejection and conflict preservation tested.
+
+Image source commit: `75a83d5ffc3bfe91d69ccd487b6d0deb168a709b`.
+Published image:
+`cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc:skills-20260920-v1`
+with manifest digest
+`sha256:01a9363e53e6cc7e7592af892c960e99410d201c70365c20f8a85b10efe4d94a`.
+The application base remains pinned v61; only its skill tree and central skill
+routing instructions changed. No existing endpoint uses this image until its
+operator chooses a controlled rollout.
+
+Public release tag: `scientific-ai-skills-2026.09.20.1`.
+Asset `scientific-ai-skills-2026.09.20.1.tar.gz` SHA-256:
+`46db30fa4efde41d9cd1568fe6cc92711dde11b5dff0371cab71311294fa5786`.
+`SHA256SUMS` is published alongside it. The release receipt commit only updates
+documentation; the packaged skill bytes and image source remain the commit above.
