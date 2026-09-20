@@ -6,6 +6,14 @@ Run GPU workloads on [Nebius Serverless](https://nebius.com/services/serverless)
 
 This repo contains runnable code samples for **Serverless AI Jobs** (batch workloads that auto-terminate) and **Endpoints** (persistent HTTP-accessible services), plus **1-click templates** that open the Nebius Console with fields pre-filled. Examples cover model training, fine-tuning, inference serving, AI agents, and scientific simulations.
 
+## Scientific AI customer workbench and skills
+
+The maintained customer client is [Scientific AI LibreChat](templates/hcls-librechat).
+Its complete, downloadable [Scientific AI skills bundle](skills/scientific-ai)
+is also usable by other MCP clients. Install that canonical path or its versioned
+release asset; historical vendor/template skill trees are not additional active
+skill packs. See the [skills release receipt](docs/scientific-ai-skills-release-20260920.md).
+
 ## Quickstart (30 seconds)
 
 Spin up a GPU job and verify your setup:

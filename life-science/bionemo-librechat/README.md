@@ -1,5 +1,10 @@
 # BioNeMo LibreChat workbench
 
+This is the historical workbench template. New deployments use
+[`templates/hcls-librechat`](../../templates/hcls-librechat), and all maintained
+customer skills live in [`skills/scientific-ai`](../../skills/scientific-ai).
+The historical artifact adapter below is not the current hosted file workflow.
+
 This is the LibreChat replacement for the public OpenClaw BioNeMo workbench.
 It is deployed as a separate Serverless endpoint and never updates the existing
 `ba:latest` image or `bionemo-3` endpoint.
@@ -22,21 +27,21 @@ claiming per-user billing attribution or fs2 file/artifact workflows.
 
 The welcome screen names the four tutorial groups: Protein Folding, Docking and
 Design, Sequence and MSA, and Genomics and Cell Biology. The
-`bionemo-workbench-tutorials` deployment skill provides model lists, example
+`scientific-agent-tutorials` deployment skill provides model lists, example
 workflows, and fair benchmark instructions for each group.
 
 ## Build and validation
 
-Build from this directory with:
+For this historical template only, build from the **repository root** with:
 
 ```bash
-docker build -t bionemo-librechat:local -f Dockerfile .
+docker build -t bionemo-librechat:local -f life-science/bionemo-librechat/Dockerfile .
 ```
 
 At runtime, inspect the Serverless logs for all of the following:
 
 - `Custom config file loaded`
-- `Loaded 16 deployment skill(s)`
+- `Loaded 31 deployment skill(s)` for the current public bundle
 - `MCP[bionemo-models] ... Initialized`
 - `Server listening on all interfaces at port 3080`
 

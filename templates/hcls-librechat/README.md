@@ -155,17 +155,9 @@ its image to work around this limitation.
   Results are limited to 4 MiB and 20 structures; small user-provided inline
   structures are limited to 64 KiB. No arbitrary URL or filesystem access.
 - **Infrastructure preparation:** the bundled `nebius-infrastructure-prep`
-  skill routes to ten installed official Nebius skills: cloud basics, compute
-  inventory/provisioning, capacity/quotas, Serverless setup, jobs, endpoints,
-  data/secrets, troubleshooting and recipes. Their reference files and assets
-  are included. They prepare configurations and a participant-local MCP setup handoff with
-  `SAFE_MODE=true`. No participant cloud account is connected to this hosted
-  app. The public setup guide supports their local coding agent and CLI profile.
-  The official skill bundle is pinned to
-  `292c7e65a46d0c29994d2babfc19da129d16fa62`, with its Apache-2.0 license and file
-  hashes retained in the image. The upstream repository requires access; its
-  source files are fetched into an ignored build directory, not this public Git
-  repository. Participants can use the installed guidance without repo access.
+  uses public setup guidance and checks for any optional official Nebius skills.
+  The public customer image does not depend on their private source. Guidance
+  does not connect a participant cloud account or authorize resource creation.
 - **Limitations:** a deployment without a mounted bucket does not yet have an S3
   file browser. The generic LibreChat attachment picker is not a scientific
   artifact upload bridge, and there is no GROMACS
@@ -179,12 +171,13 @@ its image to work around this limitation.
 
 ## Verify
 
-Prepare the official skills with the builder's existing authorized GitHub access
-before building. This fetches only the pinned source; no GitHub credential is
-copied into the build context or image.
+The public customer skill source is now `skills/scientific-ai`; it includes the
+clinical helpers. No private GitHub access or vendoring is required to build.
+Earlier v61 images included ten private upstream infrastructure skills; those
+are optional operator extensions, not part of this public skills release.
 
 ```bash
-bash templates/hcls-librechat/scripts/prepare-nebius-skills.sh
+python3 skills/scientific-ai/bundle.py verify
 curl -fsS 'https://<librechat-host>/health'
 python -m pytest templates/hcls-librechat/tests.py templates/hcls-librechat/test_structure_viewer.py -q
 docker build --target scientific-client -t scientific-client-check \

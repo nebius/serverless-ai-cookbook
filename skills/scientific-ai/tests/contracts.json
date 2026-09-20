@@ -1,0 +1,2765 @@
+{
+  "source_commit": "4f6fbc30d092c8852d1fdb86e4e813ab04df64fd",
+  "source": "fs2_serve.model_input_contracts from the deployed control-plane image; payload schemas, not grant/readiness evidence",
+  "schemas": {
+    "openfold2": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input_id": {
+          "type": "string",
+          "description": "Caller-chosen input identifier.",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "sequence": {
+          "type": "string",
+          "description": "Single canonical uppercase protein sequence.",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^[ACDEFGHIKLMNPQRSTVWY]+$"
+        },
+        "selected_models": {
+          "const": [
+            1
+          ],
+          "default": [
+            1
+          ],
+          "description": "Exactly parameter set 1: model_3_ptm / finetuning_no_templ_ptm_1."
+        },
+        "relax_prediction": {
+          "const": false,
+          "default": false,
+          "description": "Relaxation is not supported by this runtime."
+        }
+      },
+      "required": [
+        "input_id",
+        "sequence",
+        "selected_models",
+        "relax_prediction"
+      ],
+      "description": "Portable OpenFold2 with a single-sequence dummy MSA. No external MSA, template or relaxation fields."
+    },
+    "openfold3": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "description": "Unique input or chain label.",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
+        },
+        "inputs": {
+          "type": "array",
+          "description": "Exactly one input.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "input_id": {
+                "type": "string",
+                "description": "Unique input or chain label.",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
+              },
+              "output_format": {
+                "const": "cif",
+                "default": "cif",
+                "description": "CIF output only."
+              },
+              "molecules": {
+                "type": "array",
+                "description": "Protein chains with unique IDs.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "type": {
+                      "const": "protein",
+                      "default": "protein",
+                      "description": "Only protein molecules are supported."
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Unique input or chain label.",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$"
+                    },
+                    "sequence": {
+                      "type": "string",
+                      "description": "Canonical uppercase amino-acid sequence.",
+                      "minLength": 1,
+                      "pattern": "^[ACDEFGHIKLMNPQRSTVWY]+$"
+                    },
+                    "diffusion_samples": {
+                      "const": 1,
+                      "default": 1,
+                      "description": "The fixed Preview2 runtime generates exactly one sample."
+                    },
+                    "msa": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "main": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "a3m": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "alignment": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "description": "Literal nonempty A3M text.",
+                                      "minLength": 1
+                                    },
+                                    {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "artifact_id": {
+                                          "type": "string",
+                                          "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "sha256": {
+                                          "type": "string",
+                                          "description": "SHA-256 of the exact uploaded bytes.",
+                                          "pattern": "^[0-9a-f]{64}$"
+                                        },
+                                        "size_bytes": {
+                                          "type": "integer",
+                                          "description": "Exact uploaded byte count.",
+                                          "minimum": 0
+                                        },
+                                        "media_type": {
+                                          "type": "string",
+                                          "description": "Media type of the uploaded bytes.",
+                                          "enum": [
+                                            "text/x-a3m",
+                                            "text/plain"
+                                          ]
+                                        },
+                                        "compression": {
+                                          "const": "none",
+                                          "default": "none",
+                                          "description": "Artifact input must be stored without transport compression."
+                                        }
+                                      },
+                                      "required": [
+                                        "artifact_id",
+                                        "sha256",
+                                        "size_bytes",
+                                        "media_type",
+                                        "compression"
+                                      ],
+                                      "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                                    }
+                                  ],
+                                  "description": "Literal nonempty A3M text. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+                                  "x-fs2-artifact-materialization": "utf-8",
+                                  "x-fs2-artifact-max-bytes": 16777216,
+                                  "x-fs2-artifact-media-types": [
+                                    "text/x-a3m",
+                                    "text/plain"
+                                  ]
+                                },
+                                "format": {
+                                  "const": "a3m",
+                                  "default": "a3m",
+                                  "description": "A3M alignment format."
+                                }
+                              },
+                              "required": [
+                                "alignment",
+                                "format"
+                              ],
+                              "description": "Supplied A3M."
+                            }
+                          },
+                          "required": [
+                            "a3m"
+                          ],
+                          "description": "Main alignment."
+                        }
+                      },
+                      "required": [
+                        "main"
+                      ],
+                      "description": "Optional supplied MSA."
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "id",
+                    "sequence"
+                  ],
+                  "description": "Protein chain; chain IDs must be unique."
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "input_id",
+              "output_format",
+              "molecules"
+            ],
+            "description": "One folding input."
+          },
+          "minItems": 1,
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "request_id",
+        "inputs"
+      ],
+      "description": "OpenFold3 Preview2, fixed seed 42 and one sample; no template or online MSA search."
+    },
+    "diffdock": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "protein": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Inline PDB containing ATOM records; 40\u20132,000,000 UTF-8 bytes (runtime checked).",
+              "pattern": "ATOM"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "SHA-256 of the exact uploaded bytes.",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "description": "Exact uploaded byte count.",
+                  "minimum": 0
+                },
+                "media_type": {
+                  "type": "string",
+                  "description": "Media type of the uploaded bytes.",
+                  "enum": [
+                    "chemical/x-pdb",
+                    "text/plain"
+                  ]
+                },
+                "compression": {
+                  "const": "none",
+                  "default": "none",
+                  "description": "Artifact input must be stored without transport compression."
+                }
+              },
+              "required": [
+                "artifact_id",
+                "sha256",
+                "size_bytes",
+                "media_type",
+                "compression"
+              ],
+              "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "fixture_id": {
+                  "type": "string",
+                  "description": "Pinned server-side smoke fixture; no fixture bytes pass through the language model.",
+                  "enum": [
+                    "pdb/1ubq"
+                  ]
+                }
+              },
+              "required": [
+                "fixture_id"
+              ],
+              "description": "Pinned server-side fixture reference."
+            }
+          ],
+          "description": "Inline PDB containing ATOM records; 40\u20132,000,000 UTF-8 bytes (runtime checked). Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+          "x-fs2-artifact-materialization": "utf-8",
+          "x-fs2-artifact-max-bytes": 2000000,
+          "x-fs2-artifact-media-types": [
+            "chemical/x-pdb",
+            "text/plain"
+          ]
+        },
+        "ligand": {
+          "type": "string",
+          "description": "Ligand SMILES, not an uploaded ligand path.",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "ligand_file_type": {
+          "const": "txt",
+          "default": "txt",
+          "description": "Inline SMILES only."
+        },
+        "num_poses": {
+          "type": "integer",
+          "description": "Number of docking poses.",
+          "minimum": 1,
+          "maximum": 4,
+          "default": 1
+        },
+        "time_divisions": {
+          "type": "integer",
+          "description": "Diffusion time divisions; must be >= steps.",
+          "minimum": 3,
+          "maximum": 20,
+          "default": 20
+        },
+        "steps": {
+          "type": "integer",
+          "description": "Sampling steps, no greater than time_divisions.",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 18
+        },
+        "random_seed": {
+          "type": "integer",
+          "description": "Random seed.",
+          "minimum": 1,
+          "maximum": 2147483647,
+          "default": 1
+        },
+        "save_trajectory": {
+          "enum": [
+            false,
+            null
+          ],
+          "default": false,
+          "description": "Trajectory output is unsupported."
+        },
+        "skip_gen_conformer": {
+          "enum": [
+            false,
+            null
+          ],
+          "default": false,
+          "description": "Skipping conformer generation is unsupported."
+        }
+      },
+      "required": [
+        "protein",
+        "ligand"
+      ],
+      "description": "DiffDock v1.1 portable adapter; receptor PDB plus inline ligand SMILES."
+    },
+    "proteinmpnn": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input_pdb": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Inline PDB with ATOM records; 40\u20132,000,000 UTF-8 bytes (runtime checked).",
+              "pattern": "ATOM"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "SHA-256 of the exact uploaded bytes.",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "description": "Exact uploaded byte count.",
+                  "minimum": 0
+                },
+                "media_type": {
+                  "type": "string",
+                  "description": "Media type of the uploaded bytes.",
+                  "enum": [
+                    "chemical/x-pdb",
+                    "text/plain"
+                  ]
+                },
+                "compression": {
+                  "const": "none",
+                  "default": "none",
+                  "description": "Artifact input must be stored without transport compression."
+                }
+              },
+              "required": [
+                "artifact_id",
+                "sha256",
+                "size_bytes",
+                "media_type",
+                "compression"
+              ],
+              "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "fixture_id": {
+                  "type": "string",
+                  "description": "Pinned server-side smoke fixture; no fixture bytes pass through the language model.",
+                  "enum": [
+                    "pdb/1ubq"
+                  ]
+                }
+              },
+              "required": [
+                "fixture_id"
+              ],
+              "description": "Pinned server-side fixture reference."
+            }
+          ],
+          "description": "Inline PDB with ATOM records; 40\u20132,000,000 UTF-8 bytes (runtime checked). Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+          "x-fs2-artifact-materialization": "utf-8",
+          "x-fs2-artifact-max-bytes": 2000000,
+          "x-fs2-artifact-media-types": [
+            "chemical/x-pdb",
+            "text/plain"
+          ]
+        },
+        "input_pdb_chains": {
+          "anyOf": [
+            {
+              "type": "array",
+              "description": "Chains to redesign.",
+              "items": {
+                "type": "string",
+                "description": "One-character chain ID.",
+                "minLength": 1,
+                "maxLength": 1
+              },
+              "minItems": 1,
+              "maxItems": 16
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Existing chains to redesign; omitted/null means all chains."
+        },
+        "random_seed": {
+          "type": "integer",
+          "description": "Random seed.",
+          "minimum": 1,
+          "maximum": 2147483647,
+          "default": 1
+        },
+        "num_seq_per_target": {
+          "type": "integer",
+          "description": "Sequences sampled for the target.",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 1
+        },
+        "sampling_temp": {
+          "anyOf": [
+            {
+              "type": "number",
+              "description": "Finite sampling temperature.",
+              "minimum": 0.01,
+              "maximum": 1
+            },
+            {
+              "type": "array",
+              "description": "One temperature.",
+              "items": {
+                "type": "number",
+                "description": "Finite sampling temperature.",
+                "minimum": 0.01,
+                "maximum": 1
+              },
+              "minItems": 1,
+              "maxItems": 1
+            }
+          ],
+          "default": [
+            0.1
+          ],
+          "description": "One finite temperature, supplied as a number or a one-item array."
+        },
+        "omit_AAs": {
+          "type": "array",
+          "description": "Residue codes excluded during design.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "A",
+              "C",
+              "D",
+              "E",
+              "F",
+              "G",
+              "H",
+              "I",
+              "K",
+              "L",
+              "M",
+              "N",
+              "P",
+              "Q",
+              "R",
+              "S",
+              "T",
+              "V",
+              "W",
+              "Y",
+              "X"
+            ]
+          },
+          "default": [
+            "X"
+          ]
+        }
+      },
+      "required": [
+        "input_pdb"
+      ],
+      "description": "ProteinMPNN v_48_020 portable adapter. Chain existence and PDB structure are checked by the runtime."
+    },
+    "sdxl": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Non-blank text describing the image.",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "negative_prompt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional unwanted image content."
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Torch generator seed.",
+          "default": 0
+        },
+        "steps": {
+          "type": "integer",
+          "description": "Denoising steps.",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 20
+        },
+        "guidance": {
+          "type": "number",
+          "description": "Guidance strength; takes precedence over guidance_scale if both are supplied.",
+          "minimum": 0,
+          "maximum": 20,
+          "default": 5
+        },
+        "guidance_scale": {
+          "type": "number",
+          "description": "Alias used only when guidance is absent.",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "width": {
+          "const": 512,
+          "default": 512,
+          "description": "This qualified endpoint only supports 512-pixel width."
+        },
+        "height": {
+          "const": 512,
+          "default": 512,
+          "description": "This qualified endpoint only supports 512-pixel height."
+        },
+        "response_format": {
+          "type": "string",
+          "description": "PNG bytes or a JSON/base64 envelope; use b64_json for JSON clients.",
+          "enum": [
+            "image/png",
+            "b64_json"
+          ],
+          "default": "image/png"
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "description": "SDXL 512\u00d7512 PNG generation. Only fields consumed by the hosted adapter are advertised."
+    },
+    "nv-segment-ct": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "input_nifti_base64": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Base64-encoded NIfTI bytes (<=32 MiB decoded), finite 3D volume, each dimension 8\u2013512.",
+              "minLength": 1,
+              "contentEncoding": "base64"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "SHA-256 of the exact uploaded bytes.",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "description": "Exact uploaded byte count.",
+                  "minimum": 0
+                },
+                "media_type": {
+                  "type": "string",
+                  "description": "Media type of the uploaded bytes.",
+                  "enum": [
+                    "application/x-nifti",
+                    "application/gzip",
+                    "application/octet-stream"
+                  ]
+                },
+                "compression": {
+                  "const": "none",
+                  "default": "none",
+                  "description": "Artifact input must be stored without transport compression."
+                }
+              },
+              "required": [
+                "artifact_id",
+                "sha256",
+                "size_bytes",
+                "media_type",
+                "compression"
+              ],
+              "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "fixture_id": {
+                  "type": "string",
+                  "description": "Pinned server-side smoke fixture; no fixture bytes pass through the language model.",
+                  "enum": [
+                    "nifti/nv-segment-ct-synthetic-ellipsoid-v1"
+                  ]
+                }
+              },
+              "required": [
+                "fixture_id"
+              ],
+              "description": "Pinned server-side fixture reference."
+            }
+          ],
+          "description": "Base64-encoded NIfTI bytes (<=32 MiB decoded), finite 3D volume, each dimension 8\u2013512. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+          "x-fs2-artifact-materialization": "base64",
+          "x-fs2-artifact-max-bytes": 33554432,
+          "x-fs2-artifact-media-types": [
+            "application/x-nifti",
+            "application/gzip",
+            "application/octet-stream"
+          ]
+        },
+        "label_prompt": {
+          "type": "array",
+          "description": "Nonempty anatomical label prompts.",
+          "items": {
+            "type": "integer",
+            "description": "VISTA3D anatomical label index."
+          },
+          "minItems": 1
+        },
+        "points": {
+          "type": "array",
+          "description": "Point prompts in voxel coordinates.",
+          "items": {
+            "type": "array",
+            "description": "One [x,y,z] voxel coordinate.",
+            "items": {
+              "type": "number",
+              "description": "Voxel coordinate."
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "minItems": 1
+        },
+        "point_labels": {
+          "type": "array",
+          "description": "One label per point, in the same order.",
+          "items": {
+            "type": "integer",
+            "description": "VISTA3D point label (-1,0,1 or special flags 2,3).",
+            "enum": [
+              -1,
+              0,
+              1,
+              2,
+              3
+            ]
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "input_nifti_base64"
+      ],
+      "description": "NV-Segment-CT VISTA3D segmentation; provide label_prompt or points. Not a diagnosis.",
+      "anyOf": [
+        {
+          "required": [
+            "label_prompt"
+          ]
+        },
+        {
+          "required": [
+            "points",
+            "point_labels"
+          ]
+        }
+      ],
+      "dependentRequired": {
+        "points": [
+          "point_labels"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "points",
+              "label_prompt"
+            ]
+          },
+          "then": {
+            "properties": {
+              "label_prompt": {
+                "maxItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "cellpose-cpsam-v2": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image_base64": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Base64-encoded 2D microscopy image, at most 4 megapixels.",
+              "minLength": 4,
+              "contentEncoding": "base64"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "SHA-256 of the exact uploaded bytes.",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "description": "Exact uploaded byte count.",
+                  "minimum": 0
+                },
+                "media_type": {
+                  "type": "string",
+                  "description": "Media type of the uploaded bytes.",
+                  "enum": [
+                    "image/png",
+                    "image/jpeg",
+                    "image/tiff"
+                  ]
+                },
+                "compression": {
+                  "const": "none",
+                  "default": "none",
+                  "description": "Artifact input must be stored without transport compression."
+                }
+              },
+              "required": [
+                "artifact_id",
+                "sha256",
+                "size_bytes",
+                "media_type",
+                "compression"
+              ],
+              "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+            }
+          ],
+          "description": "Base64-encoded 2D microscopy image, at most 4 megapixels. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+          "x-fs2-artifact-materialization": "base64",
+          "x-fs2-artifact-max-bytes": 16777216,
+          "x-fs2-artifact-media-types": [
+            "image/png",
+            "image/jpeg",
+            "image/tiff"
+          ]
+        },
+        "media_type": {
+          "type": "string",
+          "description": "Exact media type of the image bytes.",
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "image/tiff"
+          ],
+          "default": "image/png"
+        },
+        "diameter": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "maximum": 2048,
+          "default": null,
+          "description": "Optional expected object diameter in pixels; null lets CPSAM infer scale."
+        },
+        "research_only": {
+          "const": true,
+          "default": true,
+          "description": "Required acknowledgement for the research-only Cellpose checkpoint and its training-data terms."
+        }
+      },
+      "required": [
+        "image_base64",
+        "media_type",
+        "research_only"
+      ],
+      "description": "Bounded 2D instance segmentation. The runtime rejects images above 4 megapixels."
+    },
+    "scvi-scanvi": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "anndata_base64": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Base64-encoded raw-count AnnData .h5ad file for the bounded interactive lane.",
+              "minLength": 4,
+              "contentEncoding": "base64"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "SHA-256 of the exact uploaded bytes.",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "description": "Exact uploaded byte count.",
+                  "minimum": 0
+                },
+                "media_type": {
+                  "type": "string",
+                  "description": "Media type of the uploaded bytes.",
+                  "enum": [
+                    "application/x-hdf5",
+                    "application/octet-stream"
+                  ]
+                },
+                "compression": {
+                  "const": "none",
+                  "default": "none",
+                  "description": "Artifact input must be stored without transport compression."
+                }
+              },
+              "required": [
+                "artifact_id",
+                "sha256",
+                "size_bytes",
+                "media_type",
+                "compression"
+              ],
+              "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+            }
+          ],
+          "description": "Base64-encoded raw-count AnnData .h5ad file for the bounded interactive lane. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+          "x-fs2-artifact-materialization": "base64",
+          "x-fs2-artifact-max-bytes": 67108864,
+          "x-fs2-artifact-media-types": [
+            "application/x-hdf5",
+            "application/octet-stream"
+          ]
+        },
+        "filename": {
+          "type": "string",
+          "description": "Display filename ending in .h5ad; no path components.",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,126}\\.h5ad$",
+          "default": "input.h5ad"
+        },
+        "method": {
+          "type": "string",
+          "description": "scvi performs unsupervised integration; scanvi performs semi-supervised annotation after scVI.",
+          "enum": [
+            "scvi",
+            "scanvi"
+          ],
+          "default": "scvi"
+        },
+        "batch_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "Optional AnnData obs column containing batch labels."
+        },
+        "labels_key": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "AnnData obs label column; required for scanvi."
+        },
+        "unlabeled_category": {
+          "type": "string",
+          "description": "Value in labels_key used for unlabeled cells during scanvi.",
+          "minLength": 1,
+          "maxLength": 128,
+          "default": "Unknown"
+        },
+        "max_epochs": {
+          "type": "integer",
+          "description": "Training epochs in this interactive lane; scanvi applies the bound to both training stages.",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 20
+        },
+        "n_latent": {
+          "type": "integer",
+          "description": "Latent embedding dimensions.",
+          "minimum": 2,
+          "maximum": 64,
+          "default": 10
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Nonnegative reproducibility seed.",
+          "minimum": 0,
+          "maximum": 2147483647,
+          "default": 0
+        },
+        "research_only": {
+          "const": true,
+          "default": true,
+          "description": "Required acknowledgement that this is a research integration workflow."
+        }
+      },
+      "required": [
+        "anndata_base64",
+        "filename",
+        "method",
+        "max_epochs",
+        "n_latent",
+        "seed",
+        "research_only"
+      ],
+      "description": "Bounded interactive scVI/scANVI lane. Use folder fan-out for multiple small files; larger studies need a scientific-batch profile rather than this synchronous adapter."
+    },
+    "sam2-1-hiera-large": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "Segmentation workflow.",
+          "enum": [
+            "prompted-image",
+            "automatic-image",
+            "prompted-video"
+          ]
+        },
+        "media_base64": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "Base64 media bytes materialized only at the runtime boundary.",
+              "minLength": 4,
+              "contentEncoding": "base64"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "SHA-256 of the exact uploaded bytes.",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "description": "Exact uploaded byte count.",
+                  "minimum": 0
+                },
+                "media_type": {
+                  "type": "string",
+                  "description": "Media type of the uploaded bytes.",
+                  "enum": [
+                    "image/png",
+                    "image/jpeg",
+                    "video/mp4"
+                  ]
+                },
+                "compression": {
+                  "const": "none",
+                  "default": "none",
+                  "description": "Artifact input must be stored without transport compression."
+                }
+              },
+              "required": [
+                "artifact_id",
+                "sha256",
+                "size_bytes",
+                "media_type",
+                "compression"
+              ],
+              "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+            }
+          ],
+          "description": "Base64 media bytes materialized only at the runtime boundary. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+          "x-fs2-artifact-materialization": "base64",
+          "x-fs2-artifact-max-bytes": 67108864,
+          "x-fs2-artifact-media-types": [
+            "image/png",
+            "image/jpeg",
+            "video/mp4"
+          ]
+        },
+        "media_type": {
+          "type": "string",
+          "description": "Exact uploaded media type.",
+          "enum": [
+            "image/png",
+            "image/jpeg",
+            "video/mp4"
+          ]
+        },
+        "points": {
+          "type": "array",
+          "description": "Point prompts; group multiple objects with object_id.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "x": {
+                "type": "number",
+                "description": "Horizontal pixel coordinate.",
+                "minimum": 0,
+                "maximum": 16384
+              },
+              "y": {
+                "type": "number",
+                "description": "Vertical pixel coordinate.",
+                "minimum": 0,
+                "maximum": 16384
+              },
+              "label": {
+                "type": "integer",
+                "description": "One selects foreground and zero selects background.",
+                "enum": [
+                  0,
+                  1
+                ],
+                "default": 1
+              },
+              "object_id": {
+                "type": "integer",
+                "description": "Positive object label shared by points for one object.",
+                "minimum": 1,
+                "maximum": 65535,
+                "default": 1
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ],
+            "description": "One positive or negative point prompt in source-pixel coordinates."
+          },
+          "maxItems": 64
+        },
+        "box": {
+          "type": "array",
+          "description": "Optional [x0,y0,x1,y1] box prompt.",
+          "items": {
+            "type": "number",
+            "description": "Box coordinate in source pixels.",
+            "minimum": 0,
+            "maximum": 16384
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "object_id": {
+          "type": "integer",
+          "description": "Object label assigned to the optional box.",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 1
+        },
+        "prompt_frame": {
+          "type": "integer",
+          "description": "Zero-based video frame receiving the prompts.",
+          "minimum": 0,
+          "maximum": 319,
+          "default": 0
+        },
+        "max_masks": {
+          "type": "integer",
+          "description": "Maximum masks returned by automatic-image.",
+          "minimum": 1,
+          "maximum": 128,
+          "default": 32
+        }
+      },
+      "required": [
+        "mode",
+        "media_base64",
+        "media_type"
+      ],
+      "description": "SAM 2.1 Hiera Large segmentation. Images are at most 2,073,600 pixels; videos are at most 320 frames. The output ZIP contains manifest.json, masks and an overlay image or MP4.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "automatic-image"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "media_type": {
+                "enum": [
+                  "image/png",
+                  "image/jpeg"
+                ]
+              },
+              "points": {
+                "maxItems": 0
+              }
+            },
+            "not": {
+              "required": [
+                "box"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "prompted-image"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "media_type": {
+                "enum": [
+                  "image/png",
+                  "image/jpeg"
+                ]
+              }
+            },
+            "anyOf": [
+              {
+                "properties": {
+                  "points": {
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "points"
+                ]
+              },
+              {
+                "required": [
+                  "box"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "prompted-video"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "media_type": {
+                "const": "video/mp4"
+              }
+            },
+            "anyOf": [
+              {
+                "properties": {
+                  "points": {
+                    "minItems": 1
+                  }
+                },
+                "required": [
+                  "points"
+                ]
+              },
+              {
+                "required": [
+                  "box"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "wan2-2-t2v-nim": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Concrete visual scene and motion description.",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "size": {
+          "type": "string",
+          "description": "Output orientation and dimensions.",
+          "enum": [
+            "832x480",
+            "480x832"
+          ],
+          "default": "832x480"
+        },
+        "seconds": {
+          "type": "integer",
+          "description": "Requested video duration in seconds; the final 16-fps clip may be slightly shorter.",
+          "minimum": 1,
+          "maximum": 12,
+          "default": 4
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Sampling seed; zero asks the NIM to choose a random seed.",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "default": 0
+        },
+        "steps": {
+          "type": "integer",
+          "description": "Diffusion steps.",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        },
+        "cfg_scale": {
+          "type": "number",
+          "description": "Prompt guidance strength, strictly greater than one.",
+          "exclusiveMinimum": 1,
+          "maximum": 20,
+          "default": 5
+        }
+      },
+      "required": [
+        "prompt"
+      ],
+      "description": "Wan2.2 NIM text-to-video. Built-in NIM content filtering remains enabled. The result is a verified MP4 artifact."
+    },
+    "wan2-2-i2v-nim": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Concrete visual scene and motion description.",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "size": {
+          "type": "string",
+          "description": "Output orientation and dimensions.",
+          "enum": [
+            "832x480",
+            "480x832"
+          ],
+          "default": "832x480"
+        },
+        "seconds": {
+          "type": "integer",
+          "description": "Requested video duration in seconds; the final 16-fps clip may be slightly shorter.",
+          "minimum": 1,
+          "maximum": 12,
+          "default": 4
+        },
+        "seed": {
+          "type": "integer",
+          "description": "Sampling seed; zero asks the NIM to choose a random seed.",
+          "minimum": 0,
+          "maximum": 4294967295,
+          "default": 0
+        },
+        "steps": {
+          "type": "integer",
+          "description": "Diffusion steps.",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        },
+        "cfg_scale": {
+          "type": "number",
+          "description": "Prompt guidance strength, strictly greater than one.",
+          "exclusiveMinimum": 1,
+          "maximum": 20,
+          "default": 5
+        },
+        "input_reference": {
+          "anyOf": [
+            {
+              "type": "string",
+              "description": "PNG or JPEG data URL materialized only at the runtime boundary.",
+              "minLength": 1
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "SHA-256 of the exact uploaded bytes.",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "description": "Exact uploaded byte count.",
+                  "minimum": 0
+                },
+                "media_type": {
+                  "type": "string",
+                  "description": "Media type of the uploaded bytes.",
+                  "enum": [
+                    "image/png",
+                    "image/jpeg"
+                  ]
+                },
+                "compression": {
+                  "const": "none",
+                  "default": "none",
+                  "description": "Artifact input must be stored without transport compression."
+                }
+              },
+              "required": [
+                "artifact_id",
+                "sha256",
+                "size_bytes",
+                "media_type",
+                "compression"
+              ],
+              "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+            }
+          ],
+          "description": "PNG or JPEG data URL materialized only at the runtime boundary. Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+          "x-fs2-artifact-materialization": "data-url",
+          "x-fs2-artifact-max-bytes": 16777216,
+          "x-fs2-artifact-media-types": [
+            "image/png",
+            "image/jpeg"
+          ]
+        }
+      },
+      "required": [
+        "prompt",
+        "input_reference"
+      ],
+      "description": "Wan2.2 NIM image-to-video. Built-in NIM content filtering remains enabled. The result is a verified MP4 artifact."
+    },
+    "evo2-40b": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "type": "string",
+          "description": "DNA prompt; A,C,G,T,N in either case, normalized uppercase.",
+          "minLength": 1,
+          "maxLength": 8192,
+          "pattern": "^[ACGTNacgtn]+$"
+        },
+        "num_tokens": {
+          "type": "integer",
+          "description": "Number of new DNA tokens to generate.",
+          "minimum": 1,
+          "maximum": 512
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Finite positive sampling temperature.",
+          "exclusiveMinimum": 0
+        },
+        "top_k": {
+          "type": "integer",
+          "description": "Number of highest-scoring token candidates retained.",
+          "minimum": 1,
+          "maximum": 512
+        },
+        "top_p": {
+          "type": "number",
+          "description": "Nucleus-sampling probability; 0 disables this filter.",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "random_seed": {
+          "type": "integer",
+          "description": "Nonnegative 63-bit random seed.",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        },
+        "enable_logits": {
+          "const": false,
+          "default": false,
+          "description": "Logit output is not exposed by the lean runtime."
+        },
+        "enable_sampled_probs": {
+          "const": false,
+          "default": false,
+          "description": "Sampled-probability output is not exposed."
+        },
+        "enable_elapsed_ms_per_token": {
+          "const": true,
+          "default": true,
+          "description": "Return the measured elapsed milliseconds per generated token."
+        }
+      },
+      "required": [
+        "sequence",
+        "num_tokens",
+        "temperature",
+        "top_k",
+        "top_p",
+        "random_seed",
+        "enable_logits",
+        "enable_sampled_probs",
+        "enable_elapsed_ms_per_token"
+      ],
+      "description": "Exact Evo2-40B lean runtime: all nine fields must be present."
+    },
+    "boltz2": {
+      "$defs": {
+        "A3M": {
+          "additionalProperties": false,
+          "properties": {
+            "alignment": {
+              "anyOf": [
+                {
+                  "maxLength": 33554432,
+                  "minLength": 3,
+                  "title": "Alignment",
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "artifact_id": {
+                      "type": "string",
+                      "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "description": "SHA-256 of the exact uploaded bytes.",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "size_bytes": {
+                      "type": "integer",
+                      "description": "Exact uploaded byte count.",
+                      "minimum": 0
+                    },
+                    "media_type": {
+                      "type": "string",
+                      "description": "Media type of the uploaded bytes.",
+                      "enum": [
+                        "text/x-a3m",
+                        "text/plain"
+                      ]
+                    },
+                    "compression": {
+                      "const": "none",
+                      "default": "none",
+                      "description": "Artifact input must be stored without transport compression."
+                    }
+                  },
+                  "required": [
+                    "artifact_id",
+                    "sha256",
+                    "size_bytes",
+                    "media_type",
+                    "compression"
+                  ],
+                  "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                }
+              ],
+              "description": "Model input Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+              "x-fs2-artifact-materialization": "utf-8",
+              "x-fs2-artifact-max-bytes": 16777216,
+              "x-fs2-artifact-media-types": [
+                "text/x-a3m",
+                "text/plain"
+              ]
+            },
+            "format": {
+              "const": "a3m",
+              "default": "a3m",
+              "title": "Format",
+              "type": "string",
+              "description": "Alignment serialization format."
+            },
+            "rank": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Rank",
+              "type": "integer",
+              "description": "Accepted for compatibility but NOT consumed by the current Boltz2 adapter."
+            }
+          },
+          "required": [
+            "alignment"
+          ],
+          "title": "A3M",
+          "type": "object"
+        },
+        "MSA": {
+          "additionalProperties": false,
+          "properties": {
+            "msa_search": {
+              "$ref": "#/$defs/MSASearch",
+              "description": "Required nesting for the supplied alignment; this name does not trigger an MSA search."
+            }
+          },
+          "required": [
+            "msa_search"
+          ],
+          "title": "MSA",
+          "type": "object"
+        },
+        "MSASearch": {
+          "additionalProperties": false,
+          "properties": {
+            "a3m": {
+              "$ref": "#/$defs/A3M",
+              "description": "A3M alignment object."
+            }
+          },
+          "required": [
+            "a3m"
+          ],
+          "title": "MSASearch",
+          "type": "object"
+        },
+        "Polymer": {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "maxLength": 8,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9]+$",
+              "title": "Id",
+              "type": "string",
+              "description": "Caller-chosen protein chain identifier."
+            },
+            "molecule_type": {
+              "const": "protein",
+              "title": "Molecule Type",
+              "type": "string",
+              "description": "The portable Boltz2 endpoint supports proteins only."
+            },
+            "sequence": {
+              "maxLength": 2048,
+              "minLength": 6,
+              "title": "Sequence",
+              "type": "string",
+              "pattern": "^[acdefghiklmnpqrstvwyACDEFGHIKLMNPQRSTVWY\\s]+$",
+              "description": "Amino-acid sequence; see this field's alphabet and length constraints."
+            },
+            "msa": {
+              "$ref": "#/$defs/MSA",
+              "description": "Caller-supplied alignment. This endpoint does not perform online MSA search."
+            }
+          },
+          "required": [
+            "id",
+            "molecule_type",
+            "sequence",
+            "msa"
+          ],
+          "title": "Polymer",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "polymers": {
+          "items": {
+            "$ref": "#/$defs/Polymer"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Polymers",
+          "type": "array",
+          "description": "Protein chains with caller-supplied A3M alignments. This runtime does not accept ligands."
+        },
+        "recycling_steps": {
+          "default": 3,
+          "maximum": 10,
+          "minimum": 1,
+          "title": "Recycling Steps",
+          "type": "integer",
+          "description": "Number of model recycling iterations."
+        },
+        "sampling_steps": {
+          "default": 200,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Sampling Steps",
+          "type": "integer",
+          "description": "Number of diffusion sampling steps."
+        },
+        "diffusion_samples": {
+          "default": 1,
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Diffusion Samples",
+          "type": "integer",
+          "description": "Number of diffusion predictions generated by this request."
+        },
+        "output_format": {
+          "const": "mmcif",
+          "default": "mmcif",
+          "title": "Output Format",
+          "type": "string",
+          "description": "Structure serialization produced by this runtime."
+        }
+      },
+      "required": [
+        "polymers"
+      ],
+      "title": "PredictRequest",
+      "type": "object",
+      "description": "Portable protein-only Boltz2, not the full NVIDIA NIM contract. Supply A3M explicitly. No ligands, affinity prediction, templates, seed or online MSA search."
+    },
+    "genmol": {
+      "additionalProperties": false,
+      "properties": {
+        "smiles": {
+          "title": "Smiles",
+          "type": "string",
+          "pattern": "^\\[\\*\\{[0-9]+-[0-9]+\\}\\]$",
+          "description": "De-novo mask [*{minimum-maximum}], with 1 <= minimum <= maximum <= 512. The adapter passes floor((minimum + maximum) / 2) as upstream min_add_len, a minimum number of SAFE mask tokens; [*{10-20}] therefore reports minimum_mask_tokens=15. Upstream samples token length from its empirical distribution above that minimum. Neither endpoint is a heavy-atom bound, and maximum is not a maximum token or molecular-size limit. Measure and filter heavy-atom counts on returned SMILES separately if required."
+        },
+        "num_molecules": {
+          "default": 1,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Num Molecules",
+          "type": "integer",
+          "description": "Requested number of molecules."
+        },
+        "scoring": {
+          "default": "QED",
+          "title": "Scoring",
+          "type": "string",
+          "pattern": "^(?:[Qq][Ee][Dd]|[Ll][Oo][Gg][Pp])$",
+          "description": "Molecule scoring function (case-insensitive QED or LogP)."
+        },
+        "temperature": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 1,
+          "title": "Temperature",
+          "description": "Finite positive sampling temperature; numeric strings are also accepted by this adapter."
+        },
+        "noise": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "default": 1,
+          "title": "Noise",
+          "description": "Finite nonnegative sampling noise; numeric strings are also accepted by this adapter."
+        },
+        "step_size": {
+          "default": 1,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Step Size",
+          "type": "integer",
+          "description": "Accepted compatibility field; not consumed by the current GenMol de-novo sampler."
+        },
+        "unique": {
+          "default": false,
+          "title": "Unique",
+          "type": "boolean",
+          "description": "Remove duplicate generated SMILES from the response."
+        }
+      },
+      "required": [
+        "smiles"
+      ],
+      "title": "GenerateRequest",
+      "type": "object",
+      "description": "De-novo mask [*{minimum-maximum}], with 1 <= minimum <= maximum <= 512. The adapter passes floor((minimum + maximum) / 2) as upstream min_add_len, a minimum number of SAFE mask tokens; [*{10-20}] therefore reports minimum_mask_tokens=15. Upstream samples token length from its empirical distribution above that minimum. Neither endpoint is a heavy-atom bound, and maximum is not a maximum token or molecular-size limit. Measure and filter heavy-atom counts on returned SMILES separately if required. Range order and finite numeric strings are checked by the runtime."
+    },
+    "molmim": {
+      "additionalProperties": false,
+      "properties": {
+        "smi": {
+          "maxLength": 512,
+          "minLength": 1,
+          "title": "Smi",
+          "type": "string",
+          "description": "Starting molecule as a valid SMILES string."
+        },
+        "algorithm": {
+          "const": "CMA-ES",
+          "default": "CMA-ES",
+          "title": "Algorithm",
+          "type": "string",
+          "description": "Actual adaptive CMA-ES with the requested fixed population and iterations."
+        },
+        "num_molecules": {
+          "default": 1,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Num Molecules",
+          "type": "integer",
+          "description": "Requested number of molecules."
+        },
+        "property_name": {
+          "const": "QED",
+          "default": "QED",
+          "title": "Property Name",
+          "type": "string",
+          "description": "The hosted MolMIM optimizer targets QED only."
+        },
+        "minimize": {
+          "default": false,
+          "title": "Minimize",
+          "type": "boolean",
+          "description": "Guide search toward lower QED and sort ascending; improvement over the starting molecule is not guaranteed."
+        },
+        "min_similarity": {
+          "default": 0.3,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Min Similarity",
+          "type": "number",
+          "description": "Hard final-output Morgan/Tanimoto similarity cutoff. It is also used in the soft CMA-ES objective; the hard output filter is stricter than upstream's soft-only score."
+        },
+        "particles": {
+          "default": 2,
+          "maximum": 32,
+          "minimum": 2,
+          "title": "Particles",
+          "type": "integer",
+          "description": "CMA-ES population size, at least two; part of the exact decode budget."
+        },
+        "iterations": {
+          "default": 1,
+          "maximum": 16,
+          "minimum": 1,
+          "title": "Iterations",
+          "type": "integer",
+          "description": "Requested CMA-ES ask/tell updates; no automatic increase on exhaustion."
+        },
+        "radius": {
+          "default": 1,
+          "exclusiveMinimum": 0,
+          "maximum": 10,
+          "title": "Radius",
+          "type": "number",
+          "description": "Multiplier of the initial CMA-ES sigma 0.75; not a guaranteed chemical-distance radius."
+        }
+      },
+      "required": [
+        "smi"
+      ],
+      "title": "GenerateRequest",
+      "type": "object",
+      "description": "The search uses exactly particles * iterations model decodes and never silently expands this budget. num_molecules must not exceed that product; the runtime enforces this cross-field constraint. Finite-search exhaustion is not proof of chemical infeasibility. QED is a descriptor, not efficacy."
+    },
+    "msa-search-pdb70": {
+      "additionalProperties": false,
+      "properties": {
+        "sequence": {
+          "maxLength": 4096,
+          "minLength": 6,
+          "title": "Sequence",
+          "type": "string",
+          "pattern": "^[acdefghiklmnpqrstvwyACDEFGHIKLMNPQRSTVWY\\s]+$",
+          "description": "Amino-acid sequence; see this field's alphabet and length constraints."
+        },
+        "databases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Databases",
+          "type": "array",
+          "const": [
+            "pdb70_220313"
+          ],
+          "description": "Exact local PDB70 database identity; no alternate or remote databases are accepted."
+        },
+        "max_msa_sequences": {
+          "default": 500,
+          "maximum": 5000,
+          "minimum": 1,
+          "title": "Max Msa Sequences",
+          "type": "integer",
+          "description": "Maximum returned alignment sequences."
+        },
+        "output_alignment_formats": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Alignment Formats",
+          "type": "array",
+          "const": [
+            "a3m"
+          ],
+          "description": "Only A3M output is supported."
+        }
+      },
+      "required": [
+        "sequence",
+        "databases",
+        "output_alignment_formats"
+      ],
+      "title": "SearchRequest",
+      "type": "object",
+      "description": "Local MMseqs2 search against the pinned PDB70_220313 database."
+    },
+    "altumage": {
+      "$defs": {
+        "MethylationSample": {
+          "additionalProperties": false,
+          "properties": {
+            "sample_id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Sample Id",
+              "type": "string",
+              "description": "Caller-chosen sample identifier, unique within this request."
+            },
+            "beta_values": {
+              "anyOf": [
+                {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "examples": [
+                      0.5,
+                      null
+                    ]
+                  },
+                  "maxItems": 20318,
+                  "minItems": 20318,
+                  "title": "Beta Values",
+                  "type": "array"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "artifact_id": {
+                      "type": "string",
+                      "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "description": "SHA-256 of the exact uploaded bytes.",
+                      "pattern": "^[0-9a-f]{64}$"
+                    },
+                    "size_bytes": {
+                      "type": "integer",
+                      "description": "Exact uploaded byte count.",
+                      "minimum": 0
+                    },
+                    "media_type": {
+                      "type": "string",
+                      "description": "Media type of the uploaded bytes.",
+                      "enum": [
+                        "application/json"
+                      ]
+                    },
+                    "compression": {
+                      "const": "none",
+                      "default": "none",
+                      "description": "Artifact input must be stored without transport compression."
+                    }
+                  },
+                  "required": [
+                    "artifact_id",
+                    "sha256",
+                    "size_bytes",
+                    "media_type",
+                    "compression"
+                  ],
+                  "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+                }
+              ],
+              "description": "Model input Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+              "x-fs2-artifact-materialization": "json",
+              "x-fs2-artifact-max-bytes": 16777216,
+              "x-fs2-artifact-media-types": [
+                "application/json"
+              ]
+            }
+          },
+          "required": [
+            "sample_id",
+            "beta_values"
+          ],
+          "title": "MethylationSample",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "cpg_sites": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20318,
+              "minItems": 20318,
+              "title": "Cpg Sites",
+              "type": "array",
+              "uniqueItems": true
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "artifact_id": {
+                  "type": "string",
+                  "description": "Caller-owned immutable artifact UUID returned after upload finalization.",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                "sha256": {
+                  "type": "string",
+                  "description": "SHA-256 of the exact uploaded bytes.",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "size_bytes": {
+                  "type": "integer",
+                  "description": "Exact uploaded byte count.",
+                  "minimum": 0
+                },
+                "media_type": {
+                  "type": "string",
+                  "description": "Media type of the uploaded bytes.",
+                  "enum": [
+                    "application/json"
+                  ]
+                },
+                "compression": {
+                  "const": "none",
+                  "default": "none",
+                  "description": "Artifact input must be stored without transport compression."
+                }
+              },
+              "required": [
+                "artifact_id",
+                "sha256",
+                "size_bytes",
+                "media_type",
+                "compression"
+              ],
+              "description": "Tenant-owned artifact reference. Upload and finalize the bytes before submitting this model call."
+            }
+          ],
+          "description": "Model input Prefer an artifact reference for nontrivial files so clients never serialize file bytes through an LLM.",
+          "x-fs2-artifact-materialization": "json",
+          "x-fs2-artifact-max-bytes": 16777216,
+          "x-fs2-artifact-media-types": [
+            "application/json"
+          ]
+        },
+        "samples": {
+          "items": {
+            "$ref": "#/$defs/MethylationSample"
+          },
+          "maxItems": 128,
+          "minItems": 1,
+          "title": "Samples",
+          "type": "array",
+          "description": "Independently named samples. Sample IDs must be unique within the request."
+        },
+        "missing_values": {
+          "default": "error",
+          "enum": [
+            "error",
+            "reference_median"
+          ],
+          "title": "Missing Values",
+          "type": "string",
+          "description": "Reject missing values or explicitly impute the pinned reference medians; no silent imputation."
+        }
+      },
+      "required": [
+        "cpg_sites",
+        "samples"
+      ],
+      "title": "AltumAgeRequest",
+      "type": "object",
+      "description": "Methylation-based chronological-age prediction, not clinical PhenoAge. Requires the entire canonical 20,318-CpG panel. Generate a full synthetic example with models/aging/fixtures.py methylation_payload and the pinned model preprocessing assets; a shortened CpG example is not a valid request."
+    },
+    "phenoage": {
+      "$defs": {
+        "ClinicalSample": {
+          "additionalProperties": false,
+          "properties": {
+            "sample_id": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Sample Id",
+              "type": "string",
+              "description": "Caller-chosen sample identifier, unique within this request."
+            },
+            "age_years": {
+              "minimum": 0,
+              "title": "Age Years",
+              "type": "number",
+              "description": "Chronological age in years."
+            },
+            "albumin_g_l": {
+              "exclusiveMinimum": 0,
+              "title": "Albumin G L",
+              "type": "number",
+              "description": "Serum albumin in g/L."
+            },
+            "creatinine_umol_l": {
+              "exclusiveMinimum": 0,
+              "title": "Creatinine Umol L",
+              "type": "number",
+              "description": "Serum creatinine in micromol/L."
+            },
+            "glucose_mmol_l": {
+              "exclusiveMinimum": 0,
+              "title": "Glucose Mmol L",
+              "type": "number",
+              "description": "Glucose in mmol/L."
+            },
+            "c_reactive_protein_mg_dl": {
+              "description": "Raw CRP, not log(CRP); mg/dL, not mg/L.",
+              "exclusiveMinimum": 0,
+              "title": "C Reactive Protein Mg Dl",
+              "type": "number"
+            },
+            "lymphocyte_percent": {
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Lymphocyte Percent",
+              "type": "number",
+              "description": "Lymphocytes as a percentage (0\u2013100), not a fraction."
+            },
+            "mean_cell_volume_fl": {
+              "exclusiveMinimum": 0,
+              "title": "Mean Cell Volume Fl",
+              "type": "number",
+              "description": "Mean corpuscular volume in fL."
+            },
+            "red_cell_distribution_width_percent": {
+              "maximum": 100,
+              "minimum": 0,
+              "title": "Red Cell Distribution Width Percent",
+              "type": "number",
+              "description": "Red-cell distribution width in percent."
+            },
+            "alkaline_phosphatase_u_l": {
+              "minimum": 0,
+              "title": "Alkaline Phosphatase U L",
+              "type": "number",
+              "description": "Alkaline phosphatase in U/L."
+            },
+            "white_blood_cell_count_10e3_per_ul": {
+              "exclusiveMinimum": 0,
+              "title": "White Blood Cell Count 10E3 Per Ul",
+              "type": "number",
+              "description": "White-blood-cell count in thousands per microliter."
+            }
+          },
+          "required": [
+            "sample_id",
+            "age_years",
+            "albumin_g_l",
+            "creatinine_umol_l",
+            "glucose_mmol_l",
+            "c_reactive_protein_mg_dl",
+            "lymphocyte_percent",
+            "mean_cell_volume_fl",
+            "red_cell_distribution_width_percent",
+            "alkaline_phosphatase_u_l",
+            "white_blood_cell_count_10e3_per_ul"
+          ],
+          "title": "ClinicalSample",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "samples": {
+          "items": {
+            "$ref": "#/$defs/ClinicalSample"
+          },
+          "maxItems": 512,
+          "minItems": 1,
+          "title": "Samples",
+          "type": "array",
+          "description": "Independently named samples. Sample IDs must be unique within the request."
+        }
+      },
+      "required": [
+        "samples"
+      ],
+      "title": "ClinicalRequest",
+      "type": "object",
+      "description": "Clinical PhenoAge from age plus nine blood biomarkers, not DNA-methylation PhenoAge."
+    },
+    "nemotron-speech-en-0-6b": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audio",
+        "options"
+      ],
+      "description": "Transcribe a complete uploaded recording. Upload and finalize audio first; no local path, URL, base64, or file bytes belong in MCP arguments. Large recordings use the returned durable operation.",
+      "properties": {
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifact_id",
+            "sha256",
+            "size_bytes",
+            "media_type",
+            "compression"
+          ],
+          "description": "Small caller-owned artifact reference returned by finalize_model_artifact_upload.",
+          "properties": {
+            "artifact_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Finalized artifact UUID belonging to the caller's tenant."
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$",
+              "description": "SHA-256 of the uploaded file bytes."
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 536870912,
+              "description": "Exact encoded file size, at most 512 MiB."
+            },
+            "media_type": {
+              "type": "string",
+              "enum": [
+                "audio/wav",
+                "audio/x-wav",
+                "audio/mpeg",
+                "audio/mp4",
+                "audio/ogg",
+                "audio/webm",
+                "audio/flac",
+                "audio/aac",
+                "video/mp4",
+                "video/webm"
+              ],
+              "description": "Audio or audio-bearing video MIME type."
+            },
+            "compression": {
+              "const": "none",
+              "description": "No artifact-layer compression; audio codec compression is accepted."
+            }
+          },
+          "x-fs2-artifact-materialization": "download-url",
+          "x-fs2-artifact-max-bytes": 536870912,
+          "x-fs2-artifact-media-types": [
+            "audio/wav",
+            "audio/x-wav",
+            "audio/mpeg",
+            "audio/mp4",
+            "audio/ogg",
+            "audio/webm",
+            "audio/flac",
+            "audio/aac",
+            "video/mp4",
+            "video/webm"
+          ]
+        },
+        "options": {
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "type": "string",
+              "const": "nemotron-speech-en-0.6b",
+              "description": "The exact App runtime selected by this tool."
+            },
+            "language": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "minLength": 2,
+                  "type": "string",
+                  "enum": [
+                    "en",
+                    "en-US"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Language",
+              "description": "Language/locale hint, or auto for the multilingual App. Eight adaptation-only locales are not enabled."
+            },
+            "chunk_size_ms": {
+              "default": 560,
+              "maximum": 1120,
+              "minimum": 80,
+              "title": "Chunk Size Ms",
+              "type": "integer",
+              "description": "Streaming chunk size in milliseconds; must match the App's configured worker profile. This is not an end-to-end latency promise.",
+              "enum": [
+                80,
+                160,
+                560,
+                1120
+              ]
+            },
+            "strip_language_tags": {
+              "default": true,
+              "title": "Strip Language Tags",
+              "type": "boolean",
+              "description": "Whether to remove multilingual language tags; must match the configured worker profile."
+            },
+            "output_granularity": {
+              "default": "segment",
+              "enum": [
+                "segment",
+                "word"
+              ],
+              "title": "Output Granularity",
+              "type": "string",
+              "description": "Requested native segment or word metadata. Returned timestamps must come from the runtime, not wall-clock inference."
+            },
+            "stop_history_eou_ms": {
+              "default": 800,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Stop History Eou Ms",
+              "type": "integer",
+              "description": "Endpoint-history cutoff in milliseconds after an end-of-utterance marker."
+            }
+          },
+          "required": [
+            "model"
+          ],
+          "title": "SpeechOptions",
+          "type": "object",
+          "description": "Model-specific transcription options. Runtime-wide settings must match the App profile; language and output granularity are per request."
+        }
+      }
+    },
+    "nemotron-speech-multilingual-0-6b": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audio",
+        "options"
+      ],
+      "description": "Transcribe a complete uploaded recording. Upload and finalize audio first; no local path, URL, base64, or file bytes belong in MCP arguments. Large recordings use the returned durable operation.",
+      "properties": {
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifact_id",
+            "sha256",
+            "size_bytes",
+            "media_type",
+            "compression"
+          ],
+          "description": "Small caller-owned artifact reference returned by finalize_model_artifact_upload.",
+          "properties": {
+            "artifact_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Finalized artifact UUID belonging to the caller's tenant."
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$",
+              "description": "SHA-256 of the uploaded file bytes."
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 536870912,
+              "description": "Exact encoded file size, at most 512 MiB."
+            },
+            "media_type": {
+              "type": "string",
+              "enum": [
+                "audio/wav",
+                "audio/x-wav",
+                "audio/mpeg",
+                "audio/mp4",
+                "audio/ogg",
+                "audio/webm",
+                "audio/flac",
+                "audio/aac",
+                "video/mp4",
+                "video/webm"
+              ],
+              "description": "Audio or audio-bearing video MIME type."
+            },
+            "compression": {
+              "const": "none",
+              "description": "No artifact-layer compression; audio codec compression is accepted."
+            }
+          },
+          "x-fs2-artifact-materialization": "download-url",
+          "x-fs2-artifact-max-bytes": 536870912,
+          "x-fs2-artifact-media-types": [
+            "audio/wav",
+            "audio/x-wav",
+            "audio/mpeg",
+            "audio/mp4",
+            "audio/ogg",
+            "audio/webm",
+            "audio/flac",
+            "audio/aac",
+            "video/mp4",
+            "video/webm"
+          ]
+        },
+        "options": {
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "type": "string",
+              "const": "nemotron-speech-multilingual-0.6b",
+              "description": "The exact App runtime selected by this tool."
+            },
+            "language": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "minLength": 2,
+                  "type": "string",
+                  "enum": [
+                    "ar",
+                    "ar-AR",
+                    "auto",
+                    "bg",
+                    "bg-BG",
+                    "cs",
+                    "cs-CZ",
+                    "da",
+                    "da-DK",
+                    "de",
+                    "de-DE",
+                    "en",
+                    "en-GB",
+                    "en-US",
+                    "es",
+                    "es-ES",
+                    "es-US",
+                    "et",
+                    "et-EE",
+                    "fi",
+                    "fi-FI",
+                    "fr",
+                    "fr-CA",
+                    "fr-FR",
+                    "hi",
+                    "hi-IN",
+                    "hr",
+                    "hr-HR",
+                    "hu",
+                    "hu-HU",
+                    "it",
+                    "it-IT",
+                    "ja",
+                    "ja-JP",
+                    "ko",
+                    "ko-KR",
+                    "nb",
+                    "nb-NO",
+                    "nl",
+                    "nl-NL",
+                    "pl",
+                    "pl-PL",
+                    "pt",
+                    "pt-BR",
+                    "pt-PT",
+                    "ro",
+                    "ro-RO",
+                    "ru",
+                    "ru-RU",
+                    "sk",
+                    "sk-SK",
+                    "sv",
+                    "sv-SE",
+                    "tr",
+                    "tr-TR",
+                    "uk",
+                    "uk-UA",
+                    "vi",
+                    "vi-VN",
+                    "zh",
+                    "zh-CN"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Language",
+              "description": "Language/locale hint, or auto for the multilingual App. Eight adaptation-only locales are not enabled."
+            },
+            "chunk_size_ms": {
+              "default": 560,
+              "maximum": 1120,
+              "minimum": 80,
+              "title": "Chunk Size Ms",
+              "type": "integer",
+              "description": "Streaming chunk size in milliseconds; must match the App's configured worker profile. This is not an end-to-end latency promise.",
+              "enum": [
+                80,
+                160,
+                320,
+                560,
+                1120
+              ]
+            },
+            "strip_language_tags": {
+              "default": true,
+              "title": "Strip Language Tags",
+              "type": "boolean",
+              "description": "Whether to remove multilingual language tags; must match the configured worker profile."
+            },
+            "output_granularity": {
+              "default": "segment",
+              "enum": [
+                "segment",
+                "word"
+              ],
+              "title": "Output Granularity",
+              "type": "string",
+              "description": "Requested native segment or word metadata. Returned timestamps must come from the runtime, not wall-clock inference."
+            },
+            "stop_history_eou_ms": {
+              "default": 800,
+              "maximum": 10000,
+              "minimum": 0,
+              "title": "Stop History Eou Ms",
+              "type": "integer",
+              "description": "Endpoint-history cutoff in milliseconds after an end-of-utterance marker."
+            }
+          },
+          "required": [
+            "model"
+          ],
+          "title": "SpeechOptions",
+          "type": "object",
+          "description": "Model-specific transcription options. Runtime-wide settings must match the App profile; language and output granularity are per request."
+        }
+      }
+    },
+    "magpie-tts-multilingual-357m": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "description": "Generate complete WAV audio using one of five named Magpie v2607 voices. Large output is returned through a tenant-owned artifact handle. Use /v1/voice/synthesize for incremental audio.",
+      "properties": {
+        "model": {
+          "const": "magpie-tts-multilingual-357m",
+          "default": "magpie-tts-multilingual-357m"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "description": "Text to speak; all accepted text is synthesized."
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "ar",
+            "de",
+            "en",
+            "es",
+            "fr",
+            "hi",
+            "it",
+            "ja",
+            "ko",
+            "pt",
+            "vi",
+            "zh"
+          ],
+          "default": "en",
+          "description": "Arabic defaults to Modern Standard Arabic."
+        },
+        "voice": {
+          "type": "string",
+          "enum": [
+            "Aria",
+            "Jason",
+            "John",
+            "Leo",
+            "Sofia"
+          ],
+          "default": "Sofia",
+          "description": "Pinned v2607 named speaker, consistent across languages."
+        },
+        "apply_text_normalization": {
+          "type": "boolean",
+          "default": false,
+          "description": "Apply upstream language-specific text normalization before synthesis."
+        }
+      }
+    },
+    "parakeet-realtime-eou-120m-v1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audio"
+      ],
+      "description": "Transcribe a complete uploaded English recording with actual model EOU markers. For partials during recording use /v1/voice/stream.",
+      "properties": {
+        "audio": {
+          "$ref": "#/$defs/audio"
+        }
+      },
+      "$defs": {
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifact_id",
+            "sha256",
+            "size_bytes",
+            "media_type",
+            "compression"
+          ],
+          "properties": {
+            "artifact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 536870912
+            },
+            "media_type": {
+              "type": "string",
+              "enum": [
+                "audio/wav",
+                "audio/mpeg",
+                "audio/mp4",
+                "audio/ogg",
+                "audio/webm",
+                "audio/flac"
+              ]
+            },
+            "compression": {
+              "const": "none"
+            }
+          },
+          "x-fs2-artifact-materialization": "download-url",
+          "x-fs2-artifact-max-bytes": 536870912,
+          "x-fs2-artifact-media-types": [
+            "audio/wav",
+            "audio/mpeg",
+            "audio/mp4",
+            "audio/ogg",
+            "audio/webm",
+            "audio/flac"
+          ]
+        }
+      }
+    },
+    "diar-streaming-sortformer-4spk-v2-1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audio"
+      ],
+      "description": "Attribute up to four speakers in a complete uploaded recording. Labels are arrival order, not identified people. This optional model is not required for bot-to-bot sessions.",
+      "properties": {
+        "audio": {
+          "$ref": "#/$defs/audio"
+        }
+      },
+      "$defs": {
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifact_id",
+            "sha256",
+            "size_bytes",
+            "media_type",
+            "compression"
+          ],
+          "properties": {
+            "artifact_id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "size_bytes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 536870912
+            },
+            "media_type": {
+              "type": "string",
+              "enum": [
+                "audio/wav",
+                "audio/mpeg",
+                "audio/mp4",
+                "audio/ogg",
+                "audio/webm",
+                "audio/flac"
+              ]
+            },
+            "compression": {
+              "const": "none"
+            }
+          },
+          "x-fs2-artifact-materialization": "download-url",
+          "x-fs2-artifact-max-bytes": 536870912,
+          "x-fs2-artifact-media-types": [
+            "audio/wav",
+            "audio/mpeg",
+            "audio/mp4",
+            "audio/ogg",
+            "audio/webm",
+            "audio/flac"
+          ]
+        }
+      }
+    }
+  }
+}

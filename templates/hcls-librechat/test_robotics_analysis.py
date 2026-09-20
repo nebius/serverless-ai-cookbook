@@ -245,6 +245,6 @@ def test_visual_discovery_and_guidance_do_not_claim_physical_success():
     assert 'visual-comparisons.json' in contract['always_on_success']
     from scientific_study_schema import PHASE_OUTPUT_PATTERNS
     assert re.fullmatch(PHASE_OUTPUT_PATTERNS['robotics-analysis'][0],'comparison-dataset-012.png')
-    skill=(Path(__file__).parents[2]/'life-science/bionemo-librechat/skills/generative-media/SKILL.md').read_text()
+    skill=(Path(__file__).parents[2]/'skills/scientific-ai/generative-media/SKILL.md').read_text()
     assert 'two top-level' in skill and 'recorded child generations' in skill
     assert 'unedited decoded frames' in skill and 'physical/action-validity pass' in skill

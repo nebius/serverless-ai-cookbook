@@ -21,7 +21,7 @@ def main():
     cli.add_argument('--output', type=Path, required=True)
     args = cli.parse_args()
     values = candidate_credentials(args.container)
-    helper = Path(__file__).parent.parent / 'skills/clinical-documentation/scripts/clinical_report.py'
+    helper = Path(__file__).resolve().parents[3] / 'skills/scientific-ai/clinical-documentation/scripts/clinical_report.py'
     env = {**os.environ, 'FS2_API_KEY': values['SCIENTIFIC_MODELS_API_KEY'],
            'CLINICAL_REPORT_API_KEY': values['NEBIUS_API_KEY']}
 

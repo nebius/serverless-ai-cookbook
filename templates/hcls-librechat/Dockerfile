@@ -84,12 +84,10 @@ COPY life-science/bionemo-librechat/scientific-agent-instructions.md /app/scient
 COPY templates/hcls-librechat/entrypoint.sh /usr/local/bin/hcls-librechat-entrypoint
 COPY templates/hcls-librechat/brand-client.mjs /opt/hcls-librechat/brand-client.mjs
 COPY templates/hcls-librechat/seed-user.js /app/seed-user.js
-# Overlay the typed-contract skills maintained in the workbench directory and
-# drop the stale pre-adaptation skill directories from the base image.
-COPY life-science/bionemo-librechat/skills/ /app/skill/
-COPY templates/hcls-librechat/skills/ /app/skill/
-# Prepared from the pinned official repository; private source stays out of Git.
-COPY templates/hcls-librechat/vendor/nebius-skills/ /app/skill/
+# One public source for LibreChat and external MCP clients. Optional private
+# operator skills are not a dependency of a customer build.
+RUN rm -rf /app/skill && mkdir /app/skill
+COPY skills/scientific-ai/ /app/skill/
 RUN cd /app/skill && rm -rf boltz2-nim openfold2-nim openfold3-nim diffdock-nim \
       genmol-nim molmim-nim msa-search-nim evo2-nim proteinmpnn-nim \
       rfdiffusion-nim bionemo-workbench-tutorials

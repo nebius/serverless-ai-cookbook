@@ -220,7 +220,7 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
 
 
 def test_genmol_skill_distinguishes_tokens_from_atom_measurements() -> None:
-    skill = (ROOT.parents[1] / 'life-science/bionemo-librechat/skills/genmol/SKILL.md').read_text()
+    skill = (ROOT.parents[1] / 'skills/scientific-ai/genmol/SKILL.md').read_text()
     assert 'floored midpoint' in skill
     assert 'no guaranteed minimum15 heavy atoms' in skill
     assert '**measurements only**' in skill

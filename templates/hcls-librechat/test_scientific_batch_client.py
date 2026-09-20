@@ -42,7 +42,7 @@ def test_saved_batch_response_must_match_exact_immutable_request(tmp_path, field
 def test_packaged_helper_and_skill_use_one_canonical_batch_implementation():
     docker = (ROOT / 'Dockerfile').read_text()
     assert 'COPY templates/hcls-librechat/scripts/scientific-batch-acceptance.py /opt/bionemo/invoke-scientific-batch.py' in docker
-    skill = (ROOT.parents[1] / 'life-science/bionemo-librechat/skills/scientific-gateway/SKILL.md').read_text()
+    skill = (ROOT.parents[1] / 'skills/scientific-ai/scientific-gateway/SKILL.md').read_text()
     assert 'invoke-scientific-batch.py' in skill
     assert 'no compatible attachment\nbridge or connected structure viewer' not in skill
     assert 'nonterminal, not proof' in skill
@@ -76,7 +76,7 @@ def test_uploaded_bundle_help_and_typed_schema_explain_existing_binding():
     assert 'uploaded-bundle' in description and 'finalized source_file' in description
     instructions = (ROOT.parents[1] / 'life-science/bionemo-librechat/scientific-agent-instructions.md').read_text()
     assert 'pass `tool_name`' in instructions
-    skill = (ROOT.parents[1] / 'life-science/bionemo-librechat/skills/generative-media/SKILL.md').read_text()
+    skill = (ROOT.parents[1] / 'skills/scientific-ai/generative-media/SKILL.md').read_text()
     assert 'tool_name="cosmos3_nano_transfer_video"' in skill
     assert 'submit_cosmos3_lerobot_augmentation' in skill
     assert 'run_scientific_workflow' in skill

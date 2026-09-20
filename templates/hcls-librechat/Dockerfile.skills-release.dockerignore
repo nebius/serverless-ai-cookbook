@@ -1,0 +1,10 @@
+**
+!skills
+!skills/scientific-ai
+!skills/scientific-ai/**
+!life-science
+!life-science/bionemo-librechat
+!life-science/bionemo-librechat/scientific-agent-instructions.md
+**/__pycache__
+**/.pytest_cache
+**/*.pyc

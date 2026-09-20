@@ -15,7 +15,7 @@ HERE = Path(__file__).parent
 
 @pytest.fixture
 def outcome(tmp_path, monkeypatch):
-    monkeypatch.setenv('SCIENTIFIC_CLINICAL_SCRIPT', str(HERE / 'skills/clinical-documentation/scripts/clinical_report.py'))
+    monkeypatch.setenv('SCIENTIFIC_CLINICAL_SCRIPT', str(HERE.parents[1] / 'skills/scientific-ai/clinical-documentation/scripts/clinical_report.py'))
     source = 'I feel tired. Teaching narration.'
     quote = 'I feel tired.'
     document = {'schema': 'clinical-documentation/v11', 'transcript_sha256': hashlib.sha256(source.encode()).hexdigest(),

@@ -9,7 +9,7 @@ def test_recorded_motion_guidance_is_seeded_and_uses_live_contracts():
     assert 'whole-sequence transfer controls' in seed
     assert 'not video-to-video prefix/suffix continuation' in seed
     assert 'Numeric action equality does not establish' in seed
-    skill = (ROOT.parents[1] / 'life-science/bionemo-librechat/skills/generative-media/SKILL.md').read_text()
+    skill = (ROOT.parents[1] / 'skills/scientific-ai/generative-media/SKILL.md').read_text()
     assert 'augmentation.mode: transfer' in skill
     assert 'augmentation.conditioning.controls' in skill
     assert 'do not copy the LeRobot parameter shape into the native request' in skill

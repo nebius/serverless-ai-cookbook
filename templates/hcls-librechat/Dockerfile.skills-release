@@ -1,0 +1,14 @@
+# syntax=docker/dockerfile:1.7
+# Bounded skills-only release: inherit the exact qualified v61 application.
+# The normal Dockerfile also consumes this same canonical skill directory.
+FROM cr.eu-north1.nebius.cloud/e00akg9ndpx77eaexh/lc@sha256:6c3884cb81e36c06cf63124c2806da046c90adbb6360585def5b3391e79208dd
+ARG SKILLS_REVISION=unknown
+USER root
+# Replace only the baked-in skill tree inside this new image, never a live mount.
+RUN rm -rf /app/skill && mkdir /app/skill
+COPY skills/scientific-ai/ /app/skill/
+COPY life-science/bionemo-librechat/scientific-agent-instructions.md /app/scientific-agent-instructions.md
+RUN python3 /app/skill/bundle.py verify
+LABEL ai.nebius.scientific.skills.version="2026.09.20.1" \
+      ai.nebius.scientific.skills.revision="${SKILLS_REVISION}" \
+      ai.nebius.scientific.skills.source="https://github.com/rene-tech/serverless-ai-cookbook/tree/main/skills/scientific-ai"

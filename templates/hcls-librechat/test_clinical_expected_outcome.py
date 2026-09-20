@@ -27,7 +27,7 @@ def mounted(tmp_path, monkeypatch):
         'SEED_DEFAULT_USER_EMAIL': 'clinical@example.test',
         'SCIENTIFIC_STUDY_OWNER_MODE': 'first-instance',
         'CLINICAL_REPORT_API_KEY': 'private-provider-fixture',
-        'SCIENTIFIC_CLINICAL_SCRIPT': str(HERE / 'skills/clinical-documentation/scripts/clinical_report.py'),
+        'SCIENTIFIC_CLINICAL_SCRIPT': str(HERE.parents[1] / 'skills/scientific-ai/clinical-documentation/scripts/clinical_report.py'),
     }.items():
         monkeypatch.setenv(name, value)
     (tmp_path / 'source.txt').write_text('Unclear fragment, retained exactly.\n')
