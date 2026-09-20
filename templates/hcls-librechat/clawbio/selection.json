@@ -1,0 +1,111 @@
+{
+  "schema": "scientific-ai/clawbio-selection/v1",
+  "repository": "https://github.com/ClawBio/ClawBio",
+  "revision": "4848cc280c446093b1364a2445db3137d455cc17",
+  "local": [
+    "affinity-proteomics", "analyze-fasta", "ancestry-risk-profiler", "archaic-introgression",
+    "article-data-fetcher", "celltype-specificity-profiler",
+    "claw-ancestry-pca", "claw-methylation-cycle", "clinical-trial-finder",
+    "clinical-variant-reporter", "clinpgx", "cnv-acmg-classifier",
+    "crispr-screen-triage", "diff-visualizer", "dnasp",
+    "drug-repurposing-screen", "eqtl-catalogue-region-fetch", "equity-scorer", "fine-mapping",
+    "genome-compare", "gwas-catalog-region-fetch", "gwas-lookup", "gwas-prs",
+    "ld-1000g-region-compute", "lit-synthesizer", "locuscompare-region-render",
+    "marker-dominance-mapper", "mendelian-randomisation",
+    "multiqc-reporter", "omics-target-evidence-mapper", "organ-aging-studio",
+    "pathway-enricher", "pharmgx-reporter", "profile-report", "proteomics-clock",
+    "proteomics-de", "pubmed-summariser", "rare-disease-rnaseq", "rare-high-impact-variants",
+    "rnaseq-de", "sample-qc-triage", "scrna-orchestrator", "variant-annotation",
+    "vcf-annotator", "wgs-prs"
+  ],
+  "support_source": ["ukb-ppp-region-fetch"],
+  "adaptations": {
+    "rnaseq-de": {
+      "limitations": "PyDESeq2 worker count is explicitly bounded to one by default so small CPU workbenches do not spawn a process per host CPU. SCIENTIFIC_CLAWBIO_CPUS may be increased to match the instance allocation; statistical methods are unchanged."
+    },
+    "scrna-orchestrator": {
+      "limitations": "Local Scanpy/Leiden and Scrublet doublet detection are installed. Optional CellTypist annotation/model downloads are not configured; use existing hosted annotation Apps where appropriate and do not silently invent cell labels."
+    },
+    "article-data-fetcher": {
+      "adapter": "article-data-fetcher",
+      "limitations": "Headless adapter uses the upstream public API with non_interactive=True. Requires an explicit identifier and file-type selection; inspect the paper's data-availability statement first. External repositories may need access or be unavailable. Demo mode is not enabled because the upstream demo prompts on stdin."
+    },
+    "fine-mapping": {
+      "limitations": "Only the upstream Wakefield ABF path without LD is installed. Use --sumstats without --ld; never describe this as SuSiE or multi-signal LD-aware fine mapping. SuShiE/JAX and the upstream SuSiE demo are not included."
+    },
+    "claw-methylation-cycle": {
+      "limitations": "Upstream requires --input even with --demo. For a demonstration pass the installed skills/claw-methylation-cycle/demo_input.txt as an absolute --input. These genotype-derived heuristic scores are not measured enzyme activity or evidence for supplementation."
+    },
+    "locuscompare-region-render": {
+      "limitations": "UKB-PPP supporting modules are bundled because the upstream renderer imports them, but authenticated Synapse/UKB retrieval is not configured or advertised. Use accessible public eQTL/GWAS sources; the corresponding network/data dependencies still apply."
+    },
+    "ld-1000g-region-compute": {
+      "limitations": "The image includes PLINK 1.9. A real run still requires compatible population/reference data and access to the public 1000 Genomes service. Reference-data downloads are not bundled."
+    }
+  },
+  "platform": {
+    "struct-predictor": {
+      "models": ["boltz2", "openfold2", "openfold3", "esmfold2", "esmfold2-fast", "protenix-v2"],
+      "guidance": "Use the existing scientific-gateway and model-specific skills. Discover the caller's model schema, then invoke the hosted model through MCP or /opt/bionemo/invoke-native.py or invoke-scientific-batch.py. Do not install Boltz or download weights in the CPU LibreChat container. Preserve chain identities, MSA requirements, structure and confidence artifacts. Confidence scores do not establish experimental accuracy or binding affinity; do not repeat the upstream numerical pLDDT-to-Angstrom claim."
+    },
+    "cell-detection": {
+      "models": ["cellpose-cpsam-v2"],
+      "guidance": "Discover cellpose-cpsam-v2 and its exact native input schema. Use the existing native file helper with real caller-owned image bytes and validate the returned masks, object counts and overlays. If the App is unavailable, explain that blocker; do not silently substitute synthetic demo segmentation or install a second GPU model in LibreChat."
+    },
+    "scrna-embedding": {
+      "models": ["scvi-scanvi"],
+      "guidance": "Discover scvi-scanvi and its current API/schema before submitting h5ad data. Preserve raw counts, feature/cell identities, batch labels, seed and held-out labels; publish the returned latent representation and annotations. Missing access or an undeployed App is a blocker, not permission to claim an embedding. Use scrna-orchestrator for supported local QC and downstream analysis. Do not install a second GPU training stack in LibreChat."
+    }
+  },
+  "excluded": {
+    "bioconductor-bridge": "Requires R, BiocManager and external Bioconductor catalogs; no R runtime is configured in this workbench.",
+    "clinical-variant-prioritizer": "Pinned upstream has no runnable CLI and omits its default clinical_panel.json; do not expose an apparently successful no-op. Clinical-variant-reporter is included.",
+    "data-extractor": "Requires a separate Anthropic API account and model-specific tool-calling/vision interface; no such account is configured. A Token Factory port needs its own qualification.",
+    "methylation-clock": "Requires a separate PyAging/Torch runtime and clock-weight downloads; hosted AltumAge has its existing qualified skill, not a substitute for arbitrary PyAging clocks.",
+    "bgpt-mcp": "Separate unconfigured remote service; existing literature and Tavily tools cover discovery.",
+    "bigquery-public": "Requires a separate Google account and billing configuration.",
+    "bio-orchestrator": "Would duplicate the existing Scientific AI agent and misroute hosted model execution.",
+    "bioqc-mcp": "Duplicates the installed QC workflow and would add another MCP server.",
+    "busco-assessor": "Requires BUSCO and large lineage databases not installed in this workbench.",
+    "claw-amplicon-qc": "Requires an R/Bioconductor DADA2 environment not installed here.",
+    "claw-metagenomics": "Requires Kraken2, CARD/RGI and HUMAnN3 reference databases and separate compute packaging.",
+    "claw-semantic-sim": "Specification only, no executable implementation.",
+    "clawpathy-autoresearch": "Autonomous training/search workload needs its own managed compute integration.",
+    "de-summary": "Specification only; existing report assembly covers this surface.",
+    "deepspot-m": "New GPU runtime with noncommercial weights; needs normal model onboarding first.",
+    "drug-photo": "Personal medication-photo/dosing workflow, not an independent scientific analysis capability.",
+    "fastreer": "GPL-3.0 component not included in this MIT/Apache bundle; requires separate redistribution review.",
+    "flow-bio": "Unconfigured external account and data-upload service.",
+    "galaxy-bridge": "External Galaxy execution/account is not part of this Nebius service.",
+    "genome-match": "Fictional Genomebook matching, outside scientific model-service scope.",
+    "gi-annotation": "Unconfigured external hosted inference; do not ship upstream hackathon credentials.",
+    "gi-chromatin": "Unconfigured external hosted inference; do not ship upstream hackathon credentials.",
+    "gi-enhancer": "Unconfigured external hosted inference; do not ship upstream hackathon credentials.",
+    "gi-expression": "Unconfigured external hosted inference; do not ship upstream hackathon credentials.",
+    "gi-promoter": "Unconfigured external hosted inference; do not ship upstream hackathon credentials.",
+    "gi-splice": "Unconfigured external hosted inference; do not ship upstream hackathon credentials.",
+    "gwas-pipeline": "Requires PLINK/REGENIE reference-data and compute packaging; use summary-statistic tools for now.",
+    "hla-typing": "Requires HLA typing binaries and reference indexes not installed here.",
+    "illumina-bridge": "Unconfigured Illumina Connected Analytics account.",
+    "just-prs-mcp": "Separate MCP runtime and dynamic dependency installation; local PRS tools already included.",
+    "labstep": "Unconfigured third-party lab workspace with write operations.",
+    "ncbi-datasets": "Specification only; article-data-fetcher and existing public-data tools cover retrieval.",
+    "nfcore-rnaseq-wrapper": "Requires a Nextflow execution backend/container engine not available in the Serverless workbench.",
+    "nfcore-sarek-wrapper": "Requires a Nextflow execution backend/container engine not available in the Serverless workbench.",
+    "nfcore-scrnaseq-wrapper": "Requires a Nextflow execution backend/container engine not available in the Serverless workbench.",
+    "nutrigx": "Upstream public scientific benchmark reports a regression; not suitable for this bundle.",
+    "phylogenetics-builder": "Requires IQ-TREE binary packaging; does not run through the existing hosted models.",
+    "polars-bio": "Additional native analysis runtime; defer until its exact dependencies and user-data path are qualified.",
+    "protocols-io": "Requires a separate protocols.io account/token.",
+    "recombinator": "Fictional Genomebook breeding simulation, outside scientific service scope.",
+    "repro-enforcer": "Specification-only and duplicates existing artifact/receipt handling.",
+    "seq-wrangler": "Requires alignment binaries and reference indexes; its synthetic demo alone cannot qualify real read processing.",
+    "skill-builder": "Developer tooling, not an end-user scientific workflow.",
+    "target-validation-scorer": "Requires additional target-scoring data/backend qualification; evidence mapper is included.",
+    "turingdb-graph": "Separate persistent database/server lifecycle not part of this workbench.",
+    "ukb-navigator": "Requires a ChromaDB embedding/index runtime and separately prepared UKB schema corpus.",
+    "ukb-ppp-region-fetch": "Requires separately authorized Synapse access and credentials.",
+    "wes-clinical-report-en": "Proprietary upstream component; not redistributable as part of this bundle.",
+    "xena-tcga-gene-query": "Requires an API key and defaults to a third-party plain-HTTP proxy, not the public UCSC API."
+  }
+}

@@ -1,26 +1,46 @@
 ---
 name: clawbio-catalog
-description: Discover the pinned ClawBio bioinformatics skill catalog, read a skill contract, or run one of the image-qualified demo-only workflows without local patient-file access.
+description: Discover the installed ClawBio bioinformatics skills and their local CPU or hosted-model execution path, dependencies and measured qualification. Check runtime availability before choosing or running a workflow.
 license: Apache-2.0 AND CC-BY-4.0
 ---
 
-# ClawBio catalog
+# ClawBio on Scientific AI
 
-ClawBio is an optional integration, not implied by installing this skill. Check
-the client's registered tools; if the server is absent, explain that precise
-gap. The instructions below apply only to its demo-only adapter when configured.
-Use the exact registered names (client prefixes can differ), not invented tools.
+ClawBio is optional: downloading this public skill bundle does not install its
+runtime, upstream methods or external services. Check the client's installed
+skills and local execution capability first. If `clawbio-<name>` skills and the
+runner below are absent, explain that gap; do not invent an MCP server or claim
+the workflow ran. Older demo-only ClawBio adapters, if separately configured,
+remain limited by their actual registered tool schemas.
 
-Use the local `clawbio` MCP server when a user asks what ClawBio can do or wants
-to inspect a ClawBio workflow contract.
+## ClawBio-enabled LibreChat images
 
-1. Call `clawbio__list_skills` to search the catalog.
-2. Call `clawbio__describe_skill` before recommending or invoking a skill.
-3. Treat `demo_runnable_in_image` as authoritative. Do not infer executability
-   from a catalog entry's upstream `runnable` field.
-4. Call `clawbio__run_skill` only after the user explicitly asks to run a demo.
-   Set `demo=true`. This image intentionally provides no local input/output path
-   parameters and cannot use it to inspect patient or customer files.
+Use the existing environment-execution tools; there is no separate ClawBio MCP
+server. List the actual installed selection:
 
-The catalog is for research and education. Do not present its output as a
-clinical diagnosis, treatment recommendation, or validated medical decision.
+```bash
+/opt/clawbio-venv/bin/python /opt/clawbio/runner.py list
+/opt/clawbio-venv/bin/python /opt/clawbio/runner.py describe analyze-fasta
+```
+
+Load only the relevant `clawbio-<name>` skill and its upstream method reference.
+Local CPU workflows use the isolated ClawBio Python environment. Structure
+prediction, Cellpose and scVI/scANVI route to authorized hosted Apps through
+existing Scientific AI skills and live schemas, not locally installed GPU models.
+Use the existing execution job ID to poll long jobs instead of resubmitting them.
+
+Installation, demo execution, scientific validity and customer readiness are
+different claims. Check the manifest's qualification before making any claim.
+Missing external binaries, reference data or an App grant are explicit blockers.
+Never claim a synthetic demo analyzed the user's data. Some annotation tools send
+variants or gene lists to external public APIs; consult that skill's bundled
+data-handling guidance before processing non-public data.
+
+Stage analysis on local disk and export completed, verified outputs to the user's
+bucket using the existing workspace tools. `/data` is temporary; `/workspace`
+is durable Object Storage and is not a general POSIX analysis filesystem.
+
+The complete selection, exclusions and pinned source are in the enabled image at
+`/opt/clawbio/manifest.json`. No upstream bot, shared API key or unconfigured
+hosted service is installed by this integration. Outputs are for research and
+education, not validated clinical diagnosis or treatment recommendations.

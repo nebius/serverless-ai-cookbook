@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="36" time="336.029" timestamp="2026-09-20T08:46:34.533555+00:00" hostname="computeinstance-i00nsakfdsq9bvdkhf"><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_demo_end_to_end_outputs" time="13.840" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_demo_summary_in_result_json" time="12.886" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_demo_prefers_pbmc3k_when_available" time="0.038" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_demo_pbmc3k_failure_falls_back_to_synthetic" time="0.007" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_markers_csv_tsv_schema_match" time="12.997" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_dataset_level_contrast_outputs_and_result_metadata" time="12.863" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_within_cluster_contrast_outputs_and_skip_metadata" time="12.497" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_report_contains_key_stats" time="12.832" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_checksums_contains_key_outputs" time="12.990" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_non_h5ad_input_rejected" time="1.497" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_10x_mtx_directory_input_runs_end_to_end" time="12.803" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_load_data_accepts_direct_prefixed_gz_mtx_file" time="0.022" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_tiny_dataset_no_pca_crash" time="12.327" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_processed_input_rejected_early_with_actionable_message" time="1.544" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_commands_sh_quotes_demo_output_path" time="12.859" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_commands_sh_contains_contrast_flags_when_enabled" time="13.020" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_demo_doublet_detection_outputs_summary_metadata" time="13.128" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_doublet_and_dataset_contrasts_can_run_together" time="13.309" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_contrast_groupby_missing_rejected_when_other_flags_are_used" time="0.421" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_contrast_top_genes_must_be_positive" time="0.386" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_contrast_groupby_missing_rejected" time="12.109" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_contrast_groupby_requires_multiple_observed_groups" time="11.700" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_clawbio_run_scrna_accepts_whitelisted_tuning_flags" time="12.692" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_clawbio_run_scrna_accepts_whitelisted_feature_flags" time="13.175" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_clawbio_run_scrna_accepts_whitelisted_contrast_flags" time="13.102" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_doublet_missing_dependency_message" time="0.002" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_parse_args_annotation_defaults_and_override" time="0.002" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_celltypist_annotation_pipeline_writes_cluster_summary" time="12.262" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_annotation_missing_local_model_fails_actionably" time="12.068"><failure message="AssertionError: assert 'Runtime downloads are disabled' in '/home/tux/worktrees/scientific-ai-clawbio-20260920/templates/hcls-librechat/vendor/clawbio/source/skills/scrna-orches...tate=random_state)\nERROR: celltypist is required for --annotate celltypist. Install it with: pip install celltypist\n'&#10; +  where '/home/tux/worktrees/scientific-ai-clawbio-20260920/templates/hcls-librechat/vendor/clawbio/source/skills/scrna-orches...tate=random_state)\nERROR: celltypist is required for --annotate celltypist. Install it with: pip install celltypist\n' = CompletedProcess(args=['/tmp/fs2-clawbio-venv-20260920/bin/python', '/home/tux/worktrees/scientific-ai-clawbio-2026092...ate=random_state)\nERROR: celltypist is required for --annotate celltypist. Install it with: pip install celltypist\n').stderr">tmp_path = PosixPath('/tmp/pytest-of-tux/pytest-7405/test_annotation_missing_local_0')
+
+    def test_annotation_missing_local_model_fails_actionably(tmp_path: Path):
+        _require_scanpy()
+        output_dir = tmp_path / "annotation_missing_model"
+        result = _run_cmd(
+            [
+                "--demo",
+                "--output",
+                str(output_dir),
+                "--annotate",
+                "celltypist",
+                "--annotation-model",
+                "DefinitelyMissingModel",
+            ]
+        )
+        assert result.returncode != 0
+&gt;       assert "Runtime downloads are disabled" in result.stderr
+E       AssertionError: assert 'Runtime downloads are disabled' in '/home/tux/worktrees/scientific-ai-clawbio-20260920/templates/hcls-librechat/vendor/clawbio/source/skills/scrna-orches...tate=random_state)\nERROR: celltypist is required for --annotate celltypist. Install it with: pip install celltypist\n'
+E        +  where '/home/tux/worktrees/scientific-ai-clawbio-20260920/templates/hcls-librechat/vendor/clawbio/source/skills/scrna-orches...tate=random_state)\nERROR: celltypist is required for --annotate celltypist. Install it with: pip install celltypist\n' = CompletedProcess(args=['/tmp/fs2-clawbio-venv-20260920/bin/python', '/home/tux/worktrees/scientific-ai-clawbio-2026092...ate=random_state)\nERROR: celltypist is required for --annotate celltypist. Install it with: pip install celltypist\n').stderr
+
+vendor/clawbio/source/skills/scrna-orchestrator/tests/test_scrna_orchestrator.py:1087: AssertionError</failure></testcase><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_orchestrator_no_rds_extension_route" time="0.000"><failure message="FileNotFoundError: [Errno 2] No such file or directory: '/home/tux/worktrees/scientific-ai-clawbio-20260920/templates/hcls-librechat/vendor/clawbio/source/skills/bio-orchestrator/orchestrator.py'">def test_orchestrator_no_rds_extension_route():
+&gt;       module = _load_orchestrator_module()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+vendor/clawbio/source/skills/scrna-orchestrator/tests/test_scrna_orchestrator.py:1092:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+vendor/clawbio/source/skills/scrna-orchestrator/tests/test_scrna_orchestrator.py:72: in _load_orchestrator_module
+    spec.loader.exec_module(module)
+&lt;frozen importlib._bootstrap_external&gt;:936: in exec_module
+    ???
+&lt;frozen importlib._bootstrap_external&gt;:1073: in get_code
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;_frozen_importlib_external.SourceFileLoader object at 0x73c06c1f0290&gt;
+path = '/home/tux/worktrees/scientific-ai-clawbio-20260920/templates/hcls-librechat/vendor/clawbio/source/skills/bio-orchestrator/orchestrator.py'
+
+&gt;   ???
+E   FileNotFoundError: [Errno 2] No such file or directory: '/home/tux/worktrees/scientific-ai-clawbio-20260920/templates/hcls-librechat/vendor/clawbio/source/skills/bio-orchestrator/orchestrator.py'
+
+&lt;frozen importlib._bootstrap_external&gt;:1130: FileNotFoundError</failure></testcase><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_10x_directory_input_runs" time="12.697" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_integrated_latent_input_auto_mode_runs" time="12.385" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_integrated_latent_input_explicit_and_none_modes" time="24.868" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_matrix_mtx_gz_input_runs" time="13.051" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_invalid_contrast_scope_is_rejected" time="0.369" /><testcase classname="vendor.clawbio.source.skills.scrna-orchestrator.tests.test_scrna_orchestrator" name="test_clawbio_run_scrna_rejects_removed_de_flags" time="12.933"><failure message="AssertionError: assert 0 != 0&#10; +  where 0 = CompletedProcess(args=['/tmp/fs2-clawbio-venv-20260920/bin/python', '/home/tux/worktrees/scientific-ai-clawbio-2026092...ejects0/removed_de_flags_output/report.md)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n', stderr='').returncode">tmp_path = PosixPath('/tmp/pytest-of-tux/pytest-7405/test_clawbio_run_scrna_rejects0')
+
+    def test_clawbio_run_scrna_rejects_removed_de_flags(tmp_path: Path):
+        _require_scanpy()
+        output_dir = tmp_path / "removed_de_flags_output"
+        result = _run_clawbio_scrna_cmd(
+            [
+                "--demo",
+                "--output",
+                str(output_dir),
+                "--de-groupby",
+                "demo_truth",
+            ]
+        )
+&gt;       assert result.returncode != 0
+E       AssertionError: assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['/tmp/fs2-clawbio-venv-20260920/bin/python', '/home/tux/worktrees/scientific-ai-clawbio-2026092...ejects0/removed_de_flags_output/report.md)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n', stderr='').returncode
+
+vendor/clawbio/source/skills/scrna-orchestrator/tests/test_scrna_orchestrator.py:1269: AssertionError</failure></testcase></testsuite></testsuites>

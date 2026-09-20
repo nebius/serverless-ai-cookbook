@@ -10,7 +10,14 @@ async function main() {
     projectRoot: '/app', env: { DEPLOYMENT_SKILLS_DIR: '/app/skill' },
   });
   const loaded = registry.list();
-  assert.deepEqual(loaded.map(x => x.name).sort(), Object.keys(manifest.skills).sort());
+  const expected = Object.keys(manifest.skills);
+  // The full workbench may add the pinned ClawBio extension; the skills-only
+  // release deliberately installs only the public core. Reject other extras.
+  if (fs.existsSync('/opt/clawbio/manifest.json')) {
+    const extension = JSON.parse(fs.readFileSync('/opt/clawbio/manifest.json', 'utf8'));
+    expected.push(...Object.keys(extension.skills).map(name => `clawbio-${name}`));
+  }
+  assert.deepEqual(loaded.map(x => x.name).sort(), expected.sort());
   const methods = createDeploymentSkillMethods({});
   let files = 0;
   for (const skill of loaded) {

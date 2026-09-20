@@ -1,4 +1,14 @@
-# Scientific AI skills 2026.09.20.1
+# Scientific AI skills 2026.09.20.2 — source integration
+
+Updated the portable ClawBio catalog for the optional pinned native CPU/hosted-App
+extension in the full LibreChat image. The public core remains 31 skills;
+ClawBio-enabled images add 48 namespaced skills and an isolated runtime. External
+clients and skills-only images do not acquire that runtime from this bundle.
+No release asset, default deployment image or existing endpoint was changed by
+this source merge. See `templates/hcls-librechat/clawbio/README.md` in the source
+repository for extension preparation and its separate qualification limits.
+
+## Previous published release: 2026.09.20.1
 
 Scope: one public, checksummed skill bundle and its skills-only LibreChat image,
 not a requalification of every deployed model. See the repository's
