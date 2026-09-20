@@ -62,6 +62,11 @@ Queued whole-study admission is not evidence that either model call has been
 submitted. Describe the Study as queued/in progress until its actual phase
 receipts contain operation IDs; never say both media calls were submitted merely
 because the supervisor accepted the plan.
+Count top-level augmentation requests separately from recorded child generations:
+one LeRobot request can invoke multiple native generations. Say "two top-level
+requests," not "exactly two model calls." Count or identify children only when
+their retained manifest/operation history records them; otherwise state unknown.
+Uploads and deterministic CPU analysis are not model inference.
 
 For `cosmos3-lerobot-augmentation`, read its scientific schema and artifact
 contract. The current recorded-video path is `augmentation.mode: transfer`
@@ -100,7 +105,15 @@ Do not replace these checks with a script globbing `*.mp4` beside result.json:
 native bytes are declared by the result contract and batch media are inside
 verified archives. Missing files or null comparisons are not successful checks.
 The helper publishes `metrics.json`, `report.md`, `native-output.mp4`,
-`augmented-dataset.tar.zst` and `completion-manifest.json`. Declare the returned
+`augmented-dataset.tar.zst`, `completion-manifest.json` and
+`visual-comparisons.json`. Available `comparison-native.png` and
+`comparison-dataset-NNN.png` are automatically registered customer downloads.
+They show at most four unedited decoded frames at matching zero-based indices:
+source on top, generated output below, with exact source/output hashes in the
+index. Missing alignment stays explicitly unavailable. Review these images and
+the clips for actual appearance changes; never interpret their existence as a
+geometry, lighting-only, contact, motion or physical/action-validity pass.
+Declare the returned
 video and dataset as deliverables, not just manifest links. Use the existing
 `parquet-export` phase for NPZ/HDF5/ZIP/SQLite exports from the original recorded
 Parquet. Keep whole-study operation receipts in the final provenance. Automated

@@ -170,7 +170,7 @@ PHASE_OUTPUTS = {
     'write-json': ([], ['Exactly the declared filename; JSON values are not automatically loaded from file references.']),
     'python-script': (['script.py', 'input-bindings.json', 'script-provenance.json'], ['Every declared outputs filename is required nonempty before success.']),
     'parquet-export': (['comparison.json', 'report.md'], ['Requested formats only: data.npz, data.h5, data.zip, data.sqlite.']),
-    'robotics-analysis': (['metrics.json','report.md','native-output.mp4','augmented-dataset.tar.zst','completion-manifest.json'], ['helper-input.json retains the resolved exact inputs when run as a study. No geometry or physical-action validity claim; inspect recorded measurements and clips.']),
+    'robotics-analysis': (['metrics.json','report.md','native-output.mp4','augmented-dataset.tar.zst','completion-manifest.json','visual-comparisons.json'], ['helper-input.json retains the resolved exact inputs when run as a study. visual-comparisons.json and available comparison-native.png/comparison-dataset-NNN.png are automatically published as customer downloads. Each PNG contains at most four unedited same-index decoded source/output frames; unavailable alignment is explicit. No geometry or physical-action validity claim; inspect recorded measurements and clips.']),
     'evo2-continuation': (['metrics.json','rows.csv','report.md','completion-manifest.json'], ['helper-input.json retains the resolved exact inputs when run as a study. Actual generation/suffix diversity, not likelihood or variant effects.']),
     'proteinmpnn-input': (['input.json', 'backbone.pdb', 'provenance.json', 'report.md'], []),
     'esmfold2-fast-input': (['input.json', 'parameters.json', 'selected.fasta', 'backbone.pdb', 'provenance.json', 'report.md'], []),
@@ -205,10 +205,11 @@ PHASE_OUTPUT_ALTERNATIVES = {
     'design-refold-correspondence': [],
     'genmol': [],
     'protein-design-analysis': [],
-    'robotics-analysis': ['helper-input.json'],
+    'robotics-analysis': ['helper-input.json', 'comparison-native.png'],
     'evo2-continuation': ['helper-input.json'],
 }
-PHASE_OUTPUT_PATTERNS = {'batch': [r'output-(?:[0-9]{2}|[1-9][0-9]{2,})\.artifact']}
+PHASE_OUTPUT_PATTERNS = {'batch': [r'output-(?:[0-9]{2}|[1-9][0-9]{2,})\.artifact'],
+                       'robotics-analysis': [r'comparison-dataset-[0-9]{3,}\.png']}
 # Only these conditional names have a guaranteed, byte-preserving logical key.
 # Other dynamic/conditional helper contracts are deliberately unchanged.
 PHASE_STABLE_OUTPUT_REFERENCES = {'structure': {

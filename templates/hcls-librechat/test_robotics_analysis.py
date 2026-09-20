@@ -3,12 +3,14 @@ import asyncio
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import tarfile
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+import numpy as np
 
 import scientific_study as study
 from scientific_study_schema import describe_workflow, known_output_files
@@ -90,7 +92,13 @@ def test_saved_manifest_media_and_all_values_are_measured(saved,tmp_path):
     assert not result['physical_action_alignment_verified']
     assert (tmp_path/'report/native-output.mp4').read_bytes()==(Path(saved['native_result']).parent/'result.mp4').read_bytes()
     assert set(p.name for p in (tmp_path/'report').iterdir())=={
-        'metrics.json','report.md','native-output.mp4','augmented-dataset.tar.zst','completion-manifest.json'}
+        'metrics.json','report.md','native-output.mp4','augmented-dataset.tar.zst','completion-manifest.json',
+        'visual-comparisons.json','comparison-native.png','comparison-dataset-000.png'}
+    assert len(result['visual_comparisons'])==2
+    assert all(row['frame_indices']==[0,1,2,3] for row in result['visual_comparisons'])
+    index=json.loads((tmp_path/'report/visual-comparisons.json').read_text())
+    assert index['model_calls']==0 and 'CPU analysis only' in index['model_calls_scope']
+    assert all(row['source']['sha256']!=row['output']['sha256'] for row in index['comparisons'])
 
 
 def test_changed_recorded_values_are_not_reported_exact(tmp_path):
@@ -151,8 +159,15 @@ def test_whole_study_runs_saved_analysis_and_publishes_media(saved,tmp_path,monk
     published=final['steps']['compare']['files']
     contract=describe_workflow(['robotics-analysis'])['phases']['robotics-analysis']
     assert set(contract['always_on_success'])<=published.keys()
-    assert set(published)==known_output_files(step)
-    assert len(final['artifacts'])==4
+    assert known_output_files(step)<=set(published)
+    assert set(published)-known_output_files(step)=={'comparison-dataset-000.png'}
+    assert len(final['artifacts'])==7
+    automatically_published=[row for row in final['artifacts'] if row.get('publication_basis')=='registered_customer_output']
+    assert {row['source_file']for row in automatically_published}=={
+        'visual-comparisons.json','comparison-native.png','comparison-dataset-000.png'}
+    for row in automatically_published:
+        assert row['sha256']==published[row['source_file']]['sha256']
+        assert Path(row['path']).is_file()
 
 
 def test_archive_invalid_paths_are_not_extracted(tmp_path):
@@ -172,3 +187,64 @@ def test_sequence_phase_has_explicit_operation_provenance_and_future_references(
     assert study.input_references(phase)==['/workspace/source.fa','/workspace/input.json',
         {'step':'generate','file':'result.json'},{'step':'generate','file':'operation.json'}]
     assert 'report.md' in known_output_files(phase)
+
+
+@pytest.mark.parametrize('frame_count,indices',[(1,[0]),(2,[0,1]),(7,[0,2,4,6]),(128,[0,42,84,127])])
+def test_comparison_frames_are_unedited_original_pixels_in_order(tmp_path,frame_count,indices):
+    source,output=tmp_path/'recorded.mp4',tmp_path/'returned.mp4'
+    for path,filter_name in [(source,'null'),(output,'hflip')]:
+        subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','testsrc=size=16x16:rate=4',
+            '-vf',filter_name,'-frames:v',str(frame_count),'-c:v','libx264','-pix_fmt','yuv420p',str(path)],check=True)
+    comparison=robotics.compare_video(source,output)
+    target=tmp_path/'comparison-native.png'
+    result=robotics.comparison_image(source,output,target,comparison)
+    assert result['frame_indices']==indices and result['resized']is False
+    assert result['source']==robotics.probe(source) and result['output']==robotics.probe(output)
+    assert result['sha256']==robotics.identity(target)['sha256']
+    sheet=list(robotics.frames(target,16*len(indices),32))
+    assert len(sheet)==1
+    for row,path in enumerate((source,output)):
+        frames=list(robotics.frames(path,16,16))
+        for column,index in enumerate(indices):
+            actual=sheet[0][row*16:(row+1)*16,column*16:(column+1)*16]
+            assert np.array_equal(actual,frames[index])
+
+
+def test_different_video_metadata_has_explicit_unavailable_comparison(tmp_path):
+    source,output=tmp_path/'source.mp4',tmp_path/'output.mp4'
+    video(source)
+    subprocess.run(['ffmpeg','-v','error','-f','lavfi','-i','color=blue:s=32x16:r=4',
+                    '-frames:v','4','-c:v','libx264','-pix_fmt','yuv420p',str(output)],check=True)
+    measured=robotics.compare_video(source,output)
+    target=tmp_path/'comparison-native.png'
+    result=robotics.comparison_image(source,output,target,measured)
+    assert result['state']=='unavailable' and 'metadata differs' in result['reason']
+    assert not target.exists() and 'frame_indices' not in result
+
+
+def test_visual_image_hash_mismatch_cannot_be_registered(saved,tmp_path,monkeypatch):
+    monkeypatch.setenv('SCIENTIFIC_WORKSPACE',str(tmp_path))
+    original=study.subprocess.run
+    def tamper(command,**kwargs):
+        completed=original(command,**kwargs)
+        if str(study.HELPERS['robotics-analysis']) in command:
+            folder=Path(command[command.index('--output-dir')+1])
+            index=folder/'visual-comparisons.json'
+            value=json.loads(index.read_text())
+            value['comparisons'][0]['sha256']='0'*64
+            index.write_text(json.dumps(value))
+        return completed
+    monkeypatch.setattr(study.subprocess,'run',tamper)
+    step={'id':'compare','kind':'analysis','method':'robotics-analysis','arguments':saved}
+    with pytest.raises(ValueError,match='differs from its registered generation'):
+        study.run_local(step,{'steps':{},'output_directory':str(tmp_path/'study')})
+
+
+def test_visual_discovery_and_guidance_do_not_claim_physical_success():
+    contract=describe_workflow(['robotics-analysis'])['phases']['robotics-analysis']
+    assert 'visual-comparisons.json' in contract['always_on_success']
+    from scientific_study_schema import PHASE_OUTPUT_PATTERNS
+    assert re.fullmatch(PHASE_OUTPUT_PATTERNS['robotics-analysis'][0],'comparison-dataset-012.png')
+    skill=(Path(__file__).parents[2]/'life-science/bionemo-librechat/skills/generative-media/SKILL.md').read_text()
+    assert 'two top-level' in skill and 'recorded child generations' in skill
+    assert 'unedited decoded frames' in skill and 'physical/action-validity pass' in skill

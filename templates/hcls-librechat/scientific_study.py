@@ -138,7 +138,7 @@ def known_output_reference(value, steps):
         raise ValueError(
             f"Step {value['step']} ({contract}) cannot publish {value['file']!r}. "
             f"Use an exact published filename: {', '.join(sorted(possible))}. "
-            + ('Batch artifact names follow output-NN.artifact in output-manifest.json; their count, bytes and media types are not known before execution. ' if patterns else '')
+            + ('Batch artifact names follow output-NN.artifact in output-manifest.json; their count, bytes and media types are not known before execution. ' if contract == 'batch' else '')
             + ('Native input provenance must reference the original input file or its exact preparation-step reference; native does not copy it to input.json. ' if contract == 'native' else '')
             + 'Conditional files are not guaranteed before their result exists; '
             'no output has been renamed and no study has been admitted.')
@@ -777,6 +777,22 @@ def run_local(step, record):
             filename = 'customer-summary.json'
             result['customer_artifacts'] = {filename: {**files[filename], 'role': 'metrics'}}
             result['customer_summary'] = filename
+        if method == 'robotics-analysis':
+            filename = 'visual-comparisons.json'
+            visual = json.loads(Path(files[filename]['path']).read_bytes())
+            if visual.get('schema') != 'scientific-robotics-visual-comparisons/v1':
+                raise ValueError('Unsupported robotics visual-comparison index.')
+            selected = {filename: {**files[filename], 'role': 'support'}}
+            for row in visual['comparisons']:
+                if row['state'] != 'available':
+                    continue
+                name = row['file']
+                if (not re.fullmatch(r'comparison-(?:native|dataset-[0-9]{3,})\.png', name)
+                        or name not in files or name in selected
+                        or any(row.get(key) != files[name].get(key) for key in ('sha256', 'size_bytes'))):
+                    raise ValueError('Robotics comparison image differs from its registered generation.')
+                selected[name] = {**files[name], 'role': 'support'}
+            result['customer_artifacts'] = selected
         return result
 
 

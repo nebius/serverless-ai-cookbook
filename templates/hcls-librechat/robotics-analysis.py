@@ -127,6 +127,27 @@ def compare_video(source, generated):
     return result
 
 
+def comparison_image(source, generated, target, measured):
+    """Lossless same-index decoded frames, without resizing or interpretation."""
+    result = {'source': measured['source'], 'output': measured['output'],
+              'top_row': 'original recorded frames', 'bottom_row': 'returned generated frames',
+              'caption': 'Visual comparison; not physical/action validity proof.'}
+    if not measured['metadata_equal']:
+        return {**result, 'state': 'unavailable', 'reason': 'metadata differs; no implicit frame alignment'}
+    count = measured['decoded_frames']
+    samples = min(4, count)
+    indices = [i * (count - 1) // (samples - 1) for i in range(samples)] if samples > 1 else [0]
+    selector = '+'.join(f'eq(n,{index})' for index in indices)
+    graph = (f"[0:v]select='{selector}',format=rgb24,tile={samples}x1[a];"
+             f"[1:v]select='{selector}',format=rgb24,tile={samples}x1[b];[a][b]vstack")
+    subprocess.run(['ffmpeg', '-v', 'error', '-i', str(source), '-i', str(generated),
+                    '-filter_complex', graph, '-frames:v', '1', '-threads', '1',
+                    '-update', '1', '-n', str(target)], check=True)
+    return {**result, 'state': 'available', 'file': target.name, **identity(target),
+            'frame_indices': indices, 'pixel_format': 'decoded rgb24',
+            'resized': False, 'scope': 'At most four unedited decoded frames per source/output pair; not full-trajectory review.'}
+
+
 def dataset_values(root):
     files = sorted((root / 'data').glob('**/*.parquet'))
     if not files:
@@ -243,6 +264,13 @@ def analyze(plan, output):
         generated = unpack_bundle(archive, Path(temporary)/'output')
         dataset = compare_dataset(source, generated, plan['selected_cameras'])
         video = compare_video(original_video, movie)
+        visual = [{'kind': 'native', **comparison_image(
+            original_video, movie, output/'comparison-native.png', video)}]
+        for number, row in enumerate(item for item in dataset['media'] if item['selected']):
+            visual.append({'kind': 'selected_dataset_shard', 'camera': row['camera'],
+                'source_file': row['source_file'], 'output_file': row['file'], 'episode_ids': row['episode_ids'],
+                **comparison_image(source/row['source_file'], generated/row['file'],
+                                   output/f'comparison-dataset-{number:03d}.png', row)})
     shutil.copyfile(movie, output/'native-output.mp4')
     shutil.copyfile(archive, output/'augmented-dataset.tar.zst')
     limits = [
@@ -250,13 +278,17 @@ def analyze(plan, output):
         'Matching actions/states/timestamps does not prove visual-action alignment, physical validity or policy-training suitability.',
         'Review original and returned clips at matching frames for geometry, contacts, flicker and temporal artifacts.',
         'RGB channel means are not luminance; nonzero frame differences do not prove correct recorded motion.',
+        'Same-index PNGs contain at most four unedited decoded frames per pair; sparse frames do not establish full-trajectory/contact fidelity or absence of temporal artifacts.',
     ]
+    visual_manifest = {'schema': 'scientific-robotics-visual-comparisons/v1', 'comparisons': visual,
+                       'model_calls': 0, 'model_calls_scope': 'This deterministic CPU analysis only; not a count of prior top-level requests or child generations.'}
+    (output/'visual-comparisons.json').write_text(json.dumps(visual_manifest, indent=2, allow_nan=False)+'\n')
     result = {'schema': 'scientific-robotics-comparison/v1', 'native_video': video, 'dataset': dataset,
               'variant_index': index, 'variant_count': len(variants), 'artifact_name': entry['name'],
               'sources': {name: {'path': plan[name], **identity(Path(plan[name]))} for name in
                           ('source_video','source_archive','native_result','manifest_file')},
               'geometry_preservation_verified': False, 'physical_action_alignment_verified': False,
-              'limitations': limits}
+              'visual_comparisons': visual, 'limitations': limits}
     (output/'metrics.json').write_text(json.dumps(result, indent=2, allow_nan=False)+'\n')
     lines = ['# Recorded augmentation measurements', '',
              f"Native clip: {video['source']['nb_read_frames']} → {video['output']['nb_read_frames']} frames; metadata equal: {video['metadata_equal']}.",
@@ -268,11 +300,21 @@ def analyze(plan, output):
              '|---|---|---|---:|---:|---:|']
     for row in dataset['media']:
         lines.append(f"| {row['camera']} | {row['file']} | {row['selected']} | {row['output']['nb_read_frames']} | {row.get('changed_frames','not aligned')} | {row.get('pixel_mae','not aligned')} |")
+    lines += ['', '## Source/output visual comparisons', '',
+              'Visual comparison; not physical/action validity proof. Top row: original recorded frames; bottom row: returned generated frames.',
+              'The comparison index and available PNGs are registered customer downloads in Runs. No resizing, reordering, or generated imagery is applied to these decoded frames.']
+    for row in visual:
+        label = row.get('camera', 'native clip')
+        if row['state'] == 'available':
+            lines.append(f"- {label}: `{row['file']}`; zero-based same-frame indices {row['frame_indices']}; source SHA256 `{row['source']['sha256']}`; output SHA256 `{row['output']['sha256']}`.")
+        else:
+            lines.append(f"- {label}: comparison unavailable: {row['reason']}.")
     lines += ['', '## Interpretation limits', '', *['- '+item for item in limits], '',
               'Exact inputs, every measured field, returned files and hashes are retained in metrics.json. No new inference was submitted.']
     (output/'report.md').write_text('\n'.join(lines)+'\n')
     files = {p.name: identity(p) for p in sorted(output.iterdir()) if p.is_file()}
-    (output/'completion-manifest.json').write_text(json.dumps({'files': files, 'model_calls': 0}, indent=2)+'\n')
+    (output/'completion-manifest.json').write_text(json.dumps({'files': files, 'model_calls': 0,
+        'model_calls_scope': visual_manifest['model_calls_scope']}, indent=2)+'\n')
     return result
 
 
