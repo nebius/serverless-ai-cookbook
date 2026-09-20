@@ -5,7 +5,7 @@ Reads a JSONL prompt list, submits clips to the async /v1/videos API (image-to-v
 line has an "image", text-to-video otherwise), keeps a few jobs in flight, downloads each MP4
 into OUTPUT_DIR/<RUN_ID>/ with a JSON sidecar per clip, and writes manifest.jsonl once at the
 end. Clips whose MP4 already exists are skipped, so a preempted job resumes where it stopped.
-Every file is written exactly once: mounted buckets are object storage and reject appends.
+Files are written in one go: mounted buckets are object storage (mountpoint-s3) and reject appends.
 
 Configuration is by environment variables (see README):
   PROMPTS      path or URL of the prompts.jsonl              (default: bundled sample set)
@@ -130,7 +130,7 @@ def status(job_id):
 
 
 def write_once(path, text):
-    """Bucket mounts reject append/overwrite; if the file exists, write a timestamped sibling."""
+    """Bucket mounts reject appends; keep earlier runs' files by writing a timestamped sibling if it exists."""
     if path.exists():
         path = path.with_name(f"{path.stem}-{time.strftime('%Y%m%d-%H%M%S')}{path.suffix}")
     path.write_text(text)
