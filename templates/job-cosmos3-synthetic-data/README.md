@@ -24,7 +24,8 @@ setting), and writes into the bucket you mount at `/data`:
 /data/output/<run-id>/
   000-car_driving.mp4         one clip per prompt line, named by its id
   001-humanoid_robot.mp4
-  manifest.jsonl              prompt, first frame, seed, sampling params, file, sha256, render seconds
+  000-car_driving.json        sidecar per clip: prompt, first frame, seed, sampling params, sha256, render seconds
+  manifest.jsonl              all sidecars in one file, written when the batch finishes
   summary.json                counts, failures, elapsed time
 ```
 
@@ -86,13 +87,24 @@ Upload a `prompts.jsonl` to the bucket and set env `PROMPTS=/data/prompts.jsonl`
 
 ### Observed results
 
-<!-- filled from the validation run -->
+Validation run of the sample set (3 image-to-video clips, 189 frames, 720p) on a preemptible
+RTX Pro 6000 in uk-south2, output to a mounted bucket:
+
+| Stage | Measured |
+| --- | --- |
+| Job start → vLLM-Omni ready (image pull, 32.6 GiB weights, warm-up) | ~8 min |
+| Render, 3 clips sequentially on one GPU | 17.9 min (≈ 6 min per clip) |
+| Output | 3 × MP4 (h264 720p, 7.9 s), 3 sidecars, `manifest.jsonl`, `summary.json`; job `COMPLETED`, exit 0 |
+| Resume after restart (earlier run) | driver skipped already-rendered clips and finished the rest |
+
+`render_seconds` in the sidecars is wall time from submission, so with `CONCURRENCY=2` the
+second clip in a pair shows ~2× the true render time; the GPU renders one clip at a time.
 
 ### Throughput and cost planning
 
 | Clip | RTX Pro 6000 | H100 |
 | --- | --- | --- |
-| 720p, 189 frames (default) | ~6 min | ~3.5 min |
+| 720p, 189 frames (default) | ~6 min (measured) | ~3.5 min |
 | 720p, 81 frames | ~1.8 min | ~1 min |
 | 480p, 33 frames | ~15 s | ~10 s |
 
@@ -132,5 +144,5 @@ same `RUN_ID`. On H100 in eu-north1 use `--platform gpu-h100-sxm --preset 1gpu-1
 - **`vLLM-Omni exited — last log lines` in the log** — the server died before serving; the lines that follow tell why (usually guardrails without `HF_TOKEN`, or out-of-memory on a smaller GPU).
 - **Job restarted and repeated some clips** — a clip is only skipped once its MP4 is fully written; a clip interrupted mid-render is re-done. Expected.
 - **`summary.json` lists failures** — the job exits 1 so that `on-failure` retries; a prompt that fails every time (e.g. unreadable `image`) will keep the job retrying until `--timeout`. Fix the line or remove it.
-- **Slow writes to `/data`** — the bucket mount is object storage; clips are written once, sequentially, which is fine. Do not point `HF_HOME` at it.
+- **`PermissionError: Operation not permitted` writing under `/data`** — the bucket mount is object storage: files can be created but **not appended to or overwritten**. The driver writes every file exactly once (MP4, per-clip JSON sidecar, then `manifest.jsonl` and `summary.json` at the end); keep that rule if you modify it. Do not point `HF_HOME` or logs at the mount.
 - **Want a live API instead of a batch?** — use the [Generator endpoint](../endpoint-cosmos3-generator/README.md).
