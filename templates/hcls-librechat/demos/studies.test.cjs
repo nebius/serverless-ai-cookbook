@@ -45,6 +45,12 @@ test('Runs renders study phases, unavailable worker warning and verified workspa
   const source = await fs.readFile(path.join(__dirname, 'Demos.tsx'), 'utf8');
   const jsx = (type, props) => typeof type === 'function' ? type(props) : {type,props};
   const download = '/demos?tab=workspace&path=study&file=report.md';
+  // Exercise the real display helper; an empty mock stopped exercising Runs
+  // when the component adopted studyDisplay/runDisplay.
+  const display = {exports:{}};
+  vm.runInNewContext(ts.transpileModule(await fs.readFile(path.join(__dirname, 'run-display.ts'), 'utf8'), {
+    compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022},
+  }).outputText, {module:display,exports:display.exports});
   const dependencies = {
     react:{useState:(value)=>[value,()=>{}],useEffect:()=>{}},
     'react/jsx-runtime':{jsx,jsxs:jsx,Fragment:'fragment'}, axios:{},
@@ -54,7 +60,8 @@ test('Runs renders study phases, unavailable worker warning and verified workspa
         id:'study-1',title:'Saved research',state:'completed',phase:'completed',completed_steps:['prepare','model','report'],step_count:3,
         artifacts:[{name:'Verified report',role:'report',size_bytes:42,sha256:'a'.repeat(64),download_url:download}]}]}:{data:[]}})},
     '@librechat/client':{Button:'Button',Input:'Input'},'librechat-data-provider':{request:{}},
-    './scientific-comparison':{},'./scientific-run-display':{},
+    './scientific-comparison':{},'./scientific-run-display':display.exports,
+    './ScientificGettingStarted':{default:()=>null},
   };
   const module = {exports:{}};
   vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,
