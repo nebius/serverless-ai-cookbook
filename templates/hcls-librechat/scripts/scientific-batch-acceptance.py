@@ -51,6 +51,10 @@ class ParameterPreflightError(ValueError):
     """A local parameter-file rejection, before this invocation uploads/admission."""
 
 
+class SourcePreflightError(ValueError):
+    """A local source/metadata rejection, before this invocation uploads/admission."""
+
+
 def preflight_parameters(tool_schema: dict, parameters: object, source: bytes, args) -> None:
     """Validate the exact advertised parameter schema without reserving an artifact.
 
@@ -141,11 +145,11 @@ def scientific_contract(discovery: dict) -> dict:
     return {**contract, **published} if published else contract
 
 
-def preflight_source(contract: dict, parameters: dict, args, size: int) -> None:
-    """Validate a published semantic role before reserving or uploading bytes."""
+def selected_source_contract(contract: dict, parameters: dict, args):
+    """Select the already-published input role; no filename or model-name rules."""
     policy = contract.get('input_artifact_contract')
     if not policy:
-        return  # Older servers still validate the final request themselves.
+        return None, None  # Older servers still validate the final request.
     context = {'operation': getattr(args, 'operation', None), 'parameters': parameters}
     if 'entry' in policy:
         source, selection = policy['entry'], 'the published input entry'
@@ -158,7 +162,41 @@ def preflight_source(contract: dict, parameters: dict, args, size: int) -> None:
         source = alternatives.get(value) if isinstance(alternatives, dict) else None
         selection = f'{selector}={value!r}'
     if not isinstance(source, dict) or not source:
-        raise ValueError(f'Input selector {selection} is not in the published input_artifact_contract; no upload was submitted.')
+        raise SourcePreflightError(f'Input selector {selection} is not in the published input_artifact_contract; no upload was submitted.')
+    return source, selection
+
+
+def resolve_source_compression(contract: dict, parameters: dict, args, source: bytes):
+    """Resolve omitted transport metadata only; never edit source/scientific bytes.
+
+    Explicit choices are left to the existing strict preflight. Plain inputs keep
+    the historical none behavior. Compressed inputs require a uniquely allowed
+    published encoding and its actual magic bytes, never a filename inference.
+    """
+    explicit = getattr(args, 'compression', None)
+    if explicit is not None:
+        return args, {'selection': 'explicit', 'compression': explicit}
+    detected = ('gzip' if source.startswith(b'\x1f\x8b\x08') else
+                'zstd' if source.startswith(b'\x28\xb5\x2f\xfd') else 'none')
+    entry, _ = selected_source_contract(contract, parameters, args)
+    allowed = (entry.get('allowed_compressions', [entry['compression']] if 'compression' in entry else [])
+               if entry else [])
+    if detected != 'none' and allowed != [detected]:
+        raise SourcePreflightError(
+            'compression is omitted for a compressed source; specify it explicitly from the published '
+            'input_artifact_contract. Automatic binding requires one allowed encoding matching the '
+            'actual source signature. No upload or inference was submitted.')
+    resolved = argparse.Namespace(**{**vars(args), 'compression': detected})
+    return resolved, {'selection': 'published-single-encoding-and-source-signature' if detected != 'none'
+                      else 'legacy-uncompressed-default', 'compression': detected,
+                      'source_signature': detected}
+
+
+def preflight_source(contract: dict, parameters: dict, args, size: int) -> None:
+    """Validate a published semantic role before reserving or uploading bytes."""
+    source, selection = selected_source_contract(contract, parameters, args)
+    if source is None:
+        return
     mismatches = []
     for argument, field in [('entry_name', 'name'), ('semantic_type', 'semantic_type'),
                             ('media_type', 'media_type')]:
@@ -167,7 +205,7 @@ def preflight_source(contract: dict, parameters: dict, args, size: int) -> None:
     allowed_compressions = source.get('allowed_compressions')
     if allowed_compressions is not None:
         if not isinstance(allowed_compressions, list) or not allowed_compressions:
-            raise ValueError('Published allowed_compressions must be a nonempty list.')
+            raise SourcePreflightError('Published allowed_compressions must be a nonempty list.')
         if args.compression not in allowed_compressions:
             mismatches.append(f'compression must be one of {allowed_compressions!r}, received {args.compression!r}')
     elif 'compression' in source and args.compression != source['compression']:
@@ -177,7 +215,7 @@ def preflight_source(contract: dict, parameters: dict, args, size: int) -> None:
     if size < 1:
         mismatches.append('source_file must contain at least one byte')
     if mismatches:
-        raise ValueError(f'Input artifact metadata for {selection}: ' + '; '.join(mismatches) +
+        raise SourcePreflightError(f'Input artifact metadata for {selection}: ' + '; '.join(mismatches) +
                          '. The entry name is a semantic role, not the local filename. '
                          'The source media type describes the actual bytes, not the outer manifest. '
                          'No upload or inference was submitted.')
@@ -374,7 +412,7 @@ async def run(args) -> dict:
         leaf = error
         while isinstance(leaf, BaseExceptionGroup) and len(leaf.exceptions) == 1:
             leaf = leaf.exceptions[0]
-        if isinstance(leaf, ParameterPreflightError):
+        if isinstance(leaf, (ParameterPreflightError, SourcePreflightError)):
             raise leaf from error
         raise
 
@@ -416,7 +454,21 @@ async def _run(args) -> dict:
                                                                        'protocol': 'scientific-batch-v1'})
                     save(args.output / 'model-contract.json', discovery)
                     contract = scientific_contract(discovery)
-                    preflight_source(contract, parameters, args, len(source))
+                    try:
+                        args, compression = resolve_source_compression(contract, parameters, args, source)
+                        preflight_source(contract, parameters, args, len(source))
+                    except SourcePreflightError as error:
+                        save(args.output / 'source-preflight-error.json', {
+                            'code': 'invalid_source_metadata', 'message': str(error),
+                            'source_sha256': identity['source_sha256'],
+                            'input_contract_sha256': digest(canonical(contract.get('input_artifact_contract'))),
+                            'uploads_submitted_this_invocation': False,
+                            'inference_submitted_this_invocation': False})
+                        raise
+                    save(args.output / 'source-preflight.json', {
+                        **compression, 'source_sha256': identity['source_sha256'], 'size_bytes': len(source),
+                        'input_contract_sha256': digest(canonical(contract.get('input_artifact_contract'))),
+                        'source_bytes_unchanged': True})
                     try:
                         preflight_parameters(tool.input_schema, parameters, source, args)
                     except ParameterPreflightError as error:
@@ -527,7 +579,8 @@ def main() -> None:
     parser.add_argument('--source-artifact', type=Path,
                         help='Optional finalized artifact JSON matching exact source bytes; never a filename substituted for an artifact ID.')
     parser.add_argument("--media-type", required=True)
-    parser.add_argument("--compression", choices=("none", "gzip", "zstd"), default="none")
+    parser.add_argument("--compression", choices=("none", "gzip", "zstd"), default=None,
+                        help='Explicit choices are preserved. Omitted compression binds a sole published gzip/zstd encoding only when actual source magic agrees; plain input keeps none. No recompression or filename inference.')
     parser.add_argument("--entry-name", required=True)
     parser.add_argument("--semantic-type", required=True)
     parser.add_argument("--parameters", required=True, type=Path,

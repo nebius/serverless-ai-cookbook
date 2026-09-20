@@ -228,7 +228,7 @@ async def run(plan, output, wait_seconds=1800, poll_seconds=10, run_step=None, c
                 if step.get('tool_name'):
                     arguments['tool'] = step['tool_name']
             else:
-                arguments = {**{'compression': 'none', 'service_class': 'customer-batch'},
+                arguments = {**{'compression': None, 'service_class': 'customer-batch'},
                              **{key: value for key, value in step.items() if key not in {'id', 'kind'}},
                              'wait_seconds': 0, 'poll_seconds': poll_seconds}
                 for key in ('source', 'parameters', 'output'):

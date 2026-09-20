@@ -50,7 +50,8 @@ BATCH_FIELDS = {'id': TEXT, 'kind': {'const': 'batch'}, **{key: TEXT for key in 
     'model', 'tool', 'operation', 'media_type', 'entry_name', 'semantic_type', 'idempotency_key', 'display_name')},
     'source': FILE, 'parameters': {**FILE,
         'description': FILE['description'] + ' The parameters JSON file contains only the model parameters object from submit-tool input_schema.properties.parameters, never a full scientific-run envelope; the batch client validates before uploads and does not unwrap it.'}}
-BATCH = object_schema({**BATCH_FIELDS, 'compression': TEXT, 'service_class': TEXT,
+BATCH = object_schema({**BATCH_FIELDS, 'compression': {**TEXT,
+    'description': 'Source transport encoding from the published input_artifact_contract. Explicit choices are never changed. If omitted, gzip/zstd is bound only when the selected contract permits exactly that one encoding and actual source magic agrees; ordinary uncompressed input retains none. No filename inference or recompression.'}, 'service_class': TEXT,
                        'source_artifact': FILE}, list(BATCH_FIELDS))
 PREDICTION = {'oneOf': [{'required': ['result'], 'not': {'required': ['prediction']}},
                       {'required': ['prediction'], 'not': {'required': ['result']}}]}
