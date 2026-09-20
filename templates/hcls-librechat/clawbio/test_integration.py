@@ -90,6 +90,16 @@ def test_output_is_not_overwritten_and_unknown_skill_is_rejected(tmp_path):
     assert call("run", "analyze-fasta", "--", "--output", tmp_path / "a", "--output", tmp_path).returncode != 0
 
 
+def test_removed_scrna_flag_is_not_silently_ignored(tmp_path):
+    # The upstream generic dispatcher silently swallows this removed option.
+    # Our native CLI path must reject it, rather than claiming the requested
+    # differential-expression operation was actually performed.
+    result = call("run", "scrna-orchestrator", "--", "--demo", "--de-groupby", "demo_truth",
+                  "--output", tmp_path / "removed-flag")
+    assert result.returncode != 0
+    assert "unrecognized arguments" in result.stderr and "--de-groupby" in result.stderr
+
+
 def test_fasta_real_input_and_invalid_input(tmp_path):
     source = tmp_path / "sequences.fa"
     source.write_text(">balanced\nACGTACGTACGT\n>gc_only\nGGCCGGCCGGCC\n")
