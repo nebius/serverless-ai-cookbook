@@ -129,9 +129,9 @@ reference hardware and should be similar).
 
 ### Other platforms
 
-The 1-click link targets NVIDIA's reference hardware, 8×H100 in eu-north1. The run above used
-`--platform gpu-h200-sxm --preset 8gpu-128vcpu-1600gb` in us-central1 (same preset name);
-8×H100 in eu-north1 was not allocatable within the wait window on the day of testing.
+Validated on **8×H200** (`--platform gpu-h200-sxm --preset 8gpu-128vcpu-1600gb`, us-central1).
+The 1-click link targets NVIDIA's reference hardware, 8×H100 (`gpu-h100-sxm`, same preset name);
+use whichever 8-GPU platform your project offers.
 
 > ⚠️ **Preemptible and not resumable.** The launcher redoes installation and download after a
 > restart, so it runs with `--restart-policy never`. Use preemptible for smoke runs; for the
