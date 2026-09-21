@@ -112,6 +112,21 @@ def test_other_protocol_is_not_a_native_candidate():
         client.select_contract(schema, {"x": 3}, tool_name="not_native")
 
 
+def test_explicit_openai_chat_contract_is_selected_only_when_requested():
+    schema = {"contracts": [
+        contract("native_tool", ["x"]),
+        contract("analyze_image_openai_chat", ["messages"], "openai-chat"),
+    ]}
+    arguments = {"messages": 3}
+    with pytest.raises((ValueError, ValidationError)):
+        client.select_contract(schema, arguments, tool_name="analyze_image_openai_chat")
+    selected = client.select_contract(
+        schema, arguments, tool_name="analyze_image_openai_chat", protocol="openai-chat"
+    )
+    assert selected["protocol"] == "openai-chat"
+    assert selected["tool_name"] == "analyze_image_openai_chat"
+
+
 @pytest.mark.parametrize("contracts", [[], [contract("invalid", ["x"])]])
 def test_absent_or_nonmatching_contracts_refuse(contracts):
     with pytest.raises((ValueError, ValidationError)):
@@ -239,3 +254,74 @@ def test_explicit_transfer_run_and_sticky_replay_identity(tmp_path, monkeypatch,
     with pytest.raises(ValueError, match="different inputs"):
         asyncio.run(client.run(args))
     assert (args.output_dir / "receipt.json").read_bytes() == saved
+
+
+def test_openai_chat_run_binds_protocol_in_schema_query_and_receipt(tmp_path, monkeypatch):
+    """Artifact references stay structured while the named chat tool owns admission."""
+    monkeypatch.setenv("SCIENTIFIC_MODELS_MCP_URL", "https://no-network.invalid/mcp")
+    monkeypatch.setenv("SCIENTIFIC_MODELS_API_KEY", "synthetic-contract-test")
+    artifact = {
+        "artifact_id": "00000000-0000-4000-8000-000000000001",
+        "sha256": "a" * 64,
+        "size_bytes": 42,
+        "media_type": "image/png",
+        "compression": "none",
+    }
+    payload = {"messages": [{"role": "user", "content": [
+        {"type": "text", "text": "Describe the research image."},
+        {"type": "image_url", "image_url": {"url": artifact}},
+    ]}], "max_completion_tokens": 64}
+    source = tmp_path / "input.json"
+    source.write_text(json.dumps(payload))
+    tool = "analyze_image_openai_chat"
+    schema = {
+        "type": "object",
+        "required": ["messages", "idempotency_key", "wait_seconds"],
+        "properties": {
+            "messages": {"type": "array"},
+            "max_completion_tokens": {"type": "integer"},
+            "idempotency_key": {"type": "string"},
+            "wait_seconds": {"type": "number"},
+        },
+        "additionalProperties": False,
+    }
+    calls = []
+
+    class Response:
+        def __init__(self, value): self.value = value
+        def model_dump(self, **kwargs): return {"structuredContent": self.value}
+
+    class MCP:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return None
+        async def call_tool(self, name, arguments):
+            calls.append((name, copy.deepcopy(arguments)))
+            if name == "get_model_schema":
+                assert arguments == {"model_id": "nv-reason-cxr-3b", "protocol": "openai-chat", "tool_name": tool}
+                return Response({"contracts": [{"protocol": "openai-chat", "tool_name": tool, "input_schema": schema}]})
+            if name == tool:
+                assert arguments == payload | {"idempotency_key": "cxr-file-backed", "wait_seconds": 0}
+                assert isinstance(arguments["messages"][0]["content"][1]["image_url"]["url"], dict)
+                return Response({"id": "cxr-operation", "status": "running"})
+            if name == "get_operation":
+                return Response({"id": "cxr-operation", "status": "succeeded", "result_available": True})
+            if name == "get_operation_result":
+                return Response({"operation": {"id": "cxr-operation"}, "result": {"choices": []}})
+            pytest.fail("Unexpected tool: " + name)
+
+    class HTTP:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): return None
+
+    monkeypatch.setattr(client.httpx2, "AsyncClient", lambda **kwargs: HTTP())
+    monkeypatch.setattr(client, "streamable_http_client", lambda *args, **kwargs: None)
+    monkeypatch.setattr(client, "Client", lambda transport: MCP())
+    args = types.SimpleNamespace(
+        input=source, output_dir=tmp_path / "run", model="nv-reason-cxr-3b",
+        protocol="openai-chat", tool=tool, idempotency_key="cxr-file-backed",
+        wait_seconds=10, recover_only=False,
+    )
+    completed = asyncio.run(client.run(args))
+    assert completed["state"] == "succeeded"
+    assert completed["identity"]["protocol"] == "openai-chat"
+    assert [name for name, _ in calls] == ["get_model_schema", tool, "get_operation", "get_operation_result"]

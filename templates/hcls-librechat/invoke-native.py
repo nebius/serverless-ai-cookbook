@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Submit file-backed native inputs through the public MCP, retaining receipts.
+"""Submit file-backed named-model inputs through the public MCP, retaining receipts.
 
 Large inputs, credentials and raw results stay on disk. Reusing the output
 directory resumes the saved operation; ambiguous admission is never retried.
+Native is the compatibility default; ``--protocol openai-chat`` supports
+artifact-backed multimodal chat without moving image bytes through the LLM.
 """
 import argparse
 import asyncio
@@ -108,24 +110,26 @@ def verify_saved_native_file(value, output_dir):
 class NativeContractError(ValueError):
     """An explicit, pre-admission contract-selection failure."""
 
-    def __init__(self, code, tools):
+    def __init__(self, code, tools, protocol='native'):
         self.code = code
         self.tools = tools
-        super().__init__(code + ': specify the exact discovered native tool with --tool.')
+        self.protocol = protocol
+        super().__init__(code + f': specify the exact discovered {protocol} tool with --tool.')
 
 
-def select_contract(schema, arguments, tool_name=None):
+def select_contract(schema, arguments, tool_name=None, protocol='native'):
     """Never infer a capability from catalog order or modify model arguments.
 
     A named tool is authoritative. Legacy unnamed callers may select only one
     validating contract; overlapping contracts require an explicit choice.
     """
-    contracts = [c for c in schema['contracts'] if c.get('protocol') == 'native']
+    contracts = [c for c in schema['contracts'] if c.get('protocol') == protocol]
     tools = [c['tool_name'] for c in contracts]
+    prefix = protocol.replace('-', '_')
     if tool_name is not None:
         matches = [c for c in contracts if c['tool_name'] == tool_name]
         if len(matches) != 1:
-            raise NativeContractError('native_tool_not_unique_or_unavailable', tools)
+            raise NativeContractError(f'{prefix}_tool_not_unique_or_unavailable', tools, protocol)
         Draft202012Validator(matches[0]['input_schema']).validate(arguments)
         return matches[0]
     if len(contracts) == 1:
@@ -134,8 +138,8 @@ def select_contract(schema, arguments, tool_name=None):
     matches = [c for c in contracts
                if Draft202012Validator(c['input_schema']).is_valid(arguments)]
     if len(matches) != 1:
-        code = 'ambiguous_native_contract' if matches else 'no_matching_native_contract'
-        raise NativeContractError(code, [c['tool_name'] for c in matches] or tools)
+        code = f'ambiguous_{prefix}_contract' if matches else f'no_matching_{prefix}_contract'
+        raise NativeContractError(code, [c['tool_name'] for c in matches] or tools, protocol)
     return matches[0]
 
 
@@ -168,9 +172,13 @@ async def run(args):
         raise ValueError('Input must be a JSON object containing only model fields.')
     if set(payload) & {'idempotency_key', 'wait_seconds'}:
         raise ValueError('Keep lifecycle fields out of the input file; pass --idempotency-key.')
+    protocol = getattr(args, 'protocol', 'native')
     identity = {'model_id': args.model, 'input_sha256': hashlib.sha256(payload_bytes).hexdigest(),
                 'endpoint': endpoint, 'caller_fingerprint': hashlib.sha256(key.encode()).hexdigest(),
                 'idempotency_key': args.idempotency_key}
+    # Keep historical native receipt identity byte-for-byte compatible.
+    if protocol != 'native':
+        identity['protocol'] = protocol
     if getattr(args, 'tool', None) is not None:
         identity['tool_name'] = args.tool
     args.output_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -229,13 +237,13 @@ async def run(args):
                 # A previously selected capability is sticky across an explicit
                 # non-admission retry. Catalog order is never an operation ID.
                 selected_tool = getattr(args, 'tool', None) or record.get('tool')
-                query = {'model_id': args.model, 'protocol': 'native'}
+                query = {'model_id': args.model, 'protocol': protocol}
                 if selected_tool is not None:
                     query['tool_name'] = selected_tool
                 schema = await call('get_model_schema', query, 'schema.json')
                 arguments = dict(payload, idempotency_key=args.idempotency_key, wait_seconds=0)
                 try:
-                    contract = select_contract(schema, arguments, selected_tool)
+                    contract = select_contract(schema, arguments, selected_tool, protocol)
                 except ValidationError as error:
                     retain_input_validation(error, args.output_dir, record)
                     raise
@@ -296,7 +304,9 @@ async def run(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--model', required=True)
-    parser.add_argument('--tool', help='Exact native tool_name returned by get_model_schema; required when contracts overlap.')
+    parser.add_argument('--protocol', choices=('native', 'openai-chat'), default='native',
+                        help='Published model protocol. Native remains the compatibility default.')
+    parser.add_argument('--tool', help='Exact tool_name returned by get_model_schema; required when contracts overlap.')
     parser.add_argument('--input', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--idempotency-key', required=True)
