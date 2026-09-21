@@ -64,7 +64,8 @@ def raw_umap(data: ad.AnnData, indexes: np.ndarray, seed: int) -> np.ndarray:
                      random_state=seed, transform_seed=seed).fit_transform(latent)
 
 
-def render_comparison(data: ad.AnnData, after_csv: Path, batch_key: str, seed: int) -> tuple[bytes, dict]:
+def render_comparison(data: ad.AnnData, after_csv: Path, batch_key: str, seed: int,
+                      labels_key: str | None = None) -> tuple[bytes, dict]:
     rng = np.random.default_rng(seed)
     indexes = np.arange(data.n_obs)
     if len(indexes) > 10_000:
@@ -78,23 +79,41 @@ def render_comparison(data: ad.AnnData, after_csv: Path, batch_key: str, seed: i
     after = after_frame.loc[names, ['umap_1', 'umap_2']].to_numpy()
     batches = data.obs.iloc[indexes][batch_key].astype(str)
     codes, labels = pd.factorize(batches, sort=True)
-    figure, axes = plt.subplots(1, 2, figsize=(13, 5.5), facecolor='#f4f7f3')
-    for axis, coordinates, title in zip(axes, (before, after), ('Before · normalized counts', 'After · scVI latent'), strict=True):
-        plot = axis.scatter(coordinates[:, 0], coordinates[:, 1], c=codes, cmap='turbo', s=12,
-                            alpha=0.78, linewidths=0)
+    panels = [(before, codes, 'Before · normalized counts · batch'),
+              (after, codes, 'After · latent · batch')]
+    label_categories = []
+    label_codes = None
+    if labels_key:
+        label_codes, label_categories = pd.factorize(
+            data.obs.iloc[indexes][labels_key].astype(str), sort=True)
+        panels.append((after, label_codes, f'After · latent · {labels_key}'))
+    figure, axes = plt.subplots(1, len(panels), figsize=(6.5 * len(panels), 5.5),
+                                facecolor='#f4f7f3')
+    axes = np.atleast_1d(axes)
+    for axis, (coordinates, colors, title) in zip(axes, panels, strict=True):
+        axis.scatter(coordinates[:, 0], coordinates[:, 1], c=colors, cmap='turbo', s=12,
+                     alpha=0.78, linewidths=0)
         axis.set_title(title); axis.set_xlabel('UMAP 1'); axis.set_ylabel('UMAP 2')
         axis.set_xticks([]); axis.set_yticks([])
     handles = [plt.Line2D([], [], marker='o', linestyle='', color=plt.get_cmap('turbo')(
         index / max(1, len(labels) - 1)), label=str(label)) for index, label in enumerate(labels[:16])]
     if handles:
         figure.legend(handles=handles, title=batch_key, loc='lower center', ncol=min(8, len(handles)))
-    figure.suptitle('scVI integration · batch-colored embedding', fontsize=16, color='#19241d')
+    if labels_key and len(label_categories) <= 16:
+        label_handles = [plt.Line2D([], [], marker='o', linestyle='', color=plt.get_cmap('turbo')(
+            index / max(1, len(label_categories) - 1)), label=str(label))
+            for index, label in enumerate(label_categories)]
+        axes[-1].legend(handles=label_handles, title=labels_key, loc='best', fontsize='small')
+    figure.suptitle('scVI/scANVI integration · observed metadata colors', fontsize=16,
+                    color='#19241d')
     figure.tight_layout(rect=(0, 0.08 if handles else 0, 1, 0.95))
     target = io.BytesIO(); figure.savefig(target, format='png', dpi=160, bbox_inches='tight',
                                            metadata={'Software': 'Nebius Scientific AI'})
     plt.close(figure)
     return target.getvalue(), {'plotted_cells': len(indexes), 'total_cells': int(data.n_obs),
-                               'batch_categories': [str(item) for item in labels]}
+                               'batch_categories': [str(item) for item in labels],
+                               'label_key': labels_key,
+                               'label_categories': [str(item) for item in label_categories]}
 
 
 def run(args, runner=subprocess.run):
@@ -127,7 +146,8 @@ def run(args, runner=subprocess.run):
             or manifest.get('batch_key') != args.batch_key or manifest.get('cells') != data.n_obs
             or manifest.get('genes') != data.n_vars or manifest.get('seed') != args.seed):
         data.file.close(); raise ValueError('scVI result manifest differs from submitted input or parameters.')
-    image, plotted = render_comparison(data, analysis / 'umap_embeddings.csv', args.batch_key, args.seed)
+    image, plotted = render_comparison(data, analysis / 'umap_embeddings.csv', args.batch_key,
+                                       args.seed, args.labels_key)
     data.file.close()
     comparison = publish_bytes(analysis / 'before-after-umap.png', image)
     operation = operation_metadata(run_dir / 'operation.json')

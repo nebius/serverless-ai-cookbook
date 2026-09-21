@@ -39,12 +39,6 @@ RUN python3 -m venv /opt/clawbio-venv \
 
 FROM ${LIBRECHAT_BASE}
 
-ARG HCLS_IMAGE_REVISION=unknown
-LABEL org.opencontainers.image.title="Nebius Scientific AI Agent" \
-      org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
-      org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
-      org.opencontainers.image.licenses="MIT"
-
 USER root
 COPY --from=scientific-client /app/client/dist /app/client/dist
 # zstd is the published scientific/LeRobot archive transport, not an optional
@@ -81,11 +75,14 @@ COPY templates/hcls-librechat/scripts/scientific-batch-acceptance.py /opt/bionem
 COPY templates/hcls-librechat/structure-analysis.py /opt/bionemo/structure-analysis.py
 COPY templates/hcls-librechat/molecule-analysis.py /opt/bionemo/molecule-analysis.py
 COPY templates/hcls-librechat/genmol-generate.py /opt/bionemo/genmol-generate.py
+COPY templates/hcls-librechat/diffdock-campaign.py /opt/bionemo/diffdock-campaign.py
+COPY templates/hcls-librechat/folding-comparison.py /opt/bionemo/folding-comparison.py
 COPY templates/hcls-librechat/design-artifact-analysis.py /opt/bionemo/design-artifact-analysis.py
 COPY templates/hcls-librechat/robotics-analysis.py templates/hcls-librechat/sequence-analysis.py /opt/bionemo/
 COPY templates/hcls-librechat/imaging-analysis.py /opt/bionemo/imaging-analysis.py
 COPY templates/hcls-librechat/ct-segmentation.py /opt/bionemo/ct-segmentation.py
 COPY templates/hcls-librechat/ct-segmentation-batch.py /opt/bionemo/ct-segmentation-batch.py
+COPY templates/hcls-librechat/recording-batch.py /opt/bionemo/recording-batch.py
 COPY templates/hcls-librechat/cxr-analysis.py /opt/bionemo/cxr-analysis.py
 COPY templates/hcls-librechat/proteinmpnn-design.py /opt/bionemo/proteinmpnn-design.py
 COPY templates/hcls-librechat/msa-search.py /opt/bionemo/msa-search.py
@@ -93,6 +90,7 @@ COPY templates/hcls-librechat/openfold3-fold.py /opt/bionemo/openfold3-fold.py
 COPY templates/hcls-librechat/sam2-segment.py /opt/bionemo/sam2-segment.py
 COPY templates/hcls-librechat/scvi-integrate.py /opt/bionemo/scvi-integrate.py
 COPY templates/hcls-librechat/cosmos-transfer.py /opt/bionemo/cosmos-transfer.py
+COPY templates/hcls-librechat/wan-image-to-video.py /opt/bionemo/wan-image-to-video.py
 COPY templates/hcls-librechat/speech-analysis.py /opt/bionemo/speech-analysis.py
 COPY templates/hcls-librechat/ace-step-music.py /opt/bionemo/ace-step-music.py
 COPY templates/hcls-librechat/report-assembly.py /opt/bionemo/report-assembly.py
@@ -143,6 +141,14 @@ RUN chmod 0755 /usr/local/bin/hcls-librechat-entrypoint \
  && chown -R node:node /data /app/uploads /app/logs \
  && chmod 0700 /data/hcls-librechat \
  && mkdir -p /workspace /data/hcls-execution
+
+# Keep revision-only rebuilds on this final metadata layer so the expensive
+# system and scientific Python dependency layers remain cacheable.
+ARG HCLS_IMAGE_REVISION=unknown
+LABEL org.opencontainers.image.title="Nebius Scientific AI Agent" \
+      org.opencontainers.image.source="https://github.com/nebius/serverless-ai-cookbook" \
+      org.opencontainers.image.revision="${HCLS_IMAGE_REVISION}" \
+      org.opencontainers.image.licenses="MIT"
 
 ENV HOST=0.0.0.0 \
     PORT=3080 \
