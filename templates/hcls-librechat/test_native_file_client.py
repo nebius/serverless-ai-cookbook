@@ -95,7 +95,8 @@ def test_result_artifact_is_hash_verified_and_decoded():
         client.parse_result_artifact(envelope, b'{"answer":43}')
 
 
-@pytest.mark.parametrize('media_type,extension', [('video/mp4','mp4'),('audio/wav','wav'),('image/png','png')])
+@pytest.mark.parametrize('media_type,extension', [('video/mp4','mp4'),('audio/wav','wav'),
+                                                   ('image/png','png'),('application/zip','zip')])
 def test_native_media_is_published_and_verified_not_json_decoded(tmp_path, media_type, extension):
     raw = b'\x00binary-model-output\xff'
     envelope = {'schema': 'fs2-serve.nebius.ai/operation-artifact-result/v1',

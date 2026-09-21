@@ -49,8 +49,8 @@ USER root
 COPY --from=scientific-client /app/client/dist /app/client/dist
 # zstd is the published scientific/LeRobot archive transport, not an optional
 # notebook-only dependency. Keep it available after a fresh deployment.
-RUN apt-get update && apt-get install -y --no-install-recommends zstd plink1.9 \
- && zstd --version \
+RUN apt-get update && apt-get install -y --no-install-recommends zstd plink1.9 ffmpeg \
+ && zstd --version && ffprobe -version \
  && rm -rf /var/lib/apt/lists/*
 COPY templates/hcls-librechat/render-config.mjs /opt/hcls-librechat/render-config.mjs
 COPY templates/hcls-librechat/scientific-tool-options.cjs /opt/hcls-librechat/scientific-tool-options.cjs
@@ -75,6 +75,7 @@ COPY templates/hcls-librechat/structure-mcp.py /opt/bionemo/structure-mcp.py
 COPY templates/hcls-librechat/execution-mcp.py /opt/bionemo/execution-mcp.py
 COPY templates/hcls-librechat/invoke-native.py /opt/bionemo/invoke-native.py
 COPY templates/hcls-librechat/scientific_receipts.py /opt/bionemo/scientific_receipts.py
+COPY templates/hcls-librechat/recording_pipeline.py /opt/bionemo/recording_pipeline.py
 COPY templates/hcls-librechat/upload-artifact.py /opt/bionemo/upload-artifact.py
 COPY templates/hcls-librechat/scripts/scientific-batch-acceptance.py /opt/bionemo/invoke-scientific-batch.py
 COPY templates/hcls-librechat/structure-analysis.py /opt/bionemo/structure-analysis.py
@@ -86,6 +87,12 @@ COPY templates/hcls-librechat/ct-segmentation.py /opt/bionemo/ct-segmentation.py
 COPY templates/hcls-librechat/cxr-analysis.py /opt/bionemo/cxr-analysis.py
 COPY templates/hcls-librechat/proteinmpnn-design.py /opt/bionemo/proteinmpnn-design.py
 COPY templates/hcls-librechat/msa-search.py /opt/bionemo/msa-search.py
+COPY templates/hcls-librechat/openfold3-fold.py /opt/bionemo/openfold3-fold.py
+COPY templates/hcls-librechat/sam2-segment.py /opt/bionemo/sam2-segment.py
+COPY templates/hcls-librechat/scvi-integrate.py /opt/bionemo/scvi-integrate.py
+COPY templates/hcls-librechat/cosmos-transfer.py /opt/bionemo/cosmos-transfer.py
+COPY templates/hcls-librechat/speech-analysis.py /opt/bionemo/speech-analysis.py
+COPY templates/hcls-librechat/ace-step-music.py /opt/bionemo/ace-step-music.py
 COPY templates/hcls-librechat/report-assembly.py /opt/bionemo/report-assembly.py
 COPY templates/hcls-librechat/aging-analysis.py /opt/bionemo/aging-analysis.py
 COPY templates/hcls-librechat/scientific_study.py templates/hcls-librechat/scientific_study_schema.py templates/hcls-librechat/scientific_workflow_draft.py templates/hcls-librechat/scientific_preparation.py templates/hcls-librechat/scientific_protein_preparation.py templates/hcls-librechat/scientific_clinical.py templates/hcls-librechat/scientific-study-worker.py /opt/bionemo/
@@ -97,7 +104,8 @@ RUN python3 -m venv /opt/scientific-client \
     numpy==2.2.6 scipy==1.17.1 pandas==2.2.3 pyarrow==21.0.0 \
     biopython==1.85 gemmi==0.7.3 rdkit==2025.3.6 h5py==3.13.0 \
     nibabel==5.4.2 scikit-image==0.26.0 matplotlib==3.11.2 Pillow==12.3.0 \
- && /opt/scientific-client/bin/python -c 'import matplotlib, nibabel, scipy, skimage; from PIL import Image'
+    anndata==0.12.3 scikit-learn==1.7.2 umap-learn==0.5.12 \
+ && /opt/scientific-client/bin/python -c 'import anndata, matplotlib, nibabel, scipy, skimage, sklearn, umap; from PIL import Image'
 COPY life-science/bionemo-librechat/viewer-mcp.py /opt/bionemo/viewer-mcp.py
 COPY life-science/bionemo-librechat/3dmol.js /opt/bionemo/3dmol.js
 RUN node /opt/hcls-librechat/patch-server.mjs

@@ -84,6 +84,7 @@ def materialize_result_artifact(envelope, data, output_dir):
     extensions = {'video/mp4': 'mp4', 'video/webm': 'webm', 'image/png': 'png',
                   'image/jpeg': 'jpg', 'audio/wav': 'wav', 'audio/x-wav': 'wav',
                   'audio/mpeg': 'mp3', 'audio/ogg': 'ogg',
+                  'application/zip': 'zip',
                   'application/octet-stream': 'bin'}
     if media_type not in extensions:
         raise ValueError('Native artifact content type has no supported file contract.')
