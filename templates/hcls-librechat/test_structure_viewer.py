@@ -158,16 +158,22 @@ def test_workspace_media_labels_are_html_safe(bridge):
     assert '&lt;script&gt;' in html
 
 
-def test_workspace_media_accepts_recording_length_pcm_audio(bridge):
-    # RIFF/WAVE signature plus a payload just above the retired 8 MiB cap.
+def test_workspace_media_rejects_large_master_and_accepts_bounded_preview(bridge):
     audio = bridge.WORKSPACE / 'recording-soundtrack.wav'
     audio.write_bytes(b'RIFF' + b'\x00\x00\x00\x00' + b'WAVE' + (9 * 1024 * 1024 - 12) * b'X')
+    with pytest.raises(ValueError, match='4 MiB'):
+        bridge.call_media_viewer({
+            'files': [{'path': str(audio), 'label': 'Lossless master'}],
+            'title': 'Recording soundtrack',
+        })
+    preview = bridge.WORKSPACE / 'recording-soundtrack-preview.mp3'
+    preview.write_bytes(b'ID3' + b'X' * 1024)
     result = bridge.call_media_viewer({
-        'files': [{'path': str(audio), 'label': '45-second soundtrack'}],
+        'files': [{'path': str(preview), 'label': '45-second listening preview'}],
         'title': 'Recording soundtrack',
     })
     assert 'Inline media viewer prepared' in result['content'][0]['text']
-    assert 'data:audio/wav;base64,' in result['content'][1]['resource']['text']
+    assert 'data:audio/mpeg;base64,' in result['content'][1]['resource']['text']
 
 
 @pytest.mark.parametrize('args', [

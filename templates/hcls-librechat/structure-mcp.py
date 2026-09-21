@@ -20,12 +20,11 @@ import uuid
 MAX_BYTES = 4 * 1024 * 1024
 MAX_STRUCTURES = 20
 MAX_WORKSPACE_STRUCTURES = 4
-# A 45-second, 48 kHz stereo PCM16 WAV is about 8.3 MiB. Keep the viewer
-# bounded while allowing the recording-ready soundtrack and similarly sized
-# scientific clips to render without forcing users through a download-only
-# fallback.
-MAX_MEDIA_BYTES = 12 * 1024 * 1024
-MAX_MEDIA_TOTAL_BYTES = 24 * 1024 * 1024
+# Media is returned as base64 inside one MCP response. Keep the bound below
+# stdio/client message limits; helpers publish compact listening/viewing
+# previews while retaining lossless masters as authenticated Workspace files.
+MAX_MEDIA_BYTES = 4 * 1024 * 1024
+MAX_MEDIA_TOTAL_BYTES = 8 * 1024 * 1024
 MAX_MEDIA_FILES = 4
 ASSETS = Path(os.environ.get('BIONEMO_ASSET_ROOT', '/opt/bionemo'))
 WORKSPACE = Path(os.environ.get('SCIENTIFIC_WORKSPACE', '/workspace')).resolve()

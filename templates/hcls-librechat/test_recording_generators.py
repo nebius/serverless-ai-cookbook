@@ -109,3 +109,12 @@ def test_ace_step_pipeline_has_one_admission_and_measures_returned_wav(tmp_path)
     assert result['output']['duration_seconds'] == 1.0
     assert len(commands) == 1 and Path(commands[0][1]).name == 'invoke-native.py'
     assert Path(result['audio_path']).read_bytes()[:4] == b'RIFF'
+    preview = Path(result['preview_path'])
+    assert preview.is_file() and preview.stat().st_size < 4 * 1024 * 1024
+    assert preview.read_bytes()[:3] == b'ID3' or preview.read_bytes()[:1] == b'\xff'
+    # Temporary-directory tests deliberately do not receive authenticated
+    # Workspace links; production output lives below /workspace.
+    assert result['workspace_urls'] == {}
+    assert music.workspace_urls(
+        preview=Path('/workspace/shared/recording-demo/soundtrack-preview.mp3')
+    )['preview'].startswith('/demos?tab=workspace&')

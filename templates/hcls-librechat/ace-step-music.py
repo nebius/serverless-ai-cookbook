@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one ACE-Step 1.5 generation and retain a verified playable WAV."""
+"""Run ACE-Step 1.5 and retain a WAV master plus bounded MP3 preview."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import subprocess
 
-from recording_pipeline import (immutable_input, invoke, native_file, operation_metadata, publish_copy,
+from recording_pipeline import (file_identity, immutable_input, invoke, native_file, operation_metadata, publish_copy,
                                 timing, workspace_urls)
 from scientific_receipts import save
 
@@ -34,6 +34,19 @@ def inspect_wav(path: Path) -> dict:
             'duration_seconds': float(duration)}
 
 
+def make_preview(source: Path, target: Path) -> dict:
+    """Create a browser-friendly preview small enough for one MCP UI result."""
+    completed = subprocess.run([
+        'ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', str(source), '-vn',
+        '-map_metadata', '-1', '-c:a', 'libmp3lame', '-b:a', '160k', str(target),
+    ], capture_output=True, text=True, check=False, timeout=120)
+    if completed.returncode or not target.is_file() or not target.read_bytes().startswith((b'ID3', b'\xff')):
+        raise ValueError('Could not create the bounded MP3 listening preview.')
+    if not 16 <= target.stat().st_size <= 4 * 1024 * 1024:
+        raise ValueError('MP3 listening preview is empty or exceeds the 4 MiB viewer contract.')
+    return {'content_type': 'audio/mpeg', **file_identity(target)}
+
+
 def run(args, runner=subprocess.run):
     output = args.output_dir.resolve(); output.mkdir(parents=True, exist_ok=True, mode=0o700)
     run_dir, analysis = output / 'run', output / 'analysis'
@@ -53,19 +66,26 @@ def run(args, runner=subprocess.run):
         raise ValueError('ACE-Step returned an invalid or empty WAV.')
     analysis.mkdir(parents=True, exist_ok=True, mode=0o700)
     audio_receipt = publish_copy(generated, analysis / 'soundtrack.wav')
+    audio_path = analysis / 'soundtrack.wav'
+    preview_path = analysis / 'soundtrack-preview.mp3'
+    preview_receipt = make_preview(audio_path, preview_path)
     operation = operation_metadata(run_dir / 'operation.json')
     summary = {
         'schema': 'nebius-scientific-ai/ace-step-music/v1', 'state': 'succeeded',
         'model': args.model, 'operation_id': operation.get('id') or receipt.get('operation_id'),
         'execution_identity': operation.get('execution_identity'), 'parameters': payload,
-        'output': {**audio_receipt, **media}, 'timing': timing(operation),
+        'output': {**audio_receipt, **media}, 'preview': preview_receipt,
+        'timing': timing(operation),
         'limitations': ['Generated audio requires human review before publication.',
-                        'The returned duration is measured from the WAV, not assumed from the request.'],
+                        'The returned duration is measured from the WAV, not assumed from the request.',
+                        'The MP3 is a listening preview; the WAV remains the lossless master.'],
     }
     save(analysis / 'summary.json', summary)
-    audio_path, summary_path = analysis / 'soundtrack.wav', analysis / 'summary.json'
-    return {**summary, 'audio_path': str(audio_path), 'summary_path': str(summary_path),
-            'workspace_urls': workspace_urls(audio=audio_path, summary=summary_path)}, 0
+    summary_path = analysis / 'summary.json'
+    return {**summary, 'audio_path': str(audio_path), 'preview_path': str(preview_path),
+            'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(audio=audio_path, preview=preview_path,
+                                             summary=summary_path)}, 0
 
 
 def main():
