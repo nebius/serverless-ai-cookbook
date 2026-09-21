@@ -8,9 +8,9 @@ import json
 from pathlib import Path
 import subprocess
 
-from recording_pipeline import (file_identity, immutable_input, invoke, native_file, operation_metadata, publish_copy,
+from recording_pipeline import (immutable_input, invoke, native_file, operation_metadata, publish_copy,
                                 timing, workspace_urls)
-from scientific_receipts import save
+from scientific_receipts import save, staged_output
 
 
 def inspect_wav(path: Path) -> dict:
@@ -35,16 +35,20 @@ def inspect_wav(path: Path) -> dict:
 
 
 def make_preview(source: Path, target: Path) -> dict:
-    """Create a browser-friendly preview small enough for one MCP UI result."""
-    completed = subprocess.run([
-        'ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', str(source), '-vn',
-        '-map_metadata', '-1', '-c:a', 'libmp3lame', '-b:a', '160k', str(target),
-    ], capture_output=True, text=True, check=False, timeout=120)
-    if completed.returncode or not target.is_file() or not target.read_bytes().startswith((b'ID3', b'\xff')):
-        raise ValueError('Could not create the bounded MP3 listening preview.')
-    if not 16 <= target.stat().st_size <= 4 * 1024 * 1024:
-        raise ValueError('MP3 listening preview is empty or exceeds the 4 MiB viewer contract.')
-    return {'content_type': 'audio/mpeg', **file_identity(target)}
+    """Create a browser preview locally, then publish it to the bucket mount."""
+    # ffmpeg needs seekable POSIX output. Customer workspaces are object-storage
+    # mounts, so encoding directly to ``target`` can fail even though reads work.
+    with staged_output(target) as staged:
+        completed = subprocess.run([
+            'ffmpeg', '-nostdin', '-v', 'error', '-y', '-i', str(source), '-vn',
+            '-map_metadata', '-1', '-c:a', 'libmp3lame', '-b:a', '160k', str(staged.path),
+        ], capture_output=True, text=True, check=False, timeout=120)
+        if (completed.returncode or not staged.path.is_file()
+                or not staged.path.read_bytes().startswith((b'ID3', b'\xff'))):
+            raise ValueError('Could not create the bounded MP3 listening preview.')
+        if not 16 <= staged.path.stat().st_size <= 4 * 1024 * 1024:
+            raise ValueError('MP3 listening preview is empty or exceeds the 4 MiB viewer contract.')
+    return {'content_type': 'audio/mpeg', **staged.receipt}
 
 
 def run(args, runner=subprocess.run):

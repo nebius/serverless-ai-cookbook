@@ -112,6 +112,8 @@ def test_ace_step_pipeline_has_one_admission_and_measures_returned_wav(tmp_path)
     preview = Path(result['preview_path'])
     assert preview.is_file() and preview.stat().st_size < 4 * 1024 * 1024
     assert preview.read_bytes()[:3] == b'ID3' or preview.read_bytes()[:1] == b'\xff'
+    assert result['preview']['path'] == str(preview)
+    assert result['preview']['publication'] in {'atomic-link', 'verified-copy', 'verified-existing'}
     # Temporary-directory tests deliberately do not receive authenticated
     # Workspace links; production output lives below /workspace.
     assert result['workspace_urls'] == {}
