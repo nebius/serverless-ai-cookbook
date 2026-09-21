@@ -363,7 +363,7 @@ def main() -> None:
     parser.add_argument('--reference-dir', type=Path)
     parser.add_argument('--output-dir', required=True, type=Path)
     parser.add_argument('--idempotency-key', required=True)
-    parser.add_argument('--wait-seconds', type=int, default=600)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=600)
     parser.add_argument('--max-workers', type=int, default=3)
     parser.add_argument('--recover-only', action='store_true')
     args = parser.parse_args()

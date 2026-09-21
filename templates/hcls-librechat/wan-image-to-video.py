@@ -107,7 +107,7 @@ def main() -> None:
     parser.add_argument('--cfg-scale', type=float, default=5)
     parser.add_argument('--output-dir', required=True, type=Path)
     parser.add_argument('--idempotency-key', required=True)
-    parser.add_argument('--wait-seconds', type=int, default=900)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=900)
     parser.add_argument('--recover-only', action='store_true')
     parser.add_argument('--model', default='wan2-2-i2v-nim')
     parser.add_argument('--tool', default='animate_image_native')

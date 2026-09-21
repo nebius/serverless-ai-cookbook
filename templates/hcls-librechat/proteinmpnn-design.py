@@ -342,7 +342,7 @@ def main():
     parser.add_argument('--num-sequences', type=int, default=8)
     parser.add_argument('--temperature', type=float, default=0.1)
     parser.add_argument('--chain', action='append')
-    parser.add_argument('--wait-seconds', type=int, default=300)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=300)
     parser.add_argument('--recover-only', action='store_true')
     parser.add_argument('--model', default='proteinmpnn')
     parser.add_argument('--tool', default='infer_proteinmpnn_native')

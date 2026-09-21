@@ -185,7 +185,7 @@ def main():
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--output-dir', required=True, type=Path)
     parser.add_argument('--idempotency-key', required=True)
-    parser.add_argument('--wait-seconds', type=int, default=600)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=600)
     parser.add_argument('--recover-only', action='store_true')
     parser.add_argument('--model', default='scvi-scanvi')
     parser.add_argument('--tool', default='integrate_single_cell_native')

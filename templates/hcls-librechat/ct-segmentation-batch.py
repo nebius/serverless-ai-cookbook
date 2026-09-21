@@ -187,7 +187,7 @@ def main() -> None:
     parser.add_argument('--output-dir', required=True, type=Path)
     parser.add_argument('--label-prompt', required=True, type=int, action='append')
     parser.add_argument('--idempotency-key', required=True)
-    parser.add_argument('--wait-seconds', type=int, default=300)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=300)
     parser.add_argument('--recover-only', action='store_true')
     args = parser.parse_args()
     if not 8 <= len(args.idempotency_key) <= 120 or args.wait_seconds < 0:

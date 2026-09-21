@@ -122,7 +122,7 @@ def main():
     parser.add_argument('--point-y', type=float)
     parser.add_argument('--object-id', type=int, default=1)
     parser.add_argument('--prompt-frame', type=int, default=0)
-    parser.add_argument('--wait-seconds', type=int, default=300)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=300)
     parser.add_argument('--recover-only', action='store_true')
     parser.add_argument('--model', default='sam2-1-hiera-large')
     parser.add_argument('--tool', default='segment_track_media_native')

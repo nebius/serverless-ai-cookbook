@@ -30,6 +30,8 @@ def test_unchanged_launch_and_observation_schema_bounds():
         "Do not copy read_execution wait_seconds=30"
         in TOOLS["execute_command"]["description"]
     )
+    assert "--operation-wait-seconds" in TOOLS["execute_command"]["description"]
+    assert "must never be moved" in TOOLS["execute_command"]["description"]
     with pytest.raises(ValidationError):
         Draft202012Validator(TOOLS["execute_command"]["inputSchema"]).validate(
             {"command": "true", "wait_seconds": 30}
@@ -104,6 +106,8 @@ def test_actual_packaged_and_seeded_instructions_distinguish_tools():
         in instructions
     )
     assert "Never pass `wait_seconds=30` to `execute_command_mcp_environment-execution`" in instructions
+    assert "Never remove a CLI `--operation-wait-seconds`" in instructions
+    assert "keep the exact shell command and idempotency key unchanged" in instructions
     assert (
         "COPY life-science/bionemo-librechat/scientific-agent-instructions.md /app/scientific-agent-instructions.md"
         in (ROOT / "Dockerfile").read_text()
@@ -112,3 +116,5 @@ def test_actual_packaged_and_seeded_instructions_distinguish_tools():
     assert "'/app/scientific-agent-instructions.md'" in seed
     assert "execute_command_mcp_environment-execution" in seed
     assert "read_execution_mcp_environment-execution" in seed
+    rendered = (ROOT / "render-config.mjs").read_text()
+    assert "a command's --operation-wait-seconds" in rendered

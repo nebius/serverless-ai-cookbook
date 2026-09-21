@@ -145,7 +145,7 @@ def main():
     parser.add_argument('--tool', default='segment_ct_native')
     parser.add_argument('--media-type', default='application/gzip',
                         choices=('application/gzip', 'application/x-nifti', 'application/octet-stream'))
-    parser.add_argument('--wait-seconds', type=int, default=300)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=300)
     parser.add_argument('--recover-only', action='store_true')
     args = parser.parse_args()
     if not 8 <= len(args.idempotency_key) <= 193 or args.wait_seconds < 0:

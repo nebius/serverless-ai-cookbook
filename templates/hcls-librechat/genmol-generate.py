@@ -231,7 +231,7 @@ def main():
     parser.add_argument('--scoring', default='QED', choices=('QED', 'LogP'))
     parser.add_argument('--temperature', type=float, default=1.0)
     parser.add_argument('--noise', type=float, default=1.0)
-    parser.add_argument('--wait-seconds', type=int, default=300)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=300)
     parser.add_argument('--recover-only', action='store_true')
     parser.add_argument('--model', default='genmol')
     parser.add_argument('--tool', default='genmol_generate_native')

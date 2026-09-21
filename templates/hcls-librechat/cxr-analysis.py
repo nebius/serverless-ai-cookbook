@@ -172,7 +172,7 @@ def main():
     parser.add_argument('--question', default=DEFAULT_QUESTION)
     parser.add_argument('--detail', choices=('auto', 'low', 'high'), default='high')
     parser.add_argument('--max-completion-tokens', type=int, default=768)
-    parser.add_argument('--wait-seconds', type=int, default=300)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=300)
     parser.add_argument('--recover-only', action='store_true')
     parser.add_argument('--model', default='nv-reason-cxr-3b')
     parser.add_argument('--tool', default='analyze_image_openai_chat')

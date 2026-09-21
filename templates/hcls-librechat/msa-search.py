@@ -266,7 +266,7 @@ def main():
     parser.add_argument('--output-dir', required=True, type=Path)
     parser.add_argument('--idempotency-key', required=True)
     parser.add_argument('--max-sequences', type=int, default=500)
-    parser.add_argument('--wait-seconds', type=int, default=300)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=300)
     parser.add_argument('--recover-only', action='store_true')
     parser.add_argument('--database', default='pdb70_220313', choices=('pdb70_220313',))
     parser.add_argument('--model', default='msa-search-pdb70')

@@ -354,7 +354,7 @@ def main() -> None:
     parser.add_argument('--time-divisions', type=int, default=20)
     parser.add_argument('--steps', type=int, default=18)
     parser.add_argument('--random-seed', type=int, default=1)
-    parser.add_argument('--wait-seconds', type=int, default=600)
+    parser.add_argument('--operation-wait-seconds', '--wait-seconds', dest='wait_seconds', type=int, default=600)
     parser.add_argument('--max-workers', type=int, default=3)
     parser.add_argument('--recover-only', action='store_true')
     args = parser.parse_args()
