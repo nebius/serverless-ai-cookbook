@@ -57,6 +57,24 @@ def test_multiple_operations_render_one_synchronized_overlay(bridge, monkeypatch
     assert PDB not in result['content'][0]['text']
 
 
+def test_explicit_plddt_result_enables_real_confidence_coloring(bridge, monkeypatch):
+    monkeypatch.setattr(bridge, 'get_result', lambda _: {
+        'structure': PDB.replace('10.00', '82.50'), 'complex_plddt_score': 82.5,
+    })
+    result = bridge.call_viewer({'operation_id': OPERATION, 'title': 'Confidence-colored prediction'})
+    html = result['content'][1]['resource']['text']
+    assert 'Confidence (pLDDT)' in html
+    assert 'Very high ≥90' in html
+    assert 'plddt-b-factor' in html
+    assert 'function confidenceColor(atom)' in html
+
+
+def test_generic_confidence_does_not_claim_plddt_coloring(bridge, monkeypatch):
+    monkeypatch.setattr(bridge, 'get_result', lambda _: {'structure': PDB, 'confidence': 0.91})
+    entries = bridge.collect_structures(bridge.get_result(OPERATION))
+    assert 'color_by' not in entries[0]
+
+
 @pytest.mark.parametrize('operations', [
     [{'operation_id': OPERATION, 'label': 'one'}],
     [{'operation_id': OPERATION, 'label': 'one'}, {'operation_id': OPERATION, 'label': 'two'}],

@@ -86,8 +86,27 @@ def structure_format(text):
     return None
 
 
+def has_plddt_evidence(value, depth=0):
+    """Recognize explicit model pLDDT evidence, not generic confidence."""
+    if depth > 12:
+        return False
+    if isinstance(value, dict):
+        for name, child in value.items():
+            if name.lower() in {'plddt', 'plddt_mean', 'plddt_score', 'complex_plddt_score'}:
+                if isinstance(child, (int, float)) and not isinstance(child, bool):
+                    return True
+                if isinstance(child, list) and child and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in child):
+                    return True
+            if isinstance(child, (dict, list)) and has_plddt_evidence(child, depth + 1):
+                return True
+    elif isinstance(value, list):
+        return any(has_plddt_evidence(item, depth + 1) for item in value)
+    return False
+
+
 def collect_structures(value):
     entries, seen = [], set()
+    plddt_evidence = has_plddt_evidence(value)
 
     def walk(item, path='result', depth=0):
         if depth > 12 or len(entries) >= MAX_STRUCTURES:
@@ -102,7 +121,10 @@ def collect_structures(value):
                         item, fmt = normalised, 'pdb'
                 kind = 'Docking pose' if 'ligand_positions' in path else 'Molecule' if fmt == 'sdf' else 'Protein structure'
                 number = 1 + sum(entry['label'].startswith(kind) for entry in entries)
-                entries.append({'text': item, 'format': fmt, 'label': f'{kind} {number}', 'source': path[:140]})
+                entry = {'text': item, 'format': fmt, 'label': f'{kind} {number}', 'source': path[:140]}
+                if plddt_evidence and kind == 'Protein structure':
+                    entry['color_by'] = 'plddt-b-factor'
+                entries.append(entry)
         elif isinstance(item, dict):
             for name, child in item.items():
                 walk(child, f'{path}.{name}', depth + 1)
@@ -114,7 +136,7 @@ def collect_structures(value):
 
 
 TOOL = {'name': 'visualize_structure',
-        'description': 'Show an interactive protein/molecule viewer in chat: fullscreen, rotation, zoom and representations. For one completed folding/docking operation, pass operation_id. For a synchronized comparison, pass operations with two to four operation IDs and labels; the viewer can overlay all returned coordinates in one camera or inspect them separately. Coordinates are fetched with the configured gateway key without copying them through the LLM. Supports PDB/mmCIF/SDF inside inline or verified native JSON result artifacts up to 4 MiB per operation (not batch artifact lists or SMILES-only results). Does not submit compute. Include the returned UI resource marker verbatim in your response.',
+        'description': 'Show an interactive protein/molecule viewer in chat: fullscreen, rotation, zoom and representations. For one completed folding/docking operation, pass operation_id. For a synchronized comparison, pass operations with two to four operation IDs and labels; the viewer can overlay all returned coordinates in one camera or inspect them separately. When the same verified result contains explicit pLDDT evidence, protein coordinates offer true pLDDT B-factor coloring with a visible legend; otherwise the viewer does not claim confidence coloring. Coordinates are fetched with the configured gateway key without copying them through the LLM. Supports PDB/mmCIF/SDF inside inline or verified native JSON result artifacts up to 4 MiB per operation (not batch artifact lists or SMILES-only results). Does not submit compute. Include the returned UI resource marker verbatim in your response.',
         'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
         'inputSchema': {'type': 'object', 'additionalProperties': False,
                         'properties': {'operation_id': {'type': 'string', 'format': 'uuid'},

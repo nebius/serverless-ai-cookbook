@@ -93,6 +93,8 @@ function agents() {
 
 Guide work across protein structures and complexes, molecular and protein design, genomics and aging, biomedical imaging, speech and clinical documentation, generative media and robotics. Use the model's live schema, qualification and artifact contract before proposing execution.
 
+/workspace is an Object Storage mount. Before any heredoc or direct file write there, create its parent directory in the same execution call; never use a failed first write as directory discovery.
+
 Match media controls to the goal: recorded-video motion/geometry preservation needs the live whole-sequence transfer controls (for example source-derived edges), not video-to-video prefix/suffix continuation. A preserve-motion prompt is not trajectory conditioning. Read generative-media guidance for recorded video or LeRobot work; preserve source actions/data and evaluate output motion separately. Numeric action equality does not establish physical visual-action alignment or policy-training suitability. If the requested controls are unavailable, explain that before substituting another generation mode.
 For recorded Cosmos/LeRobot outputs, prefer the installed deterministic robotics-analysis phase when advertised by workflow discovery, including verified bundle contents and nonvideo data comparisons; do not replace it with filename-extension globs. Metadata equality is not physical motion/action alignment or biological validity.
 

@@ -160,17 +160,18 @@ html,body {{ min-height:100%; width:100%; overflow-x:hidden; }} body {{ margin:0
 .toolbar {{ position:relative; z-index:2; min-height:52px; display:flex; gap:9px; align-items:center; flex-wrap:wrap; padding:10px 12px; border-bottom:1px solid #e8edf5; }}
 .title {{ font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-right:auto; max-width:38ch; }} button,select {{ border:1px solid #cbd5e1; border-radius:7px; background:#fff; color:#14213d; font:inherit; font-size:13px; padding:6px 9px; cursor:pointer; }}
 button:hover,select:hover {{ border-color:#2563eb; }} button[aria-pressed="true"] {{ color:#fff; border-color:#2563eb; background:#2563eb; }} label {{ color:#475569; font-size:13px; }}
-#viewer {{ position:relative; z-index:1; height:480px; min-height:300px; width:100%; overflow:hidden; isolation:isolate; }} .hint {{ position:relative; z-index:2; color:#64748b; font-size:12px; padding:8px 12px; border-top:1px solid #e8edf5; }}
+#viewer {{ position:relative; z-index:1; height:480px; min-height:300px; width:100%; overflow:hidden; isolation:isolate; }} .hint {{ position:relative; z-index:2; color:#64748b; font-size:12px; padding:8px 12px; border-top:1px solid #e8edf5; }} .confidence-legend {{ display:none; align-items:center; gap:8px; flex-wrap:wrap; color:#475569; font-size:12px; padding:7px 12px; border-top:1px solid #e8edf5; }} .confidence-legend.visible {{ display:flex; }} .swatch {{ width:11px; height:11px; border-radius:3px; display:inline-block; margin-right:3px; vertical-align:-1px; }}
 html:fullscreen,html:fullscreen body {{ width:100%; height:100%; background:#f7f9fc; }} html:fullscreen .panel {{ display:flex; flex-direction:column; width:100%; height:100vh; border:0; border-radius:0; box-shadow:none; }} html:fullscreen #viewer {{ flex:1; height:auto; min-height:0; max-height:none; }}
 @media (max-width:560px) {{ .title {{ width:100%; max-width:none; }} #viewer {{ min-height:420px; }} }}</style></head>
 <body><section class="panel" aria-label="Molecular structure viewer"><div class="toolbar"><div class="title">{safe_title}</div>
 <label>Structure <select id="structure" aria-label="Structure">{entry_options}</select></label>
 <button id="reset" type="button">Reset view</button><button id="spin" type="button" aria-pressed="false">Start rotation</button>
-<label>Representation <select id="style" aria-label="Molecular representation"><option value="cartoon">Cartoon</option><option value="cartoon-sticks">Cartoon + sticks</option><option value="sticks">Sticks</option><option value="surface">Surface</option></select></label><button id="fullscreen" type="button" aria-pressed="false">Full screen</button></div>
-<div id="viewer"></div><div id="viewer-status" role="status" class="hint">Loading structure…</div><div class="hint">Drag to rotate · scroll or pinch to zoom · right-drag to pan · Predictions are not experimental validation</div></section>
+<label>Representation <select id="style" aria-label="Molecular representation"><option value="cartoon">Cartoon</option><option value="cartoon-sticks">Cartoon + sticks</option><option value="sticks">Sticks</option><option value="surface">Surface</option></select></label>
+<label>Color <select id="color" aria-label="Structure coloring"><option value="confidence">Confidence (pLDDT)</option><option value="structure">Structure / model</option></select></label><button id="fullscreen" type="button" aria-pressed="false">Full screen</button></div>
+<div id="viewer"></div><div id="viewer-status" role="status" class="hint">Loading structure…</div><div id="confidence-legend" class="confidence-legend" aria-label="pLDDT confidence legend"><span><i class="swatch" style="background:#0053d6"></i>Very high ≥90</span><span><i class="swatch" style="background:#65cbf3"></i>Confident 70–90</span><span><i class="swatch" style="background:#ffdb13"></i>Low 50–70</span><span><i class="swatch" style="background:#ff7d45"></i>Very low &lt;50</span></div><div class="hint">Drag to rotate · scroll or pinch to zoom · right-drag to pan · Predictions are not experimental validation</div></section>
 <script>{THREEDMOL}</script><script>
 let viewer; const entries={entries_data}; let spinning=false;
-let models=[], initialView, alphaCarbons=[], polymerAtoms=[], hasCartoonBackbone=false, overlayMode=false;
+let models=[], initialView, alphaCarbons=[], polymerAtoms=[], hasCartoonBackbone=false, overlayMode=false, confidenceAvailable=false;
 function loadStructure(selection) {{
   viewer.removeAllModels(); viewer.removeAllShapes(); viewer.removeAllSurfaces();
   overlayMode=selection==='overlay'; const selected=overlayMode?entries:[entries[Number(selection)]];
@@ -180,12 +181,15 @@ function loadStructure(selection) {{
   if(atoms.some(a=>![a.x,a.y,a.z].every(Number.isFinite))) throw new Error('Invalid atom coordinates.');
   alphaCarbons=models.flatMap(model=>model.selectedAtoms({{atom:'CA'}})); polymerAtoms=models.flatMap(model=>model.selectedAtoms({{hetflag:false}}));
   hasCartoonBackbone=alphaCarbons.length>=4&&polymerAtoms.length>alphaCarbons.length*2;
+  confidenceAvailable=selected.every(entry=>entry.color_by==='plddt-b-factor');
+  const color=document.getElementById('color'); color.options[0].disabled=!confidenceAvailable; color.value=confidenceAvailable&&!overlayMode?'confidence':'structure';
   const style=selected.every(entry=>entry.format==='sdf'||entry.format==='mol')?'sticks':'cartoon';
   document.getElementById('style').value=style; setRepresentation(style); initialView=viewer.getView();
-  document.getElementById('viewer-status').textContent=atoms.length+' atoms · '+(overlayMode?selected.length+' structures overlaid in one synchronized view':selected[0].format.toUpperCase()+' · '+selected[0].label);
+  document.getElementById('viewer-status').textContent=atoms.length+' atoms · '+(overlayMode?selected.length+' structures overlaid in one synchronized view':selected[0].format.toUpperCase()+' · '+selected[0].label)+(color.value==='confidence'?' · pLDDT confidence coloring':'');
   document.querySelector('.panel').dataset.viewerReady='true';
 }}
 function point(atom) {{ return {{x:atom.x,y:atom.y,z:atom.z}}; }}
+function confidenceColor(atom) {{ const value=Number(atom.b); if(!Number.isFinite(value)) return '#94a3b8'; if(value>=90) return '#0053d6'; if(value>=70) return '#65cbf3'; if(value>=50) return '#ffdb13'; return '#ff7d45'; }}
 function backboneFallback() {{
   if(alphaCarbons.length<4) return false;
   const chains=new Map();
@@ -200,15 +204,17 @@ function backboneFallback() {{
 function setRepresentation(name) {{
   viewer.setStyle({{}},{{}}); viewer.removeAllSurfaces(); viewer.removeAllShapes();
   const colors=['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2'];
+  const confidence=confidenceAvailable&&document.getElementById('color').value==='confidence';
   models.forEach((model,index)=>{{
-    const color=overlayMode?colors[index%colors.length]:undefined; const atoms=model.selectedAtoms({{}});
+    const color=overlayMode?colors[index%colors.length]:undefined; const paint=confidence?{{colorfunc:confidenceColor}}:(color?{{color}}:{{color:'spectrum'}}); const atoms=model.selectedAtoms({{}});
     const ca=model.selectedAtoms({{atom:'CA'}}), polymer=model.selectedAtoms({{hetflag:false}}); const cartoon=ca.length>=4&&polymer.length>ca.length*2;
-    if(name==='sticks') model.setStyle({{}},{{stick:{{radius:0.18,...(color?{{color}}:{{colorscheme:'Jmol'}})}}}});
+    if(name==='sticks') model.setStyle({{}},{{stick:{{radius:0.18,...(confidence||color?paint:{{colorscheme:'Jmol'}})}}}});
     else if(name==='surface'&&overlayMode) model.setStyle({{}},cartoon?{{cartoon:{{color,opacity:0.7}}}}:{{stick:{{radius:0.15,color}}}});
-    else if(name==='surface') {{ if(cartoon) model.setStyle({{hetflag:false}},{{cartoon:{{color:'spectrum',opacity:0.25}}}}); else model.setStyle({{}},{{stick:{{radius:0.15,colorscheme:'Jmol'}}}}); viewer.addSurface($3Dmol.SurfaceType.VDW,{{opacity:0.78,color:'#6b9ed8'}}); }}
-    else if(cartoon) {{ model.setStyle({{hetflag:false}},{{cartoon:{{color:color||'spectrum',opacity:overlayMode?0.72:1}}}}); if(name==='cartoon-sticks') model.addStyle({{}},{{stick:{{radius:0.12,color:color||undefined,colorscheme:color?undefined:'Jmol'}}}}); else model.setStyle({{hetflag:true}},{{stick:{{radius:0.12,color:color||undefined,colorscheme:color?undefined:'Jmol'}}}}); }}
-    else model.setStyle({{}},{{stick:{{radius:0.18,color:color||undefined,colorscheme:color?undefined:'Jmol'}}}});
+    else if(name==='surface') {{ if(cartoon) model.setStyle({{hetflag:false}},{{cartoon:{{...paint,opacity:0.25}}}}); else model.setStyle({{}},{{stick:{{radius:0.15,...(confidence?paint:{{colorscheme:'Jmol'}})}}}}); viewer.addSurface($3Dmol.SurfaceType.VDW,{{opacity:0.78,color:'#6b9ed8'}}); }}
+    else if(cartoon) {{ model.setStyle({{hetflag:false}},{{cartoon:{{...paint,opacity:overlayMode?0.72:1}}}}); if(name==='cartoon-sticks') model.addStyle({{}},{{stick:{{radius:0.12,...(confidence||color?paint:{{colorscheme:'Jmol'}})}}}}); else model.setStyle({{hetflag:true}},{{stick:{{radius:0.12,...(confidence||color?paint:{{colorscheme:'Jmol'}})}}}}); }}
+    else model.setStyle({{}},{{stick:{{radius:0.18,...(confidence||color?paint:{{colorscheme:'Jmol'}})}}}});
   }});
+  document.getElementById('confidence-legend').classList.toggle('visible',confidence);
   if(!models.length&&!backboneFallback()) return; viewer.zoomTo(); viewer.render();
 }}
 function setSpin(enabled) {{ spinning=enabled; viewer.spin(enabled?'y':false,1); const button=document.getElementById('spin'); button.setAttribute('aria-pressed',String(enabled)); button.textContent=enabled?'Auto-rotate':'Start rotation'; }}
@@ -222,6 +228,7 @@ try {{
   document.getElementById('reset').addEventListener('click',()=>{{setSpin(false);viewer.setView(initialView);viewer.render();}});
   document.getElementById('spin').addEventListener('click',()=>setSpin(!spinning));
   document.getElementById('style').addEventListener('change',(event)=>setRepresentation(event.target.value));
+  document.getElementById('color').addEventListener('change',()=>setRepresentation(document.getElementById('style').value));
   document.getElementById('structure').addEventListener('change',(event)=>{{try {{loadStructure(event.target.value);}} catch(error) {{showError(error);}}}});
   document.getElementById('fullscreen').addEventListener('click',toggleFullscreen);
   document.addEventListener('fullscreenchange',syncFullscreen); loadStructure(entries.length>1?'overlay':'0'); setSpin(false);
