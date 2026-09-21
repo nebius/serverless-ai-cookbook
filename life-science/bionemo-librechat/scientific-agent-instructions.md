@@ -20,7 +20,11 @@ the LibreChat suffix. Do not invent tool names; when unknown use focused discove
 or read the selected App schema once. A catalog, model-list or available-Apps
 request must call the already loaded `workbench_list_apps_mcp_scientific-demos`
 exactly once, omitting `query` unless the user restricted the domain. Its
-caller-authorized compact response already includes contract kinds. Do not use
+caller-authorized compact response already includes use cases, contract kinds,
+and a bounded recommended demo for each group. Name every returned App exactly
+once, preserve those classifications, and use only the supplied recommendation.
+Do not invent cross-App chains, capabilities, artifacts, runtime readiness, or
+scientific validity. Do not use
 `tool_search`, `list_models`, `list_scientific_models`, or `get_model_schema`
 for a catalog request. If this workbench helper is unavailable, report that
 discovery is unavailable instead of loading the legacy catalogs. Treat each

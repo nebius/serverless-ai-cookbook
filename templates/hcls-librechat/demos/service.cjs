@@ -115,6 +115,15 @@ const DEMO_PATTERNS = {
   'General-purpose chat': 'Show one bounded response with the exact model and request receipt.',
   Other: 'Show one returned artifact or metric supported by the App\'s live schema.',
 };
+const DEMO_OPERATION_PRIORITY = {
+  'Protein structures & complexes': ['predict-structure', 'predict-protein-structure', 'predict-complex-structure'],
+  'Protein design & engineering': ['design-backbone', 'scaffold-motif', 'design-binder', 'design-binders', 'design-protein'],
+  'Molecular design & docking': ['dock', 'generate-molecule'],
+  'Biomedical imaging & segmentation': ['segment-cells', 'segment-ct', 'segment-track-media', 'analyze-image'],
+  'Speech & audio': ['diarize', 'transcribe', 'synthesize'],
+  'Physical AI & robotics': ['transfer-video', 'augment-lerobot-dataset', 'generate-media'],
+  'Generative media': ['generate-video', 'generate-image', 'generate-music'],
+};
 
 function appContract(item, source) {
   if (source === 'scientific-models') return 'scientific-batch';
@@ -126,7 +135,8 @@ function appUseCase(item) {
   const id = String(item.id || item.model_id || '').toLowerCase();
   const operations = (item.operations || []).map((value) => String(value).toLowerCase());
   const has = (...values) => values.some((value) => operations.includes(value));
-  if (has('predict-structure', 'predict-protein-structure', 'predict-complex-structure', 'search-msa')) return 'Protein structures & complexes';
+  if (has('predict-structure', 'predict-protein-structure', 'predict-complex-structure', 'search-msa')
+      || (has('predict') && /(?:fold|boltz)/.test(id))) return 'Protein structures & complexes';
   if (has('design-protein', 'design-binder', 'design-binders', 'design-backbone', 'scaffold-motif')) return 'Protein design & engineering';
   if (has('dock', 'generate-molecule')) return 'Molecular design & docking';
   if (has('analyze-image', 'segment-ct', 'segment-cells', 'segment-track-media')) return 'Biomedical imaging & segmentation';
@@ -138,6 +148,16 @@ function appUseCase(item) {
   if (has('fit-transform')) return 'Single-cell analysis';
   if (has('chat')) return 'General-purpose chat';
   return 'Other';
+}
+
+function recommendedApp(group) {
+  const priorities = DEMO_OPERATION_PRIORITY[group.use_case] || [];
+  for (const operation of priorities) {
+    const app = group.apps.find((item) => item.operations?.includes(operation));
+    if (app) return { app, operation };
+  }
+  const app = group.apps[0];
+  return { app, operation: app.operations?.[0] || null };
 }
 
 async function listApps(key, query = '') {
@@ -165,14 +185,14 @@ async function listApps(key, query = '') {
   const groups = USE_CASE_ORDER.map((useCase) => ({
     use_case: useCase,
     apps: data.filter((item) => item.use_case === useCase),
-  })).filter((group) => group.apps.length).map((group) => ({
-    ...group,
-    recommended_demo: {
-      model_id: group.apps[0].model_id,
-      operation: group.apps[0].operations?.[0] || null,
+  })).filter((group) => group.apps.length).map((group) => {
+    const selected = recommendedApp(group);
+    return { ...group, recommended_demo: {
+      model_id: selected.app.model_id,
+      operation: selected.operation,
       presentation: DEMO_PATTERNS[group.use_case],
-    },
-  }));
+    } };
+  });
   return { data, groups, count: data.length, discovery_only: true,
     answer_rules: 'Name every returned App exactly once under its supplied use_case and contract_kind. Recommend only the supplied recommended_demo for each group. Do not invent Apps, capabilities, artifacts, cross-App chains, runtime readiness, or scientific validity.',
     next_step: 'Read get_model_schema for the chosen App only. This list proves caller authorization, not runtime readiness or scientific validity.' };

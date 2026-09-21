@@ -354,6 +354,8 @@ def test_team_bucket_context_is_injected(tmp_path) -> None:
     assert "research-lab's dedicated scientific workspace" in prompt
     assert "fs2-research-lab-example is mounted read-write at /workspace" in prompt
     assert "call exactly workbench_list_apps_mcp_scientific-demos once" in prompt
+    assert "Name every returned App exactly once" in prompt
+    assert "use only the supplied recommended_demo" in prompt
     custom = config["endpoints"]["custom"]
     assert len(custom) == 1
     assert custom[0]["baseURL"] == "https://api.tokenfactory.nebius.com/v1"

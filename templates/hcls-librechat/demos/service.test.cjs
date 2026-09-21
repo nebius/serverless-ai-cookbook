@@ -214,6 +214,8 @@ test('compact discovery filters Apps and does not emit scientific input schemas'
     assert.equal(all.data.find((app) => app.model_id === 'openfold2').contract_kind, 'native');
     assert.equal(all.data.find((app) => app.model_id === 'protenix-v2').contract_kind, 'scientific-batch');
     assert.deepEqual(all.groups.map((group) => group.use_case), ['Protein structures & complexes']);
+    assert.equal(all.groups[0].recommended_demo.model_id, 'openfold2');
+    assert.equal(all.groups[0].recommended_demo.operation, 'predict-structure');
     assert.match(all.answer_rules, /every returned App exactly once/);
     assert.deepEqual((await service.listApps('fixture-key', 'Protenix')).data.map((app) => app.model_id), ['protenix-v2']);
     assert.equal((await service.listApps('fixture-key', 'missing')).count, 0);
