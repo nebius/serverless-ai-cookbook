@@ -83,6 +83,7 @@ COPY templates/hcls-librechat/design-artifact-analysis.py /opt/bionemo/design-ar
 COPY templates/hcls-librechat/robotics-analysis.py templates/hcls-librechat/sequence-analysis.py /opt/bionemo/
 COPY templates/hcls-librechat/imaging-analysis.py /opt/bionemo/imaging-analysis.py
 COPY templates/hcls-librechat/ct-segmentation.py /opt/bionemo/ct-segmentation.py
+COPY templates/hcls-librechat/cxr-analysis.py /opt/bionemo/cxr-analysis.py
 COPY templates/hcls-librechat/report-assembly.py /opt/bionemo/report-assembly.py
 COPY templates/hcls-librechat/aging-analysis.py /opt/bionemo/aging-analysis.py
 COPY templates/hcls-librechat/scientific_study.py templates/hcls-librechat/scientific_study_schema.py templates/hcls-librechat/scientific_workflow_draft.py templates/hcls-librechat/scientific_preparation.py templates/hcls-librechat/scientific_protein_preparation.py templates/hcls-librechat/scientific_clinical.py templates/hcls-librechat/scientific-study-worker.py /opt/bionemo/
