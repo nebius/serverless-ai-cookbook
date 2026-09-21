@@ -85,6 +85,7 @@ COPY templates/hcls-librechat/design-artifact-analysis.py /opt/bionemo/design-ar
 COPY templates/hcls-librechat/robotics-analysis.py templates/hcls-librechat/sequence-analysis.py /opt/bionemo/
 COPY templates/hcls-librechat/imaging-analysis.py /opt/bionemo/imaging-analysis.py
 COPY templates/hcls-librechat/ct-segmentation.py /opt/bionemo/ct-segmentation.py
+COPY templates/hcls-librechat/ct-segmentation-batch.py /opt/bionemo/ct-segmentation-batch.py
 COPY templates/hcls-librechat/cxr-analysis.py /opt/bionemo/cxr-analysis.py
 COPY templates/hcls-librechat/proteinmpnn-design.py /opt/bionemo/proteinmpnn-design.py
 COPY templates/hcls-librechat/msa-search.py /opt/bionemo/msa-search.py
