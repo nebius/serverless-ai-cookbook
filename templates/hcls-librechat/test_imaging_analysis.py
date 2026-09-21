@@ -46,6 +46,34 @@ def test_completed_result_materializes_verified_mask_overlay_and_rotation(tmp_pa
     assert json.loads((output / 'metrics.json').read_text())['provenance']['decoded_counts_match_result'] is True
 
 
+def test_affine_aware_resampling_aligns_different_source_and_prediction_grids(tmp_path):
+    source, result, _ = fixture(tmp_path)
+    source_image = nib.load(source)
+    source_data = np.asarray(source_image.dataobj)
+    coarse_source = tmp_path / 'coarse-source.nii.gz'
+    nib.save(nib.Nifti1Image(source_data[::2, ::2, ::2], source_image.affine @ np.diag([2, 2, 2, 1])), coarse_source)
+    output = tmp_path / 'analysis-resampled'
+    metrics = analysis.analyze(result, coarse_source, output)
+    assert metrics['source']['shape'] == [6, 7, 8]
+    assert metrics['source']['render_grid']['shape'] == [12, 14, 16]
+    assert metrics['source']['render_grid']['resampled'] is True
+    assert metrics['source']['render_grid']['coverage_fraction'] > 0.75
+    assert (output / 'orthogonal-overlay.png').exists()
+
+
+def test_non_overlapping_physical_grids_fail_before_publishing(tmp_path):
+    source, result, _ = fixture(tmp_path)
+    source_image = nib.load(source)
+    moved_source = tmp_path / 'moved-source.nii.gz'
+    moved_affine = source_image.affine.copy()
+    moved_affine[:3, 3] = 10000
+    nib.save(nib.Nifti1Image(np.asarray(source_image.dataobj), moved_affine), moved_source)
+    output = tmp_path / 'analysis-no-overlap'
+    with pytest.raises(ValueError, match='do not overlap'):
+        analysis.analyze(result, moved_source, output)
+    assert not output.exists()
+
+
 @pytest.mark.parametrize('mutation,match', [
     (lambda value: value.update(output_bytes=1), 'length'),
     (lambda value: value.update(output_nifti_base64='not base64'), 'strict base64'),

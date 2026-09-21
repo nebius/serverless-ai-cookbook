@@ -14,6 +14,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import nibabel as nib
+from nibabel.processing import resample_from_to
 import numpy as np
 from PIL import Image
 from skimage.measure import marching_cubes
@@ -64,6 +65,45 @@ def decode_prediction(result):
 def label_counts(segmentation):
     labels, counts = np.unique(segmentation, return_counts=True)
     return {str(int(label)): int(count) for label, count in zip(labels, counts, strict=True)}
+
+
+def source_on_prediction_grid(source_image, predicted_image):
+    """Return source intensities on the prediction's physical grid.
+
+    NV-Segment-CT may normalize its output grid independently from the input
+    voxel matrix. Resampling via both NIfTI affines is safe; resizing arrays by
+    shape alone is not. A resampled coverage mask also proves that the two
+    physical grids overlap before an overlay is published.
+    """
+    for name, image in (('source', source_image), ('prediction', predicted_image)):
+        if image.ndim != 3:
+            raise ValueError(f'{name.capitalize()} CT image must be 3D, got {image.shape}.')
+        if not np.isfinite(image.affine).all() or not np.isfinite(np.linalg.det(image.affine[:3, :3])):
+            raise ValueError(f'{name.capitalize()} CT affine is invalid.')
+        if abs(float(np.linalg.det(image.affine[:3, :3]))) < 1e-12:
+            raise ValueError(f'{name.capitalize()} CT affine is singular.')
+
+    target = (predicted_image.shape, predicted_image.affine)
+    same_grid = source_image.shape == predicted_image.shape and np.allclose(
+        source_image.affine, predicted_image.affine, rtol=1e-6, atol=1e-6)
+    if same_grid:
+        source = np.asarray(source_image.dataobj, dtype=np.float32)
+        coverage = np.ones(predicted_image.shape, dtype=bool)
+    else:
+        source = np.asarray(
+            resample_from_to(source_image, target, order=1, mode='constant', cval=np.nan).dataobj,
+            dtype=np.float32,
+        )
+        source_grid = nib.Nifti1Image(np.ones(source_image.shape, dtype=np.uint8), source_image.affine)
+        coverage = np.asarray(
+            resample_from_to(source_grid, target, order=0, mode='constant', cval=0).dataobj,
+            dtype=np.uint8,
+        ).astype(bool)
+    coverage_fraction = float(np.count_nonzero(coverage) / coverage.size)
+    if coverage_fraction <= 0:
+        raise ValueError('Source and prediction NIfTI grids do not overlap in physical space.')
+    source[~coverage] = np.nan
+    return source, {'resampled': not same_grid, 'coverage_fraction': coverage_fraction}
 
 
 def publish_bytes(path, data):
@@ -148,16 +188,16 @@ def analyze(result_path, source_path, output_dir):
     result = unwrap(json.loads(result_bytes))
     compressed, predicted_image = decode_prediction(result)
     source_image = nib.load(source_path)
-    source = np.asarray(source_image.dataobj, dtype=np.float32)
     predicted = np.asarray(predicted_image.dataobj)
-    if source.ndim != 3 or predicted.ndim != 3 or source.shape != predicted.shape:
-        raise ValueError(f'Source/prediction must be matching 3D volumes, got {source.shape} and {predicted.shape}.')
+    source, grid_alignment = source_on_prediction_grid(source_image, predicted_image)
+    if predicted.ndim != 3:
+        raise ValueError(f'Prediction CT image must be 3D, got {predicted.shape}.')
     if not np.isfinite(predicted).all() or not np.allclose(predicted, np.rint(predicted)):
         raise ValueError('Returned segmentation contains non-finite or non-integral labels.')
     segmentation = np.rint(predicted).astype(np.int32)
     counts = label_counts(segmentation)
     advertised_shape = result.get('shape')
-    if advertised_shape is not None and list(source.shape) != advertised_shape:
+    if advertised_shape is not None and list(predicted.shape) != advertised_shape:
         raise ValueError('Decoded CT output shape differs from the result metadata.')
     advertised_counts = result.get('labels')
     if advertised_counts is not None and {str(k): int(v) for k, v in advertised_counts.items()} != counts:
@@ -175,7 +215,9 @@ def analyze(result_path, source_path, output_dir):
         'revision': result.get('revision'),
         'request_id': result.get('request_id'),
         'source': {'path': str(source_path), 'sha256': sha256(source_path.read_bytes()),
-                   'shape': list(source.shape), 'affine': source_image.affine.tolist()},
+                   'shape': list(source_image.shape), 'affine': source_image.affine.tolist(),
+                   'render_grid': {'shape': list(predicted_image.shape),
+                                   'affine': predicted_image.affine.tolist(), **grid_alignment}},
         'prediction': {'path': str(output_dir / 'segmentation.nii.gz'), 'sha256': sha256(compressed),
                        'compressed_size_bytes': len(compressed), 'shape': list(segmentation.shape),
                        'affine': predicted_image.affine.tolist(), 'label_voxel_counts': counts,
@@ -192,8 +234,11 @@ def analyze(result_path, source_path, output_dir):
     save_analysis(output_dir / 'metrics.json', metrics)
     report = [
         '# NV-Segment-CT analysis', '',
-        f"- Operation/request: `{metrics['request_id'] or 'unavailable'}`",
-        f"- Shape: `{list(segmentation.shape)}`",
+        f"- Gateway request: `{metrics['request_id'] or 'unavailable'}`",
+        f"- Source grid: `{list(source_image.shape)}`",
+        f"- Prediction grid: `{list(segmentation.shape)}`",
+        f"- Source resampled to prediction grid with NIfTI affines: `{grid_alignment['resampled']}`",
+        f"- Prediction-grid source coverage: `{grid_alignment['coverage_fraction']:.6f}`",
         f"- Label voxel counts: `{counts}`",
         f"- Foreground voxels: `{metrics['prediction']['foreground_voxels']}`",
         f"- Model execution time: `{result.get('model_seconds')}` seconds",
