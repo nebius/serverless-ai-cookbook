@@ -158,6 +158,18 @@ def test_workspace_media_labels_are_html_safe(bridge):
     assert '&lt;script&gt;' in html
 
 
+def test_workspace_media_accepts_recording_length_pcm_audio(bridge):
+    # RIFF/WAVE signature plus a payload just above the retired 8 MiB cap.
+    audio = bridge.WORKSPACE / 'recording-soundtrack.wav'
+    audio.write_bytes(b'RIFF' + b'\x00\x00\x00\x00' + b'WAVE' + (9 * 1024 * 1024 - 12) * b'X')
+    result = bridge.call_media_viewer({
+        'files': [{'path': str(audio), 'label': '45-second soundtrack'}],
+        'title': 'Recording soundtrack',
+    })
+    assert 'Inline media viewer prepared' in result['content'][0]['text']
+    assert 'data:audio/wav;base64,' in result['content'][1]['resource']['text']
+
+
 @pytest.mark.parametrize('args', [
     {}, {'operation_id': '../../secret'}, {'operation_id': OPERATION, 'structure_text': PDB},
     {'structure_path': '/etc/passwd'}, {'url': 'https://example.com'},

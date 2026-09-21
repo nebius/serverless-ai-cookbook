@@ -20,8 +20,12 @@ import uuid
 MAX_BYTES = 4 * 1024 * 1024
 MAX_STRUCTURES = 20
 MAX_WORKSPACE_STRUCTURES = 4
-MAX_MEDIA_BYTES = 8 * 1024 * 1024
-MAX_MEDIA_TOTAL_BYTES = 16 * 1024 * 1024
+# A 45-second, 48 kHz stereo PCM16 WAV is about 8.3 MiB. Keep the viewer
+# bounded while allowing the recording-ready soundtrack and similarly sized
+# scientific clips to render without forcing users through a download-only
+# fallback.
+MAX_MEDIA_BYTES = 12 * 1024 * 1024
+MAX_MEDIA_TOTAL_BYTES = 24 * 1024 * 1024
 MAX_MEDIA_FILES = 4
 ASSETS = Path(os.environ.get('BIONEMO_ASSET_ROOT', '/opt/bionemo'))
 WORKSPACE = Path(os.environ.get('SCIENTIFIC_WORKSPACE', '/workspace')).resolve()
@@ -377,7 +381,10 @@ def call_media_viewer(args):
             raise ValueError('Unsupported workspace media type. Use PNG/JPEG/WebP/GIF, MP4/WebM, WAV/MP3/OGG/FLAC.')
         total += size
         if total > MAX_MEDIA_TOTAL_BYTES:
-            raise ValueError('Selected workspace media exceeds the 16 MiB combined inline-view limit.')
+            raise ValueError(
+                f'Selected workspace media exceeds the '
+                f'{MAX_MEDIA_TOTAL_BYTES // (1024 * 1024)} MiB combined inline-view limit.'
+            )
         try:
             data = path.read_bytes()
         except OSError:
