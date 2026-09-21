@@ -52,9 +52,12 @@ def test_campaign_uploads_once_and_materializes_verified_pose(tmp_path, monkeypa
         module.save(directory / 'receipt.json', {'state': 'succeeded', 'operation_id': 'dock-op'})
         module.save(directory / 'operation.json', {'id': 'dock-op',
                     'accepted_at': '2026-09-21T00:00:00Z', 'completed_at': '2026-09-21T00:00:03Z'})
-        module.save(directory / 'result.json', {'seed': 7, 'ligand': 'CCO',
-                    'protein_bytes': protein.stat().st_size,
-                    'poses': [{'rank': 1, 'confidence': -1.25, 'sdf': sdf('CCO')}]})
+        module.save(directory / 'result.json', {
+            'status': 'success', 'details': 'success: generated 1 pose(s)',
+            'ligand': 'CCO', 'protein': protein.read_text(),
+            'ligand_positions': [sdf('CCO')], 'position_confidence': [-1.25],
+            'trajectory': [],
+        })
         return {'state': 'succeeded', 'operation_id': 'dock-op'}, 0
 
     monkeypatch.setattr(module, 'upload_source', upload_source)
@@ -79,3 +82,15 @@ def test_genmol_candidates_are_consumed_without_substitution(tmp_path):
     args = argparse.Namespace(ligand=None, ligand_file=None, glob_ligands=None,
                               genmol_summary=summary, top_candidates=1)
     assert module.collect_ligands(args) == [('genmol-row-4', 'Oc1cccnc1')]
+
+
+def test_live_native_pose_and_confidence_cardinality_must_match():
+    module = load_module()
+    value = {'status': 'success', 'ligand': 'CCO',
+             'ligand_positions': [sdf('CCO')], 'position_confidence': []}
+    try:
+        module.validate_result(value, 'CCO', 1)
+    except ValueError as error:
+        assert 'cardinality' in str(error)
+    else:
+        raise AssertionError('mismatched native DiffDock rows must be rejected')

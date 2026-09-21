@@ -109,9 +109,28 @@ def validate_receptor(path: Path) -> None:
 
 def validate_result(value: dict, ligand: str, expected_poses: int) -> list[dict]:
     result = unwrap(value)
+    if result.get('status') not in (None, 'success'):
+        raise ValueError('DiffDock returned a non-success result.')
     if result.get('ligand') != ligand:
         raise ValueError('DiffDock returned a different ligand identity.')
-    poses = result.get('poses')
+
+    # The native DiffDock contract publishes one MolBlock per ranked pose and
+    # one confidence value per position.  A few retained fixtures from the
+    # pre-native gateway use the equivalent normalized ``poses`` rows, so keep
+    # that representation readable without weakening either cardinality or
+    # structure validation.
+    positions = result.get('ligand_positions')
+    confidences = result.get('position_confidence')
+    if isinstance(positions, list) or isinstance(confidences, list):
+        if (not isinstance(positions, list) or not isinstance(confidences, list)
+                or len(positions) != expected_poses or len(confidences) != expected_poses):
+            raise ValueError('DiffDock returned the wrong pose cardinality.')
+        poses = [
+            {'rank': index, 'confidence': confidence, 'sdf': block}
+            for index, (block, confidence) in enumerate(zip(positions, confidences), 1)
+        ]
+    else:
+        poses = result.get('poses')
     if not isinstance(poses, list) or len(poses) != expected_poses:
         raise ValueError('DiffDock returned the wrong pose cardinality.')
     checked = []
