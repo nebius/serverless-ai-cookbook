@@ -58,9 +58,24 @@ The served model id is the path (`/data/cosmos3-sft/<run-id>/diffusers`, read it
 on one H200 — and the outputs carry the training domain (BridgeData's toy-kitchen scenes and
 gripper) even after the 20-iteration smoke run.
 
+## Prerequisite: an Object Storage bucket in the same project and region
+
+The fine-tuned model is copied into a bucket mounted at `/data`. Create one **in the same
+project and region as the job** before you click — a bucket from another region is accepted by
+the form, but the job then fails at start with a bare `ERROR`. Two minutes in the console
+([Create your first bucket](https://docs.nebius.com/object-storage/quickstart)) or one command:
+
+```bash
+nebius storage bucket create --name cosmos3-models --parent-id <project-id>
+```
+
+Any name works; you pick the bucket in the create form. The same bucket is what you later mount
+read-only into the Generator endpoint to serve the result. More on buckets:
+[How to manage Object Storage buckets](https://docs.nebius.com/object-storage/buckets/manage).
+
 ## How to run it
 
-1. **Click Create Job.** Pick the **bucket** to mount at `/data` and raise **shared memory**
+1. **Click Create Job.** Pick the **bucket** from the prerequisite above to mount at `/data` and raise **shared memory**
    to 128 GiB if the form offers it (the link cannot preset it; eight `torchrun` ranks need
    more than the default). Everything else is prefilled; the link sets `MAX_ITER=20`, a
    **smoke run** that proves the pipeline in about an hour. For NVIDIA's full recipe change
@@ -137,7 +152,8 @@ The 1-click link targets NVIDIA's reference hardware, 8×H100 in eu-north1. The 
 ## CLI alternative
 
 ```bash
-BUCKET=$(nebius storage bucket get-by-name --name <your-bucket> --format jsonpath='{.metadata.id}')
+# bucket in the same project + region (see Prerequisite); create with: nebius storage bucket create --name cosmos3-models --parent-id <project-id>
+BUCKET=$(nebius storage bucket get-by-name --name cosmos3-models --format jsonpath='{.metadata.id}')
 
 nebius ai job create \
   --name cosmos3-sft-$(date +%Y%m%d-%H%M%S) \
@@ -164,6 +180,7 @@ the container with `--ipc=host`). The 8×H100 preset has 1.6 TB of RAM, so 128 G
 
 - **`No space left on device` during export** — too many checkpoints on disk. Keep `SAVE_ITER = MAX_ITER` (default) or raise `--disk-size` (~200 GiB per Nano checkpoint).
 - **Slow `Checkpoint save completed: Time taken: 7xx seconds`** — normal: a full-state DCP checkpoint of Nano is ~200 GiB.
+- **Job ERROR before the container starts, no message** — usually the mounted bucket is in another region; use a bucket from the job's own project and region.
 - **`torch.cuda.device_count()` prints fewer GPUs than expected** — check the preset; `NPROC` defaults to all visible GPUs.
 - **NCCL or shared-memory errors at training start** — raise `--shm-size`; the console form's default is too small for 8 ranks.
 - **Job ends FAILED after preemption** — expected with `--restart-policy never`; rerun, or untick *Preemptible* for long runs.
