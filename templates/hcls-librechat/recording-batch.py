@@ -22,7 +22,7 @@ import sys
 
 from PIL import Image, ImageDraw
 
-from scientific_receipts import save, staged_output
+from scientific_receipts import save, staged_derived_view
 from recording_pipeline import workspace_urls
 
 
@@ -208,7 +208,7 @@ def table_rows(workflow: str, cases: list[dict]) -> tuple[list[str], list[dict]]
 
 
 def write_csv(path: Path, fields: list[str], rows: list[dict]) -> None:
-    with staged_output(path) as staged, staged.path.open('w', newline='', encoding='utf-8') as stream:
+    with staged_derived_view(path) as staged, staged.path.open('w', newline='', encoding='utf-8') as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
         writer.writerows(rows)
@@ -253,7 +253,7 @@ def write_gallery(workflow: str, cases: list[dict], destination: Path) -> bool:
         draw.text(((index % columns) * tile_width + 12,
                    (index // columns) * tile_height + 14),
                   f"{case['case']} · {case.get('state', 'unknown')}", fill='black')
-    with staged_output(destination) as staged:
+    with staged_derived_view(destination) as staged:
         canvas.save(staged.path, format='PNG', optimize=True)
     return True
 
@@ -282,7 +282,7 @@ def write_report(*, workflow: str, destination: Path, links: dict,
         else:
             lines.append('- No terminal artifact links were returned.')
         lines.append('')
-    with staged_output(destination) as staged:
+    with staged_derived_view(destination) as staged:
         staged.path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
 
@@ -322,9 +322,9 @@ def run(args, runner=subprocess.run) -> tuple[dict, int]:
         'pending_count': pending, 'failed_count': failed,
         'cases': cases, 'workspace_urls': links,
     }
-    save(summary_path, summary)
     write_report(workflow=args.workflow, destination=report_path, links=links,
                  fields=fields, rows=rows, cases=cases)
+    save(summary_path, summary)
     return summary, 1 if failed else (75 if pending else 0)
 
 

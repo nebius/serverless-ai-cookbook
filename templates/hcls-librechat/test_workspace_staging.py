@@ -92,6 +92,31 @@ def test_existing_output_preserved_and_identical_resume(tmp_path, bucket_copy):
     assert resumed.receipt['publication'] == 'verified-existing'
 
 
+def test_derived_view_can_replace_failed_campaign_projection(tmp_path):
+    target = tmp_path / 'bucket' / 'measurements.csv'
+    target.parent.mkdir()
+    target.write_bytes(b'case,state\nexample,failed\n')
+    with storage.staged_derived_view(target) as staged:
+        staged.path.write_bytes(b'case,state\nexample,succeeded\n')
+    expected = b'case,state\nexample,succeeded\n'
+    assert target.read_bytes() == expected
+    assert staged.receipt == {
+        'path': str(target), 'size_bytes': len(expected),
+        'sha256': hashlib.sha256(expected).hexdigest(),
+        'publication': 'verified-derived-replacement',
+    }
+
+
+def test_derived_view_writer_failure_preserves_previous_projection(tmp_path):
+    target = tmp_path / 'report.md'
+    target.write_bytes(b'previous complete report')
+    with pytest.raises(RuntimeError, match='render failed'):
+        with storage.staged_derived_view(target) as staged:
+            staged.path.write_bytes(b'incomplete')
+            raise RuntimeError('render failed')
+    assert target.read_bytes() == b'previous complete report'
+
+
 def test_streamed_publication_does_not_require_read_bytes(tmp_path, monkeypatch, bucket_copy):
     local = tmp_path / 'local.bin'
     local.write_bytes(b'x' * (2 * storage.FILE_CHUNK_BYTES + 17))

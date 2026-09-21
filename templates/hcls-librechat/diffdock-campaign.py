@@ -26,7 +26,7 @@ from rdkit.Chem import Draw
 from recording_pipeline import (immutable_input, invoke, operation_metadata,
                                 publish_bytes, timing, unwrap, upload_source,
                                 workspace_urls)
-from scientific_receipts import load, save, staged_output
+from scientific_receipts import load, save, staged_derived_view
 
 
 def safe_name(value: str) -> str:
@@ -217,7 +217,7 @@ def write_gallery(cases: list[dict], path: Path) -> bool:
                   fill='#173c2a', font=font(16, True))
         draw.text((x + 18, y + 248), f'Best DiffDock score {score:.5g}',
                   fill='#24523b', font=font(14))
-    with staged_output(path) as staged:
+    with staged_derived_view(path) as staged:
         canvas.save(staged.path, format='PNG', optimize=True)
     return True
 
@@ -247,7 +247,7 @@ def write_heatmap(cases: list[dict], receptors: list[str], ligands: list[str], p
                 label = f'{value:.5g}'
             draw.rectangle(box, fill=color, outline='#8ba497')
             draw.text((box[0] + 12, box[1] + 62), label, fill='#173c2a', font=font(14, True))
-    with staged_output(path) as staged:
+    with staged_derived_view(path) as staged:
         image.save(staged.path, format='PNG', optimize=True)
     return True
 
@@ -262,7 +262,7 @@ def write_csv(path: Path, cases: list[dict]) -> None:
                          'state': case.get('state'), 'operation_id': case.get('operation_id'),
                          'rank': pose.get('rank'), 'diffdock_score': pose.get('confidence'),
                          'pose_path': pose.get('path'), 'pose_url': pose.get('workspace_url')})
-    with staged_output(path) as staged, staged.path.open('w', newline='', encoding='utf-8') as stream:
+    with staged_derived_view(path) as staged, staged.path.open('w', newline='', encoding='utf-8') as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader(); writer.writerows(rows)
 
@@ -299,7 +299,7 @@ def run(args, runner=subprocess.run) -> tuple[dict, int]:
             return ({'case': safe_name(f'{pair[0]}-{pair[3]}'), 'receptor': pair[0],
                      'receptor_path': str(pair[1]), 'ligand_name': pair[3], 'ligand': pair[4],
                      'state': 'failed', 'error_type': type(error).__name__,
-                     'details': 'Inspect the retained case input, upload, operation and result receipts.'}, 1)
+                     'details': str(error)[:500]}, 1)
     with ThreadPoolExecutor(max_workers=min(args.max_workers, len(pairs))) as pool:
         outcomes = list(pool.map(execute, pairs))
     cases, codes = [item[0] for item in outcomes], [item[1] for item in outcomes]
@@ -319,7 +319,6 @@ def run(args, runner=subprocess.run) -> tuple[dict, int]:
                'succeeded_count': sum(code == 0 for code in codes), 'pending_count': pending,
                'failed_count': failed, 'cases': cases, 'workspace_urls': links,
                'score_semantics': 'DiffDock model confidence; not binding affinity or measured pose accuracy.'}
-    save(summary_path, summary)
     lines = ['# DiffDock recording campaign', '',
              f"Runs: {len(cases)}; succeeded: {summary['succeeded_count']}; pending: {pending}; failed: {failed}.",
              '', f"- [Manifest]({links.get('summary', 'batch.json')})",
@@ -335,8 +334,9 @@ def run(args, runner=subprocess.run) -> tuple[dict, int]:
         lines.append(f"| {case['receptor']} | {case['ligand_name']} | {case['state']} | "
                      f"{case.get('operation_id') or 'unavailable'} | {score} |")
     lines += ['', 'Scores are model confidence values, not binding affinity, experimental accuracy, or efficacy.']
-    with staged_output(report_path) as staged:
+    with staged_derived_view(report_path) as staged:
         staged.path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    save(summary_path, summary)
     return summary, 1 if failed else (75 if pending else 0)
 
 

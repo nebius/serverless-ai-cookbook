@@ -23,7 +23,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from recording_pipeline import (immutable_input, invoke, operation_metadata,
                                 publish_bytes, timing, unwrap, workspace_urls)
-from scientific_receipts import load, save, staged_output
+from scientific_receipts import load, save, staged_derived_view
 
 
 MODELS = {
@@ -269,7 +269,7 @@ def write_gallery(cases: list[dict], proteins: list[str], path: Path) -> bool:
             draw.rectangle(box, fill=color, outline='#8ba497')
             label = 'unavailable' if value is None else f'{value:.4f}'
             draw.text((box[0] + 52, box[1] + 82), label, fill='#173c2a', font=font(18, True))
-    with staged_output(path) as staged:
+    with staged_derived_view(path) as staged:
         image.save(staged.path, format='PNG', optimize=True)
     return True
 
@@ -292,7 +292,7 @@ def write_csv(path: Path, cases: list[dict]) -> None:
                      'mapped_residues': comparison.get('mapped_residues'),
                      'reference_coverage': comparison.get('reference_coverage'),
                      'structure_url': links.get('structure'), 'summary_url': links.get('summary')})
-    with staged_output(path) as staged, staged.path.open('w', newline='', encoding='utf-8') as stream:
+    with staged_derived_view(path) as staged, staged.path.open('w', newline='', encoding='utf-8') as stream:
         writer = csv.DictWriter(stream, fieldnames=fields); writer.writeheader(); writer.writerows(rows)
 
 
@@ -308,8 +308,7 @@ def run(args, runner=subprocess.run) -> tuple[dict, int]:
         except Exception as error:
             return ({'case': job[0], 'model': job[4], 'fasta': str(job[1]),
                      'reference': str(job[2]), 'reference_chain': job[3], 'state': 'failed',
-                     'error_type': type(error).__name__,
-                     'details': 'Inspect the retained input, operation, result and comparison receipts.'}, 1)
+                     'error_type': type(error).__name__, 'details': str(error)[:500]}, 1)
     if jobs:
         with ThreadPoolExecutor(max_workers=min(args.max_workers, len(jobs))) as pool:
             outcomes = list(pool.map(execute, jobs))
@@ -335,7 +334,6 @@ def run(args, runner=subprocess.run) -> tuple[dict, int]:
                'succeeded_count': sum(code == 0 for code in codes), 'pending_count': pending,
                'failed_count': failed, 'cases': cases, 'workspace_urls': links,
                'benchmark_status': 'not-a-controlled-benchmark-different-hosted-contracts'}
-    save(summary_path, summary)
     lines = ['# Three-model structure comparison', '',
              'This is not a controlled benchmark: the hosted contracts use different model inputs and methods.', '',
              f"- [Manifest]({links.get('summary', 'batch.json')})",
@@ -351,8 +349,9 @@ def run(args, runner=subprocess.run) -> tuple[dict, int]:
         lines.append(f"| {case['case']} | {case['model']} | {case['state']} | {case.get('operation_id') or 'unavailable'} | "
                      f"{elapsed} | {confidence} | {comparison.get('global_ca_rmsd_angstrom', 'unavailable')} | "
                      f"{comparison.get('tm_score_reference_normalized_ca', 'unavailable')} |")
-    with staged_output(report_path) as staged:
+    with staged_derived_view(report_path) as staged:
         staged.path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    save(summary_path, summary)
     return summary, 1 if failed else (75 if pending else 0)
 
 

@@ -94,6 +94,31 @@ def persist_local_file(source: Path, target: Path) -> dict:
     return {'path': str(target), **reference, 'publication': publication}
 
 
+def replace_derived_file(source: Path, target: Path) -> dict:
+    """Replace a rebuildable derived view and verify its complete readback.
+
+    Raw model artifacts and operation receipts must use ``persist_local_file``
+    and remain immutable. Campaign CSVs, reports, and galleries are projections
+    of those retained records; their state legitimately changes from pending or
+    failed to succeeded when the exact operation is resumed. They therefore use
+    this explicit replacement path rather than weakening immutable publication.
+    """
+    source, target = Path(source), Path(target)
+    size, checksum = file_measurement(source)
+    with source.open('rb') as stream:
+        os.fsync(stream.fileno())
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with source.open('rb') as input_stream, open(
+            target, 'wb', opener=lambda path, flags: os.open(path, flags, 0o600)) as output:
+        while chunk := input_stream.read(FILE_CHUNK_BYTES):
+            output.write(chunk)
+        output.flush()
+        os.fsync(output.fileno())
+    reference = {'size_bytes': size, 'sha256': checksum}
+    verify_file(target, reference)
+    return {'path': str(target), **reference, 'publication': 'verified-derived-replacement'}
+
+
 @dataclass
 class StagedOutput:
     path: Path
@@ -113,6 +138,21 @@ def staged_output(target: Path):
         staged = StagedOutput(Path(folder) / target.name)
         yield staged
         staged.receipt = persist_local_file(staged.path, target)
+
+
+@contextmanager
+def staged_derived_view(target: Path):
+    """Stage and replace only a rebuildable campaign projection.
+
+    The target may be observed while an object-storage copy is in progress, so
+    callers must publish their authoritative JSON manifest only after all views
+    pass verified readback. A failed replacement never permits a success claim.
+    """
+    target = Path(target)
+    with tempfile.TemporaryDirectory(prefix='scientific-derived-view-') as folder:
+        staged = StagedOutput(Path(folder) / target.name)
+        yield staged
+        staged.receipt = replace_derived_file(staged.path, target)
 
 
 def _local_lock_root() -> Path:
