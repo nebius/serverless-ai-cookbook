@@ -35,7 +35,8 @@ def test_explicit_chat_model_is_admitted_only_after_live_catalog_verification(tm
     provider = next(item for item in config['endpoints']['custom'] if item['name'] == 'Nebius Token Factory')
     assert model in provider['models']['default']
     assert provider['models']['default'] == [model]
-    assert config['endpoints']['agents']['recursionLimit'] == 30
+    assert config['endpoints']['agents']['recursionLimit'] == 50
+    assert config['endpoints']['agents']['maxRecursionLimit'] == 50
     assert config['endpoints']['agents']['maxRecursionLimit'] == 50
 
 

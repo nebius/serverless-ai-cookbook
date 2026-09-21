@@ -166,7 +166,7 @@ const config = {
     agents: {
       allowedProviders: ['Nebius Token Factory', 'openAI', 'anthropic'],
       capabilities: ['skills', 'tools', 'artifacts', 'context', 'chain', 'deferred_tools'],
-      recursionLimit: 30, maxRecursionLimit: 50, toolApproval: { enabled: false },
+      recursionLimit: 50, maxRecursionLimit: 50, toolApproval: { enabled: false },
     },
     openAI: { titleConvo: true, titleModel: 'gpt-5.6-luna' },
     anthropic: { titleConvo: true, titleModel: 'claude-haiku-4-5' },
