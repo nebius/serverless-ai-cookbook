@@ -304,8 +304,23 @@ def run(args, runner=subprocess.run):
     summary['parameters'].update({'random_seed': args.seed, 'sampling_temperature': args.temperature,
                                   'designed_chains': args.chain or None})
     save(analysis_dir / 'summary.json', summary)
+    ranked_designs = [
+        {
+            'rank': rank,
+            'sample': row['sample'],
+            'model_score': row['score'],
+            'global_model_score': row['global_score'],
+            'sequence_recovery': row['sequence_recovery'],
+            'sequence': row['sequence'],
+        }
+        for rank, row in enumerate(summary['designs'], 1)
+    ]
     return {'state': 'succeeded', 'operation_id': operation_id, 'model': args.model,
-            'num_sequences': len(summary['designs']), 'elapsed_seconds': summary['timing']['elapsed_seconds'],
+            'parameters': summary['parameters'], 'sequence_length': summary['sequence_length'],
+            'num_sequences': len(summary['designs']), 'ranked_designs': ranked_designs,
+            'probability_shape': summary['probability_shape'], 'timing': summary['timing'],
+            'allowed_result_fields': ['model_score', 'global_model_score', 'sequence_recovery'],
+            'absent_result_fields': ['pLDDT', 'pTM', 'PAE', 'binding', 'folding', 'function'],
             'summary_image': str(analysis_dir / 'proteinmpnn-summary.png'),
             'designs_csv': str(analysis_dir / 'designs.csv'),
             'summary_path': str(analysis_dir / 'summary.json')}, 0

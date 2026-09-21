@@ -78,6 +78,12 @@ def test_pipeline_uses_one_native_admission_and_materializes_result(tmp_path):
 
     result, code = pipeline.run(args, runner)
     assert code == 0 and result['operation_id'] == 'msa-operation'
+    assert result['query']['length'] == 6
+    assert result['alignment']['sequence_count'] == 3
+    assert result['alignment']['aligned_columns'] == 6
+    assert result['alignment']['mean_coverage'] == pytest.approx(17 / 18)
+    assert result['timing']['completed_at'] == '2026-09-21T00:00:01.25Z'
+    assert 'non-gap' in result['coverage_definition']
     assert [Path(command[1]).name for command in commands] == ['invoke-native.py']
     payload = json.loads((args.output_dir / 'input.json').read_text())
     assert payload == {'sequence': 'ACDEFG', 'databases': ['pdb70_220313'],

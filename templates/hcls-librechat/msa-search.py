@@ -245,8 +245,9 @@ def run(args, runner=subprocess.run):
     summary = materialize(run_dir / 'result.json', run_dir / 'operation.json', args.query.resolve(),
                           analysis_dir, args.model)
     return {'state': 'succeeded', 'operation_id': operation_id, 'model': args.model,
-            'database': summary['database'], 'sequence_count': summary['alignment']['sequence_count'],
-            'elapsed_seconds': summary['timing']['elapsed_seconds'],
+            'database': summary['database'], 'query': summary['query'],
+            'alignment': summary['alignment'], 'timing': summary['timing'],
+            'coverage_definition': 'fraction of aligned non-gap query-grid columns per returned sequence',
             'summary_image': str(analysis_dir / 'msa-summary.png'),
             'alignment_path': str(analysis_dir / 'alignment.a3m'),
             'summary_path': str(analysis_dir / 'summary.json')}, 0

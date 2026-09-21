@@ -85,6 +85,13 @@ def test_pipeline_is_one_upload_one_admission_then_deterministic_analysis(tmp_pa
 
     result, code = pipeline.run(args, runner)
     assert code == 0 and result['operation_id'] == 'protein-operation'
+    assert result['sequence_length'] == 6
+    assert result['probability_shape'] == [2, 6, 21]
+    assert result['ranked_designs'][0] == {
+        'rank': 1, 'sample': 2, 'model_score': 0.7, 'global_model_score': 0.7,
+        'sequence_recovery': 0.833333, 'sequence': 'ACDFFG'}
+    assert result['allowed_result_fields'] == ['model_score', 'global_model_score', 'sequence_recovery']
+    assert 'pLDDT' in result['absent_result_fields']
     assert [Path(command[1]).name for command in commands] == ['upload-artifact.py', 'invoke-native.py']
     payload = json.loads((args.output_dir / 'input.json').read_text())
     assert payload['random_seed'] == 42 and payload['num_seq_per_target'] == 2
