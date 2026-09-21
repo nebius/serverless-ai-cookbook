@@ -8,7 +8,7 @@ test('current and future typed model tools are deferred after mcp_all expansion'
   }
   assert.equal(value.get_model_schema_mcp_bionemo_models, undefined);
   assert.equal(value['get_model_schema_mcp_scientific-ai-apps'], undefined);
-  assert.equal(value['execute_command_mcp_environment-execution'].defer_loading, true);
+  assert.equal(value['execute_command_mcp_environment-execution'], undefined);
 });
 test('existing tool options survive unchanged except deferred schema loading', () => {
   const name = 'future_typed_model_mcp_scientific-ai-apps';
@@ -18,19 +18,21 @@ test('existing tool options survive unchanged except deferred schema loading', (
   assert.deepEqual(original, { allowed_callers: ['direct'], custom: 3 });
 });
 
-test('non-discovery workbench and execution tools are deferred', () => {
+test('common workbench, execution and viewer tools stay immediately available', () => {
   const tools = [
     { name: 'workbench_list_apps_mcp_scientific-demos' },
     { name: 'workbench_compare_structures_mcp_scientific-demos' },
+    { name: 'workbench_get_operation_result_mcp_scientific-demos' },
     { name: 'execute_command_mcp_environment-execution' },
     { name: 'visualize_structure_mcp_structure-viewer' },
+    { name: 'visualize_workspace_media_mcp_structure-viewer' },
     { name: 'tavily_search_mcp_tavily' },
   ];
   const value = options({ tools: tools.map((tool) => tool.name), tool_options: {} }, tools);
-  assert.equal(value['workbench_list_apps_mcp_scientific-demos'], undefined);
-  for (const tool of tools.slice(1)) {
-    assert.equal(value[tool.name].defer_loading, true, tool.name);
+  for (const tool of tools.slice(0, -1)) {
+    assert.equal(value[tool.name], undefined, tool.name);
   }
+  assert.equal(value['tavily_search_mcp_tavily'].defer_loading, true);
 });
 
 test('compact App discovery stays immediately available', () => {

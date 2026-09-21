@@ -160,6 +160,7 @@ def test_rendered_gateway_authentication(tmp_path, shared_key) -> None:
     assert config["interface"]["skills"]["use"] is True
     assert "skills" in config["endpoints"]["agents"]["capabilities"]
     assert "deferred_tools" in config["endpoints"]["agents"]["capabilities"]
+    assert config["mcpServers"]["structure-viewer"]["env"]["SCIENTIFIC_WORKSPACE"] == "/workspace"
 
 
 def test_model_tools_are_deferred_without_changing_other_options() -> None:
@@ -175,6 +176,9 @@ assert.equal(result['get_model_schema_mcp_scientific-ai-apps'], undefined);
 assert.equal(result['list_models_mcp_scientific-ai-apps'].defer_loading, true);
 assert.equal(result['get_operation_result_mcp_scientific-ai-apps'].defer_loading, true);
 assert.equal(result['tavily_search_mcp_tavily'].defer_loading, true);
+assert.equal(result['execute_command_mcp_environment-execution'], undefined);
+assert.equal(result['workbench_get_operation_result_mcp_scientific-demos'], undefined);
+assert.equal(result['visualize_workspace_media_mcp_structure-viewer'], undefined);
 assert.equal(input.tool_options['infer_openfold2_native_mcp_scientific-ai-apps'].defer_loading, undefined);
 """
     subprocess.run(['node', '-e', script, str(ROOT / 'scientific-tool-options.cjs')], check=True)
@@ -233,6 +237,7 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     demo_tools = {name + '_mcp_scientific-demos' for name in json.loads(definitions.stdout)}
     general = next(agent for agent in agents if agent['id'] == 'agent_nebius_scientific_ai')
     assert demo_tools <= set(general['tools'])
+    assert 'visualize_workspace_media_mcp_structure-viewer' in general['tools']
     for agent in agents:
         assert agent["skills_enabled"] is True
         assert agent["model_parameters"]["max_tokens"] == 16384

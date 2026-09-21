@@ -15,8 +15,9 @@ SDF = 'water\n  fixture\n\n  1  0  0  0  0  0  0  0  0  0999 V2000\n    0.0000  
 
 
 @pytest.fixture
-def bridge(monkeypatch):
+def bridge(monkeypatch, tmp_path):
     monkeypatch.setenv('BIONEMO_ASSET_ROOT', str(ASSETS))
+    monkeypatch.setenv('SCIENTIFIC_WORKSPACE', str(tmp_path))
     spec = importlib.util.spec_from_file_location('structure_bridge', ROOT / 'structure-mcp.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -55,6 +56,29 @@ def test_multiple_operations_render_one_synchronized_overlay(bridge, monkeypatch
     assert 'OpenFold3 Preview2' in html and 'Boltz2' in html
     assert "loadStructure(entries.length>1?'overlay':'0')" in html
     assert PDB not in result['content'][0]['text']
+
+
+def test_completed_docking_operation_overlays_verified_workspace_receptor(bridge, monkeypatch):
+    receptor = bridge.WORKSPACE / 'inputs' / 'receptor.pdb'
+    receptor.parent.mkdir()
+    receptor.write_text(PDB)
+    monkeypatch.setattr(bridge, 'get_result', lambda _: {'ligand_positions': [SDF]})
+    result = bridge.call_viewer({
+        'operation_id': OPERATION,
+        'workspace_files': [{'path': 'inputs/receptor.pdb', 'label': '1UBQ receptor'}],
+        'title': 'DiffDock · 1UBQ + aspirin',
+    })
+    html = result['content'][1]['resource']['text']
+    assert '1UBQ receptor' in html and 'Docking pose 1' in html
+    assert 'Overlay all (synchronized)' in html
+    assert PDB not in result['content'][0]['text']
+
+
+def test_workspace_structure_paths_cannot_escape_root(bridge, tmp_path):
+    outside = tmp_path.parent / 'outside.pdb'
+    outside.write_text(PDB)
+    with pytest.raises(ValueError, match='remain under'):
+        bridge.call_viewer({'workspace_files': [{'path': str(outside), 'label': 'outside'}]})
 
 
 def test_explicit_plddt_result_enables_real_confidence_coloring(bridge, monkeypatch):
@@ -96,6 +120,42 @@ def test_inline_structure_and_title_are_script_safe(bridge):
     assert title not in html
     assert '</script><script>alert(1)' not in html
     assert '<\\/script>' in html
+
+
+def test_workspace_media_is_signature_checked_and_bytes_stay_out_of_text(bridge):
+    image = bridge.WORKSPACE / 'outputs' / 'overlay.png'
+    image.parent.mkdir()
+    image.write_bytes(b'\x89PNG\r\n\x1a\n' + b'synthetic-image-bytes')
+    result = bridge.call_media_viewer({'files': [
+        {'path': 'outputs/overlay.png', 'label': 'CT overlay'},
+    ], 'title': 'Research result'})
+    assert 'synthetic-image-bytes' not in result['content'][0]['text']
+    html = result['content'][1]['resource']['text']
+    assert 'data:image/png;base64,' in html
+    assert 'CT overlay' in html and 'Research result' in html
+    assert bridge.MEDIA_TOOL['annotations']['readOnlyHint'] is True
+
+
+@pytest.mark.parametrize('filename,data', [
+    ('wrong.png', b'not a png'),
+    ('unsupported.nii.gz', b'\x89PNG\r\n\x1a\n'),
+])
+def test_workspace_media_rejects_spoofed_or_unsupported_files(bridge, filename, data):
+    path = bridge.WORKSPACE / filename
+    path.write_bytes(data)
+    with pytest.raises(ValueError):
+        bridge.call_media_viewer({'files': [{'path': str(path), 'label': 'bad'}]})
+
+
+def test_workspace_media_labels_are_html_safe(bridge):
+    image = bridge.WORKSPACE / 'safe.png'
+    image.write_bytes(b'\x89PNG\r\n\x1a\n' + b'data')
+    label = '"><script>alert(1)</script>'
+    result = bridge.call_media_viewer({'files': [{'path': str(image), 'label': label}],
+                                       'title': label})
+    html = result['content'][1]['resource']['text']
+    assert label not in html
+    assert '&lt;script&gt;' in html
 
 
 @pytest.mark.parametrize('args', [

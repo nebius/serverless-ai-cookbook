@@ -1,10 +1,26 @@
-// Keep only the two compact discovery primitives ready. Every execution,
-// lifecycle, analysis and model-specific schema remains searchable and is
-// loaded only when the agent needs it. This changes LibreChat context loading,
-// never gateway authorization, tool visibility or calls.
+// Keep the small, reusable workbench surface ready. These tools are needed in
+// almost every real run and deferring them repeatedly caused the planner to
+// guess raw/unsuffixed names after model submission. Model-specific schemas
+// remain searchable and are still loaded only when needed. This changes
+// LibreChat context loading, never gateway authorization, visibility or calls.
 const alwaysReady = new Set([
   'get_model_schema_mcp_scientific-ai-apps',
   'workbench_list_apps_mcp_scientific-demos',
+  'workbench_track_operation_mcp_scientific-demos',
+  'workbench_list_operations_mcp_scientific-demos',
+  'workbench_get_operation_mcp_scientific-demos',
+  'workbench_get_operation_result_mcp_scientific-demos',
+  'workbench_cancel_operation_mcp_scientific-demos',
+  'workbench_workspace_mcp_scientific-demos',
+  'workbench_compare_docking_mcp_scientific-demos',
+  'workbench_compare_docking_batch_mcp_scientific-demos',
+  'workbench_compare_structures_mcp_scientific-demos',
+  'workbench_analyze_aging_mcp_scientific-demos',
+  'workbench_assemble_report_mcp_scientific-demos',
+  'execute_command_mcp_environment-execution',
+  'read_execution_mcp_environment-execution',
+  'visualize_structure_mcp_structure-viewer',
+  'visualize_workspace_media_mcp_structure-viewer',
 ]);
 const deferableSuffixes = [
   '_mcp_scientific-ai-apps',
