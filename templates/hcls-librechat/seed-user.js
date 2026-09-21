@@ -3,6 +3,7 @@
  * normal deployments are unaffected. Runs after migrations/seed, before API. */
 const { MongoClient } = require('mongodb');
 const bcrypt = require('bcryptjs');
+const { encrypt } = require('@librechat/api');
 
 const email = process.env.SEED_DEFAULT_USER_EMAIL;
 const password = process.env.SEED_DEFAULT_USER_PASSWORD;
@@ -36,9 +37,36 @@ if (!email || !password) {
       },
       { upsert: true },
     );
+    const user = await users.findOne({ email }, { projection: { _id: 1 } });
+    if (!user) throw new Error('Unable to resolve the seeded default user');
+
+    // A dedicated deployment already receives this credential from
+    // MysteryBox. Seed the same key into LibreChat's user-scoped MCP store so
+    // a replacement endpoint is usable immediately. Preserve a key the user
+    // later changed in Apps settings; restarts must not overwrite it.
+    let credentialSeeded = false;
+    if (process.env.SCIENTIFIC_MODELS_API_KEY) {
+      const authField = 'SCIENTIFIC_MODELS_API_KEY';
+      const pluginKey = 'mcp_scientific-demos';
+      const encryptedValue = await encrypt(process.env.SCIENTIFIC_MODELS_API_KEY);
+      const credential = await client.db().collection('pluginauths').updateOne(
+        { userId: String(user._id), authField, pluginKey },
+        {
+          $setOnInsert: {
+            userId: String(user._id), authField, pluginKey,
+            value: encryptedValue, createdAt: now, updatedAt: now,
+          },
+        },
+        { upsert: true },
+      );
+      credentialSeeded = Boolean(credential.upsertedId);
+    }
     console.log(
       `[seed-user] ${result.upsertedId ? 'created' : 'updated'} default user ${email}`,
     );
+    if (process.env.SCIENTIFIC_MODELS_API_KEY) {
+      console.log(`[seed-user] ${credentialSeeded ? 'seeded' : 'retained'} default user Scientific AI workbench credential`);
+    }
   } finally {
     await client.close();
   }

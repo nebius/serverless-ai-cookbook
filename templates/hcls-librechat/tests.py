@@ -252,6 +252,8 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     assert "Do not rewrite existing numerical tables in an ad hoc Python renderer" in general['instructions']
     assert "call exactly workbench_list_apps_mcp_scientific-demos once" in general['instructions']
     assert "Do not call tool_search, list_models, list_scientific_models or get_model_schema for a catalog request" in general['instructions']
+    assert "Name every returned App exactly once" in general['instructions']
+    assert "do not invent cross-App chains" in general['instructions']
     assert "FINAL CATALOG ROUTING RULE" in general['instructions']
     assert general['instructions'].rstrip().endswith(
         "A failed schema probe is not evidence that an App is unavailable."
@@ -365,6 +367,14 @@ def test_client_branding_is_baked_into_the_wrapper() -> None:
     assert 'APP_TITLE="Nebius Scientific AI Agent"' in dockerfile
     assert "Nebius Scientific AI Agent" in brand_client
     assert "scientific-tool-search-patch.cjs /opt/hcls-librechat/scientific-tool-search-patch.cjs" in dockerfile
+
+
+def test_dedicated_user_seed_bootstraps_workbench_credential_without_overwrite() -> None:
+    seed = (ROOT / "seed-user.js").read_text(encoding="utf-8")
+    assert "collection('pluginauths').updateOne" in seed
+    assert "pluginKey = 'mcp_scientific-demos'" in seed
+    assert "$setOnInsert" in seed
+    assert "encrypt(process.env.SCIENTIFIC_MODELS_API_KEY)" in seed
 
 
 def test_product_does_not_use_tenant_branding() -> None:

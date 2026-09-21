@@ -94,15 +94,66 @@ async function platformBytes(key, resource) {
   return Buffer.from(await response.arrayBuffer());
 }
 
+const USE_CASE_ORDER = [
+  'Protein structures & complexes', 'Protein design & engineering',
+  'Molecular design & docking', 'Biomedical imaging & segmentation',
+  'Speech & audio', 'Physical AI & robotics', 'Generative media',
+  'Genomics', 'Aging & clinical biomarkers', 'Single-cell analysis',
+  'General-purpose chat', 'Other',
+];
+const DEMO_PATTERNS = {
+  'Protein structures & complexes': 'Open the returned structure in the 3D viewer and use model-reported confidence coloring only when the result actually contains confidence evidence.',
+  'Protein design & engineering': 'Show the returned design artifacts and a 3D structure comparison after the live schema confirms those outputs.',
+  'Molecular design & docking': 'Show the returned ranked poses and a synchronized receptor/ligand overlay after verifying the exact result contract.',
+  'Biomedical imaging & segmentation': 'Show the source beside the returned image or mask overlay; keep research-only limitations visible.',
+  'Speech & audio': 'Show a synchronized transcript or speaker timeline from the returned artifact.',
+  'Physical AI & robotics': 'Show source and returned video or dataset artifacts side by side, preserving the source action/data provenance.',
+  'Generative media': 'Show the returned media artifact with its exact prompt and operation receipt.',
+  Genomics: 'Plot only the sequence or summary values actually returned by the selected App.',
+  'Aging & clinical biomarkers': 'Plot returned age estimates against a declared reference only when one was supplied.',
+  'Single-cell analysis': 'Show the returned embedding or labels only when the result contract provides them.',
+  'General-purpose chat': 'Show one bounded response with the exact model and request receipt.',
+  Other: 'Show one returned artifact or metric supported by the App\'s live schema.',
+};
+
+function appContract(item, source) {
+  if (source === 'scientific-models') return 'scientific-batch';
+  const capabilities = [...(item.capabilities || []), ...(item.protocols || [])];
+  return capabilities.includes('openai-chat') ? 'chat' : 'native';
+}
+
+function appUseCase(item) {
+  const id = String(item.id || item.model_id || '').toLowerCase();
+  const operations = (item.operations || []).map((value) => String(value).toLowerCase());
+  const has = (...values) => values.some((value) => operations.includes(value));
+  if (has('predict-structure', 'predict-protein-structure', 'predict-complex-structure', 'search-msa')) return 'Protein structures & complexes';
+  if (has('design-protein', 'design-binder', 'design-binders', 'design-backbone', 'scaffold-motif')) return 'Protein design & engineering';
+  if (has('dock', 'generate-molecule')) return 'Molecular design & docking';
+  if (has('analyze-image', 'segment-ct', 'segment-cells', 'segment-track-media')) return 'Biomedical imaging & segmentation';
+  if (has('transcribe', 'diarize', 'synthesize')) return 'Speech & audio';
+  if (has('transfer-video', 'augment-lerobot-dataset', 'generate-media') || id.includes('cosmos')) return 'Physical AI & robotics';
+  if (has('generate-image', 'generate-video', 'generate-music')) return 'Generative media';
+  if (has('generate-sequence')) return 'Genomics';
+  if (has('predict-age')) return 'Aging & clinical biomarkers';
+  if (has('fit-transform')) return 'Single-cell analysis';
+  if (has('chat')) return 'General-purpose chat';
+  return 'Other';
+}
+
 async function listApps(key, query = '') {
   if (typeof query !== 'string' || query.length > 200) throw failure('Supply a short App name or capability.');
   const catalogs = await Promise.all([platform(key, 'GET', '/v1/models'), platform(key, 'GET', '/v1/scientific-models')]);
   const apps = new Map();
-  for (const catalog of catalogs) for (const item of catalog.data || []) {
+  for (const [index, catalog] of catalogs.entries()) for (const item of catalog.data || []) {
     const id = item.id || item.model_id;
     if (!id) continue;
     const previous = apps.get(id) || {};
+    const contractKind = appContract(item, index === 0 ? 'models' : 'scientific-models');
+    const contractKinds = [...new Set([...(previous.contract_kinds || []), contractKind])];
     apps.set(id, { ...previous, model_id: id, display_name: item.display_name || previous.display_name || id,
+      use_case: previous.use_case || appUseCase(item),
+      contract_kind: contractKinds.length === 1 ? contractKinds[0] : 'multiple',
+      contract_kinds: contractKinds,
       ...(item.protocols ? { protocols: item.protocols } : {}),
       ...(item.operations ? { operations: item.operations } : {}),
       ...(item.capabilities ? { capabilities: item.capabilities } : {}),
@@ -111,8 +162,20 @@ async function listApps(key, query = '') {
     });
   }
   const data = [...apps.values()].filter((item) => !query || JSON.stringify(item).toLowerCase().includes(query.toLowerCase()));
-  return { data, count: data.length, discovery_only: true,
-    next_step: 'Read get_model_schema for the chosen App only. This list proves authorization, not runtime readiness or scientific validity.' };
+  const groups = USE_CASE_ORDER.map((useCase) => ({
+    use_case: useCase,
+    apps: data.filter((item) => item.use_case === useCase),
+  })).filter((group) => group.apps.length).map((group) => ({
+    ...group,
+    recommended_demo: {
+      model_id: group.apps[0].model_id,
+      operation: group.apps[0].operations?.[0] || null,
+      presentation: DEMO_PATTERNS[group.use_case],
+    },
+  }));
+  return { data, groups, count: data.length, discovery_only: true,
+    answer_rules: 'Name every returned App exactly once under its supplied use_case and contract_kind. Recommend only the supplied recommended_demo for each group. Do not invent Apps, capabilities, artifacts, cross-App chains, runtime readiness, or scientific validity.',
+    next_step: 'Read get_model_schema for the chosen App only. This list proves caller authorization, not runtime readiness or scientific validity.' };
 }
 
 async function retainResult(key, operationId, bytes) {

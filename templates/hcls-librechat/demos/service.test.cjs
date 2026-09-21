@@ -204,14 +204,18 @@ test('compact discovery filters Apps and does not emit scientific input schemas'
   const service = await setup;
   const originalFetch = global.fetch;
   global.fetch = async (url) => new Response(JSON.stringify({ data: String(url).endsWith('/v1/models')
-    ? [{ id: 'openfold2', protocols: ['native'], input_schema: { huge: 'x'.repeat(50000) } }]
-    : [{ model_id: 'protenix-v2', display_name: 'Protenix', operations: ['predict'],
+    ? [{ id: 'openfold2', protocols: ['native'], operations: ['predict-structure'], input_schema: { huge: 'x'.repeat(50000) } }]
+    : [{ model_id: 'protenix-v2', display_name: 'Protenix', operations: ['predict-complex-structure'],
       parameters_schema: { huge: 'x'.repeat(50000) }, mcp_tool_description: 'Protein complex prediction' }] }));
   try {
     const all = await service.listApps('fixture-key');
     assert.equal(all.count, 2);
-    assert.ok(JSON.stringify(all).length < 1000);
-    assert.deepEqual((await service.listApps('fixture-key', 'complex')).data.map((app) => app.model_id), ['protenix-v2']);
+    assert.ok(JSON.stringify(all).length < 3000);
+    assert.equal(all.data.find((app) => app.model_id === 'openfold2').contract_kind, 'native');
+    assert.equal(all.data.find((app) => app.model_id === 'protenix-v2').contract_kind, 'scientific-batch');
+    assert.deepEqual(all.groups.map((group) => group.use_case), ['Protein structures & complexes']);
+    assert.match(all.answer_rules, /every returned App exactly once/);
+    assert.deepEqual((await service.listApps('fixture-key', 'Protenix')).data.map((app) => app.model_id), ['protenix-v2']);
     assert.equal((await service.listApps('fixture-key', 'missing')).count, 0);
   } finally { global.fetch = originalFetch; }
 });
