@@ -250,6 +250,8 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     assert "Do not launch parallel CLI processes" in general['instructions']
     assert "prefer `run_scientific_workflow_mcp_environment-execution` with its typed `study` (scientific-workflow/v2)" in general['instructions']
     assert "Do not rewrite existing numerical tables in an ad hoc Python renderer" in general['instructions']
+    assert "call exactly workbench_list_apps_mcp_scientific-demos once" in general['instructions']
+    assert "Do not call tool_search, list_models, list_scientific_models or get_model_schema for a catalog request" in general['instructions']
     assert "analysis into another" not in general['instructions']
     assert "workspace_url" in general['instructions']
 
@@ -345,6 +347,7 @@ def test_team_bucket_context_is_injected(tmp_path) -> None:
     prompt = public["preset"]["promptPrefix"]
     assert "research-lab's dedicated scientific workspace" in prompt
     assert "fs2-research-lab-example is mounted read-write at /workspace" in prompt
+    assert "call exactly workbench_list_apps_mcp_scientific-demos once" in prompt
     custom = config["endpoints"]["custom"]
     assert len(custom) == 1
     assert custom[0]["baseURL"] == "https://api.tokenfactory.nebius.com/v1"

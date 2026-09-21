@@ -32,3 +32,8 @@ test('non-discovery workbench and execution tools are deferred', () => {
     assert.equal(value[tool.name].defer_loading, true, tool.name);
   }
 });
+
+test('compact App discovery stays immediately available', () => {
+  const value = options({ tools: ['workbench_list_apps_mcp_scientific-demos'] });
+  assert.equal(value['workbench_list_apps_mcp_scientific-demos'], undefined);
+});

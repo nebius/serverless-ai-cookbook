@@ -17,9 +17,13 @@ access. When its published exact tool name is already known from a loaded skill,
 tool or catalog, pass `tool_name` to select only that contract instead of every
 mode's sibling schema. This selector uses the canonical published name without
 the LibreChat suffix. Do not invent tool names; when unknown use focused discovery
-or read the selected App schema once. For discovery use `workbench_list_apps` with a focused query. Only use
-the complete legacy catalogs when the workbench discovery helper is absent.
-Do not fetch both complete catalogs before every run. Treat each
+or read the selected App schema once. A catalog, model-list or available-Apps
+request must call the already loaded `workbench_list_apps_mcp_scientific-demos`
+exactly once, omitting `query` unless the user restricted the domain. Its
+caller-authorized compact response already includes contract kinds. Do not use
+`tool_search`, `list_models`, `list_scientific_models`, or `get_model_schema`
+for a catalog request. If this workbench helper is unavailable, report that
+discovery is unavailable instead of loading the legacy catalogs. Treat each
 independent App as distinct even when two Apps use the same base model.
 
 Prefer the named typed tool returned by `get_model_schema`. Pass its advertised
