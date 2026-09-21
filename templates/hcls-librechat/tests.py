@@ -252,6 +252,10 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     assert "Do not rewrite existing numerical tables in an ad hoc Python renderer" in general['instructions']
     assert "call exactly workbench_list_apps_mcp_scientific-demos once" in general['instructions']
     assert "Do not call tool_search, list_models, list_scientific_models or get_model_schema for a catalog request" in general['instructions']
+    assert "FINAL CATALOG ROUTING RULE" in general['instructions']
+    assert general['instructions'].rstrip().endswith(
+        "A failed schema probe is not evidence that an App is unavailable."
+    )
     assert "analysis into another" not in general['instructions']
     assert "workspace_url" in general['instructions']
 
@@ -360,6 +364,7 @@ def test_client_branding_is_baked_into_the_wrapper() -> None:
     assert "/app/client/dist/assets/logo.svg" in dockerfile
     assert 'APP_TITLE="Nebius Scientific AI Agent"' in dockerfile
     assert "Nebius Scientific AI Agent" in brand_client
+    assert "scientific-tool-search-patch.cjs /opt/hcls-librechat/scientific-tool-search-patch.cjs" in dockerfile
 
 
 def test_product_does_not_use_tenant_branding() -> None:

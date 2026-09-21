@@ -60,6 +60,7 @@ COPY templates/hcls-librechat/scientific-workflow-validation.cjs /opt/hcls-libre
 COPY templates/hcls-librechat/scientific-workflow.py /opt/bionemo/scientific-workflow.py
 COPY templates/hcls-librechat/scientific-context-audit.cjs /opt/hcls-librechat/scientific-context-audit.cjs
 COPY templates/hcls-librechat/scientific-token-count.cjs /opt/hcls-librechat/scientific-token-count.cjs
+COPY templates/hcls-librechat/scientific-tool-search-patch.cjs /opt/hcls-librechat/scientific-tool-search-patch.cjs
 COPY templates/hcls-librechat/patch-server.mjs /opt/hcls-librechat/patch-server.mjs
 COPY templates/hcls-librechat/demos/service.cjs \
      templates/hcls-librechat/demos/analysis.cjs \

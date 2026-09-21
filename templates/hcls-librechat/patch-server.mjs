@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import studyAdmissionAcknowledgement from './scientific-study-admission.cjs';
 import workflowValidation from './scientific-workflow-validation.cjs';
+import toolSearchPatch from './scientific-tool-search-patch.cjs';
 const mcpPath = '/app/api/server/services/MCP.js';
 await writeFile(mcpPath, workflowValidation.patchFactory(await readFile(mcpPath, 'utf8')));
 const path = '/app/api/server/services/ToolService.js';
@@ -14,6 +15,18 @@ for (const property of ['toolOptions', 'agentToolOptions']) {
   source = source.replaceAll(before, `${property}: require('/opt/hcls-librechat/scientific-tool-options.cjs')(agent, typeof loadedTools === 'undefined' ? [] : loadedTools),`);
 }
 await writeFile(path, source);
+
+// LibreChat normally permits an empty MCP-server search that returns every
+// deferred tool. The Scientific AI server has dozens of model contracts, so a
+// catalog prompt could otherwise expand into a large, misleading schema fan-
+// out. Keep focused searches, but route catalog discovery to the compact
+// caller-authorized workbench tool.
+for (const toolSearchPath of [
+  '/app/node_modules/@librechat/agents/dist/cjs/tools/ToolSearch.cjs',
+  '/app/node_modules/@librechat/agents/dist/esm/tools/ToolSearch.mjs',
+]) {
+  await writeFile(toolSearchPath, toolSearchPatch.patchFactory(await readFile(toolSearchPath, 'utf8')));
+}
 
 // A slow/unavailable title model must not leave every chat named "New Chat"
 // or keep the client polling a missing title. Preserve upstream title policy.
