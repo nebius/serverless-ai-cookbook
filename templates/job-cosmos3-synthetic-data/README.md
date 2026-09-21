@@ -37,10 +37,24 @@ restarts and continues instead of starting over. Split a large batch across seve
 The default deployment ships with a sample set (NVIDIA's three image-to-video assets: a
 dashcam drive, a humanoid robot, a coastal road) so the first run needs no data at all.
 
+## Prerequisite: an Object Storage bucket in the same project and region
+
+The job writes its results to a bucket mounted at `/data`. Create one **in the same project
+and region as the job** before you click — a bucket from another region is accepted by the form,
+but the job then fails at start with a bare `ERROR`. Two minutes in the console
+([Create your first bucket](https://docs.nebius.com/object-storage/quickstart)) or one command:
+
+```bash
+nebius storage bucket create --name cosmos3-output --parent-id <project-id>
+```
+
+Any name works; you pick the bucket in the create form. More on buckets:
+[How to manage Object Storage buckets](https://docs.nebius.com/object-storage/buckets/manage).
+
 ## How to run it
 
-1. **Click Create Job.** In the form, pick the **bucket** to mount at `/data` (any bucket in the
-   same project; the job writes to `/data/output/`). Everything else is prefilled. Create.
+1. **Click Create Job.** In the form, pick the **bucket** from the prerequisite above to mount at
+   `/data` (the job writes to `/data/output/`). Everything else is prefilled. Create.
 2. **Watch progress** in the console log tab or:
 
    ```bash
@@ -115,7 +129,8 @@ Plus ~10 minutes of start-up per job. For hundreds of clips, run N shards in par
 ## CLI alternative
 
 ```bash
-BUCKET=$(nebius storage bucket get-by-name --name <your-bucket> --format jsonpath='{.metadata.id}')
+# bucket in the same project + region (see Prerequisite); create with: nebius storage bucket create --name cosmos3-output --parent-id <project-id>
+BUCKET=$(nebius storage bucket get-by-name --name cosmos3-output --format jsonpath='{.metadata.id}')
 
 nebius ai job create \
   --name cosmos3-sdg-$(date +%Y%m%d-%H%M%S) \
@@ -140,6 +155,7 @@ same `RUN_ID`. On H100 in eu-north1 use `--platform gpu-h100-sxm --preset 1gpu-1
 
 ## Troubleshooting
 
+- **Job ERROR before the container starts, no message** — usually the mounted bucket is in another region (or the disk is too small); use a bucket from the job's own project and region.
 - **Job FAILED right after start, log shows `curl: (22)`** — the launcher could not fetch `run.sh`; check egress and the URL.
 - **`vLLM-Omni exited — last log lines` in the log** — the server died before serving; the lines that follow tell why (usually guardrails without `HF_TOKEN`, or out-of-memory on a smaller GPU).
 - **Job restarted and repeated some clips** — a clip is only skipped once its MP4 is fully written; a clip interrupted mid-render is re-done. Expected.
