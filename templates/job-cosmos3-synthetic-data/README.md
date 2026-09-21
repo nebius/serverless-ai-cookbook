@@ -109,7 +109,7 @@ RTX Pro 6000 in uk-south2, output to a mounted bucket:
 | Job start → vLLM-Omni ready (image pull, 32.6 GiB weights, warm-up) | ~8 min |
 | Render, 3 clips sequentially on one GPU | 17.9 min (≈ 6 min per clip) |
 | Output | 3 × MP4 (h264 720p, 7.9 s), 3 sidecars, `manifest.jsonl`, `summary.json`; job `COMPLETED`, exit 0 |
-| Resume after restart (earlier run) | driver skipped already-rendered clips and finished the rest |
+| Restart with outputs already in the bucket | already-rendered clips are skipped; the batch resumes with the remaining ones |
 
 `render_seconds` in the sidecars is wall time from submission, so with `CONCURRENCY=2` the
 second clip in a pair shows ~2× the true render time; the GPU renders one clip at a time.
