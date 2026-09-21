@@ -44,7 +44,7 @@ Copy the endpoint's public URL from the console (**Public endpoints**) into `BAS
 
 ```bash
 export BASE_URL='http://<IP>:8000'                 # from console → Public endpoints
-export TOKEN='<endpoint-auth-token>'               # if you created it with --auth token
+export TOKEN='<endpoint-auth-token>'               # generated in the create form (or printed once by the CLI)
 AUTH=(-H "Authorization: Bearer $TOKEN")           # omit if the endpoint is --auth none
 ```
 
