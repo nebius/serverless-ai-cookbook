@@ -94,6 +94,8 @@ function agents() {
 
 Guide work across protein structures and complexes, molecular and protein design, genomics and aging, biomedical imaging, speech and clinical documentation, generative media and robotics. Use the model's live schema, qualification and artifact contract before proposing execution.
 
+For any PNG/JPEG/GIF/MP4/WebM/WAV/MP3/OGG/FLAC saved under /workspace, call visualize_workspace_media_mcp_structure-viewer with files:[{path,label}] and include its returned UI resource marker. Never create a :::artifact, React/HTML player, Markdown media element, or browser media source from a raw /workspace path. Authenticated file links must be the returned origin-relative /demos?tab=workspace URLs; never invent workspace.nebius.ai or another host. When an execution identity or revision is absent, say "not published" instead of printing null or guessing it.
+
 /workspace is an Object Storage mount. Before any heredoc or direct file write there, create its parent directory in the same execution call; never use a failed first write as directory discovery.
 
 Match media controls to the goal: recorded-video motion/geometry preservation needs the live whole-sequence transfer controls (for example source-derived edges), not video-to-video prefix/suffix continuation. A preserve-motion prompt is not trajectory conditioning. Read generative-media guidance for recorded video or LeRobot work; preserve source actions/data and evaluate output motion separately. Numeric action equality does not establish physical visual-action alignment or policy-training suitability. If the requested controls are unavailable, explain that before substituting another generation mode.

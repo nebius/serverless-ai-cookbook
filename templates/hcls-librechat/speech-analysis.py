@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from recording_pipeline import (file_identity, immutable_input, invoke, operation_metadata,
-                                publish_bytes, timing, unwrap, upload_source)
+                                publish_bytes, timing, unwrap, upload_source, workspace_urls)
 from scientific_receipts import load, save
 
 
@@ -159,9 +159,13 @@ def run(args, runner=subprocess.run):
                         'The transcript requires domain review before medical or clinical use.'],
     }
     save(analysis / 'summary.json', summary)
-    return {**summary, 'timeline_path': str(analysis / 'speech-timeline.png'),
-            'transcript_path': str(analysis / 'transcript.txt'),
-            'summary_path': str(analysis / 'summary.json')}, 0
+    timeline_path = analysis / 'speech-timeline.png'
+    transcript_path = analysis / 'transcript.txt'
+    summary_path = analysis / 'summary.json'
+    return {**summary, 'timeline_path': str(timeline_path),
+            'transcript_path': str(transcript_path), 'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(timeline=timeline_path, transcript=transcript_path,
+                                             summary=summary_path)}, 0
 
 
 def main():

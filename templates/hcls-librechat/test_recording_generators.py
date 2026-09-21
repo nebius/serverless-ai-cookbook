@@ -15,6 +15,7 @@ def load(name, filename):
 
 cosmos = load('cosmos_transfer', 'cosmos-transfer.py')
 music = load('ace_step_music', 'ace-step-music.py')
+pipeline = load('recording_pipeline_module', 'recording_pipeline.py')
 
 
 def operation(module, path, identifier):
@@ -38,7 +39,8 @@ def make_video(path):
 def test_cosmos_pipeline_has_one_upload_and_one_admission_and_verifies_geometry(tmp_path):
     source = tmp_path / 'source.mp4'; make_video(source)
     args = types.SimpleNamespace(source=source, prompt='Modern robotics laboratory', negative_prompt='',
-        seed=11, num_steps=35, guidance=7, control_weight=1.0, output_dir=tmp_path / 'output',
+        seed=11, num_steps=35, guidance=7, resolution=720, control_weight=1.0,
+        output_dir=tmp_path / 'output',
         idempotency_key='cosmos-recording-test', wait_seconds=30, recover_only=False,
         model='cosmos-transfer2-5-2b', tool='infer_cosmos_transfer2_5_2b_native')
     commands = []
@@ -64,6 +66,20 @@ def test_cosmos_pipeline_has_one_upload_and_one_admission_and_verifies_geometry(
     assert result['verified_invariants'] == ['width', 'height', 'frame_count', 'frame_rate_fraction']
     assert [Path(command[1]).name for command in commands] == ['upload-artifact.py', 'invoke-native.py']
     assert Path(result['generated_path']).read_bytes() == source.read_bytes()
+    assert json.loads((args.output_dir / 'input.json').read_text())['resolution'] == '720'
+
+
+def test_workspace_url_is_origin_relative_encoded_and_confined():
+    path = Path('/workspace/shared/recording demo/result & summary.json')
+    assert pipeline.workspace_url(path) == (
+        '/demos?tab=workspace&path=shared%2Frecording+demo&'
+        'file=shared%2Frecording+demo%2Fresult+%26+summary.json')
+    try:
+        pipeline.workspace_url(Path('/tmp/not-a-workspace-file.json'))
+    except ValueError as error:
+        assert 'under /workspace' in str(error)
+    else:
+        raise AssertionError('A path outside /workspace received an authenticated workspace link.')
 
 
 def make_wav(path, seconds=1, rate=16000):

@@ -8,7 +8,8 @@ import json
 from pathlib import Path
 import subprocess
 
-from recording_pipeline import immutable_input, invoke, native_file, operation_metadata, publish_copy, timing
+from recording_pipeline import (immutable_input, invoke, native_file, operation_metadata, publish_copy,
+                                timing, workspace_urls)
 from scientific_receipts import save
 
 
@@ -62,8 +63,9 @@ def run(args, runner=subprocess.run):
                         'The returned duration is measured from the WAV, not assumed from the request.'],
     }
     save(analysis / 'summary.json', summary)
-    return {**summary, 'audio_path': str(analysis / 'soundtrack.wav'),
-            'summary_path': str(analysis / 'summary.json')}, 0
+    audio_path, summary_path = analysis / 'soundtrack.wav', analysis / 'summary.json'
+    return {**summary, 'audio_path': str(audio_path), 'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(audio=audio_path, summary=summary_path)}, 0
 
 
 def main():

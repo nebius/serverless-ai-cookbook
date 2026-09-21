@@ -10,7 +10,8 @@ from pathlib import Path
 import subprocess
 
 from recording_pipeline import (file_identity, immutable_input, invoke, native_file,
-                                operation_metadata, publish_copy, timing, upload_source)
+                                operation_metadata, publish_copy, timing, upload_source,
+                                workspace_urls)
 from scientific_receipts import save
 
 
@@ -49,7 +50,7 @@ def run(args, runner=subprocess.run):
         return {'state': 'upload_pending', 'output_dir': str(output)}, 75
     payload = {'video': artifact, 'prompt': args.prompt, 'negative_prompt': args.negative_prompt,
                'seed': args.seed, 'num_steps': args.num_steps, 'guidance': args.guidance,
-               'resolution': str(source_media['height']), 'sigma_max': 90,
+               'resolution': str(args.resolution), 'sigma_max': 90,
                'edge': {'control_weight': args.control_weight}, 'output_delivery': 'artifact'}
     input_path = output / 'input.json'; immutable_input(input_path, payload)
     receipt, code = invoke(model=args.model, tool=args.tool, input_path=input_path,
@@ -77,8 +78,11 @@ def run(args, runner=subprocess.run):
                         'Visual fidelity to prompt and motion requires human review.'],
     }
     save(analysis / 'summary.json', summary)
-    return {**summary, 'source_path': str(source), 'generated_path': str(analysis / 'transformed.mp4'),
-            'summary_path': str(analysis / 'summary.json')}, 0
+    generated_path, summary_path = analysis / 'transformed.mp4', analysis / 'summary.json'
+    return {**summary, 'source_path': str(source), 'generated_path': str(generated_path),
+            'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(source=source, generated=generated_path,
+                                             summary=summary_path)}, 0
 
 
 def main():
@@ -89,6 +93,8 @@ def main():
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--num-steps', type=int, default=35)
     parser.add_argument('--guidance', type=int, default=7)
+    parser.add_argument('--resolution', type=int, choices=(256, 480, 512, 720), default=720,
+                        help='NIM internal processing resolution; output geometry follows the source video.')
     parser.add_argument('--control-weight', type=float, default=1.0)
     parser.add_argument('--output-dir', required=True, type=Path)
     parser.add_argument('--idempotency-key', required=True)

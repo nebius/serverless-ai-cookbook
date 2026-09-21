@@ -20,7 +20,8 @@ from sklearn.decomposition import PCA
 import umap
 
 from recording_pipeline import (extract_verified_zip, file_identity, immutable_input, invoke,
-                                native_file, operation_metadata, publish_bytes, timing, upload_source)
+                                native_file, operation_metadata, publish_bytes, timing, upload_source,
+                                workspace_urls)
 from scientific_receipts import save
 
 
@@ -143,9 +144,13 @@ def run(args, runner=subprocess.run):
                         'The before view uses deterministic normalized-count PCA/UMAP for visualization only.'],
     }
     save(analysis / 'summary.json', summary)
-    return {**summary, 'before_after_path': str(analysis / 'before-after-umap.png'),
-            'integrated_anndata_path': str(analysis / 'integrated.h5ad'),
-            'summary_path': str(analysis / 'summary.json')}, 0
+    before_after = analysis / 'before-after-umap.png'
+    integrated = analysis / 'integrated.h5ad'
+    summary_path = analysis / 'summary.json'
+    return {**summary, 'before_after_path': str(before_after),
+            'integrated_anndata_path': str(integrated), 'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(before_after=before_after, integrated_anndata=integrated,
+                                             summary=summary_path)}, 0
 
 
 def main():

@@ -14,7 +14,8 @@ from PIL import Image
 import numpy as np
 
 from recording_pipeline import (extract_verified_zip, file_identity, immutable_input, invoke,
-                                native_file, operation_metadata, timing, upload_source)
+                                native_file, operation_metadata, timing, upload_source,
+                                workspace_urls)
 from scientific_receipts import load, save
 
 
@@ -100,11 +101,14 @@ def run(args, runner=subprocess.run):
         'limitations': ['Masks and tracking are model predictions, not semantic labels or accuracy validation.'],
     }
     save(analysis / 'summary.json', summary)
-    return {**summary,
-            'source_path': str(source),
-            'overlay_path': str(analysis / ('overlay.mp4' if args.mode == 'prompted-video' else 'overlay.png')),
-            'mask_path': None if args.mode == 'prompted-video' else str(analysis / 'mask.png'),
-            'summary_path': str(analysis / 'summary.json')}, 0
+    overlay_path = analysis / ('overlay.mp4' if args.mode == 'prompted-video' else 'overlay.png')
+    mask_path = None if args.mode == 'prompted-video' else analysis / 'mask.png'
+    summary_path = analysis / 'summary.json'
+    return {**summary, 'source_path': str(source), 'overlay_path': str(overlay_path),
+            'mask_path': None if mask_path is None else str(mask_path),
+            'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(source=source, overlay=overlay_path, mask=mask_path,
+                                             summary=summary_path)}, 0
 
 
 def main():

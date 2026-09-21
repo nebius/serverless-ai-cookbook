@@ -10,6 +10,7 @@ import shutil
 import stat
 import subprocess
 import sys
+from urllib.parse import urlencode
 import zipfile
 
 from scientific_receipts import load, save, staged_output
@@ -17,6 +18,7 @@ from scientific_receipts import load, save, staged_output
 
 ARTIFACT_FIELDS = ('artifact_id', 'sha256', 'size_bytes', 'media_type', 'compression')
 TERMINAL_FAILURES = {'failed', 'cancelled', 'expired', 'preempted'}
+WORKSPACE_ROOT = Path('/workspace')
 
 
 def file_identity(path: Path) -> dict:
@@ -27,6 +29,37 @@ def file_identity(path: Path) -> dict:
             digest.update(chunk)
             size += len(chunk)
     return {'sha256': digest.hexdigest(), 'size_bytes': size}
+
+
+def workspace_url(path: Path, *, root: Path = WORKSPACE_ROOT) -> str:
+    """Build the authenticated, origin-relative Workspace deep link for a file."""
+    resolved = path.resolve()
+    try:
+        relative = resolved.relative_to(root.resolve())
+    except ValueError as error:
+        raise ValueError('Workspace links are only valid for files under /workspace.') from error
+    if not relative.parts or relative.name in ('', '.', '..'):
+        raise ValueError('Workspace link must select a file below /workspace.')
+    relative_name = relative.as_posix()
+    parent = relative.parent.as_posix()
+    return '/demos?' + urlencode({
+        'tab': 'workspace',
+        'path': '' if parent == '.' else parent,
+        'file': relative_name,
+    })
+
+
+def workspace_urls(**paths: Path | None) -> dict[str, str]:
+    """Return production workspace links while keeping temporary-directory tests portable."""
+    links = {}
+    for name, path in paths.items():
+        if path is None:
+            continue
+        try:
+            links[name] = workspace_url(path)
+        except ValueError:
+            continue
+    return links
 
 
 def execute(command: list[str], runner=subprocess.run):

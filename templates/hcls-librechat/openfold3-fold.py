@@ -10,7 +10,8 @@ from pathlib import Path
 import re
 import subprocess
 
-from recording_pipeline import immutable_input, invoke, operation_metadata, publish_bytes, timing, unwrap
+from recording_pipeline import (immutable_input, invoke, operation_metadata, publish_bytes, timing,
+                                unwrap, workspace_urls)
 from scientific_receipts import load, save
 
 
@@ -101,8 +102,9 @@ def run(args, runner=subprocess.run):
                         'This Preview2 App uses a fixed seed and one diffusion sample without templates or online MSA search.'],
     }
     save(analysis / 'summary.json', summary)
-    return {**summary, 'structure_path': str(analysis / 'structure.cif'),
-            'summary_path': str(analysis / 'summary.json')}, 0
+    structure_path, summary_path = analysis / 'structure.cif', analysis / 'summary.json'
+    return {**summary, 'structure_path': str(structure_path), 'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(structure=structure_path, summary=summary_path)}, 0
 
 
 def main():
