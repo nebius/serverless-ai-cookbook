@@ -175,7 +175,7 @@ assert.equal(result['infer_openfold2_native_mcp_scientific-ai-apps'].describe_in
 assert.equal(result['get_model_schema_mcp_scientific-ai-apps'], undefined);
 assert.equal(result['list_models_mcp_scientific-ai-apps'].defer_loading, true);
 assert.equal(result['get_operation_result_mcp_scientific-ai-apps'].defer_loading, true);
-assert.equal(result['tavily_search_mcp_tavily'].defer_loading, true);
+assert.equal(result['tavily_search_mcp_tavily'], undefined);
 assert.equal(result['execute_command_mcp_environment-execution'], undefined);
 assert.equal(result['workbench_get_operation_result_mcp_scientific-demos'], undefined);
 assert.equal(result['visualize_workspace_media_mcp_structure-viewer'], undefined);

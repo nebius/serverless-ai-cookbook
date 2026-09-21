@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 from scientific_receipts import load, save
+from recording_pipeline import workspace_urls
 
 
 ARTIFACT_FIELDS = ('artifact_id', 'sha256', 'size_bytes', 'media_type', 'compression')
@@ -156,8 +157,11 @@ def run(args, runner=subprocess.run):
                         'No localization is claimed unless explicitly returned by the model.'],
     }
     save(summary_path, summary)
-    return {**summary, 'result_path': str(run_dir / 'result.json'),
-            'summary_path': str(summary_path)}, 0
+    result_path = run_dir / 'result.json'
+    return {**summary, 'source_path': str(source), 'result_path': str(result_path),
+            'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(
+                source=source, summary=summary_path, result=result_path)}, 0
 
 
 def main():

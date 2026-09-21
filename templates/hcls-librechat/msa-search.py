@@ -22,6 +22,7 @@ from matplotlib.colors import ListedColormap
 import numpy as np
 
 from scientific_receipts import load, save, staged_output
+from recording_pipeline import workspace_urls
 
 
 AA = 'ACDEFGHIKLMNPQRSTVWY-'
@@ -244,13 +245,19 @@ def run(args, runner=subprocess.run):
                 'output_dir': str(output_dir)}, 75
     summary = materialize(run_dir / 'result.json', run_dir / 'operation.json', args.query.resolve(),
                           analysis_dir, args.model)
+    summary_image = analysis_dir / 'msa-summary.png'
+    alignment_path = analysis_dir / 'alignment.a3m'
+    summary_path = analysis_dir / 'summary.json'
     return {'state': 'succeeded', 'operation_id': operation_id, 'model': args.model,
             'database': summary['database'], 'query': summary['query'],
             'alignment': summary['alignment'], 'timing': summary['timing'],
             'coverage_definition': 'fraction of aligned non-gap query-grid columns per returned sequence',
-            'summary_image': str(analysis_dir / 'msa-summary.png'),
-            'alignment_path': str(analysis_dir / 'alignment.a3m'),
-            'summary_path': str(analysis_dir / 'summary.json')}, 0
+            'summary_image': str(summary_image),
+            'alignment_path': str(alignment_path),
+            'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(
+                query=args.query.resolve(), summary_image=summary_image,
+                alignment=alignment_path, summary=summary_path)}, 0
 
 
 def main():

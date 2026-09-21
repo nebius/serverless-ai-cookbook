@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 from scientific_receipts import load, save
+from recording_pipeline import workspace_urls
 
 
 ARTIFACT_FIELDS = ('artifact_id', 'sha256', 'size_bytes', 'media_type', 'compression')
@@ -109,6 +110,11 @@ def run(args, runner=subprocess.run):
     if analysis.returncode:
         raise RuntimeError('CT analysis did not reach terminal success.')
     metrics = load(analysis_dir / 'metrics.json')
+    overlay_path = analysis_dir / 'orthogonal-overlay.png'
+    rotation_path = analysis_dir / 'surface-rotation.gif'
+    segmentation_path = analysis_dir / 'segmentation.nii.gz'
+    metrics_path = analysis_dir / 'metrics.json'
+    report_path = analysis_dir / 'report.md'
     return {
         'state': 'succeeded',
         'operation_id': operation_id,
@@ -118,7 +124,14 @@ def run(args, runner=subprocess.run):
         'label_voxel_counts': metrics.get('prediction', {}).get('label_voxel_counts') if isinstance(metrics, dict) else None,
         'model_seconds': metrics.get('prediction', {}).get('model_seconds') if isinstance(metrics, dict) else None,
         'analysis_dir': str(analysis_dir),
-        'media': [str(analysis_dir / 'orthogonal-overlay.png'), str(analysis_dir / 'surface-rotation.gif')],
+        'media': [str(overlay_path)] + ([str(rotation_path)] if rotation_path.is_file() else []),
+        'workspace_urls': workspace_urls(
+            overlay=overlay_path,
+            rotation=rotation_path if rotation_path.is_file() else None,
+            segmentation=segmentation_path,
+            metrics=metrics_path,
+            report=report_path,
+        ),
     }, 0
 
 

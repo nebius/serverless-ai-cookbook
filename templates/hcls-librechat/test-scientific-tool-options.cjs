@@ -18,7 +18,7 @@ test('existing tool options survive unchanged except deferred schema loading', (
   assert.deepEqual(original, { allowed_callers: ['direct'], custom: 3 });
 });
 
-test('common workbench, execution and viewer tools stay immediately available', () => {
+test('common workbench, execution, research and viewer tools stay immediately available', () => {
   const tools = [
     { name: 'workbench_list_apps_mcp_scientific-demos' },
     { name: 'workbench_compare_structures_mcp_scientific-demos' },
@@ -29,10 +29,9 @@ test('common workbench, execution and viewer tools stay immediately available', 
     { name: 'tavily_search_mcp_tavily' },
   ];
   const value = options({ tools: tools.map((tool) => tool.name), tool_options: {} }, tools);
-  for (const tool of tools.slice(0, -1)) {
+  for (const tool of tools) {
     assert.equal(value[tool.name], undefined, tool.name);
   }
-  assert.equal(value['tavily_search_mcp_tavily'].defer_loading, true);
 });
 
 test('compact App discovery stays immediately available', () => {

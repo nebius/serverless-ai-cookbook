@@ -25,6 +25,7 @@ from matplotlib.transforms import Affine2D
 import numpy as np
 
 from scientific_receipts import load, save, staged_output
+from recording_pipeline import workspace_urls
 
 
 ARTIFACT_FIELDS = ('artifact_id', 'sha256', 'size_bytes', 'media_type', 'compression')
@@ -315,15 +316,21 @@ def run(args, runner=subprocess.run):
         }
         for rank, row in enumerate(summary['designs'], 1)
     ]
+    summary_image = analysis_dir / 'proteinmpnn-summary.png'
+    designs_csv = analysis_dir / 'designs.csv'
+    summary_path = analysis_dir / 'summary.json'
     return {'state': 'succeeded', 'operation_id': operation_id, 'model': args.model,
             'parameters': summary['parameters'], 'sequence_length': summary['sequence_length'],
             'num_sequences': len(summary['designs']), 'ranked_designs': ranked_designs,
             'probability_shape': summary['probability_shape'], 'timing': summary['timing'],
             'allowed_result_fields': ['model_score', 'global_model_score', 'sequence_recovery'],
             'absent_result_fields': ['pLDDT', 'pTM', 'PAE', 'binding', 'folding', 'function'],
-            'summary_image': str(analysis_dir / 'proteinmpnn-summary.png'),
-            'designs_csv': str(analysis_dir / 'designs.csv'),
-            'summary_path': str(analysis_dir / 'summary.json')}, 0
+            'summary_image': str(summary_image),
+            'designs_csv': str(designs_csv),
+            'summary_path': str(summary_path),
+            'workspace_urls': workspace_urls(
+                backbone=backbone, summary_image=summary_image,
+                designs=designs_csv, summary=summary_path)}, 0
 
 
 def main():
