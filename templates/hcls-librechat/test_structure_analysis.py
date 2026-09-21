@@ -36,6 +36,8 @@ def test_rigid_transform_aligns_and_confidence_remains_separate():
     prediction = pdb({'B': COORDS}, lambda xyz: xyz @ rotation + [10, -4, 3])
     metrics, mapping = analysis.compare(reference, prediction, [('A', 'B')])
     assert metrics['global_ca_rmsd_angstrom'] < 1e-5
+    assert metrics['tm_score_reference_normalized_ca'] == pytest.approx(1)
+    assert metrics['tm_score_reference_observed_residues'] == 4
     assert metrics['chains'][0]['reference_coverage'] == 1
     assert len(mapping) == 4
     assert analysis.confidence_fields({'structures': [{'confidence': 0.9, 'plddt': [60, 80]}]}) == {
@@ -65,7 +67,49 @@ def test_reflection_is_not_a_valid_rigid_rotation_and_missing_residues_are_visib
     prediction = pdb({'A': COORDS}, lambda xyz: xyz * [-1, 1, 1])
     assert analysis.compare(reference, prediction)[0]['global_ca_rmsd_angstrom'] > 0.1
     cropped = pdb({'A': COORDS[:3]})
-    assert analysis.compare(reference, cropped)[0]['chains'][0]['reference_coverage'] == 0.75
+    cropped_metrics = analysis.compare(reference, cropped)[0]
+    assert cropped_metrics['chains'][0]['reference_coverage'] == 0.75
+    assert 0.70 < cropped_metrics['tm_score_reference_normalized_ca'] <= 0.75
+
+
+def test_missing_mmcif_occupancy_is_parser_only_and_recorded(tmp_path):
+    source = PDBParser(QUIET=True).get_structure('fixture', io.StringIO(pdb({'A': COORDS})))
+    writer = MMCIFIO()
+    writer.set_structure(source)
+    stream = io.StringIO()
+    writer.save(stream)
+    original = stream.getvalue()
+    lines = original.splitlines()
+    occupancy = lines.index('_atom_site.occupancy')
+    loop_start = max(index for index, line in enumerate(lines[:occupancy]) if line == 'loop_')
+    headers = lines[loop_start + 1:]
+    header_count = next(index for index, line in enumerate(headers) if not line.startswith('_'))
+    column = occupancy - loop_start - 1
+    row_start = loop_start + 1 + header_count
+    stripped = lines[:occupancy] + lines[occupancy + 1:row_start]
+    for line in lines[row_start:]:
+        if not line or line.startswith('#'):
+            stripped.append(line)
+            continue
+        fields = line.split()
+        del fields[column]
+        stripped.append(' '.join(fields))
+    missing = '\n'.join(stripped) + '\n'
+    normalized, changes = analysis.prepare_mmcif_for_parser(missing)
+    assert missing == '\n'.join(stripped) + '\n'
+    assert changes == [{'field': '_atom_site.occupancy', 'default': 1.0, 'reason': 'column_absent'}]
+    assert '_atom_site.occupancy' in normalized
+    assert len(analysis.load_structure(missing)['A']) == len(COORDS)
+
+    reference, result, output = tmp_path / 'reference.pdb', tmp_path / 'result.json', tmp_path / 'analysis'
+    reference.write_text(pdb({'A': COORDS}))
+    result.write_text(json.dumps({'structure': missing}))
+    subprocess.run([sys.executable, spec.origin, '--reference', str(reference), '--result', str(result),
+                    '--output-dir', str(output)], check=True, capture_output=True)
+    metrics = json.loads((output / 'metrics.json').read_text())
+    assert metrics['provenance']['parser_only_defaults']['prediction'] == changes
+    assert metrics['provenance']['parser_only_defaults']['original_coordinate_bytes_changed'] is False
+    assert (output / 'prediction.cif').read_text() == missing
 
 
 def test_cli_saves_actual_metrics_methods_residue_mapping_and_extracted_coordinates(tmp_path):

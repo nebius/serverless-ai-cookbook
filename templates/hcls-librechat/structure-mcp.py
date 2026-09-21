@@ -114,43 +114,80 @@ def collect_structures(value):
 
 
 TOOL = {'name': 'visualize_structure',
-        'description': 'Show an interactive protein/molecule viewer in chat: fullscreen, rotation, zoom and representations. For a completed folding/docking operation, pass its operation_id: coordinates are fetched with the configured gateway key without copying them through the LLM. Supports PDB/mmCIF/SDF inside inline or verified native JSON result artifacts up to 4 MiB (not batch artifact lists or SMILES-only results). Does not submit compute. Include the returned UI resource marker verbatim in your response.',
+        'description': 'Show an interactive protein/molecule viewer in chat: fullscreen, rotation, zoom and representations. For one completed folding/docking operation, pass operation_id. For a synchronized comparison, pass operations with two to four operation IDs and labels; the viewer can overlay all returned coordinates in one camera or inspect them separately. Coordinates are fetched with the configured gateway key without copying them through the LLM. Supports PDB/mmCIF/SDF inside inline or verified native JSON result artifacts up to 4 MiB per operation (not batch artifact lists or SMILES-only results). Does not submit compute. Include the returned UI resource marker verbatim in your response.',
         'annotations': {'readOnlyHint': True, 'destructiveHint': False, 'openWorldHint': False},
         'inputSchema': {'type': 'object', 'additionalProperties': False,
                         'properties': {'operation_id': {'type': 'string', 'format': 'uuid'},
+                                       'operations': {'type': 'array', 'minItems': 2, 'maxItems': 4,
+                                                      'description': 'Completed operations to compare in one synchronized viewer. Labels should be the exact model names.',
+                                                      'items': {'type': 'object', 'additionalProperties': False,
+                                                                'properties': {'operation_id': {'type': 'string', 'format': 'uuid'},
+                                                                               'label': {'type': 'string', 'minLength': 1, 'maxLength': 100}},
+                                                                'required': ['operation_id', 'label']}},
                                        'title': {'type': 'string', 'maxLength': 160},
                                        'structure_text': {'type': 'string', 'maxLength': 65536,
                                                           'description': 'Only for a small structure supplied directly by the user. Prefer operation_id for model results.'}},
-                        'description': 'Provide exactly one of operation_id or structure_text.'}}
+                        'description': 'Provide exactly one of operation_id, operations, or structure_text.'}}
 
 
 def call_viewer(args):
-    if not isinstance(args, dict) or set(args) - {'operation_id', 'structure_text', 'title'}:
+    if not isinstance(args, dict) or set(args) - {'operation_id', 'operations', 'structure_text', 'title'}:
         raise ValueError('Unsupported viewer arguments.')
-    if ('operation_id' in args) == ('structure_text' in args):
-        raise ValueError('Provide exactly one of operation_id or structure_text.')
+    sources = [name for name in ('operation_id', 'operations', 'structure_text') if name in args]
+    if len(sources) != 1:
+        raise ValueError('Provide exactly one of operation_id, operations, or structure_text.')
     title = args.get('title', 'Scientific structure')
     if not isinstance(title, str) or len(title) > 160:
         raise ValueError('Title must be text, at most 160 characters.')
     operation = None
+    operations = []
     if 'operation_id' in args:
         try:
             operation = str(uuid.UUID(args['operation_id']))
         except (ValueError, TypeError, AttributeError):
             raise ValueError('Use the operation UUID returned by the gateway.') from None
         data = get_result(operation)
+        entries = collect_structures(data)
+    elif 'operations' in args:
+        requested = args['operations']
+        if (not isinstance(requested, list) or not 2 <= len(requested) <= 4
+                or any(not isinstance(item, dict) or set(item) != {'operation_id', 'label'} for item in requested)):
+            raise ValueError('operations must contain two to four exact operation_id and label objects.')
+        identifiers = []
+        entries = []
+        for item in requested:
+            try:
+                identifier = str(uuid.UUID(item['operation_id']))
+            except (ValueError, TypeError, AttributeError):
+                raise ValueError('Every comparison operation needs a gateway operation UUID.') from None
+            label = item['label']
+            if not isinstance(label, str) or not label.strip() or len(label) > 100:
+                raise ValueError('Every comparison operation needs a nonempty model label of at most 100 characters.')
+            if identifier in identifiers:
+                raise ValueError('Comparison operation IDs must be unique.')
+            identifiers.append(identifier)
+            found = collect_structures(get_result(identifier))
+            for entry in found:
+                entry = dict(entry)
+                entry['label'] = f'{label.strip()} · {entry["label"]}'
+                entry['source'] = f'operation:{identifier}.{entry["source"]}'
+                entries.append(entry)
+        operations = identifiers
     else:
         data = args['structure_text']
         if not isinstance(data, str) or not 1 <= len(data.encode('utf-8')) <= 65536:
             raise ValueError('Inline structures must be between 1 and 65536 bytes.')
-    entries = collect_structures(data)
+        entries = collect_structures(data)
     if not entries:
         raise ValueError('No inline PDB/mmCIF/SDF coordinates found. Batch artifact references, sequences and SMILES alone cannot be rendered. No coordinates were invented.')
+    if len(entries) > MAX_STRUCTURES:
+        raise ValueError(f'Comparison returned more than the supported {MAX_STRUCTURES} coordinate structures.')
     first = entries[0]
     resource_id = f'structure{uuid.uuid4().hex}'
     label = f'{title} · {operation}' if operation else title
+    source_summary = operation or (f'{len(operations)} completed operations' if operations else 'user-supplied coordinates')
     return {'content': [
-        {'type': 'text', 'text': f'Interactive viewer prepared with {len(entries)} structure(s). Operation: {operation or "user-supplied coordinates"}. Include the supplied UI resource marker verbatim in the answer. The viewer does not validate scientific quality.'},
+        {'type': 'text', 'text': f'Interactive viewer prepared with {len(entries)} structure(s) from {source_summary}. Include the supplied UI resource marker verbatim in the answer. Multi-operation mode provides one synchronized overlay camera and separate structure views. The viewer does not align structures or validate scientific quality.'},
         {'type': 'resource', 'resource': {'uri': f'ui://scientific/structure/{resource_id}',
          'mimeType': 'text/html', 'text': viewer.viewer_html(first['text'], first['format'], label, entries)}}]}
 

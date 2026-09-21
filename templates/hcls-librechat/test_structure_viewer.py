@@ -40,6 +40,36 @@ def test_folding_and_docking_coordinates_reach_ui_not_text(bridge, monkeypatch):
     assert bridge.TOOL['annotations']['readOnlyHint'] is True
 
 
+def test_multiple_operations_render_one_synchronized_overlay(bridge, monkeypatch):
+    other = '22222222-2222-4222-8222-222222222222'
+    seen = []
+    monkeypatch.setattr(bridge, 'get_result', lambda operation: seen.append(operation) or {'protein': PDB + f'REMARK {operation}\n'})
+    result = bridge.call_viewer({'operations': [
+        {'operation_id': OPERATION, 'label': 'OpenFold3 Preview2'},
+        {'operation_id': other, 'label': 'Boltz2'},
+    ], 'title': 'Ubiquitin comparison'})
+    assert seen == [OPERATION, other]
+    assert '2 completed operations' in result['content'][0]['text']
+    html = result['content'][1]['resource']['text']
+    assert 'Overlay all (synchronized)' in html
+    assert 'OpenFold3 Preview2' in html and 'Boltz2' in html
+    assert "loadStructure(entries.length>1?'overlay':'0')" in html
+    assert PDB not in result['content'][0]['text']
+
+
+@pytest.mark.parametrize('operations', [
+    [{'operation_id': OPERATION, 'label': 'one'}],
+    [{'operation_id': OPERATION, 'label': 'one'}, {'operation_id': OPERATION, 'label': 'two'}],
+    [{'operation_id': OPERATION, 'label': ''}, {'operation_id': '22222222-2222-4222-8222-222222222222', 'label': 'two'}],
+])
+def test_invalid_multi_operation_requests_do_not_partially_fetch(bridge, monkeypatch, operations):
+    fetched = []
+    monkeypatch.setattr(bridge, 'get_result', lambda operation: fetched.append(operation) or {'protein': PDB})
+    with pytest.raises(ValueError):
+        bridge.call_viewer({'operations': operations})
+    assert len(fetched) <= 1
+
+
 def test_inline_structure_and_title_are_script_safe(bridge):
     title = '</title><img src=x onerror=alert(1)>'
     pdb = PDB + '</script><script>alert(1)</script>'

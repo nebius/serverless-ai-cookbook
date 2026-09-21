@@ -107,8 +107,11 @@ async function compare(kind, key, args, storage) {
         ({ rank, status, reason, pose_rmsd_angstrom, model_confidence_not_reference_accuracy })),
       limitations: metrics.limitations, rdkit_version: metrics.rdkit_version, numpy_version: metrics.numpy_version,
     } : metrics;
+    const evidenceGuidance = kind === 'structure'
+      ? 'Use these saved deterministic values directly in the requested comparison table. global_ca_rmsd_angstrom and tm_score_reference_normalized_ca use the same global C-alpha fit; the TM-score is normalized by observed residues in selected reference chains and is explicitly not TM-align/US-align. Per-chain fits, global fit, sequence coverage, model-native confidence, service wall time and GPU occupancy are different quantities. Any parser_only_defaults concern only an in-memory parser copy; original prediction bytes and SHA-256 remain unchanged. Do not postpone a requested table or synchronized operation viewer to write an unrequested calculator or report.'
+      : 'Use these saved deterministic metric values in the final table. Docking report.md and rows.csv are already rendered from exact rank_facts: best/worst RMSD and highest/lowest confidence are distinct. Do not infer correlation from extrema or round before threshold comparisons; request threshold_queries for explicit descriptive counts, not default success criteria. Do not substitute a newly written calculator. Model confidence, reference agreement, service wall time and GPU occupancy are different quantities.';
     return { analysis_completed: true, inference_submitted: false, metrics: summary, provenance,
-      files, evidence_guidance: 'Use these saved deterministic metric values in the final table. Docking report.md and rows.csv are already rendered from exact rank_facts: best/worst RMSD and highest/lowest confidence are distinct. Do not infer correlation from extrema or round before threshold comparisons; request threshold_queries for explicit descriptive counts, not default success criteria. Do not substitute a newly written calculator. Model confidence, reference agreement, service wall time and GPU occupancy are different quantities.' };
+      files, evidence_guidance: evidenceGuidance };
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
 }
 

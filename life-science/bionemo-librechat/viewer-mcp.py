@@ -150,7 +150,8 @@ def viewer_html(structure_text, structure_format, title, structures=None):
     format_data = javascript_string(structure_format)
     entries = structures or [{'text': structure_text, 'format': structure_format, 'label': title}]
     entries_data = javascript_string(entries)
-    entry_options = ''.join(f'<option value="{index}">{html.escape(entry["label"])}</option>' for index, entry in enumerate(entries))
+    overlay_option = '<option value="overlay">Overlay all (synchronized)</option>' if len(entries) > 1 else ''
+    entry_options = overlay_option + ''.join(f'<option value="{index}">{html.escape(entry["label"])}</option>' for index, entry in enumerate(entries))
     return f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{safe_title}</title><style>
@@ -169,18 +170,19 @@ html:fullscreen,html:fullscreen body {{ width:100%; height:100%; background:#f7f
 <div id="viewer"></div><div id="viewer-status" role="status" class="hint">Loading structure…</div><div class="hint">Drag to rotate · scroll or pinch to zoom · right-drag to pan · Predictions are not experimental validation</div></section>
 <script>{THREEDMOL}</script><script>
 let viewer; const entries={entries_data}; let spinning=false;
-let model, initialView, alphaCarbons=[], polymerAtoms=[], hasCartoonBackbone=false;
-function loadStructure(index) {{
+let models=[], initialView, alphaCarbons=[], polymerAtoms=[], hasCartoonBackbone=false, overlayMode=false;
+function loadStructure(selection) {{
   viewer.removeAllModels(); viewer.removeAllShapes(); viewer.removeAllSurfaces();
-  const entry=entries[index]; model=viewer.addModel(entry.text,entry.format);
-  const atoms=model.selectedAtoms({{}});
-  if(!atoms.length) throw new Error('No readable atoms in this structure.');
+  overlayMode=selection==='overlay'; const selected=overlayMode?entries:[entries[Number(selection)]];
+  models=selected.map(entry=>viewer.addModel(entry.text,entry.format));
+  const atomGroups=models.map(model=>model.selectedAtoms({{}})); const atoms=atomGroups.flat();
+  if(atomGroups.some(group=>!group.length)) throw new Error('No readable atoms in one or more structures.');
   if(atoms.some(a=>![a.x,a.y,a.z].every(Number.isFinite))) throw new Error('Invalid atom coordinates.');
-  alphaCarbons=model.selectedAtoms({{atom:'CA'}}); polymerAtoms=model.selectedAtoms({{hetflag:false}});
+  alphaCarbons=models.flatMap(model=>model.selectedAtoms({{atom:'CA'}})); polymerAtoms=models.flatMap(model=>model.selectedAtoms({{hetflag:false}}));
   hasCartoonBackbone=alphaCarbons.length>=4&&polymerAtoms.length>alphaCarbons.length*2;
-  const style=entry.format==='sdf'||entry.format==='mol'?'sticks':'cartoon';
+  const style=selected.every(entry=>entry.format==='sdf'||entry.format==='mol')?'sticks':'cartoon';
   document.getElementById('style').value=style; setRepresentation(style); initialView=viewer.getView();
-  document.getElementById('viewer-status').textContent=atoms.length+' atoms · '+entry.format.toUpperCase()+' · '+entry.label;
+  document.getElementById('viewer-status').textContent=atoms.length+' atoms · '+(overlayMode?selected.length+' structures overlaid in one synchronized view':selected[0].format.toUpperCase()+' · '+selected[0].label);
   document.querySelector('.panel').dataset.viewerReady='true';
 }}
 function point(atom) {{ return {{x:atom.x,y:atom.y,z:atom.z}}; }}
@@ -195,7 +197,20 @@ function backboneFallback() {{
   }}
   return segments>0;
 }}
-function setRepresentation(name) {{ viewer.setStyle({{}},{{}}); viewer.removeAllSurfaces(); viewer.removeAllShapes(); if(name==='sticks') {{ viewer.setStyle({{}},{{stick:{{radius:0.18,colorscheme:'Jmol'}}}}); }} else if(name==='surface') {{ if(hasCartoonBackbone) viewer.setStyle({{hetflag:false}},{{cartoon:{{color:'spectrum',opacity:0.25}}}}); else viewer.setStyle({{}},{{stick:{{radius:0.15,colorscheme:'Jmol'}}}}); viewer.addSurface($3Dmol.SurfaceType.VDW,{{opacity:0.78,color:'#6b9ed8'}}); }} else if(hasCartoonBackbone) {{ viewer.setStyle({{hetflag:false}},{{cartoon:{{color:'spectrum'}}}}); if(name==='cartoon-sticks') viewer.addStyle({{}},{{stick:{{radius:0.12,colorscheme:'Jmol'}}}}); else viewer.setStyle({{hetflag:true}},{{stick:{{radius:0.12,colorscheme:'Jmol'}}}}); }} else if(!backboneFallback()) {{ viewer.setStyle({{}},{{stick:{{radius:0.18,colorscheme:'Jmol'}}}}); }} viewer.zoomTo(); viewer.render(); }}
+function setRepresentation(name) {{
+  viewer.setStyle({{}},{{}}); viewer.removeAllSurfaces(); viewer.removeAllShapes();
+  const colors=['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2'];
+  models.forEach((model,index)=>{{
+    const color=overlayMode?colors[index%colors.length]:undefined; const atoms=model.selectedAtoms({{}});
+    const ca=model.selectedAtoms({{atom:'CA'}}), polymer=model.selectedAtoms({{hetflag:false}}); const cartoon=ca.length>=4&&polymer.length>ca.length*2;
+    if(name==='sticks') model.setStyle({{}},{{stick:{{radius:0.18,...(color?{{color}}:{{colorscheme:'Jmol'}})}}}});
+    else if(name==='surface'&&overlayMode) model.setStyle({{}},cartoon?{{cartoon:{{color,opacity:0.7}}}}:{{stick:{{radius:0.15,color}}}});
+    else if(name==='surface') {{ if(cartoon) model.setStyle({{hetflag:false}},{{cartoon:{{color:'spectrum',opacity:0.25}}}}); else model.setStyle({{}},{{stick:{{radius:0.15,colorscheme:'Jmol'}}}}); viewer.addSurface($3Dmol.SurfaceType.VDW,{{opacity:0.78,color:'#6b9ed8'}}); }}
+    else if(cartoon) {{ model.setStyle({{hetflag:false}},{{cartoon:{{color:color||'spectrum',opacity:overlayMode?0.72:1}}}}); if(name==='cartoon-sticks') model.addStyle({{}},{{stick:{{radius:0.12,color:color||undefined,colorscheme:color?undefined:'Jmol'}}}}); else model.setStyle({{hetflag:true}},{{stick:{{radius:0.12,color:color||undefined,colorscheme:color?undefined:'Jmol'}}}}); }}
+    else model.setStyle({{}},{{stick:{{radius:0.18,color:color||undefined,colorscheme:color?undefined:'Jmol'}}}});
+  }});
+  if(!models.length&&!backboneFallback()) return; viewer.zoomTo(); viewer.render();
+}}
 function setSpin(enabled) {{ spinning=enabled; viewer.spin(enabled?'y':false,1); const button=document.getElementById('spin'); button.setAttribute('aria-pressed',String(enabled)); button.textContent=enabled?'Auto-rotate':'Start rotation'; }}
 function reportHeight() {{ const panel=document.querySelector('.panel'); window.parent.postMessage({{type:'ui-size-change',payload:{{height:Math.ceil(panel.scrollHeight)}}}},'*'); }}
 function resizeViewer() {{ viewer.resize(); viewer.render(); reportHeight(); }}
@@ -207,9 +222,9 @@ try {{
   document.getElementById('reset').addEventListener('click',()=>{{setSpin(false);viewer.setView(initialView);viewer.render();}});
   document.getElementById('spin').addEventListener('click',()=>setSpin(!spinning));
   document.getElementById('style').addEventListener('change',(event)=>setRepresentation(event.target.value));
-  document.getElementById('structure').addEventListener('change',(event)=>{{try {{loadStructure(Number(event.target.value));}} catch(error) {{showError(error);}}}});
+  document.getElementById('structure').addEventListener('change',(event)=>{{try {{loadStructure(event.target.value);}} catch(error) {{showError(error);}}}});
   document.getElementById('fullscreen').addEventListener('click',toggleFullscreen);
-  document.addEventListener('fullscreenchange',syncFullscreen); loadStructure(0); setSpin(false);
+  document.addEventListener('fullscreenchange',syncFullscreen); loadStructure(entries.length>1?'overlay':'0'); setSpin(false);
   window.addEventListener('resize',resizeViewer);
   new ResizeObserver(()=>{{viewer.resize();viewer.render();}}).observe(document.getElementById('viewer'));
 }} catch(error) {{ showError(error); }}

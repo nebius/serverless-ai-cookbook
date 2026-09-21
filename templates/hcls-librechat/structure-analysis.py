@@ -11,6 +11,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import shlex
 
 import Bio
 import numpy as np
@@ -26,9 +27,96 @@ def is_mmcif(text):
     return first.startswith('data_')
 
 
+def _cif_token(value):
+    """Quote one atom-loop token for the private parser copy."""
+    if value and not any(character.isspace() for character in value) and not value.startswith(('#', '_', ';')):
+        return value
+    if "'" not in value:
+        return "'" + value + "'"
+    if '"' not in value:
+        return '"' + value + '"'
+    raise ValueError('Unsupported multiline atom-site value in mmCIF parser normalization.')
+
+
+def prepare_mmcif_for_parser(text):
+    """Supply parser-only atom defaults without changing retained coordinates.
+
+    OpenFold-style coordinate-only mmCIF is valid without an occupancy column,
+    but Biopython's ``MMCIFParser`` indexes that optional field unconditionally.
+    Rebuild only the atom-site loop in memory and explicitly report every
+    default. The caller continues to hash and publish the original bytes.
+    """
+    if not is_mmcif(text):
+        return text, []
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        if lines[index].strip().lower() != 'loop_':
+            index += 1
+            continue
+        loop_start = index
+        index += 1
+        headers = []
+        while index < len(lines) and lines[index].lstrip().startswith('_'):
+            headers.append(lines[index].strip().split()[0])
+            index += 1
+        lowered = [header.lower() for header in headers]
+        if not any(header.startswith('_atom_site.') for header in lowered):
+            continue
+        if not headers:
+            return text, []
+        rows, fields = [], []
+        row_end = index
+        while row_end < len(lines):
+            stripped = lines[row_end].strip()
+            if not stripped:
+                row_end += 1
+                continue
+            if stripped.startswith('#') or stripped.lower() == 'loop_' or stripped.startswith('_') or stripped.lower().startswith(('data_', 'save_')):
+                break
+            try:
+                fields.extend(shlex.split(lines[row_end], posix=True, comments=False))
+            except ValueError as error:
+                raise ValueError('Could not tokenize the mmCIF atom-site loop for parser normalization.') from error
+            while len(fields) >= len(headers):
+                rows.append(fields[:len(headers)])
+                fields = fields[len(headers):]
+            row_end += 1
+        if fields or not rows:
+            raise ValueError('Incomplete mmCIF atom-site loop; no parser defaults were applied.')
+        defaults = [('_atom_site.occupancy', '1.0')]
+        changes = []
+        for field, default in defaults:
+            try:
+                position = lowered.index(field.lower())
+            except ValueError:
+                headers.append(field)
+                lowered.append(field.lower())
+                for row in rows:
+                    row.append(default)
+                changes.append({'field': field, 'default': float(default), 'reason': 'column_absent'})
+            else:
+                replaced = 0
+                for row in rows:
+                    if row[position] in {'', '.', '?'}:
+                        row[position] = default
+                        replaced += 1
+                if replaced:
+                    changes.append({'field': field, 'default': float(default),
+                                    'reason': 'missing_values', 'value_count': replaced})
+        if not changes:
+            return text, []
+        rebuilt = (lines[:loop_start] + ['loop_'] + headers
+                   + [' '.join(_cif_token(value) for value in row) for row in rows]
+                   + lines[row_end:])
+        return '\n'.join(rebuilt) + ('\n' if text.endswith('\n') else ''), changes
+    return text, []
+
+
 def load_structure(text):
-    parser = MMCIFParser(QUIET=True) if is_mmcif(text) else PDBParser(QUIET=True)
-    model = next(parser.get_structure('comparison', io.StringIO(text)).get_models(), None)
+    parser_text, _ = prepare_mmcif_for_parser(text)
+    parser = MMCIFParser(QUIET=True) if is_mmcif(parser_text) else PDBParser(QUIET=True)
+    model = next(parser.get_structure('comparison', io.StringIO(parser_text)).get_models(), None)
     if model is None:
         raise ValueError('No coordinate model found: supply PDB/mmCIF bytes, a supported result JSON, or a published prediction manifest with explicit structure_index.')
     chains = {}
@@ -224,6 +312,22 @@ def rmsd(reference, prediction):
     return float(fit.rms)
 
 
+def tm_score(reference, prediction, reference_length):
+    """Reference-normalized C-alpha TM-score after the same global fit."""
+    if not reference_length or reference_length < len(reference):
+        raise ValueError('TM-score reference length cannot be shorter than mapped residues.')
+    if not np.isfinite([atom.coord for atom in reference + prediction]).all():
+        raise ValueError('Coordinates contain non-finite values.')
+    fit = Superimposer()
+    fit.set_atoms(reference, prediction)
+    rotation, translation = fit.rotran
+    moved = np.dot(np.asarray([atom.coord for atom in prediction]), rotation) + translation
+    fixed = np.asarray([atom.coord for atom in reference])
+    distances = np.linalg.norm(fixed - moved, axis=1)
+    d0 = max(0.5, 1.24 * np.cbrt(max(reference_length - 15, 0)) - 1.8)
+    return float(np.sum(1.0 / (1.0 + np.square(distances / d0))) / reference_length), float(d0)
+
+
 def contacts(residue_groups, cutoff):
     """Heavy-atom contacts among mapped residues of distinct selected chains."""
     atoms, labels = [], {}
@@ -311,10 +415,17 @@ def compare(reference_text, prediction_text, chain_map=None, cutoff=5.0, residue
                                for i, j in pairs)
     ref_atoms = [r['CA'] for group in mapped_ref for r in group]
     pred_atoms = [r['CA'] for group in mapped_pred for r in group]
+    reference_length = sum(len(reference[ref_id]) for ref_id, _ in chain_map)
+    global_tm_score, tm_d0 = tm_score(ref_atoms, pred_atoms, reference_length)
     metrics = {'schema': 'scientific-ai/protein-structure-comparison/v1',
                'units': {'rmsd': 'angstrom', 'contact_cutoff': 'angstrom', 'coverage': 'fraction',
+                         'tm_score': 'unitless reference-normalized fraction',
                          'residue_and_contact_counts': 'counts', 'model_confidence': 'unchanged model-native values; not reference accuracy'},
                'chains': reports, 'global_ca_rmsd_angstrom': rmsd(ref_atoms, pred_atoms),
+               'tm_score_reference_normalized_ca': global_tm_score,
+               'tm_score_reference_observed_residues': reference_length,
+               'tm_score_d0_angstrom': tm_d0,
+               'tm_score_method': 'TM-score kernel on mapped C-alpha distances after the same global least-squares fit; normalized by observed residues in selected reference chains. This is not US-align/TM-align and does not account for missing reference coordinates.',
                'mapped_residues': len(ref_atoms),
                'matched_identical_residues': sum(r['matched_identical_residues'] for r in reports),
                'correspondence_method': 'explicit-provenance' if explicit is not None else 'identical-sequence-alignment',
@@ -385,6 +496,7 @@ def report_markdown(metrics):
     lines = ['# Protein structure comparison', '',
              'Descriptive agreement with the supplied reference; not experimental, functional or clinical validation.', '',
              f"Global jointly fitted C-alpha RMSD: **{metrics['global_ca_rmsd_angstrom']:.12g} Å**.",
+             f"Reference-normalized fitted C-alpha TM-score: **{metrics['tm_score_reference_normalized_ca']:.12g}** (observed selected-reference length {metrics['tm_score_reference_observed_residues']}; not TM-align/US-align).",
              f"Mapped residues: {metrics['mapped_residues']}; identical sequence matches: {metrics['matched_identical_residues']}.",
              f"Correspondence: `{metrics['correspondence_method']}`.", '',
              '| Reference chain | Prediction chain | Mapped / observed reference | Mapped / observed prediction | Independently fitted chain RMSD (Å) |',
@@ -499,6 +611,8 @@ def main():
             'scope': 'Any inline native result confidence is retained separately; no selected sample association is inferred.'}
     request_bytes = args.request_file.read_bytes() if args.request_file else None
     prediction_format = 'mmcif' if is_mmcif(prediction_text) else 'pdb'
+    _, reference_parser_defaults = prepare_mmcif_for_parser(reference_text)
+    _, prediction_parser_defaults = prepare_mmcif_for_parser(prediction_text)
     metrics['sampling_provenance'] = sampling_provenance(request_bytes, index)
     if selection is not None:
         metrics['prediction_selection'] = selection
@@ -514,6 +628,9 @@ def main():
                              'request_sha256': metrics['sampling_provenance']['request_sha256'],
                              'residue_map_file': str(args.residue_map) if args.residue_map else None,
                              'residue_map_sha256': hashlib.sha256(args.residue_map.read_bytes()).hexdigest() if args.residue_map else None,
+                             'parser_only_defaults': {'reference': reference_parser_defaults,
+                                                      'prediction': prediction_parser_defaults,
+                                                      'original_coordinate_bytes_changed': False},
                              'biopython_version': Bio.__version__, 'numpy_version': np.__version__}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     for filename, data in [('metrics.json', metrics), ('residue-mapping.json', mapping)]:
@@ -538,6 +655,8 @@ def main():
         'chains; interface RMSD fits C-alpha atoms of native-contact residues separately. Missing residues are excluded, '
         'so contact fractions concern mapped residues only. These are not DockQ or CAPRI all-backbone metrics. '
         'Confidence fields are separate model outputs, not experimental agreement or biological validation.\n\n'
+        'A missing mmCIF occupancy column or value is defaulted to 1.0 only in the private Biopython parser copy; '
+        'the exact original prediction bytes and hash are retained. Any applied defaults are recorded in metrics.json.\n\n'
         'API reference: https://biopython.org/docs/1.85/api/Bio.PDB.Superimposer.html\n')
     print(json.dumps({'metrics': metrics, 'output_dir': str(args.output_dir)}, allow_nan=False))
 
