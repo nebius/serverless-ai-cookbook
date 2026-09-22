@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fkokoro-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fkokoro-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -34,7 +34,7 @@ docker push <your-registry>/kokoro-serve:1
 ## Test request
 
 After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
-This template leaves authentication **off** by default so you can try it quickly.
+This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
 
 **First boot:** Nebius can show RUNNING while weights are still downloading.
 `GET /v1/models` may return `502 failed to connect to local service` until the
@@ -47,10 +47,12 @@ first Hub pull is authenticated and usually faster (not required).
 
 ```bash
 export BASE_URL='https://…'   # Public endpoints URL from the console
+export TOKEN='<endpoint-auth-token>'   # generated in the create form (or printed once by the CLI)
+AUTH=(-H "Authorization: Bearer $TOKEN")   # AUTH=() if the endpoint has no auth
 
-curl -sS "$BASE_URL/v1/models"
+curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
 
-curl -sS -X POST "$BASE_URL/v1/audio/speech" \
+curl -sS -X POST "$BASE_URL/v1/audio/speech" "${AUTH[@]}" \
   -H "Content-Type: application/json" \
   -d '{"model": "kokoro", "input": "Hello from Kokoro on Nebius serverless.", "voice": "af_bella", "response_format": "mp3"}' \
   -o kokoro-sample.mp3
@@ -67,11 +69,13 @@ import urllib.error
 import urllib.request
 
 base = os.environ["BASE_URL"].rstrip("/")
+token = os.environ.get("TOKEN")            # bearer token; leave unset if the endpoint has no auth
+auth = {"Authorization": f"Bearer {token}"} if token else {}
 out_path = "kokoro-sample.mp3"
 
 for _ in range(40):  # up to ~10 min
     try:
-        with urllib.request.urlopen(f"{base}/v1/models", timeout=30) as resp:
+        with urllib.request.urlopen(urllib.request.Request(f"{base}/v1/models", headers=auth), timeout=30) as resp:
             if resp.status == 200:
                 break
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
@@ -92,7 +96,7 @@ body = json.dumps(
 req = urllib.request.Request(
     f"{base}/v1/audio/speech",
     data=body,
-    headers={"Content-Type": "application/json"},
+    headers={"Content-Type": "application/json", **auth},
     method="POST",
 )
 with urllib.request.urlopen(req, timeout=120) as resp:
@@ -102,8 +106,8 @@ open(out_path, "wb").write(audio)
 print(f"wrote {out_path} ({len(audio)} bytes)")
 ```
 
-For production, enable token auth when creating the endpoint and send
-`Authorization: Bearer <token>` — see
+Token auth is on by default for this template. Keep it on in production; the token is shown once at
+creation and cannot be recovered later (recreate the endpoint to rotate it) — see
 [How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
 
 > ⚠️ When you are done testing, **delete the endpoint** so it stops billing — see
@@ -117,6 +121,7 @@ For production, enable token auth when creating the endpoint and send
 nebius ai endpoint create \
   --image cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/kokoro-serve:d315ae1 \
   --public \
+  --auth token \
   --platform gpu-l40s-a \
   --preset 1gpu-8vcpu-32gb \
   --preemptible \
@@ -124,6 +129,9 @@ nebius ai endpoint create \
   --shm-size 16Gi \
   --disk-size 500Gi
 ```
+
+`--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
+`TOKEN`. Pass `--token <value>` to set your own, or `--token-secret <secret-version-id>` for CI.
 
 <!-- /factory:cli -->
 

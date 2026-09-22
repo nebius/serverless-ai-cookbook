@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0&amp;command=vllm%20serve%20Tongyi-MAI%2FZ-Image-Turbo%20--omni%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0&amp;command=vllm%20serve%20Tongyi-MAI%2FZ-Image-Turbo%20--omni%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -17,7 +17,7 @@ Z-Image-Turbo is a 6B Apache-2.0 text-to-image model distilled for 8-step genera
 ## Test request
 
 After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
-This template leaves authentication **off** by default so you can try it quickly.
+This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
 
 **First boot:** Nebius can show RUNNING while weights are still downloading.
 `GET /v1/models` may return `502 failed to connect to local service` until the
@@ -34,10 +34,12 @@ Z-Image-Turbo is distilled for eight steps — use `num_inference_steps: 9`
 
 ```bash
 export BASE_URL='https://…'   # Public endpoints URL from the console
+export TOKEN='<endpoint-auth-token>'   # generated in the create form (or printed once by the CLI)
+AUTH=(-H "Authorization: Bearer $TOKEN")   # AUTH=() if the endpoint has no auth
 
-curl -sS "$BASE_URL/v1/models"
+curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
 
-curl -sS -X POST "$BASE_URL/v1/images/generations" \
+curl -sS -X POST "$BASE_URL/v1/images/generations" "${AUTH[@]}" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "a red fox in a snowy pine forest at golden hour", "size": "1024x1024", "num_inference_steps": 9, "guidance_scale": 0, "seed": 42}' \
   | python3 -c 'import base64,json,sys; p="z-image.png"; open(p,"wb").write(base64.b64decode(json.load(sys.stdin)["data"][0]["b64_json"])); print(f"wrote {p}")'
@@ -54,12 +56,14 @@ import urllib.error
 import urllib.request
 
 base = os.environ["BASE_URL"].rstrip("/")
+token = os.environ.get("TOKEN")            # bearer token; leave unset if the endpoint has no auth
+auth = {"Authorization": f"Bearer {token}"} if token else {}
 out_path = "z-image.png"
 
 # Wait until the API is up (not just Nebius RUNNING)
 for _ in range(60):  # up to ~15 min
     try:
-        with urllib.request.urlopen(f"{base}/v1/models", timeout=30) as resp:
+        with urllib.request.urlopen(urllib.request.Request(f"{base}/v1/models", headers=auth), timeout=30) as resp:
             if resp.status == 200:
                 break
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError):
@@ -81,7 +85,7 @@ body = json.dumps(
 req = urllib.request.Request(
     f"{base}/v1/images/generations",
     data=body,
-    headers={"Content-Type": "application/json"},
+    headers={"Content-Type": "application/json", **auth},
     method="POST",
 )
 with urllib.request.urlopen(req, timeout=300) as resp:
@@ -92,8 +96,8 @@ open(out_path, "wb").write(png)
 print(f"wrote {out_path} ({len(png)} bytes)")
 ```
 
-For production, enable token auth when creating the endpoint and send
-`Authorization: Bearer <token>` — see
+Token auth is on by default for this template. Keep it on in production; the token is shown once at
+creation and cannot be recovered later (recreate the endpoint to rotate it) — see
 [How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
 
 > ⚠️ When you are done testing, **delete the endpoint** so it stops billing — see
@@ -107,6 +111,7 @@ For production, enable token auth when creating the endpoint and send
 nebius ai endpoint create \
   --image vllm/vllm-omni:v0.24.0 \
   --public \
+  --auth token \
   --platform gpu-h100-sxm \
   --preset 1gpu-16vcpu-200gb \
   --preemptible \
@@ -116,6 +121,9 @@ nebius ai endpoint create \
   --container-command bash \
   --args '-c vllm serve Tongyi-MAI/Z-Image-Turbo --omni --host 0.0.0.0 --port 8000'
 ```
+
+`--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
+`TOKEN`. Pass `--token <value>` to set your own, or `--token-secret <secret-version-id>` for CI.
 
 <!-- /factory:cli -->
 

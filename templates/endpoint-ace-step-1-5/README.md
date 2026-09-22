@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Facestep-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Facestep-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -39,7 +39,7 @@ that blocks until audio is ready — similar to vLLM-Omni `/v1/videos/sync`.
 Generate a short instrumental clip (DiT-only, no LM “thinking” — faster smoke):
 
 ```bash
-curl -sS -X POST "$BASE_URL/v1/audio/generations" \
+curl -sS -X POST "$BASE_URL/v1/audio/generations" "${AUTH[@]}" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -154,7 +154,7 @@ curl -sS localhost:8000/v1/models
 ## Test request
 
 After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
-This template leaves authentication **off** by default so you can try it quickly.
+This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
 
 **First boot:** Nebius can show RUNNING while weights are still downloading.
 `GET /v1/models` may return `502 failed to connect to local service` until the
@@ -166,11 +166,13 @@ first Hub pull is authenticated and usually faster (not required).
 
 ```bash
 export BASE_URL='https://…'   # Public endpoints URL from the console
-curl -sS "$BASE_URL/v1/models"
+export TOKEN='<endpoint-auth-token>'   # generated in the create form (or printed once by the CLI)
+AUTH=(-H "Authorization: Bearer $TOKEN")   # AUTH=() if the endpoint has no auth
+curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
 ```
 
-For production, enable token auth when creating the endpoint and send
-`Authorization: Bearer <token>` — see
+Token auth is on by default for this template. Keep it on in production; the token is shown once at
+creation and cannot be recovered later (recreate the endpoint to rotate it) — see
 [How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
 
 > ⚠️ When you are done testing, **delete the endpoint** so it stops billing — see
@@ -184,6 +186,7 @@ For production, enable token auth when creating the endpoint and send
 nebius ai endpoint create \
   --image cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/acestep-serve:d315ae1 \
   --public \
+  --auth token \
   --platform gpu-h100-sxm \
   --preset 1gpu-16vcpu-200gb \
   --preemptible \
@@ -191,6 +194,9 @@ nebius ai endpoint create \
   --shm-size 16Gi \
   --disk-size 500Gi
 ```
+
+`--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
+`TOKEN`. Pass `--token <value>` to set your own, or `--token-secret <secret-version-id>` for CI.
 
 <!-- /factory:cli -->
 
