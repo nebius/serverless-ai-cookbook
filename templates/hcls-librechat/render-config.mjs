@@ -72,7 +72,10 @@ const makeTokenConfig = (models) => Object.fromEntries(models.map(([id]) => [id,
 
 let availablePublicTokenModels = publicTokenFactoryModels;
 let discoveredPublicTokenIds = null;
-const configuredChatModel = process.env.SCIENTIFIC_CHAT_MODEL;
+// Product-owner-approved conversational default. Title generation follows the
+// same model so a nominally GLM conversation never makes a hidden Qwen call.
+// Do not change this default without explicit product-owner approval.
+const configuredChatModel = process.env.SCIENTIFIC_CHAT_MODEL || 'zai-org/GLM-5.3-Flash';
 if (process.env.NEBIUS_API_KEY && process.env.NEBIUS_API_KEY !== 'user_provided'
     && process.env.SCIENTIFIC_DISCOVER_CHAT_MODELS !== 'false') {
   try {
@@ -177,7 +180,7 @@ const config = {
       baseURL: 'https://api.tokenfactory.nebius.com/v1',
       models: { default: availablePublicTokenModels.map(([id]) => id), fetch: false },
       tokenConfig: makeTokenConfig(availablePublicTokenModels),
-      titleConvo: true, titleModel: availablePublicTokenModels[0][0],
+      titleConvo: true, titleModel: configuredChatModel,
       modelDisplayLabel: 'Nebius Public', dropParams: ['stop'],
     }],
   },

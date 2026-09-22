@@ -346,6 +346,9 @@ def test_default_model_and_visible_workbench(tmp_path) -> None:
     brand_client = (ROOT / "brand-client.mjs").read_text(encoding="utf-8")
     default = next(item for item in config["modelSpecs"]["list"] if item["default"])
     assert default["preset"] == {"endpoint": "agents", "agent_id": "agent_nebius_scientific_ai"}
+    token_factory = next(item for item in config["endpoints"]["custom"]
+                         if item["name"] == "Nebius Token Factory")
+    assert token_factory["titleModel"] == DEFAULT_CHAT_MODEL
     assert "nebius-scientific-workbench" in brand_client
     for title in (
         "Reproduce a published result", "Predict and compare structures", "Design and rank candidates",
