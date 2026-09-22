@@ -11,7 +11,9 @@ const catalogRoutingInstructions = `FINAL CATALOG ROUTING RULE: when the current
 const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/LibreChat';
 const serviceEmail = 'nebius-scientific-ai-agent@localhost.invalid';
 const provider = process.env.SCIENTIFIC_CHAT_PROVIDER || 'Nebius Token Factory';
-const model = process.env.SCIENTIFIC_CHAT_MODEL || 'Qwen/Qwen3-235B-A22B-Instruct-2507';
+// Product-owner decision: GLM-5.3-Flash is the conversational default. Do not
+// change this default or introduce an automatic fallback without explicit approval.
+const model = process.env.SCIENTIFIC_CHAT_MODEL || 'zai-org/GLM-5.3-Flash';
 const reasoningEffort = process.env.SCIENTIFIC_CHAT_REASONING_EFFORT;
 if (reasoningEffort && !['low', 'high', 'max'].includes(reasoningEffort)) throw new Error('Unsupported explicit reasoning effort');
 const contextTokens = process.env.SCIENTIFIC_CHAT_MAX_CONTEXT_TOKENS

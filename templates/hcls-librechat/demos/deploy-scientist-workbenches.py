@@ -81,7 +81,7 @@ def reconcile_endpoint(cli: list[str], manifest: dict, state: dict, folder: Path
 
 def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
     identifier = person["id"]
-    chat_model = getattr(args, 'chat_model', 'Qwen/Qwen3-235B-A22B-Instruct-2507')
+    chat_model = getattr(args, 'chat_model', 'zai-org/GLM-5.3-Flash')
     reasoning_effort = getattr(args, 'reasoning_effort', None)
     context_tokens = getattr(args, 'context_tokens', None)
     folder = args.output / identifier
@@ -101,7 +101,7 @@ def deploy(manifest: dict, person: dict, args: argparse.Namespace) -> dict:
             "endpoint_name": args.name_prefix + "-" + identifier}
         if state.get("endpoint_name", "science-qualification-20260918-" + identifier) != args.name_prefix + "-" + identifier:
             raise RuntimeError('Recorded endpoint name differs; use a separate preview output directory')
-        if state.get('chat_model', 'Qwen/Qwen3-235B-A22B-Instruct-2507') != chat_model:
+        if state.get('chat_model', 'zai-org/GLM-5.3-Flash') != chat_model:
             raise RuntimeError('Recorded chat model differs; use a separate comparison endpoint')
         if state.get('reasoning_effort') != reasoning_effort:
             raise RuntimeError('Recorded reasoning effort differs; use a separate comparison endpoint')
@@ -243,8 +243,8 @@ def main() -> None:
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--image", required=True)
     parser.add_argument("--profile", default="sandbox2")
-    parser.add_argument('--chat-model', default='Qwen/Qwen3-235B-A22B-Instruct-2507',
-                        help='Verified Token Factory planning model; model/tool budgets are unchanged.')
+    parser.add_argument('--chat-model', default='zai-org/GLM-5.3-Flash',
+                        help='Product-owner-approved Token Factory planning default; do not change without explicit approval.')
     parser.add_argument('--reasoning-effort', choices=['low', 'high', 'max'],
                         help='Explicit provider-supported planning variant; never changes token budget.')
     parser.add_argument('--context-tokens', type=int,

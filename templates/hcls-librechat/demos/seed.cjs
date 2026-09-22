@@ -2,6 +2,9 @@ const { createRequire } = require('node:module');
 const appRequire = createRequire('/app/package.json');
 const { MongoClient, ObjectId } = appRequire('mongodb');
 const { tools: demoTools } = require('./mcp.cjs');
+// Keep specialized workflow agents on the product-owner-approved conversational
+// default. Backend report/judge model selections remain explicit and separate.
+const defaultChatModel = process.env.SCIENTIFIC_CHAT_MODEL || 'zai-org/GLM-5.3-Flash';
 const common = 'Use only the scientific-demos MCP tools for these workflows. Never invent results or silently start another run after a timeout. Save job/run IDs and poll existing work. Keep provider and platform credentials out of chat. The authenticated control panels are at /demos?tab=clinical and /demos?tab=mindeval. Keys are configured there or in scientific-demos MCP Settings. Inference is served by Nebius, without regional routing. Discover currently authorized models; never assume access to a private customer endpoint or substitute a classifier for a conversational model.';
 const definitions = [
   { id: 'agent_clinical_report', name: 'Clinical Report Draft',
@@ -24,8 +27,8 @@ async function main() {
     for (const entry of definitions) {
       await db.collection('agents').updateOne({ id: entry.id }, { $set: { id: entry.id, name: entry.name,
         description: entry.description, instructions: entry.instructions, provider: 'Nebius Token Factory',
-        model: 'Qwen/Qwen3-235B-A22B-Instruct-2507',
-        model_parameters: { model: 'Qwen/Qwen3-235B-A22B-Instruct-2507', max_tokens: 8192 },
+        model: defaultChatModel,
+        model_parameters: { model: defaultChatModel, max_tokens: 8192 },
         tools: demoTools.filter((tool) => tool.name.startsWith(entry.id === 'agent_clinical_report' ? 'clinical_' : 'workshop_'))
           .map((tool) => `${tool.name}_mcp_scientific-demos`),
         mcpServerNames: ['scientific-demos'], skills_enabled: true, skills_scope: 'all',

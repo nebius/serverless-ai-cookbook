@@ -9,6 +9,7 @@ import pytest
 
 ROOT = Path(__file__).parent
 INSTRUCTIONS = ROOT.parents[1] / "life-science/bionemo-librechat/scientific-agent-instructions.md"
+DEFAULT_CHAT_MODEL = "zai-org/GLM-5.3-Flash"
 
 
 def render_config(tmp_path, catalog=None, **overrides):
@@ -239,6 +240,8 @@ vm.runInNewContext(fs.readFileSync(process.argv[1], 'utf8'), {
     assert demo_tools <= set(general['tools'])
     assert 'visualize_workspace_media_mcp_structure-viewer' in general['tools']
     for agent in agents:
+        assert agent["model"] == DEFAULT_CHAT_MODEL
+        assert agent["model_parameters"]["model"] == DEFAULT_CHAT_MODEL
         assert agent["skills_enabled"] is True
         assert agent["model_parameters"]["max_tokens"] == 16384
         assert instructions.read_text().strip() in agent["instructions"]
@@ -349,6 +352,20 @@ def test_default_model_and_visible_workbench(tmp_path) -> None:
         "Analyze sequences and aging clocks", "Work with speech and medical data", "Augment robotics data",
     ):
         assert title in (ROOT / "ScientificLanding.tsx").read_text(encoding="utf-8")
+
+
+def test_product_owner_approved_default_chat_model_is_glm_flash() -> None:
+    expected = "zai-org/GLM-5.3-Flash"
+    sources = {
+        "seed-workbench.js": ROOT / "seed-workbench.js",
+        "demos/seed.cjs": ROOT / "demos" / "seed.cjs",
+        "demos/deploy-scientist-workbenches.py": ROOT / "demos" / "deploy-scientist-workbenches.py",
+        "scripts/deploy.sh": ROOT / "scripts" / "deploy.sh",
+    }
+    for name, path in sources.items():
+        text = path.read_text(encoding="utf-8")
+        assert expected in text, f"{name} must preserve the approved default"
+    assert "without explicit approval" in sources["seed-workbench.js"].read_text(encoding="utf-8")
 
 
 def test_team_bucket_context_is_injected(tmp_path) -> None:

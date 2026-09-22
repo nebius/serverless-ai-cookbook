@@ -1,7 +1,9 @@
 # Nebius Scientific AI Agent
 
 A scientific workspace built on pinned LibreChat. Public Nebius Token Factory
-is the default conversational provider. Retired event-specific endpoints are
+with `zai-org/GLM-5.3-Flash` is the product-owner-approved default
+conversational provider/model. See [CHAT_MODEL_POLICY.md](CHAT_MODEL_POLICY.md);
+the default must not change without explicit approval. Retired event-specific endpoints are
 not part of the reusable client. Users can also bring OpenAI or Anthropic credentials. The existing
 `agent_nebius_scientific_ai` agent is enhanced, not replaced: scientific Apps,
 research skills, Tavily, structure viewing, execution, durable run tracking and
