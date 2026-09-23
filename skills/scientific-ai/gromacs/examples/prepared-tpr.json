@@ -1,0 +1,28 @@
+{
+  "schema": "fs2-serve.nebius.ai/gromacs-workflow-request/v1",
+  "jobs": [{
+    "id": "replica-01",
+    "steps": [{
+      "id": "production",
+      "command": "mdrun",
+      "args": ["-s", "simulation.tpr", "-deffnm", "md"],
+      "expected_outputs": ["md.gro"]
+    }, {
+      "id": "join-trajectory",
+      "command": "trjcat",
+      "args": ["-f", {"files": "md.part*.xtc"}, "-o", "md.xtc"],
+      "expected_outputs": ["md.xtc"]
+    }, {
+      "id": "check-trajectory",
+      "command": "check",
+      "args": ["-f", "md.xtc"]
+    }]
+  }],
+  "threads": 8,
+  "checkpoint_minutes": 5,
+  "segment_minutes": 5,
+  "max_wall_seconds": 21600,
+  "max_output_bytes": 4294967296,
+  "output_destination": "customer-bucket",
+  "output_prefix": "runs/gromacs"
+}
