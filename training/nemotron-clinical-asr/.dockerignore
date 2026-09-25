@@ -1,0 +1,9 @@
+__pycache__
+**/__pycache__
+*.pyc
+.venv
+.pytest_cache
+tests
+evidence
+*.nemo
+*.ckpt
