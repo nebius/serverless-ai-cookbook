@@ -19,7 +19,8 @@ difficulty: advanced
 
 # Clinical-domain Nemotron Speech on Serverless Jobs and Endpoints
 
-This recipe adapts **Nemotron 3.5 ASR Streaming 0.6B**, saves a real `.nemo`
+This recipe adapts **Nemotron 3.5 ASR Streaming 0.6B** or the explicitly selected
+**English Nemotron Speech Streaming 0.6B**, saves a real `.nemo`
 checkpoint, and serves that checkpoint through batch HTTP, native WebSocket
 streaming and typed MCP tools. It does not substitute generated transcript text
 for model inference. All work is isolated in new resources; existing applications,
@@ -35,8 +36,10 @@ simulated or appropriately de-identified inputs and clinician-reviewed drafts.
 
 | Component | Exact revision |
 | --- | --- |
-| ASR model | `nvidia/nemotron-3.5-asr-streaming-0.6b@ea30d66debe3740a08b573244286791d423d6b3e` |
-| Model license | OpenMDW 1.1; review upstream terms before redistribution |
+| Default ASR model | `nvidia/nemotron-3.5-asr-streaming-0.6b@ea30d66debe3740a08b573244286791d423d6b3e` |
+| Default model license | OpenMDW 1.1; review upstream terms before redistribution |
+| Opt-in English ASR | `nvidia/nemotron-speech-streaming-en-0.6b@ebe59e5a817142986528bbbee5dba8db7b38ed50` |
+| English model license | NVIDIA Open Model License Agreement; not the same license as 3.5 |
 | NeMo | `3b08b2acacc13ec1268e53653346266202b2335f` |
 | PyTorch/CUDA | PyTorch 2.8.0, CUDA 12.8 |
 | Alignment-only model | `nvidia/parakeet-ctc-0.6b@ad09ba1cc62743fbc9814de5d2016fca9096485a`, CC BY 4.0 |
@@ -623,7 +626,7 @@ remain separate; this SDK probe does not qualify the browser.
 
 ### Opt-in English-specialist candidate path
 
-`train`, `cloud-train`, `evaluate`, and `cloud-evaluate` accept
+`cloud-run`, `train`, `cloud-train`, `evaluate`, and `cloud-evaluate` accept
 `--model-family english_specialist`. The default remains `nemotron35`; no
 existing endpoint, model selection, or image is changed by this option. The
 English foundation is pinned in `clinical_asr/families.py` to its exact upstream
@@ -640,6 +643,49 @@ original pinned English foundation. A future English-adapted endpoint requires
 `MODEL_FAMILY=english_specialist` alongside its actual `MODEL_PATH`/`MODEL_SHA256`
 and `MODEL_ID=nemotron-clinical-en`. Its native 560ms inference context is
 `[70,6]`, compared with `[56,6]` for multilingual Nemotron 3.5.
+
+For an end-to-end run with your own approved English-domain audio and original
+transcripts, use the same data contract, whole-conversation split, uploader,
+alignment and segmentation steps above. Select the family explicitly in the
+Job arguments; never rename a 3.5 checkpoint as English:
+
+```text
+cloud-run --bucket YOUR_PRIVATE_BUCKET --run-id english-smoke-UNIQUE
+  --manifest-key manifests/pilot-alignment.jsonl
+  --model-family english_specialist
+  --max-steps 20 --val-every 20 --learning-rate 0.00003
+  --batch-duration 120 --accumulate-grad-batches 1 --checkpoint-every 0
+```
+
+Use these arguments in the earlier **new Serverless Job** command, with an
+immutable image built from this source. The wrapper uploads the real model and
+provenance and compares the first same 12 development rows with the pinned
+English base. This small smoke is not evidence of domain accuracy. For the full
+run use your full train/dev manifest, separate regression cohorts, a unique run
+ID and `--mode align-train`; choose the step budget and learning rate using
+development data, never final-test predictions. Add the optional disjoint replay
+manifest if appropriate, and verify its actual selected-checkpoint consumption.
+
+Evaluate that checkpoint in a separate `cloud-evaluate` Job using the frozen
+manifest/checksum arguments in [EVALUATION.md](EVALUATION.md), **also adding
+`--model-family english_specialist`**. This compares like with like; improved
+scores over multilingual 3.5 alone are not evidence of fine-tuning gain.
+`cloud-train` is an alternative for already-aligned, checksum-pinned bundles;
+the `cloud-run` path above does not require an internal experiment bundle.
+
+After artifact, quality and serving checks, add
+`--env MODEL_FAMILY=english_specialist` to the earlier new-endpoint command.
+Keep the exported model's actual object key and SHA256, unchanged authentication,
+and a new state prefix. Inspect authenticated `/v1/models` for the English
+foundation revision and expected checkpoint, then run the HTTP/MCP/paced-stream
+probe above. Do not omit `MODEL_FAMILY`: the compatibility default is 3.5 and a
+restored-class mismatch fails closed. Browser microphone and Sortformer are
+client integrations, not capabilities established by training alone.
+
+The English foundation has different governing terms: see its
+[NVIDIA model card](https://huggingface.co/nvidia/nemotron-speech-streaming-en-0.6b)
+and linked NVIDIA Open Model License Agreement. Retain model and dataset
+attributions and review the applicable terms for your distribution.
 
 At this preparation stage, the English fine-tuning path has passed CPU tests
 and actual checkpoint/loader/reference-token preflight, **not GPU training or

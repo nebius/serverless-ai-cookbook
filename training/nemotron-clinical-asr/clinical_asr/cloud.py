@@ -74,6 +74,35 @@ def upload_outputs(client, bucket, prefix, output, *, include_checkpoints=False,
     return sorted(results, key=lambda item: item["key"])
 
 
+def training_arguments(args, output):
+    from .families import family_spec
+    family_spec(args.model_family)
+    return ["train", "--train-manifest", str(output / "segments/train.jsonl"),
+            "--dev-manifest", str(output / "segments/dev.jsonl"), "--output", str(output / "training"),
+            "--model-family", args.model_family,
+            "--max-steps", str(args.max_steps), "--val-every", str(args.val_every),
+            "--batch-duration", str(args.batch_duration), "--accumulate-grad-batches", str(args.accumulate_grad_batches),
+            "--learning-rate", str(args.learning_rate), "--checkpoint-every", str(args.checkpoint_every),
+            "--seed", str(args.seed),
+            *(["--resume-pointer", args.resume_pointer] if args.resume_pointer else [])]
+
+
+def smoke_evaluation_arguments(output, checkpoint_sha, model_family):
+    from .families import family_spec
+    family_spec(model_family)
+    base = "evaluate-english" if model_family == "english_specialist" else "evaluate"
+    manifest = str(output / "segments/dev.jsonl")
+    return [
+        ("evaluate-base", [base, "--manifest", manifest,
+                           "--output", str(output / "evaluation/base-predictions.jsonl"), "--limit", "12"]),
+        ("evaluate-tuned", ["evaluate", "--manifest", manifest,
+                            "--output", str(output / "evaluation/tuned-predictions.jsonl"), "--limit", "12",
+                            "--model-family", model_family, "--model-id", "nemotron-clinical-en",
+                            "--checkpoint", str(output / "training/nemotron-clinical-en.nemo"),
+                            "--checkpoint-sha", checkpoint_sha]),
+    ]
+
+
 def main():
     from .cloud_evaluate import add_cohort_arguments, pinned_cohorts, stage_cohorts, evaluate_cohorts
     parser = argparse.ArgumentParser()
@@ -81,6 +110,8 @@ def main():
     parser.add_argument("--manifest-key", default="manifests/pilot-alignment.jsonl")
     parser.add_argument("--replay-manifest-key", help="Optional already-segmented, disjoint general-English training replay")
     parser.add_argument("--run-id", required=True)
+    from .families import FAMILIES
+    parser.add_argument("--model-family", choices=sorted(FAMILIES), default="nemotron35")
     parser.add_argument("--max-steps", type=int, default=10)
     parser.add_argument("--val-every", type=int, default=5)
     parser.add_argument("--batch-duration", type=float, default=30.0)
@@ -203,29 +234,18 @@ def main():
                        "hours": sum(row["duration"] for row in replay) / 3600, "mixing": mixing})
         if args.mode != "align":
             stage = "train"
-            command(stage, ["train", "--train-manifest", str(output / "segments/train.jsonl"),
-                            "--dev-manifest", str(output / "segments/dev.jsonl"), "--output", str(output / "training"),
-                            "--max-steps", str(args.max_steps), "--val-every", str(args.val_every),
-                            "--batch-duration", str(args.batch_duration), "--accumulate-grad-batches", str(args.accumulate_grad_batches),
-                            "--learning-rate", str(args.learning_rate), "--checkpoint-every", str(args.checkpoint_every),
-                            "--seed", str(args.seed),
-                            *(["--resume-pointer", args.resume_pointer] if args.resume_pointer else [])])
+            command(stage, training_arguments(args, output))
         if args.mode == "align-train-evaluate" and evaluation_specs:
             stage = "stage_evaluation_cohorts"
             cohorts = stage_cohorts(client, args.bucket, source_root, output, evaluation_specs)
             provenance = json.loads((output / "training/training-provenance.json").read_text())
             stage = "evaluate_explicit_cohorts"
-            evaluate_cohorts(cohorts, output / "training/nemotron-clinical-en.nemo", provenance["checkpoint_sha256"], command)
+            evaluate_cohorts(cohorts, output / "training/nemotron-clinical-en.nemo", provenance["checkpoint_sha256"], command,
+                             model_family=args.model_family)
         elif args.mode == "align-train-evaluate":
-            stage = "evaluate-base"
-            command(stage, ["evaluate", "--manifest", str(output / "segments/dev.jsonl"),
-                            "--output", str(output / "evaluation/base-predictions.jsonl"), "--limit", "12"])
             provenance = json.loads((output / "training/training-provenance.json").read_text())
-            stage = "evaluate-tuned"
-            command(stage, ["evaluate", "--manifest", str(output / "segments/dev.jsonl"),
-                            "--output", str(output / "evaluation/tuned-predictions.jsonl"), "--limit", "12",
-                            "--model-id", "nemotron-clinical-en", "--checkpoint", str(output / "training/nemotron-clinical-en.nemo"),
-                            "--checkpoint-sha", provenance["checkpoint_sha256"]])
+            for stage, arguments in smoke_evaluation_arguments(output, provenance["checkpoint_sha256"], args.model_family):
+                command(stage, arguments)
         status.update(status="completed", finished_at_unix=time.time())
     except BaseException as exc:
         failure = exc
@@ -238,6 +258,7 @@ def main():
                                   include_checkpoints=args.upload_lightning_checkpoints,
                                   workers=args.upload_workers, transfer_config=TransferConfig(use_threads=False))
         publication = {"run_id": args.run_id, "status": status["status"], "objects": uploaded,
+                       "model_family": args.model_family,
                        "clinical_validation": "NOT_PERFORMED", "checksums": "local_SHA256_and_full_S3_GET_readback",
                        "output_upload_workers": args.upload_workers,
                        "output_upload_seconds": time.monotonic() - started,

@@ -18,7 +18,10 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--manifest', required=True)
     p.add_argument('--output', required=True)
+    p.add_argument('--limit', type=int, help='Optional positive plumbing-smoke bound; never use for full-cohort quality scoring')
     args = p.parse_args()
+    if args.limit is not None and args.limit < 1:
+        p.error('--limit must be a positive integer')
     from huggingface_hub import hf_hub_download
     checkpoint = hf_hub_download(REPOSITORY, 'nemotron-speech-streaming-en-0.6b.nemo', revision=REVISION)
     if sha256_file(checkpoint) != CHECKPOINT_SHA:
@@ -31,6 +34,8 @@ def main():
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     rows = read_jsonl(args.manifest)
+    if args.limit is not None:
+        rows = rows[:args.limit]
     with output.open('x') as target:
         for row in rows:
             result = transcribe_wav(runtime, row['audio_filepath'], options)
@@ -40,4 +45,5 @@ def main():
             target.flush()
     write_json(output.with_suffix('.provenance.json'), {'runtime': runtime.identity, 'text_assembly': TEXT_ASSEMBLY,
         'manifest_sha256': sha256_file(args.manifest), 'predictions_sha256': sha256_file(output), 'rows': len(rows),
+        'requested_limit': args.limit,
         'comparison_scope': 'Same audio and nominal560ms native greedy profile; model-specific pretrained left context70 versus56 for Nemotron3.5; not identical architecture'})
