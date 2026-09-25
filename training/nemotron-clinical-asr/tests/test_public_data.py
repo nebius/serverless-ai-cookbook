@@ -121,6 +121,53 @@ def test_upload_refuses_reference_outside_prepared_root(tmp_path):
         inputs(tmp_path, ["source.jsonl"], [])
 
 
+@pytest.mark.parametrize("code", ["412", "PreconditionFailed", "KeyAlreadyExists"])
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_upload_collision_requires_full_content_match(tmp_path, monkeypatch, code, corrupt):
+    import io
+    from types import SimpleNamespace
+    import boto3
+    from botocore.exceptions import ClientError
+    from botocore.response import StreamingBody
+    import upload_inputs
+
+    audio = tmp_path / "approved.wav"
+    audio.write_bytes(b"synthetic fixture bytes")
+    manifest = tmp_path / "source.jsonl"
+    manifest.write_text(json.dumps({"audio_filepath": "/data/clinical-speech/approved.wav"}) + "\n")
+    receipt = tmp_path / "receipt.json"
+    registered = []
+
+    class ExistingOnly:
+        exceptions = SimpleNamespace(ClientError=ClientError)
+        meta = SimpleNamespace(events=SimpleNamespace(register=lambda event, handler: registered.append((event, handler))))
+
+        def put_object(self, **kwargs):
+            raise ClientError({"Error": {"Code": code}}, "PutObject")
+
+        def get_object(self, **kwargs):
+            body = (tmp_path / kwargs["Key"]).read_bytes()
+            if corrupt:
+                body += b"changed"
+            return {"Body": StreamingBody(io.BytesIO(body), len(body)), "ContentLength": len(body)}
+
+    monkeypatch.setattr(boto3, "client", lambda *args, **kwargs: ExistingOnly())
+    monkeypatch.setenv("AWS_ENDPOINT_URL", "https://invalid.example")
+    monkeypatch.setattr(sys, "argv", ["upload_inputs.py", "--data-root", str(tmp_path),
+        "--bucket", "synthetic", "--manifest", "source.jsonl", "--receipt", str(receipt)])
+    if corrupt:
+        with pytest.raises(ValueError, match="mismatch; no overwrite"):
+            upload_inputs.main()
+        assert not receipt.exists()
+    else:
+        upload_inputs.main()
+        assert all(row["state"] == "verified_existing" for row in json.loads(receipt.read_text())["objects"])
+    assert registered[0][0] == "before-sign.s3.PutObject"
+    request = SimpleNamespace(headers={})
+    registered[0][1](request)
+    assert request.headers["If-None-Match"] == "*"
+
+
 def test_paired_scoring_fails_on_missing_ids_or_audio_mismatch():
     refs = {"x": {"id": "x", "text": "No metformin"}}
     with pytest.raises(ValueError, match="ID sets"):

@@ -63,7 +63,10 @@ def main():
                 client.put_object(Bucket=args.bucket, Key=key, Body=stream, ContentLength=size, Metadata={"sha256": expected})
             state = "uploaded"
         except client.exceptions.ClientError as exc:
-            if exc.response["Error"]["Code"] not in {"412", "PreconditionFailed"}:
+            # Nebius Object Storage reports HTTP412/KeyAlreadyExists for the
+            # exercised If-None-Match:* collision; AWS uses PreconditionFailed.
+            # Neither permits overwrite: independently full-GET verify below.
+            if exc.response["Error"]["Code"] not in {"412", "PreconditionFailed", "KeyAlreadyExists"}:
                 raise
             state = "verified_existing"
         response = client.get_object(Bucket=args.bucket, Key=key)
