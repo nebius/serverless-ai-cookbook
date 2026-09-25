@@ -9,7 +9,9 @@ RUN python -m pip install --no-cache-dir --require-hashes -r /tmp/requirements.l
 WORKDIR /opt/clinical-asr
 COPY clinical_asr ./clinical_asr
 ENV PYTHONPATH=/opt/clinical-asr
-RUN mkdir -p /output /cache /data/clinical-speech && chown -R 10001:10001 /opt/clinical-asr /output /cache /data/clinical-speech
+RUN useradd --uid 10001 --create-home speech \
+    && mkdir -p /output /cache /data/clinical-speech \
+    && chown -R 10001:10001 /opt/clinical-asr /output /cache /data/clinical-speech
 USER 10001:10001
 EXPOSE 8000
 ENTRYPOINT ["python", "-m", "clinical_asr"]
