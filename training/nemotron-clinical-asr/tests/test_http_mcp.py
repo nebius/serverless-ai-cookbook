@@ -76,3 +76,19 @@ def test_authenticated_http_ws_mcp_contract(monkeypatch, tmp_path):
                              "params": {"name": "get_clinical_transcription", "arguments": {"operation_id": operation_id}}})
         assert not polled.json()["result"]["isError"]
         assert operation_id in polled.text
+        mcp_request = {"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {
+            "name": "transcribe_clinical_audio", "arguments": {"audio_artifact": artifact,
+                "idempotency_key": "mcp-submit-test-123", "model": "nemotron35-base-en"}}}
+        mcp_submitted = client.post("/mcp", headers=mcp_headers, json=mcp_request).json()["result"]
+        assert not mcp_submitted["isError"]
+        mcp_operation = mcp_submitted["structuredContent"]
+        assert mcp_operation["durable_admission"] is True
+        replayed = client.post("/mcp", headers=mcp_headers, json=mcp_request).json()["result"]["structuredContent"]
+        assert replayed["id"] == mcp_operation["id"]
+        for _ in range(100):
+            mcp_operation = client.get("/v1/operations/" + mcp_operation["id"], headers=headers).json()
+            if mcp_operation["status"] == "succeeded":
+                break
+            time.sleep(0.01)
+        assert mcp_operation["status"] == "succeeded"
+        assert mcp_operation["result"]["text"] == "test engine output"

@@ -15,7 +15,7 @@ import time
 import wave
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, Request, UploadFile, WebSocket
@@ -222,17 +222,17 @@ mcp = FastMCP("Clinical Nemotron ASR", host="0.0.0.0", stateless_http=True, json
 
 
 @mcp.tool()
-def describe_clinical_asr() -> dict:
+async def describe_clinical_asr() -> dict[str, Any]:
     """Discover exact checkpoint, serving contract, limits, privacy and readiness caveats."""
     return service.describe()
 
 
 @mcp.tool()
-def transcribe_clinical_audio(
+async def transcribe_clinical_audio(
     audio_artifact: Annotated[str, Field(pattern=r"^artifact:sha256:[0-9a-f]{64}$", description="Immutable WAV reference returned by authenticated POST /v1/artifacts; never a local path or URL.")],
     idempotency_key: Annotated[str, Field(min_length=8, max_length=128, description="Stable caller-chosen key for this intended submission; reuse only for the identical request.")],
     model: Annotated[str, Field(description="Exact App identity returned by describe_clinical_asr, e.g. nemotron-clinical-en.")],
-) -> dict:
+) -> dict[str, Any]:
     """Durably submit English clinical ASR. Returns operation ID, not a completed transcript. No diagnosis or diarization."""
     try:
         return service.submit(TranscriptionRequest(audio_artifact=audio_artifact, idempotency_key=idempotency_key,
@@ -244,7 +244,7 @@ def transcribe_clinical_audio(
 
 
 @mcp.tool()
-def get_clinical_transcription(operation_id: Annotated[str, Field(description="Durable operation ID from submission.")]) -> dict:
+async def get_clinical_transcription(operation_id: Annotated[str, Field(description="Durable operation ID from submission.")]) -> dict[str, Any]:
     """Poll or retrieve the same accepted operation, without executing it again."""
     try:
         return service.poll(operation_id)
@@ -253,7 +253,7 @@ def get_clinical_transcription(operation_id: Annotated[str, Field(description="D
 
 
 @mcp.tool()
-def cancel_clinical_transcription(operation_id: str) -> dict:
+async def cancel_clinical_transcription(operation_id: str) -> dict[str, Any]:
     """Cancel queued work or request cancellation after the current GPU chunk completes."""
     try:
         return service.cancel(operation_id)
