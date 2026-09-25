@@ -81,6 +81,9 @@ def main():
     model = ASRModel.restore_from(base, map_location="cpu")
     model.set_trainer(trainer)
     model.cfg.log_prediction = False
+    # The WER metric was already constructed during restore; changing cfg alone
+    # does not change its live logging flag.
+    model.wer.log_prediction = False
     # Resolve dataset interpolations against ACTUAL checkpoint architecture/prompts.
     template = OmegaConf.load("/opt/nemo/examples/asr/conf/fastconformer/cache_aware_streaming/fastconformer_transducer_bpe_streaming_prompt.yaml")
     merged = OmegaConf.create({"model": OmegaConf.to_container(model.cfg, resolve=True)})
@@ -99,6 +102,10 @@ def main():
         config.lang_field = "target_lang"
         config.default_prompt_mode = "langID"
         config.shuffle = training
+        # Lhotse otherwise resets the process seed to 0 and uses entropy-based
+        # shard shuffling, independently of Lightning's seed_everything call.
+        config.seed = args.seed
+        config.shard_seed = args.seed
         config.use_lhotse = True
         config.use_bucketing = training
         if training:
