@@ -564,6 +564,28 @@ reuse of an existing ledger is refused to avoid counting a discarded attempt.
 Dataset membership alone is not proof that a short run consumed a demonstration
 clip. Source word spans remain in each segment's manifest for audit.
 
+### Replay mixing and the initial qualification run
+
+Replay rows must be mixed across the **whole** training manifest before NeMo's
+bounded-buffer shuffling. The wrapper now uses a deterministic full-manifest
+shuffle with `--seed` (default `20260925`), records input/output membership and
+order hashes in `replay-provenance.json`, and passes the same seed to training.
+Every row, text target, split and source field is retained. This controls manifest
+order, not bitwise GPU reproducibility or a guaranteed replay fraction per batch.
+
+The initial 500-step qualification on September 25 used the earlier append-only
+merge. Its audited loader buffer contained only clinical rows: **zero replay
+examples were consumed**, despite replay being present in the manifest. Those
+weights must be described as a short clinical-only fine-tune, not as
+replay-regularized. It processed about 7.34 hours, not the complete available
+corpus. That published run and its results have not been changed.
+
+The corrected mixing has CPU membership/order/hash/seed regression tests,
+including a clinical prefix larger than the native 20,000-cut buffer. These tests
+do **not** establish GPU replay consumption. A separate actual training run and
+selected-checkpoint consumption audit are required before claiming that replay
+was used; independent general-English regression evaluation remains necessary.
+
 For a real managed-endpoint probe, install the small client subset in a separate
 environment, inject `ASR_ENDPOINT` and `API_BEARER_TOKEN` securely, and run from
 this source directory (no local model or GPU dependency is needed):

@@ -86,6 +86,8 @@ def main():
     parser.add_argument("--batch-duration", type=float, default=30.0)
     parser.add_argument("--accumulate-grad-batches", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=1e-4)
+    parser.add_argument("--seed", type=int, default=20260925,
+                        help="Manifest-mixing and training seed; manifest membership alone is not replay exposure")
     parser.add_argument("--mode", choices=["align", "align-train", "align-train-evaluate"], default="align-train-evaluate")
     parser.add_argument("--upload-lightning-checkpoints", action="store_true")
     parser.add_argument("--checkpoint-every", type=int, default=0)
@@ -93,6 +95,8 @@ def main():
     parser.add_argument("--upload-workers", type=int, default=8)
     add_cohort_arguments(parser)
     args = parser.parse_args()
+    if not 0 <= args.seed <= 2**32 - 1:
+        raise ValueError("training_seed_requires_uint32")
     evaluation_specs = pinned_cohorts(args.evaluation_manifest_key, args.evaluation_manifest_sha256)
     if evaluation_specs and args.mode != "align-train-evaluate":
         raise ValueError("evaluation_manifests_require_align_train_evaluate_mode")
@@ -189,12 +193,14 @@ def main():
         command(stage, ["segment", "--source-manifest", str(manifest), "--alignment-dir", str(output / "alignment"),
                         "--output", str(output / "segments")])
         if replay:
-            with (output / "segments/train.jsonl").open("a") as train_manifest:
-                for row in replay:
-                    train_manifest.write(json.dumps(row, ensure_ascii=False) + "\n")
+            # Appending replay after a large clinical prefix can hide ALL replay
+            # beyond Lhotse's bounded shuffle buffer for a short run. Shuffle the
+            # complete manifest first; preserve every source row unchanged.
+            from .replay import mix_replay_manifest
+            mixing = mix_replay_manifest(output / "segments/train.jsonl", replay, seed=args.seed)
             write_json(output / "replay-provenance.json", {"manifest_key": args.replay_manifest_key,
                        "manifest_sha256": sha256_file(replay_manifest), "utterances": len(replay),
-                       "hours": sum(row["duration"] for row in replay) / 3600})
+                       "hours": sum(row["duration"] for row in replay) / 3600, "mixing": mixing})
         if args.mode != "align":
             stage = "train"
             command(stage, ["train", "--train-manifest", str(output / "segments/train.jsonl"),
@@ -202,6 +208,7 @@ def main():
                             "--max-steps", str(args.max_steps), "--val-every", str(args.val_every),
                             "--batch-duration", str(args.batch_duration), "--accumulate-grad-batches", str(args.accumulate_grad_batches),
                             "--learning-rate", str(args.learning_rate), "--checkpoint-every", str(args.checkpoint_every),
+                            "--seed", str(args.seed),
                             *(["--resume-pointer", args.resume_pointer] if args.resume_pointer else [])])
         if args.mode == "align-train-evaluate" and evaluation_specs:
             stage = "stage_evaluation_cohorts"
