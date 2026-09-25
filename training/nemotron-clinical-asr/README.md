@@ -37,6 +37,11 @@ For already aligned multi-corpus English inputs, see the opt-in
 approved-manifest bundle builder and measured-exposure requirements; the
 default model and sampling behavior remain unchanged.
 
+If you already have an adapted English checkpoint, the optional
+[parent-weight continuation guide](PARENT_CONTINUATION.md) explains how to add
+approved domain data, measure the parent first, and start a fresh optimizer.
+This is not an optimizer resume and does not automatically promote the result.
+
 ## Reproducible components
 
 | Component | Exact revision |

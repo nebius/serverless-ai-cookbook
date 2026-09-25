@@ -64,13 +64,20 @@ def main():
     parser.add_argument('--learning-rate', type=float, default=1e-4)
     parser.add_argument('--seed', type=int, default=20260926)
     parser.add_argument('--corpus-duration-fractions', default=None)
+    parser.add_argument('--initial-checkpoint-key', help='Optional pinned English parent .nemo object; weights-only continuation')
+    parser.add_argument('--initial-checkpoint-sha256')
     parser.add_argument('--checkpoint-every', type=int, default=200)
     parser.add_argument('--require-replay-by-step', type=int, default=50)
     parser.add_argument('--require-training-corpus', action='append', default=[],
-                        choices=['simulated_clinical', 'primock57', 'librispeech_replay'])
+                        choices=['simulated_clinical', 'primock57', 'librispeech_replay', 'eka_medical_narration'])
     parser.add_argument('--upload-workers', type=int, default=8)
     add_cohort_arguments(parser)
     args = parser.parse_args()
+    from .initialization import validate_options
+    initialize_parent = validate_options(args.initial_checkpoint_key, args.initial_checkpoint_sha256,
+                                         model_family=args.model_family)
+    if initialize_parent:
+        safe_key(args.initial_checkpoint_key)
     from .balanced import parse_fractions
     parse_fractions(args.corpus_duration_fractions, model_family=args.model_family)
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{2,100}', args.run_id):
@@ -179,6 +186,13 @@ def main():
             train_arguments += ['--require-training-corpus', corpus]
         if args.corpus_duration_fractions is not None:
             train_arguments += ['--corpus-duration-fractions', args.corpus_duration_fractions]
+        if initialize_parent:
+            # Keep the downloaded parent outside output publication; publish its
+            # exact identity in provenance, not a duplicate multi-GB artifact.
+            parent = download(args.initial_checkpoint_key, args.initial_checkpoint_sha256,
+                              bundle_root / 'initial-parent.nemo')
+            train_arguments += ['--initial-checkpoint', str(parent),
+                                '--initial-checkpoint-sha256', args.initial_checkpoint_sha256]
         command(stage, train_arguments)
         if specs:
             stage = 'stage_known_evaluation'

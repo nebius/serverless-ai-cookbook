@@ -87,13 +87,18 @@ def main():
                         help="Opt-in JSON corpus→target PCM fractions for fresh English renewable sampling; actual exposure still audited")
     parser.add_argument("--checkpoint-every", type=int, default=0, help="Verified S3 optimizer snapshot interval in steps; 0 disables for short smoke")
     parser.add_argument("--resume-pointer", help="Explicit S3 latest.json pointer; never automatically resume unrelated jobs")
+    parser.add_argument("--initial-checkpoint", help="Opt-in English .nemo parent weights; starts a fresh optimizer/ledger, not a resume")
+    parser.add_argument("--initial-checkpoint-sha256", help="Required exact parent bytes SHA256 with --initial-checkpoint")
     parser.add_argument("--expected-data-mix", choices=["unspecified", "clinical-only", "mixed"], default="unspecified")
     parser.add_argument("--require-replay-by-step", type=int, default=50,
                         help="Mixed runs fail if no real replay batch consumption by this step")
     parser.add_argument("--require-training-corpus", action="append", default=[],
-                        choices=["simulated_clinical", "primock57", "librispeech_replay"],
+                        choices=["simulated_clinical", "primock57", "librispeech_replay", "eka_medical_narration"],
                         help="Optional component exposure guard at require-replay-by-step; manifest membership is not enough")
     args = parser.parse_args()
+    from .initialization import validate_options
+    initialize_parent = validate_options(args.initial_checkpoint, args.initial_checkpoint_sha256,
+        model_family=args.model_family, resume_pointer=args.resume_pointer)
     from .balanced import parse_fractions
     corpus_fractions = parse_fractions(args.corpus_duration_fractions, model_family=args.model_family,
                                        resume_pointer=args.resume_pointer)
@@ -218,6 +223,12 @@ def main():
     base = base_checkpoint(args.model_family)
     model = ASRModel.restore_from(base, map_location="cpu")
     assert_training_model(model, args.model_family)
+    initialization = {"mode": "upstream_weights", "parent_checkpoint_sha256": None,
+                      "optimizer_restored": False, "parent_exposure_in_current_ledger": False}
+    if initialize_parent:
+        from .initialization import restore_parent
+        model, initialization = restore_parent(model, args.initial_checkpoint, args.initial_checkpoint_sha256,
+            model_family=args.model_family, restore=ASRModel.restore_from)
     model.set_trainer(trainer)
     model.cfg.log_prediction = False
     # The WER metric was already constructed during restore; changing cfg alone
@@ -226,6 +237,16 @@ def main():
     train_cfg, dev_cfg = dataset_configs(model.cfg, args, sampling_override=sampling_override)
     model.setup_training_data(train_cfg)
     model.setup_multiple_validation_data(dev_cfg)
+    if initialize_parent:
+        from .initialization import validate_parent_development
+        started = time.monotonic()
+        parent_baseline = validate_parent_development(model, main_trainer=trainer,
+            expected_examples=len(dev_rows), model_family=args.model_family)
+        parent_baseline.update(parent_checkpoint_sha256=args.initial_checkpoint_sha256,
+                               dev_manifest_sha256=manifest_hashes['dev'])
+        write_json(output / 'initial-parent-development-baseline.json', parent_baseline)
+        record_timing('initial_parent_full_dev_validation', started, global_step=0,
+                      examples=parent_baseline['examples'], optimizer_updates=0)
     model.setup_optimization(OmegaConf.create({
         "name": "adamw", "lr": args.learning_rate, "betas": [0.9, 0.98], "weight_decay": 0.01,
         "sched": {"name": "CosineAnnealing", "warmup_steps": min(100, max(1, args.max_steps // 10)),
@@ -246,6 +267,7 @@ def main():
         "consumption_seen_claim_eligible": not bool(args.resume_pointer),
         "consumption_lineage": "fresh_uninterrupted_attempt" if not args.resume_pointer else "resumed_history_not_restored; seen_claims_disabled",
         "renewable_corpus_sampling": sampling_receipt,
+        "initialization": initialization,
     }
     write_json(output / "training-provenance.json", provenance)
     resume = None
