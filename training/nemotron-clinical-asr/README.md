@@ -579,3 +579,50 @@ and same-operation polling, then sends the audio as real-time-paced binary PCM
 over WebSocket and records partial/final timings. Evidence contains transcript
 text and must follow the approved-data policy. Browser microphone/review gates
 remain separate; this SDK probe does not qualify the browser.
+
+### Resource lifetime and cleanup
+
+Before creating a resource, record its unique experiment name and exact ID. Keep
+all pre-existing instances out of the cleanup set. Jobs use a finite timeout;
+an always-running serving endpoint also accrues allocation time while idle.
+Choose explicitly whether to keep it warm for a demonstration or stop it between
+sessions. Processing time alone is not the deployed service's billed lifetime.
+
+While each new training/evaluation Job is running, record its Compute instance
+IDs from `status.instances`, then the instance's `metadata.parent_id` and exact
+disk IDs. Serverless children can live under an application (`appbox-...`)
+parent: absence from a project-level Compute listing does **not** prove release.
+Use full pagination for inventories; these read-only examples use CLI0.12.280:
+
+```bash
+nebius ai job get --id "$ASR_JOB_ID" --format json
+nebius compute instance get --id "$ASR_JOB_VM_ID" --format json
+nebius compute disk list --parent-id "$ASR_JOB_APPBOX_ID" --all --format json
+```
+
+Wait for terminal Job status **and** the recipe's verified `completed.json`
+before promoting successful output. A failed/cancelled Job or a partial object
+listing is not a successful model publication. Confirm release with exact-ID
+Compute instance and disk GETs after termination; distinguish `ResourceNotFound`
+from authorization, transport or other errors. Retain `.nemo`, provenance,
+recovery snapshots, evaluation and failure evidence in Object Storage. If a
+resource remains allocated, investigate the exact owned Job/application instead
+of deleting broadly from the project.
+
+Stopping an endpoint can remove its local runtime disk. Export required local
+artifacts first, use verified bucket-backed state, and record the exact owned
+endpoint/VM/disk IDs. Only when that particular endpoint is no longer needed:
+
+```bash
+nebius ai endpoint stop --id "$ASR_ENDPOINT_ID" --async
+```
+
+Check terminal endpoint status and exact VM/disk release afterward. This does
+not delete the retained model or bucket evidence. Starting the same owned
+endpoint later uses `nebius ai endpoint start --id "$ASR_ENDPOINT_ID" --async`;
+recheck its current route, authenticated readiness and checkpoint identity before
+use, and allow cold image/model loading. This command is not proof of qualified
+restart recovery: native streams are not resumable, and persisted-operation
+recovery needs its own interrupted-worker test. Apply bucket retention and
+credential retirement separately after the experiment; do not delete evidence
+or credentials that active serving still needs.
