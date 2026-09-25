@@ -338,3 +338,17 @@ Local tests (`python -m pytest -q tests`) use explicit synthetic engines for
 protocol validation. They do not demonstrate GPU inference, medical accuracy or
 cloud ingress compatibility. Keep measured cloud evidence outside the source tree
 and report pending gates honestly.
+
+For a real managed-endpoint probe, install the client dependencies from the lock,
+inject `ASR_ENDPOINT` and `API_BEARER_TOKEN` securely, and run:
+
+```bash
+python -m clinical_asr.probe --audio /path/to/approved-synthetic.wav \
+  --model nemotron-clinical-en --output /path/to/private-evidence.json
+```
+
+This runs an actual artifact upload, idempotent batch submit/poll, MCP discovery
+and same-operation polling, then sends the audio as real-time-paced binary PCM
+over WebSocket and records partial/final timings. Evidence contains transcript
+text and must follow the approved-data policy. Browser microphone/review gates
+remain separate; this SDK probe does not qualify the browser.
