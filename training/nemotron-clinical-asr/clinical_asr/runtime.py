@@ -108,17 +108,22 @@ class NeMoRuntime:
             return self.pipeline.transcribe_step([request])[0]
 
     def close(self, stream_id):
+        import torch
         if stream_id != self._active:
             return
         try:
-            bufferer = self.pipeline.bufferer
-            slot = bufferer.streamidx2slotidx.get(stream_id)
-            if slot is not None:
-                bufferer.reset_slots([slot])
-                bufferer.free_slots([slot])
-            context = self.pipeline.context_manager
-            if stream_id in context.streamidx2slotidx:
-                context.reset_slots([stream_id], [True])
-            self.pipeline.close_session()
+            # AudioBufferer.update replaces sample_buffer using torch.roll in
+            # step's inference_mode. On cancellation its zero_ reset must run in
+            # that mode too; otherwise reset raises before the sole slot is freed.
+            with torch.inference_mode():
+                bufferer = self.pipeline.bufferer
+                slot = bufferer.streamidx2slotidx.get(stream_id)
+                if slot is not None:
+                    bufferer.reset_slots([slot])
+                    bufferer.free_slots([slot])
+                context = self.pipeline.context_manager
+                if stream_id in context.streamidx2slotidx:
+                    context.reset_slots([stream_id], [True])
+                self.pipeline.close_session()
         finally:
             self._active = None
