@@ -687,12 +687,14 @@ The English foundation has different governing terms: see its
 and linked NVIDIA Open Model License Agreement. Retain model and dataset
 attributions and review the applicable terms for your distribution.
 
-At this preparation stage, the English fine-tuning path has passed CPU tests
-and actual checkpoint/loader/reference-token preflight, **not GPU training or
-candidate quality qualification**. Complete a separately recorded GPU smoke,
-freeze the adaptation and comparison protocol, and qualify real candidate
-weights before serving them. The multilingual and English families are not
-interchangeable optimizer-resume targets. Neither model is clinically validated.
+The English path has now passed an actual 20-step H200 Serverless `cloud-run`
+smoke: alignment, training, full development validation, exported-checkpoint
+reload and paired native streaming inference. See the exact scope and pinned
+identities in [ENGLISH_SMOKE.md](ENGLISH_SMOKE.md). This is **pipeline verification,
+not candidate quality or serving qualification**. Freeze the adaptation and
+comparison protocol and qualify real candidate weights before serving them.
+The multilingual and English families are not interchangeable optimizer-resume
+targets. Neither model is clinically validated.
 
 ### Resource lifetime and cleanup
 
