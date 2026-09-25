@@ -63,6 +63,7 @@ def main():
     parser.add_argument('--accumulate-grad-batches', type=int, default=1)
     parser.add_argument('--learning-rate', type=float, default=1e-4)
     parser.add_argument('--seed', type=int, default=20260926)
+    parser.add_argument('--corpus-duration-fractions', default=None)
     parser.add_argument('--checkpoint-every', type=int, default=200)
     parser.add_argument('--require-replay-by-step', type=int, default=50)
     parser.add_argument('--require-training-corpus', action='append', default=[],
@@ -70,6 +71,8 @@ def main():
     parser.add_argument('--upload-workers', type=int, default=8)
     add_cohort_arguments(parser)
     args = parser.parse_args()
+    from .balanced import parse_fractions
+    parse_fractions(args.corpus_duration_fractions, model_family=args.model_family)
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{2,100}', args.run_id):
         raise ValueError('invalid_run_id')
     if not re.fullmatch(r'[0-9a-f]{64}', args.bundle_sha256):
@@ -174,6 +177,8 @@ def main():
                         '--require-replay-by-step', str(args.require_replay_by_step)]
         for corpus in args.require_training_corpus:
             train_arguments += ['--require-training-corpus', corpus]
+        if args.corpus_duration_fractions is not None:
+            train_arguments += ['--corpus-duration-fractions', args.corpus_duration_fractions]
         command(stage, train_arguments)
         if specs:
             stage = 'stage_known_evaluation'

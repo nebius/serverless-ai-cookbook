@@ -32,6 +32,11 @@ accuracy. Do not label a checkpoint “better for healthcare” until paired hel
 results demonstrate that. PHI use is not approved by this recipe. Start with
 simulated or appropriately de-identified inputs and clinician-reviewed drafts.
 
+For already aligned multi-corpus English inputs, see the opt-in
+[renewable balanced-training guide](BALANCED_TRAINING.md). It includes an
+approved-manifest bundle builder and measured-exposure requirements; the
+default model and sampling behavior remain unchanged.
+
 ## Reproducible components
 
 | Component | Exact revision |

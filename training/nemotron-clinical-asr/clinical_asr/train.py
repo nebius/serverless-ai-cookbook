@@ -27,7 +27,7 @@ def validate_manifests(train_path, dev_path):
     return train, dev
 
 
-def dataset_configs(model_config, args):
+def dataset_configs(model_config, args, *, sampling_override=None):
     """Resolve only dataset templates against the actual restored architecture."""
     from omegaconf import OmegaConf
     family = family_spec(args.model_family)
@@ -64,6 +64,9 @@ def dataset_configs(model_config, args):
             config.num_buckets = 10
         else:
             config.batch_size = 1
+        if training and sampling_override is not None:
+            for key, value in sampling_override.items():
+                config[key] = value
     return tuple(OmegaConf.create(OmegaConf.to_container(config, resolve=True))
                  for config in (merged.model.train_ds, merged.model.validation_ds))
 
@@ -80,6 +83,8 @@ def main():
     parser.add_argument("--batch-duration", type=float, default=60)
     parser.add_argument("--accumulate-grad-batches", type=int, default=4)
     parser.add_argument("--seed", type=int, default=20260925)
+    parser.add_argument("--corpus-duration-fractions", default=None,
+                        help="Opt-in JSON corpus→target PCM fractions for fresh English renewable sampling; actual exposure still audited")
     parser.add_argument("--checkpoint-every", type=int, default=0, help="Verified S3 optimizer snapshot interval in steps; 0 disables for short smoke")
     parser.add_argument("--resume-pointer", help="Explicit S3 latest.json pointer; never automatically resume unrelated jobs")
     parser.add_argument("--expected-data-mix", choices=["unspecified", "clinical-only", "mixed"], default="unspecified")
@@ -89,6 +94,9 @@ def main():
                         choices=["simulated_clinical", "primock57", "librispeech_replay"],
                         help="Optional component exposure guard at require-replay-by-step; manifest membership is not enough")
     args = parser.parse_args()
+    from .balanced import parse_fractions
+    corpus_fractions = parse_fractions(args.corpus_duration_fractions, model_family=args.model_family,
+                                       resume_pointer=args.resume_pointer)
     family = family_spec(args.model_family)
     train_rows, dev_rows = validate_manifests(args.train_manifest, args.dev_manifest)
     if not set(args.require_training_corpus) <= {row.get("training_corpus") for row in train_rows}:
@@ -190,6 +198,11 @@ def main():
 
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
+    sampling_override, sampling_receipt = None, None
+    if corpus_fractions is not None:
+        from .balanced import prepare_inputs
+        sampling_override, sampling_receipt = prepare_inputs(train_rows, corpus_fractions,
+            output / "corpus-sampling", seed=args.seed)
     pl.seed_everything(args.seed, workers=True)
     checkpoint = TimedCheckpoint(dirpath=output / "checkpoints", monitor="val_wer", mode="min",
                                  save_top_k=1, save_last=True, filename="step{step}-wer{val_wer:.4f}")
@@ -210,7 +223,7 @@ def main():
     # The WER metric was already constructed during restore; changing cfg alone
     # does not change its live logging flag.
     model.wer.log_prediction = False
-    train_cfg, dev_cfg = dataset_configs(model.cfg, args)
+    train_cfg, dev_cfg = dataset_configs(model.cfg, args, sampling_override=sampling_override)
     model.setup_training_data(train_cfg)
     model.setup_multiple_validation_data(dev_cfg)
     model.setup_optimization(OmegaConf.create({
@@ -232,6 +245,7 @@ def main():
         "parameters": vars(args), "status": "training", "clinical_validation": "NOT_PERFORMED",
         "consumption_seen_claim_eligible": not bool(args.resume_pointer),
         "consumption_lineage": "fresh_uninterrupted_attempt" if not args.resume_pointer else "resumed_history_not_restored; seen_claims_disabled",
+        "renewable_corpus_sampling": sampling_receipt,
     }
     write_json(output / "training-provenance.json", provenance)
     resume = None
