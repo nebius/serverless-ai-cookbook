@@ -72,7 +72,15 @@ order and model/runtime identities, then recomputed the scores below. All 1,262
 predictions are retained, including blanks and regressions. No cohort is pooled
 with another and no prediction-based example filtering is applied.
 
-### Six separate cohorts
+### Retained historical six-cohort report — assembly correction below
+
+The following table preserves the original report. A later independent review
+found that the batch evaluator inserted a space between native final fragments,
+even when a fragment ended mid-word. For example, `naus` + `ea and vomiting`
+became `naus ea and vomiting`. The original integrity audit mirrored that
+implementation and did not establish the native text-assembly contract. Use the
+explicitly versioned corrected scores below for model comparison, not the
+superseded WER/KER values in this historical table.
 
 WER and keyword error rate (KER) are percentages; lower is better. Each arrow is
 **base → adapted**. Words and keyword occurrences are the respective scoring
@@ -87,6 +95,37 @@ is shown to three decimal places.
 | Three pre-frozen training candidates, mixed exposure | 3 | 19.440 | 37 | 2 | 18.92 → 13.51 | 100.00 → 50.00 | 0 → 0 |
 | Five reference-term-enriched, verified consumed training clips | 5 | 60.240 | 178 | 34 | 15.17 → 8.43 | 38.24 → 0.00 | 0 → 0 |
 | One training-source medication/dose/negation illustration | 1 | 18.400 | 39 | 2 | 25.64 → 12.82 | 50.00 → 50.00 | 0 → 0 |
+
+### Corrected native-fragment assembly, same historical inference
+
+The pinned native NeMo pipeline accumulates finalized fragments verbatim. The
+`native_final_concat_v1` evaluator now uses exact concatenation, trimming only
+outside whitespace; it does not insert word separators or repair native text.
+An offline rescore reused all original model events, references, audio, models
+and the unchanged lexical scorer. **No new inference or training produced these
+differences.** Original prediction files and the historical report remain
+retained; corrected predictions and a separate receipt identify the derivation.
+
+The cohort memberships, word/keyword denominators, durations and blank counts
+are exactly those in the historical table above.
+
+| Cohort | Corrected WER %, base → adapted | Corrected KER %, base → adapted |
+| --- | --- | --- |
+| Enriched development, 239 clips | 16.42 → 10.48 | 16.46 → 0.00 |
+| External PriMock, 141 clips | 17.66 → 19.11 **worse** | 38.46 → 23.08 |
+| General English, 242 clips | 3.76 → 5.07 **worse** | undefined |
+| Three training candidates, mixed exposure | 18.92 → 13.51 | 100.00 → 50.00 |
+| Five verified consumed training clips | 15.17 → 8.43 | 38.24 → 0.00 |
+| One training-source dose illustration | 25.64 → 12.82 | 50.00 → 50.00 |
+
+The separate rescore receipt SHA256 is
+`e28231c8b4352843631e69dca6d57ce5b628a9f0f2941e555bf1640597b9523f`;
+the unchanged scorer SHA256 is
+`395878d7aafc72628d861e00489b5d0a0a31c8adcad84711afe77dd11a4dd664`.
+An independent review reproduced all 12 model/cohort groups and verified that
+the 18 original reference/prediction source hashes were unchanged. External and
+general regressions remain after correction, but individual lexical errors
+introduced by the former assembler must not be attributed to fine-tuning.
 
 The development gain is not an independent generalization result: development
 also selected the checkpoint, and the scored subset was enriched using a frozen
@@ -126,8 +165,9 @@ replay-regularized model.
 
 Full-manifest mixing was subsequently corrected in source
 `751b35fb50243c9618aeebee558b156a5a4d6ecc`, with 72 CPU/runtime unit tests passing.
-That correction has not been used in a new GPU training run and does not change
-these weights or scores. Do not attribute either the observed development gain
+At the original publication, that correction had not been used in a new GPU
+training run. Subsequent runs require their own selected-checkpoint exposure
+audit and do not retroactively change this checkpoint. Do not attribute the development gain
 or the external/general regressions to a tested replay strategy. The result
 demonstrates why domain adaptation needs separate development, external clinical
 and general-regression checks, not a blanket “better for healthcare” claim.

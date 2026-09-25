@@ -274,8 +274,12 @@ training wrapper's twelve-clip smoke is not a substitute for this evaluation.
 
 The September 25, 2026 **500-step experiment** completed real training/export and
 an independently audited six-cohort native evaluation. Enriched development WER
-improved from **16.38% to 10.56%**, but external clinical WER worsened from
-**17.74% to 19.18%** and general-English WER from **3.79% to 5.11%**. This was a
+improved from **16.42% to 10.48%**, but external clinical WER worsened from
+**17.66% to 19.11%** and general-English WER from **3.76% to 5.07%**. These are
+versioned corrected scores from the same original inference events: the former
+batch assembler inserted spaces between native fragments, including mid-word
+fragments. The old report is retained, and the offline correction is not a
+trained improvement. This was a
 short clinical-only fine-tune: the consumption audit found zero replay examples.
 See [measured results and exact experiment identities](EVALUATION.md#measured-experiment-september-25-2026)
 for every cohort, denominators, blank outputs and limitations. These results do
@@ -587,7 +591,9 @@ merge. Its audited loader buffer contained only clinical rows: **zero replay
 examples were consumed**, despite replay being present in the manifest. Those
 weights must be described as a short clinical-only fine-tune, not as
 replay-regularized. It processed about 7.34 hours, not the complete available
-corpus. That published run and its results have not been changed.
+corpus. Those weights and original artifacts have not been changed. The original
+score report is retained and explicitly superseded by the native-fragment
+assembly rescore in [the evaluation notes](EVALUATION.md#corrected-native-fragment-assembly-same-historical-inference).
 
 The corrected mixing has CPU membership/order/hash/seed regression tests,
 including a clinical prefix larger than the native 20,000-cut buffer. These tests
