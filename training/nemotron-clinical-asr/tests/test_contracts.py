@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import io
 import json
 import wave
@@ -81,6 +82,8 @@ def test_segmentation_preserves_original_targets_or_fails(monkeypatch, tmp_path)
     assert len(rows) == 1
     assert rows[0]["text"] == "Metformin 500 milligrams."
     assert rows[0]["conversation_id"] == "CASE001" and rows[0]["alignment_review"] == "PENDING"
+    assert rows[0]["audio_sha256"] == hashlib.sha256((output / "audio/CASE001_00000.wav").read_bytes()).hexdigest()
+    assert rows[0]["audio_sha256"] != rows[0]["source_audio_sha256"]
     ctm.write_text("CASE001 1 0.1 0.4 different\nCASE001 1 0.6 0.3 500\nCASE001 1 1.0 0.4 milligrams\n")
     with pytest.raises(ValueError, match="token_mismatch"):
         segment_main()

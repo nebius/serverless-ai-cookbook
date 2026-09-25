@@ -116,6 +116,7 @@ def segment_main():
             sf.write(target, audio[round(start * rate):round(end * rate)], rate, subtype="PCM_16")
             manifests[split].append({
                 "id": segment_id, "audio_filepath": str(target), "duration": duration,
+                "audio_sha256": sha256_file(target),
                 "text": " ".join(w[2] for w in group), "lang": "en-US", "target_lang": "en-US",
                 "conversation_id": conversation, "split": split,
                 "source_audio_sha256": sha256_file(source) if index == 0 else None,
