@@ -7,7 +7,7 @@ import pytest
 torch = pytest.importorskip("torch")
 pytest.importorskip("nemo")
 from nemo.collections.asr.inference.streaming.buffering.audio_bufferer import AudioBufferer
-from nemo.collections.asr.inference.streaming.buffering.cache_feature_bufferer import CacheFeatureBufferer
+from nemo.collections.asr.inference.streaming.buffering.cache_feature_bufferer import BatchedCacheFeatureBufferer
 from nemo.collections.asr.inference.streaming.framing.request import Frame
 from nemo.collections.asr.inference.utils.context_manager import CacheAwareContextManager
 
@@ -25,8 +25,9 @@ def test_cancel_frees_native_inference_tensor_buffers_and_context():
     with pytest.raises(RuntimeError, match="outside InferenceMode"):
         audio.reset()
 
-    bufferer = CacheFeatureBufferer.__new__(CacheFeatureBufferer)
+    bufferer = BatchedCacheFeatureBufferer.__new__(BatchedCacheFeatureBufferer)
     bufferer.device = torch.device("cpu")
+    bufferer.ZERO_LEVEL_SPEC_DB_VAL = 0.0
     bufferer.feature_buffer = torch.zeros(1, 1, 1)
     bufferer.audio_bufferers = [audio]
     bufferer.streamidx2slotidx, bufferer.slotidx2streamidx = {1: 0}, {0: 1}
