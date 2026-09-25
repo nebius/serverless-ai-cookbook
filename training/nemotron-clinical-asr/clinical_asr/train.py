@@ -63,6 +63,25 @@ def main():
                 publish_resume_checkpoint(trainer, output / "resume", manifest_hashes=manifest_hashes, base_revision=BASE_REVISION)
                 self.last_step = step
 
+    class ConsumedReferences(pl.Callback):
+        audit = None
+        step_before = 0
+
+        def on_train_start(self, trainer, module):
+            from nemo.collections.common.tokenizers.aggregate_tokenizer import TokenizerWrapper
+            from .consumption import ConsumptionAudit
+            self.audit = ConsumptionAudit(train_rows, TokenizerWrapper(module.tokenizer),
+                                          output / "consumed-training-segments.jsonl")
+
+        def on_train_batch_start(self, trainer, module, batch, batch_idx):
+            self.step_before = trainer.global_step
+
+        def on_train_batch_end(self, trainer, module, outputs, batch, batch_idx):
+            _, audio_lens, tokens, token_lens, _ = batch
+            token_rows = [row[:int(length)].detach().cpu().tolist() for row, length in zip(tokens, token_lens)]
+            self.audit.record(token_rows, audio_lens.detach().cpu().tolist(), batch_index=batch_idx,
+                              step_before=self.step_before, step_after=trainer.global_step)
+
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     pl.seed_everything(args.seed, workers=True)
@@ -74,7 +93,7 @@ def main():
         gradient_clip_val=1.0, check_val_every_n_epoch=None,
         val_check_interval=min(args.val_every, args.max_steps) * args.accumulate_grad_batches,
         num_sanity_val_steps=2, log_every_n_steps=1, enable_progress_bar=False,
-        callbacks=[checkpoint, FiniteLoss(), PeriodicSnapshot(), LearningRateMonitor(logging_interval="step")],
+        callbacks=[checkpoint, FiniteLoss(), ConsumedReferences(), PeriodicSnapshot(), LearningRateMonitor(logging_interval="step")],
         logger=CSVLogger(str(output), name="metrics"),
     )
     base = base_checkpoint()
@@ -137,15 +156,31 @@ def main():
     if args.resume_pointer:
         from .checkpoints import stage_resume_checkpoint
         resume = stage_resume_checkpoint(args.resume_pointer, output, manifest_hashes=manifest_hashes, base_revision=BASE_REVISION)
-    trainer.fit(model, ckpt_path=resume)
+    torch.cuda.reset_peak_memory_stats()
+    try:
+        trainer.fit(model, ckpt_path=resume)
+    finally:
+        write_json(output / "training-memory.json", {
+            "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
+            "peak_reserved_bytes": torch.cuda.max_memory_reserved(),
+            "allocated_bytes": torch.cuda.memory_allocated(),
+            "reserved_bytes": torch.cuda.memory_reserved(),
+            "scope": "training_process_since_fit_start_not_total_GPU_or_external_allocators",
+            "gpu": torch.cuda.get_device_name(), "torch": torch.__version__,
+            "cuda_build": torch.version.cuda, "cudnn": torch.backends.cudnn.version(),
+        })
     # Require a real finite validation metric; no promotion of unvalidated final step.
     if not checkpoint.best_model_path or checkpoint.best_model_score is None or not torch.isfinite(checkpoint.best_model_score):
         raise RuntimeError("no_finite_validation_checkpoint")
-    model.load_state_dict(torch.load(checkpoint.best_model_path, map_location="cpu", weights_only=False)["state_dict"])
+    selected_state = torch.load(checkpoint.best_model_path, map_location="cpu", weights_only=False)
+    model.load_state_dict(selected_state["state_dict"])
+    selected_step = int(selected_state["global_step"])
+    del selected_state
     artifact = output / "nemotron-clinical-en.nemo"
     model.save_to(str(artifact))
     provenance.update(status="completed", checkpoint_sha256=sha256_file(artifact),
                       checkpoint_filename=artifact.name, best_validation_wer=float(checkpoint.best_model_score),
+                      selected_checkpoint_global_step=selected_step,
                       global_step=trainer.global_step, best_lightning_checkpoint=Path(checkpoint.best_model_path).name)
     write_json(output / "training-provenance.json", provenance)
     print("TRAINING_ARTIFACT", artifact.name, provenance["checkpoint_sha256"], flush=True)

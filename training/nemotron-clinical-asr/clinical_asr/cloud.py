@@ -92,6 +92,10 @@ def main():
 
     failure = None
     try:
+        # Record the ACTUAL job environment, not the developer laptop. The
+        # collector only reads allowlisted environment values and GPU metadata.
+        from .environment import collect
+        write_json(output / "environment.json", collect())
         manifest = download(args.manifest_key)
         rows = read_jsonl(manifest)
         staged = []

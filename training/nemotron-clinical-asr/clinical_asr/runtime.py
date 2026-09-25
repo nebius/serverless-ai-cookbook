@@ -4,6 +4,7 @@ Transport/framing derived from the Scientific AI speech runtime. No replaying
 the complete accumulated waveform to simulate streaming, and no text animation.
 """
 import time
+import platform
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -60,8 +61,21 @@ class NeMoRuntime:
             "nemo_revision": NEMO_REVISION, "precision": "float32", "chunk_size_ms": self.chunk_ms,
             "language": "en-US", "load_seconds": time.monotonic() - start,
             "gpu": torch.cuda.get_device_name(), "clinical_validation": "NOT_PERFORMED",
+            "python": platform.python_version(), "torch": torch.__version__,
+            "cuda_build": torch.version.cuda, "cudnn": torch.backends.cudnn.version(),
+            "compute_capability": list(torch.cuda.get_device_capability()),
+            "gpu_total_memory_bytes": torch.cuda.get_device_properties(0).total_memory,
+            "post_load_memory": self.memory_snapshot(),
             "diarization": False,
         }
+
+    def memory_snapshot(self):
+        import torch
+        return {"allocated_bytes": torch.cuda.memory_allocated(),
+                "reserved_bytes": torch.cuda.memory_reserved(),
+                "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
+                "peak_reserved_bytes": torch.cuda.max_memory_reserved(),
+                "scope": "this_PyTorch_process_not_total_GPU_or_external_allocators"}
 
     @property
     def frame_samples(self):
@@ -72,6 +86,8 @@ class NeMoRuntime:
             raise ValueError("runtime_profile_mismatch")
         if self._active is not None:
             raise RuntimeError("runtime_busy")
+        import torch
+        torch.cuda.reset_peak_memory_stats()
         self._next_stream += 1
         self._active = self._next_stream
         return self._active

@@ -51,6 +51,7 @@ def transcribe_wav(runtime, path, options, *, cancelled=lambda: False):
                 "audio_seconds": framer.total_samples / 16000, "elapsed_seconds": seconds,
                 "first_nonempty_event_seconds": first_partial_seconds,
                 "real_time_factor": seconds / (framer.total_samples / 16000), "events": output_events,
+                "memory": runtime.memory_snapshot() if hasattr(runtime, "memory_snapshot") else None,
                 "words" if options.output_granularity == "word" else "segments": acoustic_items,
                 "timing_mode": "unpaced_batch_not_microphone_latency", "diarization": None}
     finally:

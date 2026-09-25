@@ -339,6 +339,22 @@ protocol validation. They do not demonstrate GPU inference, medical accuracy or
 cloud ingress compatibility. Keep measured cloud evidence outside the source tree
 and report pending gates honestly.
 
+Jobs save a read-only `environment.json` (actual driver, GPU, Python/framework
+versions and allowlisted configuration) and process-local training memory peaks.
+Batch predictions include per-request PyTorch allocated/reserved peaks; these are
+not whole-GPU usage and exclude external allocators. Keep cold image/model startup
+separate from warm unpaced batch inference and real-time-paced stream finalization.
+For a latency claim, retain at least three identical-fixture repetitions; a single
+smoke run is a plumbing check, not a performance comparison.
+
+`consumed-training-segments.jsonl` records reference-token and exact audio-length
+matches for completed training batches. The native prompt loader does not return
+cut IDs, so only `match=unique` establishes an unambiguous source segment; retain
+ambiguous/unmatched rows. For the selected `.nemo`, count only records with
+`global_step_before < selected_checkpoint_global_step` from training provenance.
+Dataset membership alone is not proof that a short run consumed a demonstration
+clip. Source word spans remain in each segment's manifest for audit.
+
 For a real managed-endpoint probe, install the client dependencies from the lock,
 inject `ASR_ENDPOINT` and `API_BEARER_TOKEN` securely, and run:
 
