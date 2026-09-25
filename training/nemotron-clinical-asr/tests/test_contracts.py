@@ -11,6 +11,7 @@ from clinical_asr.contracts import SpeechOptions, TranscriptionRequest
 from clinical_asr.events import TranscriptEvents
 from clinical_asr.framing import PCMFramer
 from clinical_asr.prepare import grouped_words
+from clinical_asr.prepare import segment_main
 from clinical_asr.runtime import NeMoRuntime
 from clinical_asr.server import APIError, Service
 from clinical_asr.stream import run_stream
@@ -52,6 +53,31 @@ def test_word_boundary_grouping():
         list(grouped_words([(1, 0, "bad")]))
 
 
+def test_segmentation_preserves_original_targets_or_fails(monkeypatch, tmp_path):
+    source = tmp_path / "CASE001.wav"
+    with wave.open(str(source), "wb") as audio:
+        audio.setnchannels(1)
+        audio.setsampwidth(2)
+        audio.setframerate(16000)
+        audio.writeframes(b"\0\0" * 32000)
+    manifest = tmp_path / "source.jsonl"
+    manifest.write_text(json.dumps({"audio_filepath": str(source), "text": "Metformin 500 milligrams.",
+                                    "conversation_id": "CASE001", "split": "train"}) + "\n")
+    ctm = tmp_path / "alignment/ctm/words/CASE001.ctm"
+    ctm.parent.mkdir(parents=True)
+    ctm.write_text("CASE001 1 0.1 0.4 metformin\nCASE001 1 0.6 0.3 500\nCASE001 1 1.0 0.4 milligrams\n")
+    output = tmp_path / "segmented"
+    monkeypatch.setattr("sys.argv", ["segment", "--source-manifest", str(manifest), "--alignment-dir", str(tmp_path / "alignment"), "--output", str(output)])
+    segment_main()
+    rows = [json.loads(line) for line in (output / "train.jsonl").read_text().splitlines()]
+    assert len(rows) == 1
+    assert rows[0]["text"] == "Metformin 500 milligrams."
+    assert rows[0]["conversation_id"] == "CASE001" and rows[0]["alignment_review"] == "PENDING"
+    ctm.write_text("CASE001 1 0.1 0.4 different\nCASE001 1 0.6 0.3 500\nCASE001 1 1.0 0.4 milligrams\n")
+    with pytest.raises(ValueError, match="token_mismatch"):
+        segment_main()
+
+
 def test_conversation_leakage_rejected(tmp_path):
     row = {"conversation_id": "shared", "duration": 1.0, "text": "hello", "target_lang": "en-US", "audio_filepath": str(tmp_path / "audio.wav")}
     (tmp_path / "audio.wav").touch()
@@ -90,6 +116,26 @@ def test_durable_idempotency_cancel_and_restart(tmp_path):
         assert restored.submit(request)["id"] == first["id"]
         cancelled = service.cancel(first["id"])
         assert cancelled["status"] == "cancelled"
+    asyncio.run(scenario())
+
+
+def test_unknown_admission_never_duplicates(tmp_path):
+    async def scenario():
+        runtime = SimpleNamespace(model_id="nemotron35-base-en", chunk_ms=560, identity={})
+        service = Service(tmp_path, runtime)
+        service.ready = True
+        upload = await service.upload(UploadFile(io.BytesIO(wav_bytes()), filename="test.wav"))
+        request = TranscriptionRequest(audio_artifact=upload["artifact"], idempotency_key="unknown-request-1", options=SpeechOptions(model=runtime.model_id))
+        def unavailable(*args):
+            raise OSError("simulated_persistence_failure")
+        service.save = unavailable
+        with pytest.raises(APIError) as error:
+            service.submit(request)
+        operation_id = error.value.detail["operation_id"]
+        replay = service.submit(request)
+        assert replay["id"] == operation_id
+        assert replay["durable_admission"] == "unknown"
+        assert service.queue.qsize() == 0
     asyncio.run(scenario())
 
 
