@@ -4,8 +4,9 @@ import json
 import time
 from pathlib import Path
 
-from . import BASE_REPOSITORY, BASE_REVISION, NEMO_REVISION
+from . import NEMO_REVISION
 from .common import base_checkpoint, read_jsonl, sha256_file, write_json
+from .families import FAMILIES, assert_training_model, family_spec, training_batch_evidence
 
 
 def validate_manifests(train_path, dev_path):
@@ -26,11 +27,53 @@ def validate_manifests(train_path, dev_path):
     return train, dev
 
 
+def dataset_configs(model_config, args):
+    """Resolve only dataset templates against the actual restored architecture."""
+    from omegaconf import OmegaConf
+    family = family_spec(args.model_family)
+    template = OmegaConf.load("/opt/nemo/examples/asr/conf/fastconformer/cache_aware_streaming/" + family.training_template)
+    merged = OmegaConf.create({"model": OmegaConf.to_container(model_config, resolve=True)})
+    merged.model.train_ds = template.model.train_ds
+    merged.model.validation_ds = template.model.validation_ds
+    for config, path, training in [(merged.model.train_ds, args.train_manifest, True),
+                                   (merged.model.validation_ds, args.dev_manifest, False)]:
+        OmegaConf.set_struct(config, False)
+        config.manifest_filepath = str(Path(path).resolve())
+        config.is_tarred = False
+        config.tarred_audio_filepaths = None
+        config.num_workers = 0
+        config.pin_memory = True
+        config.max_duration = 30.0
+        config.min_duration = 0.5
+        config.lang_field = "target_lang"
+        if args.model_family == "nemotron35":
+            config.default_prompt_mode = "langID"
+        else:
+            # The upstream English config uses `answer`; our paired manifests
+            # use `text`. Do not inject multilingual prompt tokens.
+            config.text_field = "text"
+        config.shuffle = training
+        # Lhotse otherwise resets the process seed to 0 and uses entropy-based
+        # shard shuffling, independently of Lightning's seed_everything call.
+        config.seed = args.seed
+        config.shard_seed = args.seed
+        config.use_lhotse = True
+        config.use_bucketing = training
+        if training:
+            config.batch_duration = args.batch_duration
+            config.num_buckets = 10
+        else:
+            config.batch_size = 1
+    return tuple(OmegaConf.create(OmegaConf.to_container(config, resolve=True))
+                 for config in (merged.model.train_ds, merged.model.validation_ds))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--train-manifest", required=True)
     parser.add_argument("--dev-manifest", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--model-family", choices=sorted(FAMILIES), default="nemotron35")
     parser.add_argument("--max-steps", type=int, default=100)
     parser.add_argument("--val-every", type=int, default=50)
     parser.add_argument("--learning-rate", type=float, default=1e-4)
@@ -43,6 +86,7 @@ def main():
     parser.add_argument("--require-replay-by-step", type=int, default=50,
                         help="Mixed runs fail if no real replay batch consumption by this step")
     args = parser.parse_args()
+    family = family_spec(args.model_family)
     train_rows, dev_rows = validate_manifests(args.train_manifest, args.dev_manifest)
     if args.max_steps < 1 or args.val_every < 1 or args.require_replay_by_step < 1:
         raise ValueError("positive_steps_required")
@@ -104,7 +148,7 @@ def main():
                 from .checkpoints import publish_resume_checkpoint
                 started = time.monotonic()
                 try:
-                    publish_resume_checkpoint(trainer, output / "resume", manifest_hashes=manifest_hashes, base_revision=BASE_REVISION)
+                    publish_resume_checkpoint(trainer, output / "resume", manifest_hashes=manifest_hashes, base_revision=family.revision)
                 finally:
                     record_timing("durable_resume_checkpoint_with_S3_readback", started, global_step=step)
                 self.last_step = step
@@ -125,7 +169,7 @@ def main():
             self.step_before = trainer.global_step
 
         def on_train_batch_end(self, trainer, module, outputs, batch, batch_idx):
-            _, audio_lens, tokens, token_lens, _ = batch
+            audio_lens, tokens, token_lens = training_batch_evidence(batch, args.model_family)
             token_rows = [row[:int(length)].detach().cpu().tolist() for row, length in zip(tokens, token_lens)]
             records = self.audit.record(token_rows, audio_lens.detach().cpu().tolist(), batch_index=batch_idx,
                                         step_before=self.step_before, step_after=trainer.global_step)
@@ -151,44 +195,15 @@ def main():
         callbacks=[checkpoint, FiniteLoss(), WallTimes(), ConsumedReferences(), PeriodicSnapshot(), LearningRateMonitor(logging_interval="step")],
         logger=CSVLogger(str(output), name="metrics"),
     )
-    base = base_checkpoint()
+    base = base_checkpoint(args.model_family)
     model = ASRModel.restore_from(base, map_location="cpu")
+    assert_training_model(model, args.model_family)
     model.set_trainer(trainer)
     model.cfg.log_prediction = False
     # The WER metric was already constructed during restore; changing cfg alone
     # does not change its live logging flag.
     model.wer.log_prediction = False
-    # Resolve dataset interpolations against ACTUAL checkpoint architecture/prompts.
-    template = OmegaConf.load("/opt/nemo/examples/asr/conf/fastconformer/cache_aware_streaming/fastconformer_transducer_bpe_streaming_prompt.yaml")
-    merged = OmegaConf.create({"model": OmegaConf.to_container(model.cfg, resolve=True)})
-    merged.model.train_ds = template.model.train_ds
-    merged.model.validation_ds = template.model.validation_ds
-    for config, path, training in [(merged.model.train_ds, args.train_manifest, True),
-                                   (merged.model.validation_ds, args.dev_manifest, False)]:
-        OmegaConf.set_struct(config, False)
-        config.manifest_filepath = str(Path(path).resolve())
-        config.is_tarred = False
-        config.tarred_audio_filepaths = None
-        config.num_workers = 0
-        config.pin_memory = True
-        config.max_duration = 30.0
-        config.min_duration = 0.5
-        config.lang_field = "target_lang"
-        config.default_prompt_mode = "langID"
-        config.shuffle = training
-        # Lhotse otherwise resets the process seed to 0 and uses entropy-based
-        # shard shuffling, independently of Lightning's seed_everything call.
-        config.seed = args.seed
-        config.shard_seed = args.seed
-        config.use_lhotse = True
-        config.use_bucketing = training
-        if training:
-            config.batch_duration = args.batch_duration
-            config.num_buckets = 10
-        else:
-            config.batch_size = 1
-    train_cfg = OmegaConf.create(OmegaConf.to_container(merged.model.train_ds, resolve=True))
-    dev_cfg = OmegaConf.create(OmegaConf.to_container(merged.model.validation_ds, resolve=True))
+    train_cfg, dev_cfg = dataset_configs(model.cfg, args)
     model.setup_training_data(train_cfg)
     model.setup_multiple_validation_data(dev_cfg)
     model.setup_optimization(OmegaConf.create({
@@ -199,7 +214,10 @@ def main():
     # Preserve cache-aware architecture, vocabulary, language IDs and context configuration.
     OmegaConf.save(model.cfg, output / "resolved-model-config.yaml")
     provenance = {
-        "base_model": BASE_REPOSITORY, "base_revision": BASE_REVISION,
+        "base_model": family.repository, "base_revision": family.revision,
+        "model_family": args.model_family, "restored_model_class": type(model).__name__,
+        "trainable_parameters": sum(p.numel() for p in model.parameters() if p.requires_grad),
+        "total_parameters": sum(p.numel() for p in model.parameters()),
         "base_sha256": sha256_file(base), "nemo_revision": NEMO_REVISION,
         "train_manifest_sha256": sha256_file(args.train_manifest),
         "dev_manifest_sha256": sha256_file(args.dev_manifest),
@@ -212,7 +230,7 @@ def main():
     resume = None
     if args.resume_pointer:
         from .checkpoints import stage_resume_checkpoint
-        resume = stage_resume_checkpoint(args.resume_pointer, output, manifest_hashes=manifest_hashes, base_revision=BASE_REVISION)
+        resume = stage_resume_checkpoint(args.resume_pointer, output, manifest_hashes=manifest_hashes, base_revision=family.revision)
     torch.cuda.reset_peak_memory_stats()
     try:
         trainer.fit(model, ckpt_path=resume)

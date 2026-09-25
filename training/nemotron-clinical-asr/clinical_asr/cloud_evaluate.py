@@ -99,14 +99,22 @@ def stage_cohorts(client, bucket, root, output, specs):
     return cohorts
 
 
-def evaluate_cohorts(cohorts, checkpoint, checkpoint_sha, command, *, include_english_specialist=False):
+def evaluate_cohorts(cohorts, checkpoint, checkpoint_sha, command, *, include_english_specialist=False,
+                     model_family="nemotron35"):
+    from .families import family_spec
+    family_spec(model_family)
+    if model_family == "english_specialist" and include_english_specialist:
+        raise ValueError("english_base_already_in_paired_comparison")
     for cohort in cohorts:
         for label in ("base", "tuned"):
-            arguments = ["evaluate", "--manifest", str(cohort["manifest"]),
+            entrypoint = "evaluate-english" if label == "base" and model_family == "english_specialist" else "evaluate"
+            arguments = [entrypoint, "--manifest", str(cohort["manifest"]),
                          "--output", str(cohort["directory"] / (label + "-predictions.jsonl"))]
             if label == "tuned":
                 arguments += ["--model-id", "nemotron-clinical-en", "--checkpoint", str(checkpoint),
                               "--checkpoint-sha", checkpoint_sha]
+                if model_family != "nemotron35":
+                    arguments += ["--model-family", model_family]
             # Deliberately no --limit: missing predictions must fail paired scoring.
             command("evaluate-" + cohort["name"] + "-" + label, arguments)
         if include_english_specialist:
@@ -122,6 +130,8 @@ def main():
     parser.add_argument("--checkpoint-key", required=True)
     parser.add_argument("--checkpoint-sha256", required=True)
     parser.add_argument("--upload-workers", type=int, default=8)
+    from .families import FAMILIES
+    parser.add_argument("--model-family", choices=sorted(FAMILIES), default="nemotron35")
     parser.add_argument("--include-english-specialist", action="store_true",
                         help="Additional pinned English-base benchmark; never changes any serving default")
     add_cohort_arguments(parser, required=True)
@@ -180,7 +190,7 @@ def main():
         print(json.dumps({"stage": "stage_checkpoint", "state": "verified"}), flush=True)
         cohorts = stage_cohorts(client, args.bucket, source_root, output, specs)
         evaluate_cohorts(cohorts, checkpoint, args.checkpoint_sha256, command,
-                         include_english_specialist=args.include_english_specialist)
+                         include_english_specialist=args.include_english_specialist, model_family=args.model_family)
         status.update(status="completed", finished_at_unix=time.time())
     except BaseException as exc:
         failure = exc
@@ -194,6 +204,7 @@ def main():
                        "checkpoint_key": args.checkpoint_key, "checkpoint_sha256": args.checkpoint_sha256,
                        "cohorts": specs, "clinical_validation": "NOT_PERFORMED",
                        "english_specialist_included": args.include_english_specialist,
+                       "model_family": args.model_family,
                        "checksums": "local_SHA256_and_full_S3_GET_readback", "output_upload_workers": args.upload_workers,
                        "output_upload_seconds": time.monotonic() - started}
         final_name = "completed.json" if status["status"] == "completed" else "failed.json"

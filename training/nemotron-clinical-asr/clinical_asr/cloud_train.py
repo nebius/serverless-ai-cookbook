@@ -55,6 +55,8 @@ def main():
     parser.add_argument('--bundle-sha256', required=True)
     parser.add_argument('--run-id', required=True)
     parser.add_argument('--arm', choices=['clinical-only', 'mixed'], required=True)
+    from .families import FAMILIES
+    parser.add_argument('--model-family', choices=sorted(FAMILIES), default='nemotron35')
     parser.add_argument('--max-steps', type=int, default=500)
     parser.add_argument('--val-every', type=int, default=100)
     parser.add_argument('--batch-duration', type=float, default=120)
@@ -166,13 +168,15 @@ def main():
                         '--accumulate-grad-batches', str(args.accumulate_grad_batches),
                         '--learning-rate', str(args.learning_rate), '--seed', str(args.seed),
                         '--checkpoint-every', str(args.checkpoint_every), '--expected-data-mix', args.arm,
+                        '--model-family', args.model_family,
                         '--require-replay-by-step', str(args.require_replay_by_step)])
         if specs:
             stage = 'stage_known_evaluation'
             cohorts = stage_cohorts(client, args.bucket, source_root, output, specs)
             provenance = json.loads((output / 'training/training-provenance.json').read_text())
             stage = 'evaluate_known_cohorts'
-            evaluate_cohorts(cohorts, output / 'training/nemotron-clinical-en.nemo', provenance['checkpoint_sha256'], command)
+            evaluate_cohorts(cohorts, output / 'training/nemotron-clinical-en.nemo', provenance['checkpoint_sha256'], command,
+                             model_family=args.model_family)
         status.update(status='completed', finished_at_unix=time.time())
     except BaseException as exc:
         failure = exc
@@ -185,6 +189,7 @@ def main():
         publication = {'schema': 'clinical-speech/prealigned-training-publication/v1',
                        'run_id': args.run_id, 'status': status['status'], 'objects': objects,
                        'bundle_sha256': args.bundle_sha256, 'arm': args.arm,
+                       'model_family': args.model_family,
                        'cohorts': specs, 'clinical_validation': 'NOT_PERFORMED',
                        'checksums': 'local_SHA256_and_full_S3_GET_readback',
                        'output_upload_seconds': time.monotonic() - started,

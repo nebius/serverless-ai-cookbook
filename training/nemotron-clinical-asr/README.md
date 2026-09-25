@@ -617,6 +617,33 @@ over WebSocket and records partial/final timings. Evidence contains transcript
 text and must follow the approved-data policy. Browser microphone/review gates
 remain separate; this SDK probe does not qualify the browser.
 
+### Opt-in English-specialist candidate path
+
+`train`, `cloud-train`, `evaluate`, and `cloud-evaluate` accept
+`--model-family english_specialist`. The default remains `nemotron35`; no
+existing endpoint, model selection, or image is changed by this option. The
+English foundation is pinned in `clinical_asr/families.py` to its exact upstream
+revision and checkpoint SHA256, and uses the non-prompt RNNT dataset loader.
+Its original tokenizer, 618,084,865 parameters, and trained attention contexts
+are retained; only the dataset template is replaced, explicitly reading `text`.
+Consumption evidence handles its native four-tensor batch contract separately
+from the multilingual five-tensor contract.
+
+English candidate comparisons use the original English checkpoint as `base`
+and the explicit English-adapted checkpoint as `tuned`; they must not label an
+English model as multilingual. `evaluate-english` separately benchmarks the
+original pinned English foundation. A future English-adapted endpoint requires
+`MODEL_FAMILY=english_specialist` alongside its actual `MODEL_PATH`/`MODEL_SHA256`
+and `MODEL_ID=nemotron-clinical-en`. Its native 560ms inference context is
+`[70,6]`, compared with `[56,6]` for multilingual Nemotron 3.5.
+
+At this preparation stage, the English fine-tuning path has passed CPU tests
+and actual checkpoint/loader/reference-token preflight, **not GPU training or
+candidate quality qualification**. Complete a separately recorded GPU smoke,
+freeze the adaptation and comparison protocol, and qualify real candidate
+weights before serving them. The multilingual and English families are not
+interchangeable optimizer-resume targets. Neither model is clinically validated.
+
 ### Resource lifetime and cleanup
 
 Before creating a resource, record its unique experiment name and exact ID. Keep

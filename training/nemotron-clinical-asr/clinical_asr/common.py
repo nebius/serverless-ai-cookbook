@@ -3,9 +3,6 @@ import json
 import os
 from pathlib import Path
 
-from . import BASE_FILENAME, BASE_REPOSITORY, BASE_REVISION
-
-
 def sha256_file(path):
     digest = hashlib.sha256()
     with open(path, "rb") as source:
@@ -30,9 +27,14 @@ def write_json(path, value):
     temp.replace(path)
 
 
-def base_checkpoint():
+def base_checkpoint(model_family="nemotron35"):
     from huggingface_hub import hf_hub_download
-    return hf_hub_download(BASE_REPOSITORY, BASE_FILENAME, revision=BASE_REVISION)
+    from .families import family_spec
+    family = family_spec(model_family)
+    checkpoint = hf_hub_download(family.repository, family.filename, revision=family.revision)
+    if sha256_file(checkpoint) != family.sha256:
+        raise ValueError("upstream_checkpoint_sha256_mismatch")
+    return checkpoint
 
 
 def checked_checkpoint(path=None, expected_sha=None):

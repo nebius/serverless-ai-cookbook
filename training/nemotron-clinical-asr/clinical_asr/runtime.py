@@ -8,8 +8,9 @@ import platform
 from pathlib import Path
 from types import SimpleNamespace
 
-from . import BASE_REPOSITORY, BASE_REVISION, NEMO_REVISION
+from . import NEMO_REVISION
 from .common import checked_checkpoint, sha256_file
+from .families import family_spec
 
 
 class NeMoRuntime:
@@ -20,8 +21,7 @@ class NeMoRuntime:
         self.checkpoint = checkpoint
         self.checkpoint_sha = checkpoint_sha
         self.model_id = model_id
-        if model_family not in {"nemotron35", "english_specialist"}:
-            raise ValueError("unknown_model_family")
+        family_spec(model_family)
         if model_family == "english_specialist" and not checkpoint:
             raise ValueError("english_specialist_requires_pinned_checkpoint")
         self.model_family = model_family
@@ -53,7 +53,8 @@ class NeMoRuntime:
         config.asr.decoding.beam.beam_size = 4
         config.asr.decoding.greedy.preserve_frame_confidence = False
         config.asr.decoding.beam.preserve_frame_confidence = False
-        left_context = 70 if self.model_family == "english_specialist" else 56
+        family = family_spec(self.model_family)
+        left_context = family.left_context
         config.streaming.att_context_size = [left_context, self.chunk_ms // 80 - 1]
         config.streaming.batch_size = 1
         config.streaming.num_slots = 1
@@ -65,8 +66,8 @@ class NeMoRuntime:
         torch.cuda.synchronize()
         self.identity = {
             "id": self.model_id,
-            "base_model": "nvidia/nemotron-speech-streaming-en-0.6b" if self.model_family == "english_specialist" else BASE_REPOSITORY,
-            "base_revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50" if self.model_family == "english_specialist" else BASE_REVISION,
+            "base_model": family.repository,
+            "base_revision": family.revision,
             "checkpoint_sha256": sha256_file(checkpoint), "fine_tuned": self.fine_tuned,
             "attention_context": [left_context, self.chunk_ms // 80 - 1],
             "nemo_revision": NEMO_REVISION, "precision": "float32", "chunk_size_ms": self.chunk_ms,

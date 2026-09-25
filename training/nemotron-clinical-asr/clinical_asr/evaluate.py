@@ -10,6 +10,7 @@ from .common import read_jsonl, sha256_file, write_json
 from .contracts import SpeechOptions
 from .events import TranscriptEvents
 from .framing import PCMFramer
+from .families import FAMILIES
 from .runtime import NeMoRuntime
 
 
@@ -67,9 +68,13 @@ def main():
     parser.add_argument("--checkpoint")
     parser.add_argument("--checkpoint-sha")
     parser.add_argument("--model-id", default="nemotron35-base-en")
+    parser.add_argument("--model-family", choices=sorted(FAMILIES), default="nemotron35")
     parser.add_argument("--limit", type=int)
     args = parser.parse_args()
-    runtime = NeMoRuntime(checkpoint=args.checkpoint, checkpoint_sha=args.checkpoint_sha, model_id=args.model_id)
+    if args.model_family == "english_specialist" and args.model_id != "nemotron-clinical-en":
+        raise ValueError("use_evaluate_english_for_pinned_english_base")
+    runtime = NeMoRuntime(checkpoint=args.checkpoint, checkpoint_sha=args.checkpoint_sha,
+                          model_id=args.model_id, model_family=args.model_family)
     runtime.load()
     options = SpeechOptions(model=args.model_id)
     output = Path(args.output)

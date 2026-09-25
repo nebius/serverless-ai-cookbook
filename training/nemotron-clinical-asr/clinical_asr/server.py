@@ -270,6 +270,7 @@ async def lifespan(app):
     model_path = await _gpu_call(stage_model_from_env)
     runtime = NeMoRuntime(checkpoint=model_path, checkpoint_sha=os.getenv("MODEL_SHA256"),
                           model_id=os.getenv("MODEL_ID", "nemotron35-base-en"),
+                          model_family=os.getenv("MODEL_FAMILY", "nemotron35"),
                           chunk_ms=int(os.getenv("CHUNK_SIZE_MS", "560")))
     store = ObjectStore(os.environ["STATE_BUCKET"], os.environ["STATE_PREFIX"]) if os.getenv("STATE_BUCKET") else None
     service = await _gpu_call(lambda: Service(os.getenv("DATA_DIR", "/output/service"), runtime, store))
