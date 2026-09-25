@@ -15,7 +15,7 @@ from clinical_asr.contracts import SpeechOptions
 from clinical_asr.runtime import NeMoRuntime
 
 
-def test_cancel_frees_native_inference_tensor_buffers_and_context():
+def test_cancel_frees_native_inference_tensor_buffers_and_context(monkeypatch):
     audio = AudioBufferer(16000, 0.56)
     frame = Frame(samples=torch.zeros(8960), stream_id=1, is_first=True, is_last=False, length=8960)
     with torch.inference_mode():
@@ -48,4 +48,7 @@ def test_cancel_frees_native_inference_tensor_buffers_and_context():
     assert closed == [True] and runtime._active is None
     assert not bufferer.streamidx2slotidx and not context.streamidx2slotidx
     assert bufferer.available_slots.qsize() == context.free_slots.qsize() == 1
+    # Only the GPU memory counter is irrelevant to this real native CPU-buffer
+    # regression; no buffer, context, cleanup or model operation is mocked here.
+    monkeypatch.setattr(torch.cuda, "reset_peak_memory_stats", lambda: None)
     assert runtime.begin(SpeechOptions(model=runtime.model_id)) == 2
