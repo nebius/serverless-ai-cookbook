@@ -85,9 +85,14 @@ def main():
     parser.add_argument("--expected-data-mix", choices=["unspecified", "clinical-only", "mixed"], default="unspecified")
     parser.add_argument("--require-replay-by-step", type=int, default=50,
                         help="Mixed runs fail if no real replay batch consumption by this step")
+    parser.add_argument("--require-training-corpus", action="append", default=[],
+                        choices=["simulated_clinical", "primock57", "librispeech_replay"],
+                        help="Optional component exposure guard at require-replay-by-step; manifest membership is not enough")
     args = parser.parse_args()
     family = family_spec(args.model_family)
     train_rows, dev_rows = validate_manifests(args.train_manifest, args.dev_manifest)
+    if not set(args.require_training_corpus) <= {row.get("training_corpus") for row in train_rows}:
+        raise ValueError("required_training_corpus_absent_from_manifest")
     if args.max_steps < 1 or args.val_every < 1 or args.require_replay_by_step < 1:
         raise ValueError("positive_steps_required")
     import torch
@@ -180,6 +185,8 @@ def main():
                 print(json.dumps({"actual_training_exposure": summary}), flush=True)
             self.exposure.validate(args.expected_data_mix, trainer.global_step,
                                    min(args.require_replay_by_step, args.max_steps))
+            self.exposure.validate_corpora(args.require_training_corpus, trainer.global_step,
+                                           min(args.require_replay_by_step, args.max_steps))
 
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)

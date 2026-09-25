@@ -30,6 +30,7 @@ class ConsumptionAudit:
                 "id": row.get("id", row.get("conversation_id")),
                 "audio_filepath": row["audio_filepath"],
                 "conversation_id": row["conversation_id"],
+                "training_corpus": row.get("training_corpus"),
                 "source_word_start": row.get("source_word_start"),
                 "source_word_end_exclusive": row.get("source_word_end_exclusive"),
             })

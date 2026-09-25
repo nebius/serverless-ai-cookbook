@@ -65,6 +65,8 @@ def main():
     parser.add_argument('--seed', type=int, default=20260926)
     parser.add_argument('--checkpoint-every', type=int, default=200)
     parser.add_argument('--require-replay-by-step', type=int, default=50)
+    parser.add_argument('--require-training-corpus', action='append', default=[],
+                        choices=['simulated_clinical', 'primock57', 'librispeech_replay'])
     parser.add_argument('--upload-workers', type=int, default=8)
     add_cohort_arguments(parser)
     args = parser.parse_args()
@@ -162,14 +164,17 @@ def main():
                    'source_data_mutated': False, 'archive_sha256': archive_obj['sha256']})
         print(json.dumps({'stage': stage, 'state': 'completed', 'waveforms_verified': count}), flush=True)
         stage = 'train'
-        command(stage, ['train', '--train-manifest', str(paths[args.arm]), '--dev-manifest', str(paths['dev']),
+        train_arguments = ['train', '--train-manifest', str(paths[args.arm]), '--dev-manifest', str(paths['dev']),
                         '--output', str(output / 'training'), '--max-steps', str(args.max_steps),
                         '--val-every', str(args.val_every), '--batch-duration', str(args.batch_duration),
                         '--accumulate-grad-batches', str(args.accumulate_grad_batches),
                         '--learning-rate', str(args.learning_rate), '--seed', str(args.seed),
                         '--checkpoint-every', str(args.checkpoint_every), '--expected-data-mix', args.arm,
                         '--model-family', args.model_family,
-                        '--require-replay-by-step', str(args.require_replay_by_step)])
+                        '--require-replay-by-step', str(args.require_replay_by_step)]
+        for corpus in args.require_training_corpus:
+            train_arguments += ['--require-training-corpus', corpus]
+        command(stage, train_arguments)
         if specs:
             stage = 'stage_known_evaluation'
             cohorts = stage_cohorts(client, args.bucket, source_root, output, specs)
