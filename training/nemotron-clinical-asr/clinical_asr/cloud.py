@@ -4,6 +4,7 @@ Only boto3's environment credential chain is used. No credentials in argv/logs.
 Publication is manifest-last; an absent completed.json means not promotable.
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import json
 import os
@@ -23,6 +24,49 @@ def safe_key(key):
     return str(path)
 
 
+def upload_outputs(client, bucket, prefix, output, *, include_checkpoints=False, workers=8, transfer_config=None):
+    """Bounded publication, verified per object; never publishes a success marker.
+
+    S3 clients are thread-safe. transfer_config disables nested transfer threads
+    so the configured worker count also bounds concurrent upload/readback I/O.
+    """
+    if not 1 <= workers <= 16:
+        raise ValueError("upload_workers_must_be_1_to_16")
+    paths = [path for path in sorted(output.rglob("*")) if path.is_file()
+             and path.name not in {"completed.json", "failed.json"}
+             and (include_checkpoints or path.suffix != ".ckpt")]
+
+    def upload(path):
+        checksum = sha256_file(path)
+        size = path.stat().st_size
+        key = prefix + "/" + str(path.relative_to(output))
+        client.upload_file(str(path), bucket, key, Config=transfer_config,
+                           ExtraArgs={"Metadata": {"sha256": checksum}})
+        remote = client.get_object(Bucket=bucket, Key=key)
+        remote_hash = hashlib.sha256()
+        try:
+            for chunk in remote["Body"].iter_chunks(chunk_size=8 * 1024 * 1024):
+                remote_hash.update(chunk)
+        finally:
+            remote["Body"].close()
+        if remote["ContentLength"] != size or remote_hash.hexdigest() != checksum:
+            raise RuntimeError("output_upload_verification_failed")
+        return {"key": key, "sha256": checksum, "bytes": size}
+
+    pool = ThreadPoolExecutor(max_workers=workers)
+    futures = []
+    try:
+        futures = [pool.submit(upload, path) for path in paths]
+        results = [future.result() for future in as_completed(futures)]
+    except BaseException:
+        for future in futures:
+            future.cancel()
+        raise
+    finally:
+        pool.shutdown(wait=True, cancel_futures=True)
+    return sorted(results, key=lambda item: item["key"])
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bucket", default=os.getenv("DATA_BUCKET"), required=not bool(os.getenv("DATA_BUCKET")))
@@ -38,7 +82,10 @@ def main():
     parser.add_argument("--upload-lightning-checkpoints", action="store_true")
     parser.add_argument("--checkpoint-every", type=int, default=0)
     parser.add_argument("--resume-pointer")
+    parser.add_argument("--upload-workers", type=int, default=8)
     args = parser.parse_args()
+    if not 1 <= args.upload_workers <= 16:
+        raise ValueError("upload_workers_must_be_1_to_16")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{2,100}", args.run_id):
         raise ValueError("invalid_run_id")
     import boto3
@@ -153,26 +200,15 @@ def main():
         status.update(status="failed", failed_stage=stage, error_type=type(exc).__name__, finished_at_unix=time.time())
     finally:
         write_json(output / "run-status.json", status)
-        for path in sorted(output.rglob("*")):
-            if not path.is_file() or path.name == "completed.json":
-                continue
-            if path.suffix == ".ckpt" and not args.upload_lightning_checkpoints:
-                continue
-            checksum = sha256_file(path)
-            key = prefix + "/" + str(path.relative_to(output))
-            client.upload_file(str(path), args.bucket, key, ExtraArgs={"Metadata": {"sha256": checksum}})
-            remote = client.get_object(Bucket=args.bucket, Key=key)
-            remote_hash = hashlib.sha256()
-            try:
-                for chunk in remote["Body"].iter_chunks(chunk_size=8 * 1024 * 1024):
-                    remote_hash.update(chunk)
-            finally:
-                remote["Body"].close()
-            if remote["ContentLength"] != path.stat().st_size or remote_hash.hexdigest() != checksum:
-                raise RuntimeError("output_upload_verification_failed")
-            uploaded.append({"key": key, "sha256": checksum, "bytes": path.stat().st_size})
+        from boto3.s3.transfer import TransferConfig
+        started = time.monotonic()
+        uploaded = upload_outputs(client, args.bucket, prefix, output,
+                                  include_checkpoints=args.upload_lightning_checkpoints,
+                                  workers=args.upload_workers, transfer_config=TransferConfig(use_threads=False))
         publication = {"run_id": args.run_id, "status": status["status"], "objects": uploaded,
                        "clinical_validation": "NOT_PERFORMED", "checksums": "local_SHA256_and_full_S3_GET_readback",
+                       "output_upload_workers": args.upload_workers,
+                       "output_upload_seconds": time.monotonic() - started,
                        "lightning_resume_checkpoints_uploaded": args.upload_lightning_checkpoints}
         final_name = "completed.json" if status["status"] == "completed" else "failed.json"
         write_json(output / final_name, publication)
