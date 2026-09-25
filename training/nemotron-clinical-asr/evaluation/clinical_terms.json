@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "status": "curated_lexicon_not_clinician_reviewed",
+  "description": "Frozen lexical measurement vocabulary; not a diagnostic ontology. Exact transcript occurrences only. Clinical semantics are reviewed separately.",
+  "categories": {
+    "medication": ["acetaminophen", "paracetamol", "ibuprofen", "aspirin", "amoxicillin", "azithromycin", "prednisone", "prednisolone", "salbutamol", "albuterol", "ventolin", "salbutamol inhaler", "metformin", "metoprolol", "lisinopril", "warfarin", "heparin", "insulin", "nitroglycerin", "epinephrine", "epipen", "antibiotics", "antihistamine", "antihistamines", "corticosteroids", "bronchodilator", "diarolyte", "hydrocortisone"],
+    "diagnosis": ["asthma", "pneumonia", "tuberculosis", "pulmonary embolism", "pneumothorax", "bronchitis", "bronchiolitis", "copd", "chronic obstructive pulmonary disease", "congestive heart failure", "heart failure", "myocardial infarction", "pericarditis", "gastroenteritis", "eczema", "anaphylaxis", "diabetes", "hypertension", "rheumatoid arthritis", "covid", "covid 19"],
+    "symptom": ["shortness of breath", "chest pain", "hemoptysis", "haemoptysis", "wheezing", "palpitations", "diarrhea", "diarrhoea", "nausea", "vomiting", "sputum", "phlegm", "night sweats", "weight loss", "fever", "dizziness", "cough", "productive cough", "dry cough"],
+    "procedure": ["x ray", "chest x ray", "ct scan", "electrocardiogram", "ecg", "ekg", "spirometry", "blood test", "blood tests", "oxygen saturation", "blood pressure"],
+    "anatomy": ["lungs", "bronchi", "alveoli", "sternum", "abdomen", "left lower quadrant", "right lower quadrant", "calf", "ankles"],
+    "dose_unit": ["milligram", "milligrams", "microgram", "micrograms", "milliliter", "milliliters", "millilitre", "millilitres", "mg", "mcg", "ml", "twice a day", "three times a day", "once a day", "two puffs"]
+  }
+}

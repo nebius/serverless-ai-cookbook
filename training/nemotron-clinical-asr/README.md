@@ -62,10 +62,9 @@ docker buildx build --platform linux/amd64 -t YOUR_REGISTRY/clinical-asr:YOUR_VE
 ```
 
 Resolve the pushed image digest and use `YOUR_REGISTRY/clinical-asr@sha256:...` in
-every Job/Endpoint definition. `Dockerfile.internal` is an accelerated internal
-build using a separately qualified CUDA 12.8 runtime; it is not needed to
-reproduce the public recipe. Record the exact built image digest in the run
-evidence. Public and internal builds require separate runtime qualification.
+every Job/Endpoint definition. No private base image is required. Record the exact
+built image digest in the run evidence; a new image requires its own runtime
+qualification, including imports and execution as the Dockerfile's default user.
 
 Initial smoke target: one H100/H200, 16 vCPU, roughly 200 GiB host memory, 250 GiB
 scratch, regular capacity, finite Job timeout. This is a starting allocation,
@@ -101,9 +100,65 @@ utterances only, explicitly lowercased training targets with raw uppercase sourc
 retained in provenance. General-English test-clean stays evaluation-only. The
 replay proportion and any regression must be measured, not presumed beneficial.
 
+### Prepare public inputs from a clean checkout
+
+The CPU-side scripts below need Python 3.12+ and `ffmpeg`/`ffprobe` on `PATH`.
+They do not require PyTorch or a GPU. [Source and license details](data/SOURCES.md)
+include pinned archive hashes and attribution. No audio or private credentials
+are included in the checkout. Set `ASR_DATA_DIR` to a **new, dedicated** local data
+directory outside the source checkout; allow space for archives, extraction and
+16 kHz WAVs. Clinical download is about 1 GB; optional replay downloads add about 7 GB.
+
+```bash
+python data/download_public.py --dataset clinical --data-root "$ASR_DATA_DIR"
+python data/prepare_corpus.py --root "$ASR_DATA_DIR" --seed clinical-asr-v1
+```
+
+This verifies the original CC0 archive, handles UTF-16 transcripts, preserves
+source case/punctuation and warnings, converts audio, and creates:
+
+- `prepared/audio/*.wav` and auditable speaker-marked source turns;
+- frozen `manifests/conversation-splits.json` (whole-conversation 80/10/10);
+- `manifests/{train,dev,test}-nfa.jsonl` and `train-dev-alignment.jsonl`;
+- `manifests/pilot-alignment.jsonl`: four shortest train and two shortest dev
+  conversations, selected before alignment or any ASR predictions;
+- `provenance.json` with hashes, licenses, actual durations and warnings.
+
+Preparation refuses to replace different frozen manifests. The default public
+seed is explicit; it need not reproduce a separately reported experiment's
+seed. Never change a test split after looking at predictions. The retained
+`test-nfa.jsonl` is **not** part of the train/dev alignment Job.
+
+Optional general-English replay and regression:
+
+```bash
+python data/download_public.py --dataset replay-train --data-root "$ASR_DATA_DIR"
+python data/download_public.py --dataset general-test --data-root "$ASR_DATA_DIR"
+python data/prepare_replay.py --data-root "$ASR_DATA_DIR" --train-hours 10 \
+  --pilot-train-hours 2 --regression-minutes 30 --seed clinical-asr-replay-v1
+```
+
+Outputs are `replay-train.jsonl`, `replay-train-pilot.jsonl`,
+`general-test-clean.jsonl` and `general-test-clean-pilot.jsonl` in `manifests/`.
+Only the first two may enter training. Native utterances outside 0.5–30 seconds
+are excluded and counted. Lowercased targets do not fabricate punctuation.
+
+Optional external clinical evaluation uses two pinned PriMock consultations:
+
+```bash
+python data/download_public.py --dataset primock-sample --data-root "$ASR_DATA_DIR"
+python data/prepare_external.py --data-root "$ASR_DATA_DIR"
+```
+
+The downloader resolves actual Git LFS audio and checks its SHA-256. Preparation
+cuts original human-TextGrid intervals into `external-test-utterances.jsonl`,
+retaining the CC BY license and exclusions. This is not the full 57-consultation
+dataset and not mixed-speaker diarization; never use it for training or model
+selection in this experiment.
+
 ## Serverless Job
 
-Upload the source data directory contents at a private bucket root. The manifest
+Upload only required prepared files at a private bucket root. The manifest
 paths map to bucket keys by stripping `/data/clinical-speech/`. Use a new scoped
 service account/secret and a new Job; do not reuse or modify running instances.
 
@@ -111,6 +166,27 @@ Inject `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` through runtime secrets, and
 set `AWS_ENDPOINT_URL` to the bucket region's Object Storage endpoint. Credentials
 must not appear in images, manifests, shell history or evidence. Cross-region
 Jobs stage data with S3 to local disk; no cross-region FUSE mount is required.
+
+After creating your own bucket-scoped credential through the supported cloud
+workflow, configure it through the standard AWS credential provider chain, not
+command-line values. The optional uploader needs only `boto3==1.42.49` in the
+local preparation environment, not the full GPU dependency lock:
+
+```bash
+python -m pip install boto3==1.42.49
+python data/upload_inputs.py --data-root "$ASR_DATA_DIR" --bucket "$ASR_BUCKET" \
+  --manifest manifests/pilot-alignment.jsonl \
+  --provenance provenance.json --provenance manifests/conversation-splits.json \
+  --receipt "$ASR_DATA_DIR/pilot-upload-receipt.json"
+```
+
+This is a cloud write to your explicitly chosen bucket. It uploads the named
+manifest, only its referenced WAVs and explicit provenance; never raw archives,
+private files or the entire working directory. Existing mismatches fail closed;
+every object gets a create-only PUT and full-GET SHA-256 verification. For a full
+run repeat `--manifest` for `train-dev-alignment.jsonl` and the chosen replay
+manifest, and use a new receipt path. Preserve the dataset license/provenance
+files with replay/external artifacts as well.
 
 Container arguments for the first real GPU smoke:
 
@@ -147,7 +223,7 @@ These arguments run alignment → segmentation → full-parameter training → p
 12-segment base/adapted dev predictions. `--mode align` stops before training;
 `--mode align-train` skips the prediction smoke. Longer training should use the
 full train/dev alignment manifest, a justified step budget and
-`--replay-manifest-key` if replay is chosen.
+`--replay-manifest-key manifests/replay-train.jsonl` if replay is chosen.
 
 The wrapper uploads logs, manifests, word CTMs, segment WAVs, resolved model
 config, `.nemo`, provenance and predictions under `runs/RUN_ID/`. Each upload is
@@ -192,6 +268,64 @@ Dev scores guide checkpoint choice; test data must remain untouched until that
 choice is fixed. The evaluator does not invent physician validation or safety
 approval. Passing an alignment/training smoke does not automatically promote the
 checkpoint into the webinar selector.
+
+### Freeze and score useful cohorts
+
+The wrapper's first 12-dev-clip output is a **pipeline smoke**, not a medical
+benchmark. Keep dev, external clinical and general-English results separate.
+The tools below run locally on references/predictions and require no model calls.
+Set `ASR_ALIGNED_DEV` to the verified Job's full `segments/dev.jsonl`, and
+`ASR_EVAL_DIR` to a new evaluation directory. Freeze the rule/lexicon hashes
+before accessing predictions; archive the resulting selection receipt.
+
+```bash
+python evaluation/select_dev.py --aligned-dev "$ASR_ALIGNED_DEV" \
+  --source-dev "$ASR_DATA_DIR/manifests/dev-nfa.jsonl" \
+  --output "$ASR_EVAL_DIR/dev-selected.jsonl"
+python evaluation/prepare_references.py \
+  --manifest "$ASR_DATA_DIR/manifests/external-test-utterances.jsonl" \
+  --output "$ASR_EVAL_DIR/external-references.jsonl"
+python evaluation/prepare_references.py \
+  --manifest "$ASR_DATA_DIR/manifests/general-test-clean-pilot.jsonl" \
+  --output "$ASR_EVAL_DIR/general-references.jsonl"
+```
+
+`select_dev.py` selects whole clips around each conversation's first reference
+medical term, with fixed evenly spaced fallback, targeting 30–45 seconds per
+conversation. Missing/short conversations are recorded. This enriched dev cohort
+can guide selection; it is neither population-wide nor final held-out evidence.
+The fixed lexicon is curated, not clinician-reviewed, and is never learned from
+test predictions. No script supplies physician-reviewed factual labels.
+
+For **each** frozen cohort, run both commands below in the same GPU runtime with
+the same manifest and accessible audio paths. These are container arguments to
+the built image (its entrypoint is `python -m clinical_asr`); stage the chosen
+manifest, audio and verified checkpoint at the shown paths first. `evaluate`
+without `--limit` processes the full supplied manifest, unlike the wrapper smoke.
+Use distinct output files and retain all inference failures.
+
+```text
+evaluate --manifest /data/cohort.jsonl --output /output/base.jsonl
+evaluate --manifest /data/cohort.jsonl --output /output/tuned.jsonl --model-id nemotron-clinical-en --checkpoint /data/model.nemo --checkpoint-sha VERIFIED_SHA256
+```
+
+After retrieving those verified prediction files, score locally:
+
+```bash
+python evaluation/score_pair.py --reference "$ASR_EVAL_DIR/dev-selected.jsonl" \
+  --base "$ASR_EVAL_DIR/dev-base.jsonl" --tuned "$ASR_EVAL_DIR/dev-tuned.jsonl" \
+  --output "$ASR_EVAL_DIR/dev-paired-scores.json"
+```
+
+Repeat with separate external and general reference/prediction files. The scorer
+requires equal nonempty ID sets, equal audio hashes and matching decoding/base
+settings; it preserves empty hypotheses as errors and refuses overwritten scores.
+WER uses NFKC/lowercase normalization, preserves decimal values and negation,
+and does not expand numbers or synonyms. KER counts reference keyword occurrences
+whose complete aligned token spans are not retained; overlapping phrases count
+separately and extra occurrences are reported. Zero keywords means **null**, not
+perfect clinical performance. Dose/negation/speaker semantics require separate
+audio-linked review. Report unchanged or worse results honestly.
 
 ## Serverless Endpoint
 
@@ -334,8 +468,20 @@ audio streaming; acoustic word timing; speaker-aware transcript; SOAP/task draft
 editable clinician review; cancellation; overload; invalid audio; restart-safe
 operation polling; and an intentionally visible transcription failure.
 
-Local tests (`python -m pytest -q tests`) use explicit synthetic engines for
-protocol validation. They do not demonstrate GPU inference, medical accuracy or
+Fast public-data/scoring tests need only a small development environment:
+
+```bash
+python3 -m venv .venv-dev
+.venv-dev/bin/python -m pip install pytest==8.4.2
+.venv-dev/bin/python -m pytest -q tests/test_public_data.py tests/test_public_scores.py
+```
+
+These tests are offline and do not download corpora or load a model. To run the
+complete protocol suite, separately install `pytest==8.4.2` into a disposable
+environment with the recipe runtime dependencies, then run
+`python -m pytest -q tests` from this directory. Do not expand the production
+dependency lock just to add test tools. Protocol tests use explicit synthetic
+engines. They do not demonstrate GPU inference, medical accuracy or
 cloud ingress compatibility. Keep measured cloud evidence outside the source tree
 and report pending gates honestly.
 
@@ -362,10 +508,12 @@ reuse of an existing ledger is refused to avoid counting a discarded attempt.
 Dataset membership alone is not proof that a short run consumed a demonstration
 clip. Source word spans remain in each segment's manifest for audit.
 
-For a real managed-endpoint probe, install the client dependencies from the lock,
-inject `ASR_ENDPOINT` and `API_BEARER_TOKEN` securely, and run:
+For a real managed-endpoint probe, install the small client subset in a separate
+environment, inject `ASR_ENDPOINT` and `API_BEARER_TOKEN` securely, and run from
+this source directory (no local model or GPU dependency is needed):
 
 ```bash
+python -m pip install httpx==0.28.1 websockets==15.0.1 mcp==1.26.0
 python -m clinical_asr.probe --audio /path/to/approved-synthetic.wav \
   --model nemotron-clinical-en --output /path/to/private-evidence.json
 ```
