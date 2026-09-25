@@ -24,10 +24,17 @@ Each manifest must be frozen **before examining this candidate's predictions**.
 Keys and SHA256 arguments are paired in their supplied order. Each key's filename
 stem becomes its output directory and must be unique. Every manifest row must
 have a unique string `id`, reference `text`, `duration` and canonical
-`audio_filepath` under `/data/clinical-speech`. Only referenced audio is staged
-from the same bucket. Optional `audio_sha256` is verified; `source_audio_sha256`
-is not substituted because it can refer to a longer original recording. IDs,
+`audio_filepath` under `/data/clinical-speech`, and a frozen `audio_sha256` for
+that exact clip. Only referenced audio is staged from the same bucket and each
+hash is verified before inference. `source_audio_sha256` is not substituted
+because it can refer to a longer original recording. IDs,
 split labels, exposure labels and original reference bytes are retained.
+
+If an older frozen manifest lacks clip hashes, publish an explicitly versioned
+new manifest that adds hashes from an independently audited audio inventory.
+Retain exactly the old IDs, references and audio membership, and record the old
+manifest's hash and the metadata-only transformation. Do not silently edit an
+existing frozen manifest or derive this update from candidate predictions.
 
 The evaluator uses the same pinned base, runtime, decoding settings and exact
 audio for base and adapted checkpoints. **All rows** are evaluated; no implicit

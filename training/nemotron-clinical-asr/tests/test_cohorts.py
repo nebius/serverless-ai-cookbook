@@ -56,6 +56,20 @@ def test_wrong_frozen_manifest_hash_fails_before_any_audio_download(tmp_path):
     assert client.downloaded == ["manifests/frozen-v1.jsonl"]
 
 
+@pytest.mark.parametrize("invalid_hash", [None, "", "not-a-sha256", 123])
+def test_exact_clip_hash_is_required_even_if_original_source_hash_exists(tmp_path, invalid_hash):
+    client, root, specs = fixture(tmp_path)
+    row = json.loads(client.data[specs[0]["key"]])
+    row["source_audio_sha256"] = row["audio_sha256"]
+    row["audio_sha256"] = invalid_hash
+    manifest = (json.dumps(row) + "\n").encode()
+    client.data[specs[0]["key"]] = manifest
+    specs[0]["sha256"] = hashlib.sha256(manifest).hexdigest()
+    with pytest.raises(ValueError, match="requires_frozen_audio_sha256"):
+        stage_cohorts(client, "bucket", root, tmp_path / "out", specs)
+    assert client.downloaded == ["manifests/frozen-v1.jsonl"]
+
+
 @pytest.mark.parametrize("options,match", [({"duplicate": True}, "unique_string_ids"),
                                          ({"unsafe": True}, "unsafe_object_key"),
                                          ({"wrong_audio_hash": True}, "audio_sha256_mismatch")])

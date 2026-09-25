@@ -70,6 +70,9 @@ def stage_cohorts(client, bucket, root, output, specs):
         shutil.copyfile(manifest, references)
         inventory = []
         for index, row in enumerate(rows, start=1):
+            expected_audio_sha = row.get("audio_sha256")
+            if not isinstance(expected_audio_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_audio_sha):
+                raise ValueError("evaluation_requires_frozen_audio_sha256:" + row["id"])
             path = Path(row["audio_filepath"])
             key = safe_key(str(path.relative_to(root)))
             if path.suffix.lower() != ".wav" or not path.resolve().is_relative_to(root.resolve()):
@@ -80,7 +83,7 @@ def stage_cohorts(client, bucket, root, output, specs):
                 local, actual = download(client, bucket, key, root)
                 staged_audio[key] = {"key": key, "sha256": actual, "bytes": local.stat().st_size}
             item = staged_audio[key]
-            if row.get("audio_sha256") and row["audio_sha256"] != item["sha256"]:
+            if expected_audio_sha != item["sha256"]:
                 raise ValueError("evaluation_audio_sha256_mismatch:" + row["id"])
             inventory.append({"id": row["id"], **item})
             if index == 1 or index % 25 == 0 or index == len(rows):
