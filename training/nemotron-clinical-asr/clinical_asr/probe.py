@@ -27,7 +27,9 @@ async def main_async(args):
     result = {"input_sha256": sha256_file(args.audio), "model": args.model,
               "wall_started_at_unix": time.time(), "endpoint_origin": endpoint,
               "test_type": "real_remote_model_not_mock"}
-    async with httpx.AsyncClient(timeout=120) as client:
+    # The application health route is public for internal probes, but managed
+    # ingress can require the endpoint bearer even for readiness requests.
+    async with httpx.AsyncClient(timeout=120, headers=headers) as client:
         response = await client.get(endpoint + "/readyz")
         response.raise_for_status()
         result["ready"] = response.json()
