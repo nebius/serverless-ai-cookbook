@@ -195,20 +195,25 @@ cloud-run --bucket YOUR_PRIVATE_BUCKET --run-id pilot-UNIQUE
   --manifest-key manifests/pilot-alignment.jsonl
   --max-steps 10 --val-every 5
   --batch-duration 30 --accumulate-grad-batches 1
-  --upload-lightning-checkpoints
+  --checkpoint-every 10
 ```
 
-Using the current Nebius CLI, after setting non-secret IDs and an immutable image
-reference in your shell (these commands create billable **new** resources):
+After checking your installed Nebius CLI help, set non-secret IDs and
+`ASR_IMAGE_REF` to your immutable image reference. An early submission in this
+work recorded a Compute-label length error for a long digest-form image string;
+this was not an OCI syntax error, and was not re-tested on CLI0.12.280. If that
+specific compatibility issue occurs, use a **new unique short tag**, verify its
+registry digest immediately before submission, record the digest and never
+overwrite the tag. A floating `latest` tag is not an equivalent workaround.
+These commands create billable **new** resources:
 
 ```bash
 nebius ai job create \
   --parent-id "$ASR_PROJECT_ID" --subnet-id "$ASR_SUBNET_ID" \
-  --name "$ASR_NEW_JOB_NAME" --image "$ASR_IMAGE_DIGEST" \
+  --name "$ASR_NEW_JOB_NAME" --image "$ASR_IMAGE_REF" \
   --platform gpu-h200-sxm --preset 1gpu-16vcpu-200gb \
-  --disk-size 250Gi --timeout 1h --restart-policy never \
-  --container-command "python -m clinical_asr" \
-  --args "cloud-run --bucket $ASR_BUCKET --run-id $ASR_RUN_ID --manifest-key manifests/pilot-alignment.jsonl --max-steps 10 --val-every 5 --upload-lightning-checkpoints" \
+  --disk-size 250Gi --shm-size 16Gi --timeout 1h --restart-policy never \
+  --args "cloud-run --bucket $ASR_BUCKET --run-id $ASR_RUN_ID --manifest-key manifests/pilot-alignment.jsonl --max-steps 10 --val-every 5 --checkpoint-every 10" \
   --env "AWS_ENDPOINT_URL=$ASR_S3_ENDPOINT" --env HF_HUB_OFFLINE=0 \
   --env-secret "AWS_ACCESS_KEY_ID=$ASR_STORAGE_SECRET_ID" \
   --env-secret "AWS_SECRET_ACCESS_KEY=$ASR_STORAGE_SECRET_ID"
@@ -238,6 +243,10 @@ only after readback verification. Resume explicitly with
 and training settings. Base and manifest hashes must match. This path still needs
 an actual interrupted/resumed GPU qualification; do not claim tested recovery
 from local unit tests. Periodic snapshots introduce storage/transfer overhead.
+`--upload-lightning-checkpoints` separately copies all local optimizer snapshots
+again during final publication; it is not needed for the periodic recovery
+pointer. Leave it off unless you specifically need those additional retained
+copies. Keep `.nemo`, provenance and verified recovery snapshots.
 
 Manual stage commands are also supported:
 
@@ -250,6 +259,11 @@ train --train-manifest /output/segments/train.jsonl --dev-manifest /output/segme
 No package installation or source checkout happens inside the training job.
 
 ## Evaluation and promotion
+
+For complete frozen cohorts, prefer a separate bounded Serverless Job using
+[`cloud-evaluate`](EVALUATION.md). It verifies the checkpoint, each cohort
+manifest and every referenced audio clip before paired inference. The default
+training wrapper's twelve-clip smoke is not a substitute for this evaluation.
 
 Do not evaluate only generic WER or select a “good looking” example after seeing
 test predictions. Use fixed references and identical audio/settings for base and
@@ -357,10 +371,10 @@ Example new-endpoint creation after the artifact and quality gates pass:
 ```bash
 nebius ai endpoint create \
   --parent-id "$ASR_PROJECT_ID" --subnet-id "$ASR_SUBNET_ID" \
-  --name "$ASR_NEW_ENDPOINT_NAME" --image "$ASR_IMAGE_DIGEST" \
-  --platform gpu-h200-sxm --preset 1gpu-16vcpu-200gb --disk-size 250Gi \
-  --container-command "python -m clinical_asr" --args serve \
-  --container-port 8000 --auth none \
+  --name "$ASR_NEW_ENDPOINT_NAME" --image "$ASR_IMAGE_REF" \
+  --platform gpu-l40s-a --preset 1gpu-8vcpu-32gb --disk-size 100Gi --shm-size 8Gi \
+  --args serve --container-port 8000/http \
+  --auth token --token-secret "$ASR_RUNTIME_SECRET_ID" \
   --env MODEL_ID=nemotron-clinical-en --env "MODEL_BUCKET=$ASR_BUCKET" \
   --env "MODEL_S3_KEY=runs/$ASR_RUN_ID/training/nemotron-clinical-en.nemo" \
   --env "MODEL_SHA256=$ASR_CHECKPOINT_SHA256" \
@@ -371,12 +385,16 @@ nebius ai endpoint create \
   --env-secret "AWS_SECRET_ACCESS_KEY=$ASR_STORAGE_SECRET_ID"
 ```
 
-`--auth none` disables only the platform's additional token layer in this example;
-the application itself enforces its required bearer secret on all inference,
-artifact, metrics and MCP paths. It refuses startup without that secret. Enable
-an additional platform authentication layer if its forwarding semantics have been
-tested with the relay. `--public` is deliberately omitted: a public VM IP is not
-needed for managed HTTPS. Neither choice makes a PHI-ready private endpoint claim.
+The runtime secret contains both `AUTH_TOKEN` (managed ingress) and
+`API_BEARER_TOKEN` (application), with the same strong token value. This dual
+layer was exercised through managed HTTP, MCP and WebSocket routes; the
+application refuses startup without its bearer secret. Even health/readiness
+requests through the managed public URL must include authorization. A direct
+application health route exemption does not bypass the managed ingress.
+The L40S allocation was exercised with the pilot checkpoint; repeat qualification
+for your exact image/checkpoint and check regional availability. `--public` is
+deliberately omitted: a public VM IP is not needed for managed HTTPS. These
+authenticated public URLs are not a PHI-ready private-endpoint claim.
 
 For base-model comparison use a separate endpoint, `MODEL_ID=nemotron35-base-en`,
 and no `MODEL_PATH`/`MODEL_S3_KEY`. The clinical alias refuses startup without an
@@ -387,8 +405,8 @@ through offline ASR on every chunk.
 
 ### HTTP and artifact flow
 
-All inference and MCP requests require `Authorization: Bearer ...`; health and
-readiness probes do not. Tokens stay on the trusted client relay/server, never
+All inference and MCP requests require `Authorization: Bearer ...`; managed
+ingress also requires it for health/readiness probes. Tokens stay on the trusted client relay/server, never
 in browser JS, URLs or WebSocket query strings.
 
 1. `POST /v1/artifacts` with multipart field `file` uploads mono16k PCM16 WAV.
