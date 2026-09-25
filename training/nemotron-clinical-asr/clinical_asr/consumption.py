@@ -17,6 +17,8 @@ def reference_key(token_ids, samples):
 class ConsumptionAudit:
     def __init__(self, rows, tokenize, output):
         self.output = output
+        if output.exists():
+            raise ValueError("consumption_audit_path_exists_new_attempt_required")
         self.matches = {}
         for row in rows:
             with wave.open(row["audio_filepath"], "rb") as audio:

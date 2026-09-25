@@ -1,5 +1,7 @@
 """One-GPU full-parameter adaptation retaining the pretrained tokenizer/prompts."""
 import argparse
+import json
+import time
 from pathlib import Path
 
 from . import BASE_REPOSITORY, BASE_REVISION, NEMO_REVISION
@@ -14,6 +16,8 @@ def validate_manifests(train_path, dev_path):
     dev_ids = {r["conversation_id"] for r in dev}
     if train_ids & dev_ids:
         raise ValueError("conversation_leakage")
+    if any(row.get("split") != "train" for row in train) or any(row.get("split") != "dev" for row in dev):
+        raise ValueError("explicit_train_dev_split_required")
     for row in train + dev:
         if not 0.5 <= row["duration"] <= 30.0 or not row["text"].strip():
             raise ValueError("invalid_segment")
@@ -46,6 +50,41 @@ def main():
     from nemo.collections.asr.models import ASRModel
     from omegaconf import OmegaConf
 
+    def record_timing(phase, started, **details):
+        record = {"phase": phase, "elapsed_seconds": time.monotonic() - started,
+                  "finished_at_unix": time.time(), **details}
+        with (output / "wall-times.jsonl").open("a") as target:
+            target.write(json.dumps(record) + "\n")
+        print(json.dumps({"timing": record}), flush=True)
+
+    class TimedCheckpoint(ModelCheckpoint):
+        def _save_checkpoint(self, trainer, filepath):
+            started = time.monotonic()
+            try:
+                super()._save_checkpoint(trainer, filepath)
+            finally:
+                record_timing("local_lightning_checkpoint", started, global_step=trainer.global_step,
+                              filename=Path(filepath).name)
+
+    class WallTimes(pl.Callback):
+        def on_train_batch_start(self, trainer, module, batch, batch_idx):
+            torch.cuda.synchronize()
+            self.batch_started = time.monotonic()
+
+        def on_train_batch_end(self, trainer, module, outputs, batch, batch_idx):
+            torch.cuda.synchronize()
+            record_timing("training_batch", self.batch_started, global_step=trainer.global_step,
+                          batch_index=batch_idx, cuda_synchronized=True)
+
+        def on_validation_start(self, trainer, module):
+            torch.cuda.synchronize()
+            self.validation_started = time.monotonic()
+
+        def on_validation_end(self, trainer, module):
+            torch.cuda.synchronize()
+            record_timing("validation_total", self.validation_started, global_step=trainer.global_step,
+                          sanity_check=trainer.sanity_checking, includes_callbacks=True, cuda_synchronized=True)
+
     class FiniteLoss(pl.Callback):
         def on_train_batch_end(self, trainer, module, outputs, batch, batch_idx):
             loss = outputs.get("loss") if isinstance(outputs, dict) else outputs
@@ -60,7 +99,11 @@ def main():
             step = trainer.global_step
             if args.checkpoint_every and step > 0 and step != self.last_step and step % args.checkpoint_every == 0:
                 from .checkpoints import publish_resume_checkpoint
-                publish_resume_checkpoint(trainer, output / "resume", manifest_hashes=manifest_hashes, base_revision=BASE_REVISION)
+                started = time.monotonic()
+                try:
+                    publish_resume_checkpoint(trainer, output / "resume", manifest_hashes=manifest_hashes, base_revision=BASE_REVISION)
+                finally:
+                    record_timing("durable_resume_checkpoint_with_S3_readback", started, global_step=step)
                 self.last_step = step
 
     class ConsumedReferences(pl.Callback):
@@ -85,7 +128,7 @@ def main():
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
     pl.seed_everything(args.seed, workers=True)
-    checkpoint = ModelCheckpoint(dirpath=output / "checkpoints", monitor="val_wer", mode="min",
+    checkpoint = TimedCheckpoint(dirpath=output / "checkpoints", monitor="val_wer", mode="min",
                                  save_top_k=1, save_last=True, filename="step{step}-wer{val_wer:.4f}")
     trainer = pl.Trainer(
         accelerator="gpu", devices=1, precision="bf16-mixed", max_steps=args.max_steps,
@@ -93,7 +136,7 @@ def main():
         gradient_clip_val=1.0, check_val_every_n_epoch=None,
         val_check_interval=min(args.val_every, args.max_steps) * args.accumulate_grad_batches,
         num_sanity_val_steps=2, log_every_n_steps=1, enable_progress_bar=False,
-        callbacks=[checkpoint, FiniteLoss(), ConsumedReferences(), PeriodicSnapshot(), LearningRateMonitor(logging_interval="step")],
+        callbacks=[checkpoint, FiniteLoss(), WallTimes(), ConsumedReferences(), PeriodicSnapshot(), LearningRateMonitor(logging_interval="step")],
         logger=CSVLogger(str(output), name="metrics"),
     )
     base = base_checkpoint()
@@ -150,6 +193,8 @@ def main():
         "dev_manifest_sha256": sha256_file(args.dev_manifest),
         "train_segments": len(train_rows), "dev_segments": len(dev_rows),
         "parameters": vars(args), "status": "training", "clinical_validation": "NOT_PERFORMED",
+        "consumption_seen_claim_eligible": not bool(args.resume_pointer),
+        "consumption_lineage": "fresh_uninterrupted_attempt" if not args.resume_pointer else "resumed_history_not_restored; seen_claims_disabled",
     }
     write_json(output / "training-provenance.json", provenance)
     resume = None
@@ -177,7 +222,9 @@ def main():
     selected_step = int(selected_state["global_step"])
     del selected_state
     artifact = output / "nemotron-clinical-en.nemo"
+    started = time.monotonic()
     model.save_to(str(artifact))
+    record_timing("nemo_export", started, global_step=selected_step)
     provenance.update(status="completed", checkpoint_sha256=sha256_file(artifact),
                       checkpoint_filename=artifact.name, best_validation_wer=float(checkpoint.best_model_score),
                       selected_checkpoint_global_step=selected_step,

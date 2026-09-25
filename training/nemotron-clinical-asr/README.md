@@ -346,12 +346,19 @@ not whole-GPU usage and exclude external allocators. Keep cold image/model start
 separate from warm unpaced batch inference and real-time-paced stream finalization.
 For a latency claim, retain at least three identical-fixture repetitions; a single
 smoke run is a plumbing check, not a performance comparison.
+`wall-times.jsonl` separates CUDA-synchronized training batches, validation,
+local Lightning checkpoint writes, durable S3 checkpoint publication/readback
+and `.nemo` export. Validation total may overlap callback/checkpoint time; do not
+sum overlapping windows. Timing records are also emitted as compact progress logs.
 
 `consumed-training-segments.jsonl` records reference-token and exact audio-length
 matches for completed training batches. The native prompt loader does not return
 cut IDs, so only `match=unique` establishes an unambiguous source segment; retain
 ambiguous/unmatched rows. For the selected `.nemo`, count only records with
 `global_step_before < selected_checkpoint_global_step` from training provenance.
+Also require `consumption_seen_claim_eligible=true`. Resumed runs currently fail
+closed for seen-example claims because earlier ledger history is not restored;
+reuse of an existing ledger is refused to avoid counting a discarded attempt.
 Dataset membership alone is not proof that a short run consumed a demonstration
 clip. Source word spans remain in each segment's manifest for audit.
 
