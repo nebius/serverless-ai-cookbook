@@ -56,8 +56,15 @@ def upload_outputs(client, bucket, prefix, output, *, include_checkpoints=False,
     pool = ThreadPoolExecutor(max_workers=workers)
     futures = []
     try:
+        print(json.dumps({"stage": "publish_outputs", "state": "starting", "objects_total": len(paths),
+                          "workers": workers}), flush=True)
         futures = [pool.submit(upload, path) for path in paths]
-        results = [future.result() for future in as_completed(futures)]
+        results = []
+        for future in as_completed(futures):
+            results.append(future.result())
+            if len(results) == 1 or len(results) % 25 == 0 or len(results) == len(paths):
+                print(json.dumps({"stage": "publish_outputs", "state": "progress",
+                                  "objects_verified": len(results), "objects_total": len(paths)}), flush=True)
     except BaseException:
         for future in futures:
             future.cancel()
@@ -68,6 +75,7 @@ def upload_outputs(client, bucket, prefix, output, *, include_checkpoints=False,
 
 
 def main():
+    from .cloud_evaluate import add_cohort_arguments, pinned_cohorts, stage_cohorts, evaluate_cohorts
     parser = argparse.ArgumentParser()
     parser.add_argument("--bucket", default=os.getenv("DATA_BUCKET"), required=not bool(os.getenv("DATA_BUCKET")))
     parser.add_argument("--manifest-key", default="manifests/pilot-alignment.jsonl")
@@ -83,7 +91,11 @@ def main():
     parser.add_argument("--checkpoint-every", type=int, default=0)
     parser.add_argument("--resume-pointer")
     parser.add_argument("--upload-workers", type=int, default=8)
+    add_cohort_arguments(parser)
     args = parser.parse_args()
+    evaluation_specs = pinned_cohorts(args.evaluation_manifest_key, args.evaluation_manifest_sha256)
+    if evaluation_specs and args.mode != "align-train-evaluate":
+        raise ValueError("evaluation_manifests_require_align_train_evaluate_mode")
     if not 1 <= args.upload_workers <= 16:
         raise ValueError("upload_workers_must_be_1_to_16")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{2,100}", args.run_id):
@@ -139,6 +151,7 @@ def main():
 
     failure = None
     try:
+        print(json.dumps({"stage": stage, "state": "starting", "run_id": args.run_id}), flush=True)
         # Record the ACTUAL job environment, not the developer laptop. The
         # collector only reads allowlisted environment values and GPU metadata.
         from .environment import collect
@@ -146,22 +159,28 @@ def main():
         manifest = download(args.manifest_key)
         rows = read_jsonl(manifest)
         staged = []
-        for row in rows:
+        for index, row in enumerate(rows, start=1):
             audio_path = Path(row["audio_filepath"])
             key = str(audio_path.relative_to(source_root))
             target = download(key)
             staged.append({"key": key, "sha256": sha256_file(target), "bytes": target.stat().st_size})
+            if index == 1 or index % 25 == 0 or index == len(rows):
+                print(json.dumps({"stage": "stage_data", "state": "progress", "objects_staged": index,
+                                  "objects_total": len(rows)}), flush=True)
         replay = []
         if args.replay_manifest_key:
             replay_manifest = download(args.replay_manifest_key)
             replay = read_jsonl(replay_manifest)
-            for row in replay:
+            for index, row in enumerate(replay, start=1):
                 if row.get("split") != "train" or not str(row.get("conversation_id", "")).startswith("librispeech-train-clean100:"):
                     raise ValueError("replay_requires_explicit_librispeech_train_only_provenance")
                 if not 0.5 <= row["duration"] <= 30.0:
                     raise ValueError("replay_duration_out_of_range")
                 target = download(str(Path(row["audio_filepath"]).relative_to(source_root)))
                 staged.append({"key": str(target.relative_to(source_root)), "sha256": sha256_file(target), "bytes": target.stat().st_size})
+                if index == 1 or index % 25 == 0 or index == len(replay):
+                    print(json.dumps({"stage": "stage_replay", "state": "progress", "objects_staged": index,
+                                      "objects_total": len(replay)}), flush=True)
         write_json(output / "input-inventory.json", {"manifest_key": args.manifest_key,
                    "manifest_sha256": sha256_file(manifest), "objects": staged})
         stage = "align"
@@ -184,7 +203,13 @@ def main():
                             "--batch-duration", str(args.batch_duration), "--accumulate-grad-batches", str(args.accumulate_grad_batches),
                             "--learning-rate", str(args.learning_rate), "--checkpoint-every", str(args.checkpoint_every),
                             *(["--resume-pointer", args.resume_pointer] if args.resume_pointer else [])])
-        if args.mode == "align-train-evaluate":
+        if args.mode == "align-train-evaluate" and evaluation_specs:
+            stage = "stage_evaluation_cohorts"
+            cohorts = stage_cohorts(client, args.bucket, source_root, output, evaluation_specs)
+            provenance = json.loads((output / "training/training-provenance.json").read_text())
+            stage = "evaluate_explicit_cohorts"
+            evaluate_cohorts(cohorts, output / "training/nemotron-clinical-en.nemo", provenance["checkpoint_sha256"], command)
+        elif args.mode == "align-train-evaluate":
             stage = "evaluate-base"
             command(stage, ["evaluate", "--manifest", str(output / "segments/dev.jsonl"),
                             "--output", str(output / "evaluation/base-predictions.jsonl"), "--limit", "12"])
