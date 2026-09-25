@@ -290,12 +290,20 @@ benchmark. Keep dev, external clinical and general-English results separate.
 The tools below run locally on references/predictions and require no model calls.
 Set `ASR_ALIGNED_DEV` to the verified Job's full `segments/dev.jsonl`, and
 `ASR_EVAL_DIR` to a new evaluation directory. Freeze the rule/lexicon hashes
-before accessing predictions; archive the resulting selection receipt.
+before accessing predictions; archive the resulting selection receipt. Also set
+`ASR_CLOUD_RUN_ID` to that Job's exact `cloud-run --run-id` and
+`ASR_CLOUD_PUBLICATION` to its downloaded, verified `completed.json`.
+Do not use a partial output listing or another run's publication.
 
 ```bash
 python evaluation/select_dev.py --aligned-dev "$ASR_ALIGNED_DEV" \
   --source-dev "$ASR_DATA_DIR/manifests/dev-nfa.jsonl" \
-  --output "$ASR_EVAL_DIR/dev-selected.jsonl"
+  --output "$ASR_EVAL_DIR/dev-selected-local-paths.jsonl"
+python evaluation/prepare_references.py \
+  --manifest "$ASR_EVAL_DIR/dev-selected-local-paths.jsonl" \
+  --cloud-run-id "$ASR_CLOUD_RUN_ID" \
+  --cloud-publication "$ASR_CLOUD_PUBLICATION" \
+  --output "$ASR_EVAL_DIR/dev-references.jsonl"
 python evaluation/prepare_references.py \
   --manifest "$ASR_DATA_DIR/manifests/external-test-utterances.jsonl" \
   --output "$ASR_EVAL_DIR/external-references.jsonl"
@@ -310,6 +318,29 @@ conversation. Missing/short conversations are recorded. This enriched dev cohort
 can guide selection; it is neither population-wide nor final held-out evidence.
 The fixed lexicon is curated, not clinician-reviewed, and is never learned from
 test predictions. No script supplies physician-reviewed factual labels.
+
+The second command explicitly maps a published clinical clip from
+`/output/<run-id>/segments/audio/<id>.wav` to
+`/data/clinical-speech/runs/<run-id>/segments/audio/<id>.wav`. It requires the
+exact clip in the matching completed publication, retains IDs/order/reference
+text, validates any existing clip hash, and records all path changes plus the
+publication hash in a new receipt. For older manifests that lack a clip hash it
+adds **only that exact published clip's** `audio_sha256`; it never substitutes
+`source_audio_sha256`, which belongs to the longer recording. The new manifest
+does not overwrite the original. Cloud evaluation separately full-GET verifies
+each clip against the frozen hash before inference. No model predictions are
+read during selection or mapping. External/LibriSpeech manifests already use
+canonical bucket-mount paths and clip hashes, so do not pass the cloud mapping
+options for them. For a purely local run, omit these options and make its audio
+paths accessible to the local evaluator instead.
+
+Upload the three final reference manifests under distinct `manifests/` keys and
+record their exact SHA256 values before candidate inference. Do not re-upload
+large clinical audio: the verified training publication already contains it at
+the mapped keys. Use [EVALUATION.md](EVALUATION.md) for separate full-cohort
+`cloud-evaluate` Jobs with repeated manifest-key/SHA arguments. This requires
+every row to contain its exact `audio_sha256` and its canonical
+`/data/clinical-speech/<bucket-key>` path; local `/output/...` paths are rejected.
 
 For **each** frozen cohort, run both commands below in the same GPU runtime with
 the same manifest and accessible audio paths. These are container arguments to
@@ -326,7 +357,7 @@ evaluate --manifest /data/cohort.jsonl --output /output/tuned.jsonl --model-id n
 After retrieving those verified prediction files, score locally:
 
 ```bash
-python evaluation/score_pair.py --reference "$ASR_EVAL_DIR/dev-selected.jsonl" \
+python evaluation/score_pair.py --reference "$ASR_EVAL_DIR/dev-references.jsonl" \
   --base "$ASR_EVAL_DIR/dev-base.jsonl" --tuned "$ASR_EVAL_DIR/dev-tuned.jsonl" \
   --output "$ASR_EVAL_DIR/dev-paired-scores.json"
 ```
@@ -490,8 +521,8 @@ Fast public-data/scoring tests need only a small development environment:
 
 ```bash
 python3 -m venv .venv-dev
-.venv-dev/bin/python -m pip install pytest==8.4.2
-.venv-dev/bin/python -m pytest -q tests/test_public_data.py tests/test_public_scores.py
+.venv-dev/bin/python -m pip install pytest==8.4.2 boto3==1.42.49
+.venv-dev/bin/python -m pytest -q tests/test_public_data.py tests/test_public_scores.py tests/test_public_mapping.py
 ```
 
 These tests are offline and do not download corpora or load a model. To run the
