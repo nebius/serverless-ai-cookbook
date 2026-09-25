@@ -86,7 +86,7 @@ class Service:
                 "clinical_validation": "NOT_PERFORMED", "phi_approved": False,
                 "audio": {"encoding": "pcm_s16le", "sample_rate_hz": 16000, "channels": 1},
                 "artifact_transport": "authenticated_POST_/v1/artifacts",
-                "source": "https://huggingface.co/nvidia/nemotron-3.5-asr-streaming-0.6b",
+                "source": "https://huggingface.co/" + self.runtime.identity["base_model"],
                 "persistence": "S3_objects" if self.object_store else "mounted_DATA_DIR",
                 "retention": "Persistent data; operator must configure lifecycle before PHI use."}
 

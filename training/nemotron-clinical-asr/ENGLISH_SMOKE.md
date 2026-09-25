@@ -61,3 +61,15 @@ Retained audit SHA-256:
 Cleanup-binding receipt SHA-256:
 `a6854e7ab700e9647884eebdf5f10f8179051e048c1d55eb00b030a46506d601`.
 These identify retained operator evidence, not publicly hosted audit downloads.
+
+## Subsequent serving-metadata correction
+
+The current source derives the HTTP/MCP discovery `source` link from the loaded
+runtime's `base_model`, instead of always linking to multilingual Nemotron 3.5.
+This is a one-line metadata correction, not a change to training, model weights
+or decoding. Both family links and HTTP/MCP discovery equality are covered by
+tests; the updated public recipe passed 107 offline CPU tests using the frozen
+training image with source mounted read-only and networking disabled. Those
+tests use a synthetic transport runtime, not a newly qualified GPU endpoint.
+The smoke source/image and retained audit above remain unchanged; a serving
+image built from later source requires its own recorded identity and live checks.

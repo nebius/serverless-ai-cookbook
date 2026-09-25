@@ -4,9 +4,19 @@ import time
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+import pytest
 
 from clinical_asr import server
 from test_contracts import wav_bytes
+
+
+@pytest.mark.parametrize("base_model", [
+    "nvidia/nemotron-3.5-asr-streaming-0.6b",
+    "nvidia/nemotron-speech-streaming-en-0.6b",
+])
+def test_source_metadata_tracks_actual_runtime_family(tmp_path, base_model):
+    runtime = SimpleNamespace(identity={"base_model": base_model})
+    assert server.Service(tmp_path, runtime).describe()["source"] == "https://huggingface.co/" + base_model
 
 
 def test_authenticated_http_ws_mcp_contract(monkeypatch, tmp_path):
@@ -15,7 +25,7 @@ def test_authenticated_http_ws_mcp_contract(monkeypatch, tmp_path):
         frame_samples = 8960
         model_id = "nemotron35-base-en"
         chunk_ms = 560
-        identity = {"id": model_id, "test_double": True}
+        identity = {"id": model_id, "base_model": "nvidia/nemotron-speech-streaming-en-0.6b", "test_double": True}
         profile = SimpleNamespace(confidence=False)
         def __init__(self, **kwargs):
             self.active = None
@@ -39,7 +49,9 @@ def test_authenticated_http_ws_mcp_contract(monkeypatch, tmp_path):
     with TestClient(server.app) as client:
         assert client.get("/healthz").status_code == 200
         assert client.get("/v1/models").status_code == 401
-        assert client.get("/v1/models", headers=headers).json()["data"][0]["model"]["test_double"]
+        described = client.get("/v1/models", headers=headers).json()["data"][0]
+        assert described["model"]["test_double"]
+        assert described["source"] == "https://huggingface.co/" + FakeRuntime.identity["base_model"]
         artifact = client.post("/v1/artifacts", headers=headers,
                                files={"file": ("test.wav", wav_bytes(), "audio/wav")}).json()["artifact"]
         request = {"audio_artifact": artifact, "idempotency_key": "http-test-123", "options": {"model": "nemotron35-base-en"}}
@@ -72,6 +84,10 @@ def test_authenticated_http_ws_mcp_contract(monkeypatch, tmp_path):
         listing = client.post("/mcp", headers=mcp_headers, json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         tools = listing.json()["result"]["tools"]
         assert {t["name"] for t in tools} == {"describe_clinical_asr", "transcribe_clinical_audio", "get_clinical_transcription", "cancel_clinical_transcription"}
+        mcp_description = client.post("/mcp", headers=mcp_headers, json={"jsonrpc": "2.0", "id": 5,
+            "method": "tools/call", "params": {"name": "describe_clinical_asr", "arguments": {}}}).json()["result"]
+        assert not mcp_description["isError"]
+        assert mcp_description["structuredContent"] == described
         polled = client.post("/mcp", headers=mcp_headers, json={"jsonrpc": "2.0", "id": 3, "method": "tools/call",
                              "params": {"name": "get_clinical_transcription", "arguments": {"operation_id": operation_id}}})
         assert not polled.json()["result"]["isError"]
