@@ -597,9 +597,13 @@ assembly rescore in [the evaluation notes](EVALUATION.md#corrected-native-fragme
 
 The corrected mixing has CPU membership/order/hash/seed regression tests,
 including a clinical prefix larger than the native 20,000-cut buffer. These tests
-do **not** establish GPU replay consumption. A separate actual training run and
-selected-checkpoint consumption audit are required before claiming that replay
-was used; independent general-English regression evaluation remains necessary.
+alone do **not** establish GPU replay consumption. A subsequent independent
+500-step GPU exposure audit verified 4.224 hours clinical plus 2.857 hours replay
+for a new mixed candidate. That candidate still failed the predefined quality
+gates and was not promoted; the matched clinical-only control also failed.
+See [the separate follow-up results](EVALUATION.md#follow-up-controlled-runs-both-rejected).
+Every future run needs its own selected-checkpoint exposure audit and independent
+general-English regression evaluation.
 
 For a real managed-endpoint probe, install the small client subset in a separate
 environment, inject `ASR_ENDPOINT` and `API_BEARER_TOKEN` securely, and run from

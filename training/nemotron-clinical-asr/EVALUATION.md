@@ -205,3 +205,84 @@ were retained. This qualifies the bounded training/export/evaluation path, not
 interrupted-worker recovery, autoscaling, the browser workflow, clinical safety
 or PHI handling. No listening/pronunciation adjudication, clinician sign-off or
 real-PHI processing was performed.
+
+## Follow-up controlled runs: both rejected
+
+Two subsequent fresh Nemotron 3.5 runs each completed 500 full-parameter steps,
+using the same upstream base, seed, learning rate `1e-4`, batch-duration120,
+accumulation1 and validation/checkpoint schedule. One used globally mixed clinical
+and general-English data; the control used clinical data only. Each selected
+step500. All three known-cohort base/candidate pairs used native exact fragment
+concatenation, matched FP32/560ms H200 inference and the same frozen audio.
+
+| Known selection cohort | Upstream3.5 WER% | Clinical-only control WER% | Replay-mixed WER% | Frozen maximum WER% |
+| --- | ---: | ---: | ---: | ---: |
+| Clinical dev239, 2,528 words | 16.42 | 10.28 | 12.06 | 11.00 |
+| External141, 1,387 words | 17.66 | 19.39 | 18.82 | 18.16 |
+| General242, 5,033 words | 3.76 | 4.85 | 4.17 | 4.01 |
+
+Both candidates are **rejected by known quality gates**, not pending promotion.
+Neither was evaluated on the sealed final tests or deployed. No failed/blank
+output was removed: base/control/mixed blanks were12/3/3 on dev,1/1/5 on external,
+and0/0/0 on general. Clinical keyword errors were13/0/3 out of79 on dev and5/3/2
+out of13 on external; these lexical counts do not establish safe medical meaning.
+
+The selected-checkpoint consumption audit independently reconstructed native
+reference-token hashes and the complete inverse candidate sets, verified all500
+completed steps, and retained ambiguous matches. Control consumed7.371432 hours
+of clinical audio. Mixed consumed4.224429 hours clinical and2.857071 hours general
+replay:40.3456% replay by PCM samples, with positive replay in every completed
+50-step window after warmup and100% domain-attributable samples. This proves
+actual replay exposure in these new weights, unlike the original experiment.
+It does not prove replay alone caused the score differences: optimizer steps
+match, but clinical hours and individual examples differ between arms.
+
+| Evidence | Clinical-only control | Replay-mixed |
+| --- | --- | --- |
+| Adapted `.nemo` SHA256 | `eeb7209093dc638111a67a72c6b29299c05e0bf4ed4d1c192f4643cb14c51069` | `788b26aaf3c06abb7b04f778e2340939a663779dfb335aac301739b82784b960` |
+| Independent artifact/metric audit SHA256 | `1fc551321ef9098a6108538565a418d14235648d0babbbd025952181c43a078f` | `8814504fc63498dc2ca8b255ae321db49e2e4f3f49fd22cb744b5085a71a341e` |
+
+Both used source `4a442c08b6d96987414ce659f934c078b05e90d6` and a new unique
+image tag verified before launch against digest
+`sha256:a46f303c72cc8b3e919e126dafde7ba21e1c3403255de4f5749b4fd8dbeb0ee7`.
+Host logs did not expose the resolved pulled digest, so direct runtime-image
+attestation is **not claimed**. This limitation was not waived for promotion.
+Both Jobs completed and exact-ID GETs confirmed their temporary VMs and scratch
+disks were released; original serving resources were unchanged.
+
+## Separate English-foundation comparison
+
+A separate immutable-image evaluation compared the untuned English-specialist
+Nemotron foundation with upstream3.5 and the original served adapted3.5 model.
+It did not fine-tune English. All rows and failures were retained, with one
+unpaced inference pass per model/cohort; native left context differs intentionally
+between the English architecture (`[70,6]`) and multilingual3.5 (`[56,6]`).
+
+| Cohort | Upstream3.5 WER% | Original adapted3.5 WER% | Untuned English WER% |
+| --- | ---: | ---: | ---: |
+| Known clinical dev239 | 16.42 | 10.48 | 13.92 |
+| Known external141 | 17.66 | 19.11 | 13.19 |
+| Known general242 | 3.76 | 5.07 | 2.76 |
+| Expanded external828, 10 role-play conversations, 8,863 words | 15.76 | 15.84 | 12.10 |
+
+Expanded external keyword errors were37/33/17 out of109 respectively; blanks
+were11/9/17. English therefore improved measured external/general recognition,
+but it did not dominate every metric, and its17 short-clip blanks remain errors.
+The expanded cohort was frozen before these predictions and excluded from the
+adaptation datasets; it is now known selection evidence, not a fresh final test.
+Speaker independence and absence from model pretraining are not established.
+Meaningful medication, dose, polarity and conditional-scope errors remain in all
+three models. These scores do not qualify any model for unattended clinical use.
+
+The English foundation is pinned to revision
+`ebe59e5a817142986528bbbee5dba8db7b38ed50`, checkpoint SHA256
+`283638054c44f6794e74fe9af9048d78a6d9d6c058c12131856c7859a62ac9cd`.
+The independent comparison audit SHA256 is
+`812bff5b3749c947a737aa8b07faf7464c98fa2bcbf00e90aa41bf6881faec57`.
+Its submitted image digest was
+`sha256:d2b4649d3a59a2f8138abf225c33b42a51befd266956a70ade3d193ecf069d5c`,
+source `654a05f34be32cbdae47e7d01c3861b43737e6fd`. The actual admitted API image
+reference matched the immutable submission; this is not host-level attestation.
+The temporary comparison VM and scratch disk were released after completion.
+Any future English adaptation must compare with this matched English base and
+separate architecture gains from actual fine-tuning gains.
