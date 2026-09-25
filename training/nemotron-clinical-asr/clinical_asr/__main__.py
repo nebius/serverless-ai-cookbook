@@ -6,6 +6,9 @@ def main():
     if command == "cloud-run":
         from .cloud import main
         main()
+    elif command == "cloud-train":
+        from .cloud_train import main
+        main()
     elif command == "cloud-evaluate":
         from .cloud_evaluate import main
         main()
@@ -25,7 +28,7 @@ def main():
         import uvicorn
         uvicorn.run("clinical_asr.server:app", host="0.0.0.0", port=8000, workers=1, access_log=False)
     else:
-        raise SystemExit("Commands: cloud-run, cloud-evaluate, align, segment, train, evaluate, serve")
+        raise SystemExit("Commands: cloud-run, cloud-train, cloud-evaluate, align, segment, train, evaluate, serve")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import time
 import wave
 from pathlib import Path
 
+from .assembly import TEXT_ASSEMBLY, assemble_final_fragments
 from .common import read_jsonl, sha256_file, write_json
 from .contracts import SpeechOptions
 from .events import TranscriptEvents
@@ -46,8 +47,9 @@ def transcribe_wav(runtime, path, options, *, cancelled=lambda: False):
                     process(frame)
             process(framer.finish())
         seconds = time.monotonic() - start
-        text = " ".join(e["text"].strip() for e in output_events if e["type"] == "transcript.final").strip()
+        text = assemble_final_fragments(output_events)
         return {"text": text, "model_id": runtime.model_id, "runtime": runtime.identity,
+                "text_assembly": TEXT_ASSEMBLY,
                 "audio_seconds": framer.total_samples / 16000, "elapsed_seconds": seconds,
                 "first_nonempty_event_seconds": first_partial_seconds,
                 "real_time_factor": seconds / (framer.total_samples / 16000), "events": output_events,
@@ -83,5 +85,5 @@ def main():
             result["collapse_warning"] = not result["text"].strip() or "<unk>" in result["text"].lower()
             target.write(json.dumps(result, ensure_ascii=False) + "\n")
             target.flush()
-    write_json(output.with_suffix(".provenance.json"), {"runtime": runtime.identity,
+    write_json(output.with_suffix(".provenance.json"), {"runtime": runtime.identity, "text_assembly": TEXT_ASSEMBLY,
                "manifest_sha256": sha256_file(args.manifest), "predictions_sha256": sha256_file(output), "rows": len(rows)})

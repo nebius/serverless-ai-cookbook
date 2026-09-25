@@ -39,9 +39,12 @@ def main():
     parser.add_argument("--seed", type=int, default=20260925)
     parser.add_argument("--checkpoint-every", type=int, default=0, help="Verified S3 optimizer snapshot interval in steps; 0 disables for short smoke")
     parser.add_argument("--resume-pointer", help="Explicit S3 latest.json pointer; never automatically resume unrelated jobs")
+    parser.add_argument("--expected-data-mix", choices=["unspecified", "clinical-only", "mixed"], default="unspecified")
+    parser.add_argument("--require-replay-by-step", type=int, default=50,
+                        help="Mixed runs fail if no real replay batch consumption by this step")
     args = parser.parse_args()
     train_rows, dev_rows = validate_manifests(args.train_manifest, args.dev_manifest)
-    if args.max_steps < 1 or args.val_every < 1:
+    if args.max_steps < 1 or args.val_every < 1 or args.require_replay_by_step < 1:
         raise ValueError("positive_steps_required")
     import torch
     import lightning.pytorch as pl
@@ -115,6 +118,8 @@ def main():
             from .consumption import ConsumptionAudit
             self.audit = ConsumptionAudit(train_rows, TokenizerWrapper(module.tokenizer),
                                           output / "consumed-training-segments.jsonl")
+            from .exposure import ExposureCounter
+            self.exposure = ExposureCounter()
 
         def on_train_batch_start(self, trainer, module, batch, batch_idx):
             self.step_before = trainer.global_step
@@ -122,8 +127,15 @@ def main():
         def on_train_batch_end(self, trainer, module, outputs, batch, batch_idx):
             _, audio_lens, tokens, token_lens, _ = batch
             token_rows = [row[:int(length)].detach().cpu().tolist() for row, length in zip(tokens, token_lens)]
-            self.audit.record(token_rows, audio_lens.detach().cpu().tolist(), batch_index=batch_idx,
-                              step_before=self.step_before, step_after=trainer.global_step)
+            records = self.audit.record(token_rows, audio_lens.detach().cpu().tolist(), batch_index=batch_idx,
+                                        step_before=self.step_before, step_after=trainer.global_step)
+            self.exposure.update(records)
+            if trainer.global_step == 1 or trainer.global_step % 25 == 0 or trainer.global_step == args.max_steps:
+                summary = self.exposure.summary(trainer.global_step)
+                write_json(output / "consumption-progress.json", summary)
+                print(json.dumps({"actual_training_exposure": summary}), flush=True)
+            self.exposure.validate(args.expected_data_mix, trainer.global_step,
+                                   min(args.require_replay_by_step, args.max_steps))
 
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
