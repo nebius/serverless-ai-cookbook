@@ -272,6 +272,15 @@ For complete frozen cohorts, prefer a separate bounded Serverless Job using
 manifest and every referenced audio clip before paired inference. The default
 training wrapper's twelve-clip smoke is not a substitute for this evaluation.
 
+The September 25, 2026 **500-step experiment** completed real training/export and
+an independently audited six-cohort native evaluation. Enriched development WER
+improved from **16.38% to 10.56%**, but external clinical WER worsened from
+**17.74% to 19.18%** and general-English WER from **3.79% to 5.11%**. This was a
+short clinical-only fine-tune: the consumption audit found zero replay examples.
+See [measured results and exact experiment identities](EVALUATION.md#measured-experiment-september-25-2026)
+for every cohort, denominators, blank outputs and limitations. These results do
+not establish a generally better healthcare model or clinical safety.
+
 Do not evaluate only generic WER or select a “good looking” example after seeing
 test predictions. Use fixed references and identical audio/settings for base and
 tuned models. Report:
