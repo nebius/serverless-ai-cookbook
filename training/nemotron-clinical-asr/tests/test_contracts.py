@@ -11,7 +11,7 @@ from clinical_asr.contracts import SpeechOptions, TranscriptionRequest
 from clinical_asr.events import TranscriptEvents
 from clinical_asr.framing import PCMFramer
 from clinical_asr.prepare import grouped_words
-from clinical_asr.prepare import segment_main
+from clinical_asr.prepare import segment_main, alignment_command
 from clinical_asr.runtime import NeMoRuntime
 from clinical_asr.server import APIError, Service
 from clinical_asr.stream import run_stream
@@ -51,6 +51,14 @@ def test_word_boundary_grouping():
     assert list(grouped_words(words)) == [words[:2], words[2:]]
     with pytest.raises(ValueError):
         list(grouped_words([(1, 0, "bad")]))
+
+
+def test_alignment_uses_supported_full_file_path():
+    command = alignment_command("/cache/aligner.nemo", "/data/source.jsonl", "/output/alignment")
+    assert "use_local_attention=true" in command
+    assert "use_buffered_chunked_streaming=false" in command
+    assert "align_using_pred_text=false" in command
+    assert not any("model_downsample_factor" in argument for argument in command)
 
 
 def test_segmentation_preserves_original_targets_or_fails(monkeypatch, tmp_path):

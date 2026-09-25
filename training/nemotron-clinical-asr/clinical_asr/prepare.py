@@ -14,6 +14,18 @@ from . import ALIGN_FILENAME, ALIGN_REPOSITORY, ALIGN_REVISION, NEMO_REVISION
 from .common import read_jsonl, sha256_file, write_json
 
 
+def alignment_command(checkpoint, manifest, output, viterbi_device="cuda"):
+    # Pinned upstream buffered NFA path lacks both a config field and an encoder
+    # forwarding property. Use its supported full-file/local-attention CTC path;
+    # human references/audio are unchanged. This is NOT our Nemotron WS runtime.
+    return [sys.executable, "/opt/nemo/tools/nemo_forced_aligner/align.py",
+            f"model_path={checkpoint}", f"manifest_filepath={Path(manifest).resolve()}",
+            f"output_dir={Path(output).resolve()}", "align_using_pred_text=false", "batch_size=1",
+            "transcribe_device=cuda", f"viterbi_device={viterbi_device}",
+            "use_local_attention=true", "use_buffered_chunked_streaming=false",
+            "save_output_file_formats=[ctm]"]
+
+
 def align_main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", required=True)
@@ -24,16 +36,11 @@ def align_main():
     checkpoint = hf_hub_download(ALIGN_REPOSITORY, ALIGN_FILENAME, revision=ALIGN_REVISION)
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=True)
-    command = [sys.executable, "/opt/nemo/tools/nemo_forced_aligner/align.py",
-               f"model_path={checkpoint}", f"manifest_filepath={Path(args.manifest).resolve()}",
-               f"output_dir={output.resolve()}", "align_using_pred_text=false", "batch_size=1",
-               "transcribe_device=cuda", f"viterbi_device={args.viterbi_device}",
-               "use_local_attention=true", "use_buffered_chunked_streaming=true",
-               "chunk_len_in_secs=1.6", "total_buffer_in_secs=4.0", "chunk_batch_size=8",
-               "save_output_file_formats=[ctm]"]
+    command = alignment_command(checkpoint, args.manifest, output, args.viterbi_device)
     write_json(output / "alignment-provenance.json", {
         "aligner": ALIGN_REPOSITORY, "aligner_revision": ALIGN_REVISION,
         "aligner_license": "CC-BY-4.0", "nemo_revision": NEMO_REVISION,
+        "alignment_mode": "full_file_local_attention_ctc",
         "source_manifest_sha256": sha256_file(args.manifest),
         "human_references": True, "pseudo_labels": False,
         "human_alignment_review": "PENDING", "command": command,
