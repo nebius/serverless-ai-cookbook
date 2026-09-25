@@ -99,7 +99,7 @@ def stage_cohorts(client, bucket, root, output, specs):
     return cohorts
 
 
-def evaluate_cohorts(cohorts, checkpoint, checkpoint_sha, command):
+def evaluate_cohorts(cohorts, checkpoint, checkpoint_sha, command, *, include_english_specialist=False):
     for cohort in cohorts:
         for label in ("base", "tuned"):
             arguments = ["evaluate", "--manifest", str(cohort["manifest"]),
@@ -109,6 +109,10 @@ def evaluate_cohorts(cohorts, checkpoint, checkpoint_sha, command):
                               "--checkpoint-sha", checkpoint_sha]
             # Deliberately no --limit: missing predictions must fail paired scoring.
             command("evaluate-" + cohort["name"] + "-" + label, arguments)
+        if include_english_specialist:
+            command("evaluate-" + cohort["name"] + "-english-specialist", [
+                "evaluate-english", "--manifest", str(cohort["manifest"]),
+                "--output", str(cohort["directory"] / "english-specialist-predictions.jsonl")])
 
 
 def main():
@@ -118,6 +122,8 @@ def main():
     parser.add_argument("--checkpoint-key", required=True)
     parser.add_argument("--checkpoint-sha256", required=True)
     parser.add_argument("--upload-workers", type=int, default=8)
+    parser.add_argument("--include-english-specialist", action="store_true",
+                        help="Additional pinned English-base benchmark; never changes any serving default")
     add_cohort_arguments(parser, required=True)
     args = parser.parse_args()
     specs = pinned_cohorts(args.evaluation_manifest_key, args.evaluation_manifest_sha256)
@@ -173,7 +179,8 @@ def main():
         checkpoint, _ = download(client, args.bucket, args.checkpoint_key, source_root, checksum=args.checkpoint_sha256)
         print(json.dumps({"stage": "stage_checkpoint", "state": "verified"}), flush=True)
         cohorts = stage_cohorts(client, args.bucket, source_root, output, specs)
-        evaluate_cohorts(cohorts, checkpoint, args.checkpoint_sha256, command)
+        evaluate_cohorts(cohorts, checkpoint, args.checkpoint_sha256, command,
+                         include_english_specialist=args.include_english_specialist)
         status.update(status="completed", finished_at_unix=time.time())
     except BaseException as exc:
         failure = exc
@@ -186,6 +193,7 @@ def main():
         publication = {"run_id": args.run_id, "status": status["status"], "objects": uploaded,
                        "checkpoint_key": args.checkpoint_key, "checkpoint_sha256": args.checkpoint_sha256,
                        "cohorts": specs, "clinical_validation": "NOT_PERFORMED",
+                       "english_specialist_included": args.include_english_specialist,
                        "checksums": "local_SHA256_and_full_S3_GET_readback", "output_upload_workers": args.upload_workers,
                        "output_upload_seconds": time.monotonic() - started}
         final_name = "completed.json" if status["status"] == "completed" else "failed.json"

@@ -13,12 +13,19 @@ from .common import checked_checkpoint, sha256_file
 
 
 class NeMoRuntime:
-    def __init__(self, *, checkpoint=None, checkpoint_sha=None, model_id="nemotron35-base-en", chunk_ms=560):
+    def __init__(self, *, checkpoint=None, checkpoint_sha=None, model_id="nemotron35-base-en", chunk_ms=560,
+                 model_family="nemotron35", fine_tuned=None):
         if model_id == "nemotron-clinical-en" and not checkpoint:
             raise ValueError("clinical_model_requires_actual_finetuned_checkpoint")
         self.checkpoint = checkpoint
         self.checkpoint_sha = checkpoint_sha
         self.model_id = model_id
+        if model_family not in {"nemotron35", "english_specialist"}:
+            raise ValueError("unknown_model_family")
+        if model_family == "english_specialist" and not checkpoint:
+            raise ValueError("english_specialist_requires_pinned_checkpoint")
+        self.model_family = model_family
+        self.fine_tuned = bool(checkpoint) if fine_tuned is None else bool(fine_tuned)
         self.chunk_ms = chunk_ms
         self.pipeline = None
         self._active = None
@@ -46,7 +53,8 @@ class NeMoRuntime:
         config.asr.decoding.beam.beam_size = 4
         config.asr.decoding.greedy.preserve_frame_confidence = False
         config.asr.decoding.beam.preserve_frame_confidence = False
-        config.streaming.att_context_size = [56, self.chunk_ms // 80 - 1]
+        left_context = 70 if self.model_family == "english_specialist" else 56
+        config.streaming.att_context_size = [left_context, self.chunk_ms // 80 - 1]
         config.streaming.batch_size = 1
         config.streaming.num_slots = 1
         config.enable_itn = False
@@ -56,8 +64,11 @@ class NeMoRuntime:
         self.pipeline = PipelineBuilder.build_pipeline(config)
         torch.cuda.synchronize()
         self.identity = {
-            "id": self.model_id, "base_model": BASE_REPOSITORY, "base_revision": BASE_REVISION,
-            "checkpoint_sha256": sha256_file(checkpoint), "fine_tuned": bool(self.checkpoint),
+            "id": self.model_id,
+            "base_model": "nvidia/nemotron-speech-streaming-en-0.6b" if self.model_family == "english_specialist" else BASE_REPOSITORY,
+            "base_revision": "ebe59e5a817142986528bbbee5dba8db7b38ed50" if self.model_family == "english_specialist" else BASE_REVISION,
+            "checkpoint_sha256": sha256_file(checkpoint), "fine_tuned": self.fine_tuned,
+            "attention_context": [left_context, self.chunk_ms // 80 - 1],
             "nemo_revision": NEMO_REVISION, "precision": "float32", "chunk_size_ms": self.chunk_ms,
             "language": "en-US", "load_seconds": time.monotonic() - start,
             "gpu": torch.cuda.get_device_name(), "clinical_validation": "NOT_PERFORMED",

@@ -24,11 +24,14 @@ def main():
     elif command == "evaluate":
         from .evaluate import main
         main()
+    elif command == "evaluate-english":
+        from .evaluate_english import main
+        main()
     elif command == "serve":
         import uvicorn
         uvicorn.run("clinical_asr.server:app", host="0.0.0.0", port=8000, workers=1, access_log=False)
     else:
-        raise SystemExit("Commands: cloud-run, cloud-train, cloud-evaluate, align, segment, train, evaluate, serve")
+        raise SystemExit("Commands: cloud-run, cloud-train, cloud-evaluate, align, segment, train, evaluate, evaluate-english, serve")
 
 
 if __name__ == "__main__":
