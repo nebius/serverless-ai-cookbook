@@ -242,7 +242,14 @@ only after readback verification. Resume explicitly with
 `--resume-pointer runs/RUN_ID/resume/latest.json` and the **same run ID/data paths**
 and training settings. Base and manifest hashes must match. This path still needs
 an actual interrupted/resumed GPU qualification; do not claim tested recovery
-from local unit tests. Periodic snapshots introduce storage/transfer overhead.
+from local unit tests. Static review also identified a recovery limitation: a
+restored Lightning callback can retain an earlier best-checkpoint file path that
+does not exist on a replacement worker. This implementation does not separately
+restore that earlier best file; if subsequent validation never replaces it,
+final selected-checkpoint export can fail. Do not present snapshots as an
+end-to-end recovery guarantee. Use bounded uninterrupted regular-capacity Jobs
+for the qualified training path until replacement-worker recovery is tested.
+Periodic snapshots introduce storage/transfer overhead.
 `--upload-lightning-checkpoints` separately copies all local optimizer snapshots
 again during final publication; it is not needed for the periodic recovery
 pointer. Leave it off unless you specifically need those additional retained
