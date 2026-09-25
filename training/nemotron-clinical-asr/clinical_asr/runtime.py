@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 from . import NEMO_REVISION
 from .common import checked_checkpoint, sha256_file
-from .families import family_spec
+from .families import family_spec, runtime_model_class
 
 
 class NeMoRuntime:
@@ -63,11 +63,13 @@ class NeMoRuntime:
         config.return_tail_result = True
         config.lang = "en-US"
         self.pipeline = PipelineBuilder.build_pipeline(config)
+        restored_class = runtime_model_class(self.pipeline, self.model_family)
         torch.cuda.synchronize()
         self.identity = {
             "id": self.model_id,
             "base_model": family.repository,
             "base_revision": family.revision,
+            "restored_model_class": restored_class,
             "checkpoint_sha256": sha256_file(checkpoint), "fine_tuned": self.fine_tuned,
             "attention_context": [left_context, self.chunk_ms // 80 - 1],
             "nemo_revision": NEMO_REVISION, "precision": "float32", "chunk_size_ms": self.chunk_ms,

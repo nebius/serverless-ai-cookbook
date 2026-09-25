@@ -53,3 +53,11 @@ def training_batch_evidence(batch, family):
 def assert_training_model(model, family):
     if type(model).__name__ != family_spec(family).model_class:
         raise ValueError("restored_model_family_class_mismatch")
+
+
+def runtime_model_class(pipeline, family):
+    # Exact pinned NeMo CacheAwareRNNTPipeline -> inference wrapper -> model.
+    # Inspect the restored object, not caller-provided metadata or filename.
+    model = getattr(getattr(pipeline, "asr_model", None), "asr_model", None)
+    assert_training_model(model, family)
+    return type(model).__name__

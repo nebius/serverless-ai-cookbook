@@ -5,7 +5,7 @@ import pytest
 
 from clinical_asr.cloud_evaluate import evaluate_cohorts
 from clinical_asr.common import base_checkpoint
-from clinical_asr.families import assert_training_model, family_spec, training_batch_evidence
+from clinical_asr.families import assert_training_model, family_spec, runtime_model_class, training_batch_evidence
 
 
 def test_pins_and_native_training_contracts_are_explicit():
@@ -31,6 +31,16 @@ def test_restored_family_class_must_match():
     assert_training_model(english, "english_specialist")
     with pytest.raises(ValueError, match="class_mismatch"):
         assert_training_model(english, "nemotron35")
+
+
+def test_runtime_family_checks_actual_restored_object_not_requested_label():
+    model = type("EncDecRNNTBPEModel", (), {})()
+    pipeline = SimpleNamespace(asr_model=SimpleNamespace(asr_model=model))
+    assert runtime_model_class(pipeline, "english_specialist") == "EncDecRNNTBPEModel"
+    with pytest.raises(ValueError, match="class_mismatch"):
+        runtime_model_class(pipeline, "nemotron35")
+    with pytest.raises(ValueError, match="class_mismatch"):
+        runtime_model_class(SimpleNamespace(), "english_specialist")
 
 
 def test_base_download_is_revision_and_checksum_pinned(monkeypatch, tmp_path):
