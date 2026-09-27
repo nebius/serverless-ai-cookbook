@@ -1,0 +1,198 @@
+{
+  "schema": "clinical-speech/shared-runtime-source/v1",
+  "source_repository": "https://github.com/rene-tech/nebius-solutions-library",
+  "source_commit": "b193b5c65ed1ae0a11cb9c32b8be88c0c6c02ced",
+  "license": "Apache-2.0",
+  "runtime_modules": 17,
+  "unit_test_files": 13,
+  "source_modified": false,
+  "weights_included": false,
+  "files": [
+    {
+      "path": "src/fs2_speech/__init__.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/__init__.py",
+      "sha256": "7c6f4b9f9bf6cba53aa399419d78e727ddf30d96a4d1377ad7d977d051bc86ad",
+      "bytes": 83
+    },
+    {
+      "path": "src/fs2_speech/audio.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/audio.py",
+      "sha256": "bda75709d2a7847a3e03b11f72fe80e27a398a6aabe892b10dacab1e3b405148",
+      "bytes": 5098
+    },
+    {
+      "path": "src/fs2_speech/capacity_observation.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/capacity_observation.py",
+      "sha256": "2a1c3fb266c753d3bfb7e368c2ce77dc3b447526e4a7470a941c7990c2d89ebb",
+      "bytes": 11111
+    },
+    {
+      "path": "src/fs2_speech/completion.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/completion.py",
+      "sha256": "71b5988fa7340577bdc057d7df238dd2957a9910a0d295616348f4944f6f53f0",
+      "bytes": 1079
+    },
+    {
+      "path": "src/fs2_speech/contracts.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/contracts.py",
+      "sha256": "3bc275b127b21cd367968c7bbd390950198056c24dd4d4dad19690521d793de9",
+      "bytes": 5603
+    },
+    {
+      "path": "src/fs2_speech/events.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/events.py",
+      "sha256": "e378ce07983abb462a6e1fd39a77e0d668f1fb77ac23cac8d22de0dd74b67131",
+      "bytes": 6579
+    },
+    {
+      "path": "src/fs2_speech/framing.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/framing.py",
+      "sha256": "45e50ac2116be6226f1a22adfddcbffa89550b3cb13015a85b7ffff5c9a012a9",
+      "bytes": 2367
+    },
+    {
+      "path": "src/fs2_speech/long_probe.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/long_probe.py",
+      "sha256": "aa6d1c69f4669f21dcae7d71417883cd7e98ba44f47b07a18fa3eda3ecbc60dc",
+      "bytes": 4105
+    },
+    {
+      "path": "src/fs2_speech/medical_probe.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/medical_probe.py",
+      "sha256": "69d7cde763258cf14bd8e2e2c1d4d40c5cc24b941894e4734c5683251c6edc67",
+      "bytes": 6100
+    },
+    {
+      "path": "src/fs2_speech/nemo_runtime.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/nemo_runtime.py",
+      "sha256": "68bdb7c48e8a3b7fc50bea8774bc93919f0139dd7a3ba1743d321fd2a47901ad",
+      "bytes": 10654
+    },
+    {
+      "path": "src/fs2_speech/probe.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/probe.py",
+      "sha256": "12e2797c7b26f10064d66cf4e44cffc823fdab2f6a310b20e60c8cfb29996b97",
+      "bytes": 6904
+    },
+    {
+      "path": "src/fs2_speech/probe_job.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/probe_job.py",
+      "sha256": "d4610ba2e3bb0a8dafaa81a4ec4e50407508521219d43de2cdc1f88a29093fc7",
+      "bytes": 4071
+    },
+    {
+      "path": "src/fs2_speech/scheduler.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/scheduler.py",
+      "sha256": "6a4bf5dab841d3d64eb7b907235d0b7041bfa34d0ca6aea955d38a7c51ba5f56",
+      "bytes": 12064
+    },
+    {
+      "path": "src/fs2_speech/server.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/server.py",
+      "sha256": "f3389d6af800490d318e7998ddbb0d44dae59484b9fe1dbc11bd73f170533a6d",
+      "bytes": 16908
+    },
+    {
+      "path": "src/fs2_speech/serverless_entrypoint.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/serverless_entrypoint.py",
+      "sha256": "31c3842a84c37495e87f5422df6600f5e0c3f8b0de05e5422b685292f3b5ec76",
+      "bytes": 2134
+    },
+    {
+      "path": "src/fs2_speech/stream.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/stream.py",
+      "sha256": "16a770af35823d15709acf8b1925b9be6a3b8ba841b51076722b810acd8faae2",
+      "bytes": 7616
+    },
+    {
+      "path": "src/fs2_speech/worker_auth.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/src/fs2_speech/worker_auth.py",
+      "sha256": "4e82823795627526a18ef33e79733c06b73194519cf0643627dc67ff9966dabd",
+      "bytes": 1828
+    },
+    {
+      "path": "tests/test_audio_server.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_audio_server.py",
+      "sha256": "e741fe6986c4afb4e177c2e310d0fc60d6b89251f09c26463f7cdf80e0059410",
+      "bytes": 10046
+    },
+    {
+      "path": "tests/test_capacity_observation.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_capacity_observation.py",
+      "sha256": "ca928832279614764131da9795f7e1630b3d123c54b0a22d8ce0ef24ef76c5b0",
+      "bytes": 4558
+    },
+    {
+      "path": "tests/test_completion.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_completion.py",
+      "sha256": "1ea14b2a52c90bafd0abca3cf9b304373632f43d6d1724c56ee75905320e80ad",
+      "bytes": 5021
+    },
+    {
+      "path": "tests/test_contracts.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_contracts.py",
+      "sha256": "1c467e0476c370edde05109f6f6e2d247d53fa1efce78cbe7e4b5bd73fb0c507",
+      "bytes": 3402
+    },
+    {
+      "path": "tests/test_events.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_events.py",
+      "sha256": "476c299b3dc206e522cf6718a5643b06ca34f1eb9a312861cb563c57f36eaf9e",
+      "bytes": 1310
+    },
+    {
+      "path": "tests/test_framing.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_framing.py",
+      "sha256": "5cb51f1b38aaaa796740f968315b093f47280d741b080bfde25242b6996a2e54",
+      "bytes": 1822
+    },
+    {
+      "path": "tests/test_probe_job.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_probe_job.py",
+      "sha256": "51286f09038f7116e77d090625a20724f1ca8ea684c400176be19c9d7f71fce7",
+      "bytes": 1752
+    },
+    {
+      "path": "tests/test_scheduler.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_scheduler.py",
+      "sha256": "0db913aeca279f0f388b0ec636c4d59f7ff1adcc58941e863612b2647abcb06e",
+      "bytes": 10839
+    },
+    {
+      "path": "tests/test_serverless_entrypoint.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_serverless_entrypoint.py",
+      "sha256": "1c676e3515c6bd89011f7359345e602a9c928cd4792d4de86b11cad23beebb3a",
+      "bytes": 2935
+    },
+    {
+      "path": "tests/test_smi_observation.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_smi_observation.py",
+      "sha256": "cb9902470162656afdad2a383f25fecdc40b0c751360cb0ff6f3e2414896bb23",
+      "bytes": 5723
+    },
+    {
+      "path": "tests/test_stream.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_stream.py",
+      "sha256": "6a15ae0363f0a447699f9b274b07027338adada73f1a4bc478bd278d49ad9eda",
+      "bytes": 5290
+    },
+    {
+      "path": "tests/test_transcript_join.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_transcript_join.py",
+      "sha256": "43d689108156385e9eb49bd65dea2cd6744992245112824e7286b85c246072a4",
+      "bytes": 1431
+    },
+    {
+      "path": "tests/test_worker_auth.py",
+      "upstream_path": "k8s-inference/components/speech-runtime/tests/test_worker_auth.py",
+      "sha256": "1200dc650ca2afd24b08b047e799919f7af025ba4aea94718bb597c2cdd04e9a",
+      "bytes": 1872
+    },
+    {
+      "path": "LICENSE",
+      "upstream_path": "LICENSE",
+      "sha256": "4a6e7cc0cec1b7e932bebbe0703ebeed5cce9ab061b4b278b9e760d78e9d5bf0",
+      "bytes": 11310
+    }
+  ]
+}

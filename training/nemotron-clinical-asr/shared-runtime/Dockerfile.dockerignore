@@ -1,0 +1,16 @@
+**
+!Dockerfile
+!Dockerfile.dockerignore
+!LICENSE
+!NOTICE
+!src/
+src/*
+!src/fs2_speech/
+src/fs2_speech/*
+!src/fs2_speech/*.py
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.env*
+**/*secret*
+**/*credential*

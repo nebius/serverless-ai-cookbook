@@ -1,5 +1,14 @@
 # Evaluate frozen cohorts in a separate Job
 
+For the English-specialist training path in [BALANCED_TRAINING.md](BALANCED_TRAINING.md),
+add `--model-family english_specialist` to `cloud-evaluate` below. This selects
+the matching pinned English base and native English context for the paired
+comparison; the omitted flag retains the historical Nemotron 3.5 default.
+Never compare an English derivative against an implicitly selected 3.5 base.
+Current engineering-checkpoint results and the unchanged failed clinical gate
+are in [SELECTED_ENGLISH_RESULTS.md](SELECTED_ENGLISH_RESULTS.md); the dated 3.5
+experiment below is historical evidence, not the selected webinar model.
+
 Use `cloud-run --mode align-train` for the bounded training Job. After its
 `completed.json` is published, take the actual `.nemo` object key and SHA256 from
 that verified receipt. Run `cloud-evaluate` as a separate Serverless Job using

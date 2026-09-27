@@ -26,6 +26,16 @@ streaming and typed MCP tools. It does not substitute generated transcript text
 for model inference. All work is isolated in new resources; existing applications,
 instances and endpoints need not change.
 
+For the current English workflow, start with [balanced domain training](BALANCED_TRAINING.md)
+and then [shared Serverless serving](SHARED_SERVING.md). The latter includes the
+canonical concurrent worker source, tests, public-base build instructions,
+exact-checkpoint packaging, and Scientific AI gateway/API/MCP/LibreChat setup.
+It is the intended multi-customer architecture. The older standalone `serve`
+instructions below are retained as a **single-active research diagnostic**, not
+a production deployment. Do not expose its shared demo credential to customers.
+The [selected existing English experiment](SELECTED_ENGLISH_RESULTS.md) improves
+known-set word accuracy but still fails its frozen clinical-meaning gates.
+
 This is an experimental implementation, not a clinically validated model or a
 medical device. A successful ten-step smoke job proves plumbing—not improved
 accuracy. Do not label a checkpoint “better for healthcare” until paired held-out
@@ -81,8 +91,11 @@ qualification, including imports and execution as the Dockerfile's default user.
 
 Initial smoke target: one H100/H200, 16 vCPU, roughly 200 GiB host memory, 250 GiB
 scratch, regular capacity, finite Job timeout. This is a starting allocation,
-not a measured minimum. Serving is one GPU, one process, one replica, one active
-inference at a time; qualify an L40S only after measured load/peak-memory checks.
+not a measured minimum. The historical standalone runtime is one GPU, one
+process, one replica, one active inference at a time. New shared deployments use
+[the concurrent worker and canonical gateway](SHARED_SERVING.md); their session
+limits must be measured for the exact checkpoint and hardware, not copied from
+the historical L40S diagnostic.
 GPU driver compatibility with CUDA 12.8 must be verified. Downloads are enabled;
 set `HF_HUB_OFFLINE=0` if inheriting an image that disables Hugging Face access.
 
@@ -405,7 +418,13 @@ separately and extra occurrences are reported. Zero keywords means **null**, not
 perfect clinical performance. Dose/negation/speaker semantics require separate
 audio-linked review. Report unchanged or worse results honestly.
 
-## Serverless Endpoint
+## Historical single-active diagnostic Endpoint
+
+For new multi-customer deployments use [Shared serving](SHARED_SERVING.md).
+This section documents the earlier bounded research runtime only. Its local
+operation store, shared bearer and one-active-model lock do not replace the
+Scientific AI platform's tenant isolation, durable operation store, shared
+scheduler, admission and measured capacity envelope.
 
 Start the same image with container argument `serve`, HTTP port 8000. Create a
 **new** endpoint. Keep one replica; autoscaling/multiple replicas need an external

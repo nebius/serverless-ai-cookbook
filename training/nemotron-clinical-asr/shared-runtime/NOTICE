@@ -1,0 +1,15 @@
+Scientific AI shared speech runtime source snapshot
+
+Source: https://github.com/rene-tech/nebius-solutions-library
+Revision: b193b5c65ed1ae0a11cb9c32b8be88c0c6c02ced
+Path: k8s-inference/components/speech-runtime
+
+The 17 Python runtime modules and 13 tests are copied without changes from
+that source revision. They are licensed under the accompanying Apache License
+2.0. The cookbook adds packaging, documentation and source-verification helpers.
+
+NVIDIA model weights and their model license are separate and are not included.
+The English foundation is nvidia/nemotron-speech-streaming-en-0.6b, revision
+ebe59e5a817142986528bbbee5dba8db7b38ed50, under the NVIDIA Open Model License.
+The model bundle must retain its applicable license, model card and derivative
+notices. Build access or a platform grant is not redistribution authorization.
