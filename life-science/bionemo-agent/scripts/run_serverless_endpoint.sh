@@ -1,94 +1,100 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${IMAGE:?IMAGE required, for example cr.<region>.nebius.cloud/<registry-path>/bionemo-agent:0.1.0}"
-
-if [[ -z "${AUTH_TOKEN:-}" && -z "${AUTH_TOKEN_SECRET:-}" ]]; then
-  cat >&2 <<'EOF'
-Error: set AUTH_TOKEN for a quick demo or AUTH_TOKEN_SECRET for a MysteryBox secret selector.
-The MysteryBox payload key for AUTH_TOKEN_SECRET must be AUTH_TOKEN.
-EOF
-  exit 1
+VARIANT="${1:-}"
+if [[ "$VARIANT" != "nvidia" && "$VARIANT" != "tokenfactory" ]] || (( $# != 1 )); then
+  echo "Usage: $0 nvidia|tokenfactory" >&2
+  exit 2
 fi
 
-if [[ -z "${NEBIUS_API_KEY:-}" && -z "${NEBIUS_API_KEY_SECRET:-}" ]]; then
-  cat >&2 <<'EOF'
-Error: set NEBIUS_API_KEY for a quick demo or NEBIUS_API_KEY_SECRET for a MysteryBox secret selector.
-The endpoint can start without a key, but chat requests need an OpenAI-compatible LLM key.
-EOF
-  exit 1
+: "${AUTH_TOKEN_SECRET:?Set AUTH_TOKEN_SECRET to a MysteryBox selector containing AUTH_TOKEN}"
+: "${MODEL_CREDENTIALS_SECRET:?Set MODEL_CREDENTIALS_SECRET to the selected backend MysteryBox selector}"
+
+# This public image, the application port, managed HTTPS mode, CPU shape, and
+# MCP service are release invariants. Resolve the friendly tag once and pin the
+# endpoint to its immutable digest so a later tag promotion cannot change a
+# running deployment.
+DEFAULT_IMAGE="cr.eu-north1.nebius.cloud/e00jz93pkqx2m4vqj4/ba:latest"
+IMAGE="${IMAGE:-$DEFAULT_IMAGE}"
+if [[ "$IMAGE" != cr.*.nebius.cloud/*@sha256:* && "$IMAGE" != cr.*.nebius.cloud/*:* ]]; then
+  echo "IMAGE must be a Nebius Container Registry tag or digest reference." >&2
+  exit 2
+fi
+if [[ "$IMAGE" != *@sha256:* ]]; then
+  command -v crane >/dev/null 2>&1 || { echo "crane is required to resolve IMAGE to an immutable digest." >&2; exit 2; }
+  IMAGE_REPOSITORY="${IMAGE%:*}"
+  IMAGE="${IMAGE_REPOSITORY}@$(crane digest "$IMAGE")"
 fi
 
-if [[ -z "${BIONEMO_BASE_URL:-}" ]]; then
-  cat >&2 <<'EOF'
-Error: set BIONEMO_BASE_URL to the running BioNeMo-compatible model service endpoint.
-The full-stack agent endpoint must be wired to a model service.
-EOF
-  exit 1
-fi
+case "$VARIANT" in
+  nvidia)
+    ENDPOINT_NAME="${ENDPOINT_NAME:-bionemo-agent-workbench-nvidia}"
+    MODEL_SECRET_ARGS=(--env-secret "NVIDIA_API_KEY=$MODEL_CREDENTIALS_SECRET")
+    ;;
+  tokenfactory)
+    ENDPOINT_NAME="${ENDPOINT_NAME:-bionemo-agent-workbench-tokenfactory-mcp}"
+    MODEL_SECRET_ARGS=(
+      --env-secret "NEBIUS_API_KEY=$MODEL_CREDENTIALS_SECRET"
+      --env-secret "BIONEMO_MCP_API_KEY=$MODEL_CREDENTIALS_SECRET"
+    )
+    ;;
+esac
 
-if [[ -z "${BIONEMO_API_KEY:-}" && -z "${BIONEMO_API_KEY_SECRET:-}" ]]; then
-  cat >&2 <<'EOF'
-Error: set BIONEMO_API_KEY or BIONEMO_API_KEY_SECRET for the BioNeMo-compatible model service.
-The agent needs this bearer token to call the model service endpoint.
-EOF
-  exit 1
+SUBNET_PROJECT=""
+if [[ -n "${SUBNET_ID:-}" ]]; then
+  if ! SUBNET_PROJECT="$(nebius vpc subnet get "$SUBNET_ID" --format "jsonpath={.metadata.parent_id}")"; then
+    echo "Could not resolve SUBNET_ID through the active Nebius CLI profile." >&2
+    exit 2
+  fi
+  if [[ ! "$SUBNET_PROJECT" =~ ^project-[a-z0-9]+$ ]]; then
+    echo "SUBNET_ID did not resolve to a valid Nebius project ID." >&2
+    exit 2
+  fi
 fi
-
-PARENT_ID="${PARENT_ID:-}"
-PLATFORM="${PLATFORM:-cpu-d3}"
-PRESET="${PRESET:-4vcpu-16gb}"
-ENDPOINT_NAME="${ENDPOINT_NAME:-bionemo-agent}"
-AGENT_LLM_BASE_URL="${AGENT_LLM_BASE_URL:-https://api.tokenfactory.us-central1.nebius.com/v1}"
-AGENT_MODEL_NAME="${AGENT_MODEL_NAME:-zai-org/GLM-5}"
 
 CREATE_CMD=(
   nebius ai endpoint create
   --name "$ENDPOINT_NAME"
   --image "$IMAGE"
-  --platform "$PLATFORM"
-  --preset "$PRESET"
-  --container-port 8000
-  --public
-  --auth token
-  --env "AGENT_LLM_BASE_URL=$AGENT_LLM_BASE_URL"
-  --env "AGENT_MODEL_NAME=$AGENT_MODEL_NAME"
+  --platform cpu-d3
+  --preset 4vcpu-16gb
+  --disk-size 30Gi
+  --container-port 18789
+  --env-secret "AUTH_TOKEN=$AUTH_TOKEN_SECRET"
+  "${MODEL_SECRET_ARGS[@]}"
+  # The credential names select the reasoning provider and scientific backend.
+  # Every other runtime default is image-owned; only managed HTTPS differs from
+  # the safe generic-container default.
+  --env "BIONEMO_HTTPS_MODE=nebius"
 )
 
-if [[ -n "${AUTH_TOKEN_SECRET:-}" ]]; then
-  CREATE_CMD+=(--token-secret "$AUTH_TOKEN_SECRET")
-else
-  CREATE_CMD+=(--token "$AUTH_TOKEN")
-fi
-
-if [[ -n "$PARENT_ID" ]]; then
-  CREATE_CMD+=(--parent-id "$PARENT_ID")
-fi
-
+# A subnet is genuinely deployment-specific. Its read-only metadata lookup
+# also pins the create to the subnet's project, independent of a stale CLI
+# profile default. Without SUBNET_ID, Serverless uses the active profile.
 if [[ -n "${SUBNET_ID:-}" ]]; then
-  CREATE_CMD+=(--subnet-id "$SUBNET_ID")
+  CREATE_CMD+=(--parent-id "$SUBNET_PROJECT" --subnet-id "$SUBNET_ID")
 fi
+if [[ -n "${TAVILY_SECRET:-}" ]]; then CREATE_CMD+=(--env-secret "TAVILY_API_KEY=$TAVILY_SECRET"); fi
 
-if [[ -n "${NEBIUS_API_KEY_SECRET:-}" ]]; then
-  CREATE_CMD+=(--env-secret "NEBIUS_API_KEY=$NEBIUS_API_KEY_SECRET")
-else
-  CREATE_CMD+=(--env "NEBIUS_API_KEY=$NEBIUS_API_KEY")
-fi
-
-CREATE_CMD+=(--env "BIONEMO_BASE_URL=$BIONEMO_BASE_URL")
-
-if [[ -n "${BIONEMO_API_KEY_SECRET:-}" ]]; then
-  CREATE_CMD+=(--env-secret "BIONEMO_API_KEY=$BIONEMO_API_KEY_SECRET")
-else
-  CREATE_CMD+=(--env "BIONEMO_API_KEY=$BIONEMO_API_KEY")
-fi
-
-echo "Creating Nebius Serverless Endpoint: $ENDPOINT_NAME"
+echo "Creating '$ENDPOINT_NAME' ($VARIANT) on native Nebius HTTPS from $IMAGE."
 "${CREATE_CMD[@]}"
+
 cat <<EOF
 
-Endpoint created. Keep the AUTH_TOKEN value in your shell for test requests.
+The managed endpoint has no public VM IP or second authentication layer;
+OpenClaw requires the rate-limited AUTH_TOKEN as its single browser login.
 
-Get the endpoint IP:
-  nebius ai endpoint get-by-name --name "$ENDPOINT_NAME" --format json
+Inspect the endpoint and obtain its browser URL:
+EOF
+if [[ -n "$SUBNET_PROJECT" ]]; then
+  cat <<EOF
+  ENDPOINT_ID=\$(nebius ai endpoint get-by-name --name "$ENDPOINT_NAME" --parent-id "$SUBNET_PROJECT" --format jsonpath='{.metadata.id}')
+EOF
+else
+  cat <<EOF
+  ENDPOINT_ID=\$(nebius ai endpoint get-by-name --name "$ENDPOINT_NAME" --format jsonpath='{.metadata.id}')
+EOF
+fi
+cat <<'EOF'
+  nebius ai endpoint get "$ENDPOINT_ID" --format json
 EOF

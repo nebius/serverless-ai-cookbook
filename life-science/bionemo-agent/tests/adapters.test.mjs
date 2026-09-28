@@ -1,0 +1,341 @@
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, symlink, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import test from "node:test";
+import { ArtifactStore, extractArtifacts } from "../openclaw-plugin/src/artifacts.mjs";
+import { NimClient, __test as clientInternals } from "../openclaw-plugin/src/client.mjs";
+import { CROSS_BACKEND_TOOL_NAMES, DIRECT_ONLY_TOOL_NAMES, EXACT_TOOL_NAMES, NVIDIA_HOST, SKILLS } from "../openclaw-plugin/src/catalog.mjs";
+import { publicError, redactSecrets, redactText } from "../openclaw-plugin/src/errors.mjs";
+import { BATCH_PROTEIN_RECORDS, parseBatchProteinFasta, resolveSkillInput, resolveWorkflowInput, __test as sampleInternals } from "../openclaw-plugin/src/samples.mjs";
+import { createRuntime } from "../openclaw-plugin/index.mjs";
+import { BATCH_DEMO_INPUT_FILE, JSON_SCHEMAS, LIMITS, RESEARCH_DEMO_ACK_FIELDS, VALIDATORS, normalizeDirectSkillInput, validateWorkflowInput } from "../openclaw-plugin/src/validation.mjs";
+
+const PDB = "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\nATOM      1  CA  ALA A   1       0.000   0.000   0.000  1.00  0.00           C\nEND\n";
+const PROTEIN = "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ";
+
+const VALID_INPUTS = Object.freeze({
+  boltz2: { polymers: [{ id: "A", molecule_type: "protein", sequence: PROTEIN }], diffusion_samples: 1, output_format: "mmcif" },
+  diffdock: { protein: PDB, ligand: "CCO", ligand_file_type: "txt", num_poses: 2, save_trajectory: false },
+  evo2: { sequence: "ACGTACGT", num_tokens: 8, random_seed: 7 },
+  genmol: { smiles: "[*{5-10}]", num_molecules: 2, scoring: "QED", temperature: "1.0", noise: "1.0" },
+  molmim: { smi: "CCO", algorithm: "CMA-ES", num_molecules: 2, num_iterations: 2, property_name: "QED", particles: 2 },
+  msa_search: { sequence: PROTEIN, databases: ["Uniref30_2302"], output_alignment_formats: ["a3m"] },
+  openfold2: { sequence: PROTEIN, input_id: "public-example", selected_models: [1] },
+  openfold3: { inputs: [{ input_id: "public-example", output_format: "pdb", molecules: [{ id: "A", type: "protein", sequence: PROTEIN, diffusion_samples: 1 }] }] },
+  proteinmpnn: { input_pdb: PDB, input_pdb_chains: ["A"], num_seq_per_target: 2, sampling_temp: [0.1] },
+  rfdiffusion: { input_pdb: PDB, contigs: "80-90", diffusion_steps: 10, random_seed: 7 },
+});
+
+test("catalog exposes ten atomic skills, thirteen direct-only tools, and four cross-backend workflows", () => {
+  assert.equal(Object.keys(SKILLS).length, 10);
+  assert.equal(DIRECT_ONLY_TOOL_NAMES.length, 13);
+  assert.equal(CROSS_BACKEND_TOOL_NAMES.length, 4);
+  assert.equal(EXACT_TOOL_NAMES.length, 17);
+  assert.equal(new Set(EXACT_TOOL_NAMES).size, 17);
+  assert.equal(CROSS_BACKEND_TOOL_NAMES.every((name) => !DIRECT_ONLY_TOOL_NAMES.includes(name) && EXACT_TOOL_NAMES.includes(name)), true);
+});
+
+test("cross-backend schemas and validators require all five explicit const-true acknowledgements", () => {
+  const accepted = {
+    ack_research_only: true,
+    ack_non_clinical: true,
+    ack_non_commercial: true,
+    ack_aup_accepted: true,
+    ack_no_safety_or_therapeutic_claims: true,
+  };
+  assert.deepEqual(validateWorkflowInput("research_drug_demo", accepted), { ...accepted, use_tavily: true });
+  assert.deepEqual(validateWorkflowInput("research_drug_demo", { ...accepted, use_tavily: false }), { ...accepted, use_tavily: false });
+  for (const workflowId of ["research_drug_demo", "compare_protein_structures", "optimize_ligand_complex", "batch_fold_demo"]) {
+    assert.deepEqual([...JSON_SCHEMAS[workflowId].required].sort(), [...RESEARCH_DEMO_ACK_FIELDS].sort());
+    for (const key of Object.keys(accepted)) {
+      assert.equal(JSON_SCHEMAS[workflowId].properties[key].const, true);
+      assert.throws(() => validateWorkflowInput(workflowId, { ...accepted, [key]: false }), /must be true/u, `${workflowId}:${key}`);
+      const missing = { ...accepted };
+      delete missing[key];
+      assert.throws(() => validateWorkflowInput(workflowId, missing), /missing required fields/u, `${workflowId}:${key}`);
+    }
+  }
+  assert.throws(() => validateWorkflowInput("research_drug_demo", { ...accepted, query: "attacker controlled" }), /unsupported fields/u);
+  assert.deepEqual(validateWorkflowInput("batch_fold_demo", accepted), { ...accepted, input_file: BATCH_DEMO_INPUT_FILE });
+  assert.throws(() => validateWorkflowInput("batch_fold_demo", { ...accepted, input_file: "../../etc/passwd" }), /must be exactly/u);
+});
+
+test("fixed batch FASTA parser accepts only five reviewed records and rejects drift", () => {
+  const fasta = `${BATCH_PROTEIN_RECORDS.map(({ id, sequence }) => `>${id}\n${sequence}`).join("\n")}\n`;
+  assert.deepEqual(parseBatchProteinFasta(fasta).map(({ id, sequence }) => [id, sequence.length]), BATCH_PROTEIN_RECORDS.map(({ id, sequence }) => [id, sequence.length]));
+  assert.throws(() => parseBatchProteinFasta(`${fasta}>EXTRA\nACDE\n`), /exactly 5 records/u);
+  assert.throws(() => parseBatchProteinFasta(fasta.replace(BATCH_PROTEIN_RECORDS[1].sequence, `${BATCH_PROTEIN_RECORDS[1].sequence.slice(0, -1)}?`)), /invalid protein sequence/u);
+  assert.throws(() => parseBatchProteinFasta(fasta.replace(">1UBQ", ">1CRN")), /unique/u);
+  assert.throws(() => sampleInternals.batchProteinFilePath("/workspace/agent", "../../etc/passwd"), /fixed bundled FASTA/u);
+});
+
+for (const [id, input] of Object.entries(VALID_INPUTS)) {
+  test(`${id} accepts the bounded representative request`, () => {
+    const validated = VALIDATORS[id](input);
+    if (id === "diffdock") {
+      assert.match(validated.protein, /^ATOM/u);
+      assert.equal(validated.protein.includes("CRYST1"), false);
+    } else assert.deepEqual(validated, input);
+  });
+}
+
+test("all atomic adapters reject unknown fields", () => {
+  for (const [id, input] of Object.entries(VALID_INPUTS)) {
+    assert.throws(() => VALIDATORS[id]({ ...input, url: "https://attacker.example" }), /unsupported fields/u, id);
+  }
+});
+
+test("pinned public sample resolution accepts only an enum and never a path", async () => {
+  const vendorRoot = path.resolve(new URL("../vendor/bionemo-agent-toolkit", import.meta.url).pathname);
+  const diffdock = await resolveSkillInput("diffdock", { protein_sample: "egfr_kinase_public", ligand: "CCO" }, { vendorRoot });
+  assert.match(diffdock.protein, /(?:^|\n)ATOM\s/u);
+  assert.equal("protein_sample" in diffdock, false);
+  const proteinmpnn = await resolveSkillInput("proteinmpnn", { input_pdb_sample: "egfr_kinase_public", num_seq_per_target: 1 }, { vendorRoot });
+  assert.match(proteinmpnn.input_pdb, /(?:^|\n)ATOM\s/u);
+  assert.equal("input_pdb_sample" in proteinmpnn, false);
+  assert.doesNotThrow(() => VALIDATORS.proteinmpnn(proteinmpnn));
+  const workflow = await resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", safe_notation: "[*{5-10}]" }, { vendorRoot });
+  assert.equal(workflow.protein_sequence.length, 312);
+  assert.match(workflow.protein_pdb, /(?:^|\n)ATOM\s/u);
+  await assert.rejects(() => resolveSkillInput("diffdock", { protein_sample: "../../etc/passwd", ligand: "CCO" }, { vendorRoot }), /must be one of/u);
+  await assert.rejects(() => resolveSkillInput("proteinmpnn", { input_pdb: PDB, input_pdb_sample: "egfr_kinase_public" }, { vendorRoot }), /exactly one/u);
+  await assert.rejects(() => resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", protein_pdb: PDB, safe_notation: "x" }, { vendorRoot }), /do not combine/u);
+});
+
+test("MolMIM aligns effective output and population defaults before upstream compute", async () => {
+  assert.deepEqual(VALIDATORS.molmim({ smi: "CCO" }), { smi: "CCO", num_molecules: 10, particles: 20 });
+  assert.deepEqual(VALIDATORS.molmim({ smi: "CCO", num_molecules: 2, particles: 2 }), { smi: "CCO", num_molecules: 2, particles: 2 });
+  assert.throws(() => VALIDATORS.molmim({ smi: "CCO", particles: 2 }), /greater than or equal to num_molecules/u);
+  assert.throws(() => VALIDATORS.molmim({ smi: "CCO", num_molecules: 21 }), /greater than or equal to num_molecules/u);
+  assert.deepEqual(JSON_SCHEMAS.molmim.required, ["smi", "num_molecules"]);
+  assert.equal(JSON_SCHEMAS.molmim.properties.num_molecules.default, 10);
+  assert.equal(JSON_SCHEMAS.molmim.properties.particles.default, 20);
+  assert.match(JSON_SCHEMAS.molmim.properties.particles.description, /greater than or equal/u);
+
+  const forwarded = [];
+  const client = new NimClient({
+    env: { NVIDIA_API_KEY: "unit-test-key" },
+    logger: { info() {} },
+    retries: 0,
+    fetchImpl: async (_url, init) => {
+      forwarded.push(JSON.parse(init.body));
+      return new Response("{}", { status: 200 });
+    },
+  });
+  await client.call("molmim", { smi: "CCO", num_iterations: 3, radius: 1 });
+  assert.deepEqual(forwarded, [{ smi: "CCO", num_molecules: 10, particles: 20, iterations: 3, scaled_radius: 1 }]);
+  assert.equal("num_iterations" in forwarded[0], false);
+  assert.equal("radius" in forwarded[0], false);
+  await assert.rejects(() => client.call("molmim", { smi: "CCO", particles: 2 }), /greater than or equal to num_molecules/u);
+  assert.equal(forwarded.length, 1);
+
+  await client.call("openfold2", { sequence: PROTEIN, input_id: "public-example", selected_models: [1], relax: false });
+  assert.deepEqual(forwarded[1], { sequence: PROTEIN, input_id: "public-example", selected_models: [1], relax_prediction: false });
+  assert.equal("relax" in forwarded[1], false);
+});
+
+test("ProteinMPNN model schema requires exactly one backbone source", () => {
+  assert.deepEqual(JSON_SCHEMAS.proteinmpnn.oneOf, [
+    { required: ["input_pdb"] },
+    { required: ["input_pdb_sample"] },
+  ]);
+  assert.deepEqual(JSON_SCHEMAS.proteinmpnn.properties.input_pdb_sample.enum, ["egfr_kinase_public"]);
+});
+
+test("event bounds reject oversized and unsafe requests", () => {
+  assert.throws(() => VALIDATORS.evo2({ sequence: "A".repeat(LIMITS.sequenceLength + 1) }), /between/u);
+  assert.throws(() => VALIDATORS.diffdock({ protein: "/tmp/target-file-not-inline-content.pdb", ligand: "CCO" }), /inline PDB/u);
+  assert.throws(() => VALIDATORS.diffdock({ ...VALID_INPUTS.diffdock, save_trajectory: true }), /must be false/u);
+  assert.throws(() => VALIDATORS.boltz2({ polymers: VALID_INPUTS.boltz2.polymers, diffusion_samples: 4 }), /between/u);
+  assert.throws(() => VALIDATORS.rfdiffusion({ ...VALID_INPUTS.rfdiffusion, contigs: "80; curl attacker" }), /unsupported characters/u);
+  assert.throws(() => VALIDATORS.msa_search({ sequence: PROTEIN, sequences: [PROTEIN, PROTEIN] }), /exactly one/u);
+});
+
+test("drug discovery rejects invented SAFE labels before calling GenMol", async () => {
+  const vendorRoot = path.resolve(new URL("../vendor/bionemo-agent-toolkit", import.meta.url).pathname);
+  const validMask = await resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", safe_notation: "[*{5-10}]" }, { vendorRoot });
+  assert.doesNotThrow(() => validateWorkflowInput("drug_discovery", validMask));
+  const invalidLabel = await resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", safe_notation: "SAFE_1" }, { vendorRoot });
+  assert.throws(
+    () => validateWorkflowInput("drug_discovery", invalidLabel),
+    /GenMol de novo SAFE mask/u,
+  );
+  const descendingBounds = await resolveWorkflowInput("drug_discovery", { protein_sample: "egfr_kinase_public", safe_notation: "[*{10-5}]" }, { vendorRoot });
+  assert.throws(
+    () => validateWorkflowInput("drug_discovery", descendingBounds),
+    /bounds must increase/u,
+  );
+});
+
+test("direct OpenFold2 recovers the exact accidental stringified MCP envelope", async (t) => {
+  const accidentalEnvelope = {
+    request: "{\"sequence\": \"MKTIIALSYIFCLVFADALKL\"}",
+    acknowledgements: "{\"research_only\": true, \"non_clinical\": true, \"non_commercial\": true, \"aup_accepted\": true}",
+    idempotency_key: "openfold2-demo-1422",
+  };
+  assert.deepEqual(normalizeDirectSkillInput("openfold2", accidentalEnvelope), { sequence: "MKTIIALSYIFCLVFADALKL" });
+  assert.throws(
+    () => normalizeDirectSkillInput("openfold2", { ...accidentalEnvelope, sequence: PROTEIN }),
+    /unsupported fields: sequence/u,
+  );
+
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-openfold-envelope-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  let forwarded;
+  const runtime = createRuntime({
+    artifactRoot: root,
+    env: { NVIDIA_API_KEY: "unit-test-key" },
+    logger: { info() {} },
+    fetchImpl: async (_url, init) => {
+      forwarded = JSON.parse(init.body);
+      return new Response(JSON.stringify({ result: { structure: "ATOM      1  CA  ALA A   1", format: "pdb" } }), { status: 200 });
+    },
+  });
+  await runtime.runSkill("openfold2", accidentalEnvelope);
+  assert.deepEqual(forwarded, { sequence: "MKTIIALSYIFCLVFADALKL" });
+});
+
+test("NIM client uses only the fixed HTTPS NVIDIA route and redacts credentials", async () => {
+  const calls = [];
+  const logs = [];
+  const key = "nvapi-unit-test-secret-value";
+  const client = new NimClient({
+    env: { NVIDIA_API_KEY: key },
+    logger: { info: (value) => logs.push(value) },
+    retries: 0,
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "x-request-id": "request-1" } });
+    },
+  });
+
+  for (const [id, input] of Object.entries(VALID_INPUTS)) await client.call(id, input);
+  assert.equal(calls.length, 10);
+  for (const { url, init } of calls) {
+    assert.equal(url.protocol, "https:");
+    assert.equal(url.hostname, NVIDIA_HOST);
+    assert.match(url.pathname, /^\/v1\/biology\//u);
+    assert.equal(init.redirect, "error");
+    assert.equal(init.headers.Authorization, `Bearer ${key}`);
+  }
+  assert.equal(logs.join("\n").includes(key), false);
+});
+
+test("paired MSA selects only the pinned paired route", async () => {
+  let pathname;
+  const client = new NimClient({
+    env: { NGC_API_KEY: "test-key" },
+    retries: 0,
+    fetchImpl: async (url) => { pathname = url.pathname; return new Response("{}", { status: 200 }); },
+  });
+  await client.call("msa_search", { sequences: [PROTEIN, PROTEIN] });
+  assert.equal(pathname, "/v1/biology/colabfold/msa-search/paired/predict");
+});
+
+test("NIM client surfaces auth, rate limit, output limit, and missing-key errors safely", async () => {
+  const authClient = new NimClient({ env: { NVIDIA_API_KEY: "secret" }, retries: 0, fetchImpl: async () => new Response(JSON.stringify({ detail: "credential rejected" }), { status: 401 }) });
+  await assert.rejects(() => authClient.call("evo2", VALID_INPUTS.evo2), (error) => publicError(error).code === "nvidia_auth_or_entitlement");
+
+  let attempts = 0;
+  const retryClient = new NimClient({ env: { NVIDIA_API_KEY: "secret" }, retries: 1, fetchImpl: async () => {
+    attempts += 1;
+    return attempts === 1 ? new Response("{}", { status: 429 }) : new Response("{}", { status: 200 });
+  } });
+  await retryClient.call("evo2", VALID_INPUTS.evo2);
+  assert.equal(attempts, 2);
+
+  const largeClient = new NimClient({ env: { NVIDIA_API_KEY: "secret" }, retries: 0, fetchImpl: async () => new Response("{}", { status: 200, headers: { "content-length": String(LIMITS.responseBytes + 1) } }) });
+  await assert.rejects(() => largeClient.call("evo2", VALID_INPUTS.evo2), /response exceeds/u);
+  await assert.rejects(
+    () => new NimClient({ env: {}, retries: 0, fetchImpl: async () => new Response("{}") }).call("evo2", VALID_INPUTS.evo2),
+    (error) => publicError(error).code === "missing_nvidia_key" && /not configured/u.test(publicError(error).message),
+  );
+});
+
+test("URL constructor rejects every host/path escape", () => {
+  assert.throws(() => clientInternals.buildAllowedUrl("https://attacker.example/v1/biology/x"), /allowlist/u);
+  assert.throws(() => clientInternals.buildAllowedUrl("//attacker.example/v1/biology/x"), /allowlist/u);
+  assert.throws(() => clientInternals.buildAllowedUrl("/v1/chat/completions"), /allowlist/u);
+});
+
+test("secret redaction covers headers, key-shaped fields, and NVIDIA key text", () => {
+  const key = "nvapi-abcdefghijklmnopqrstuvwxyz";
+  assert.equal(redactText(`Authorization: Bearer ${key}`).includes(key), false);
+  assert.deepEqual(redactSecrets({ api_key: key, nested: { value: `Bearer ${key}` } }), { api_key: "[redacted]", nested: { value: "Bearer [redacted]" } });
+});
+
+test("artifact extraction covers all ten response families", () => {
+  const fixtures = {
+    boltz2: { structures: [{ structure: "data_test\n_atom_site.example\n#", format: "mmcif" }] },
+    diffdock: { ligand_positions: ["SDF\n$$$$"] },
+    evo2: { sequence: "ACGT" },
+    genmol: { molecules: [{ smiles: "CCO", score: 0.7 }] },
+    molmim: { molecules: JSON.stringify([{ sample: "CCC", score: 0.8 }]) },
+    msa_search: { alignments: { Uniref30_2302: { a3m: { alignment: ">q\nAAAA" } } } },
+    openfold2: { result: { structure: "ATOM      1  CA  ALA A   1", format: "pdb" } },
+    openfold3: { outputs: [{ structures_with_scores: [{ structure: "ATOM      1  CA  ALA A   1", format: "pdb" }] }] },
+    proteinmpnn: { mfasta: ">design\nAAAA" },
+    rfdiffusion: { output_pdb: "ATOM      1" },
+  };
+  for (const [id, data] of Object.entries(fixtures)) assert.ok(extractArtifacts(id, data).length >= 1, id);
+});
+
+test("artifact store stays below its root and never serves manifests or symlinks", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-artifacts-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  const store = await new ArtifactStore(root).initialize();
+  const run = await store.createRun({ kind: "skill", id: "evo2" });
+  const saved = await store.save(run, "result.fasta", ">q\nACGT\n");
+  assert.equal(saved.downloadPath, path.join(root, run.runId, "result.fasta"));
+  assert.equal(path.isAbsolute(saved.downloadPath), true);
+  assert.equal(saved.downloadPath.startsWith(`${root}${path.sep}`), true);
+  const opened = await store.openArtifact(run.runId, "result.fasta");
+  assert.equal(opened.size, 8);
+  await opened.handle.close();
+  await assert.rejects(() => store.openArtifact(run.runId, "manifest.json"), /invalid artifact/u);
+  await assert.rejects(() => store.openArtifact("../../etc", "passwd"), /invalid artifact/u);
+
+  const outside = path.join(os.tmpdir(), `bionemo-outside-${Date.now()}`);
+  await writeFile(outside, "outside");
+  await symlink(outside, path.join(run.directory, "linked.txt"));
+  await assert.rejects(() => store.openArtifact(run.runId, "linked.txt"), /escapes/u);
+  await (await import("node:fs/promises")).rm(outside, { force: true });
+
+  const manifest = JSON.parse(await readFile(path.join(run.directory, "manifest.json"), "utf8"));
+  assert.equal(JSON.stringify(manifest).includes("nvapi-"), false);
+});
+
+test("structure artifacts expose a one-click viewer capability without persisting it", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-viewer-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  const store = await new ArtifactStore(root).initialize();
+  const run = await store.createRun({ kind: "skill", id: "openfold2" });
+  await store.save(run, "ranked-1.pdb", "ATOM      1  CA  ALA A   1\n");
+  const [presented] = store.presentArtifacts(run);
+  assert.match(presented.viewerUrl, new RegExp(`^/bionemo/view/${run.runId}/ranked-1\\.pdb\\?access=`));
+  assert.equal(presented.viewerMarkdown, `[View structure in 3D](<${presented.viewerUrl}>)`);
+  const access = new URL(presented.viewerUrl, "https://example.test").searchParams.get("access");
+  const opened = await store.openViewerArtifact(run.runId, "ranked-1.pdb", access);
+  await opened.handle.close();
+  await assert.rejects(() => store.openViewerArtifact(run.runId, "ranked-1.pdb", "wrong-capability-value-000000"), /invalid structure viewer capability/u);
+  const persisted = await readFile(path.join(run.directory, "manifest.json"), "utf8");
+  assert.equal(persisted.includes(access), false);
+  assert.equal(persisted.includes("viewerMarkdown"), false);
+  assert.equal(JSON.stringify(await store.listRuns()).includes("structureCapabilityDigest"), false);
+});
+
+test("structure viewer URLs use only a validated configured public origin", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "bionemo-viewer-origin-"));
+  t.after(async () => (await import("node:fs/promises")).rm(root, { recursive: true, force: true }));
+  const store = await new ArtifactStore(root, { publicBaseUrl: "https://agent.example.test" }).initialize();
+  const run = await store.createRun({ kind: "skill", id: "openfold2" });
+  await store.save(run, "ranked-1.pdb", "ATOM      1  CA  ALA A   1\n");
+  const absolute = store.presentArtifacts(run)[0];
+  assert.match(absolute.viewerUrl, /^https:\/\/agent\.example\.test\/bionemo\/view\//u);
+  assert.equal(absolute.viewerMarkdown, `[View structure in 3D](<${absolute.viewerUrl}>)`);
+  const relativeStore = await new ArtifactStore(root, { publicBaseUrl: "https://user:password@example.test/path" }).initialize();
+  const relative = relativeStore.presentArtifacts(run)[0];
+  assert.match(relative.viewerUrl, /^\/bionemo\/view\//u);
+  assert.equal(relative.viewerMarkdown, `[View structure in 3D](<${relative.viewerUrl}>)`);
+});

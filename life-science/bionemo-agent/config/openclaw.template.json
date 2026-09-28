@@ -1,0 +1,191 @@
+{
+  "update": {
+    "channel": "stable",
+    "checkOnStart": false,
+    "auto": {
+      "enabled": false
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}",
+      "rateLimit": {
+        "maxAttempts": 8,
+        "windowMs": 60000,
+        "lockoutMs": 300000,
+        "exemptLoopback": false
+      }
+    },
+    "controlUi": {
+      "enabled": true,
+      "root": "/opt/bionemo/control-ui",
+      "embedSandbox": "strict",
+      "allowExternalEmbedUrls": false,
+      "allowedOrigins": []
+    },
+    "terminal": {
+      "enabled": false,
+      "detachedSessionTimeoutSeconds": 0
+    },
+    "tools": {
+      "deny": ["*"]
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/workspace/agent",
+      "model": {
+        "primary": "setup/setup-required",
+        "fallbacks": []
+      },
+      "compaction": {
+        "reserveTokensFloor": 20000
+      },
+      "skills": [
+        "boltz2-nim",
+        "diffdock-nim",
+        "evo2-nim",
+        "genmol-nim",
+        "molmim-nim",
+        "msa-search-nim",
+        "openfold2-nim",
+        "openfold3-nim",
+        "proteinmpnn-nim",
+        "rfdiffusion-nim",
+        "tavily-research",
+        "drug-discovery-pipeline",
+        "msa-structure-prediction-pipeline",
+        "protein-binder-design",
+        "clawbio-catalog"
+      ],
+      "skipBootstrap": true,
+      "thinkingDefault": "medium",
+      "reasoningDefault": "off",
+      "toolProgressDetail": "explain",
+      "timeoutSeconds": 1800,
+      "maxConcurrent": 1,
+      "sandbox": {
+        "mode": "off"
+      }
+    },
+    "list": [
+      {
+        "id": "bionemo",
+        "default": true,
+        "name": "BioNeMo Research Agent",
+        "workspace": "/workspace/agent",
+        "identity": {
+          "name": "BioNeMo Research Agent",
+          "theme": "careful, reproducible nonclinical scientific research",
+          "emoji": "🧬"
+        },
+        "skills": [
+          "boltz2-nim",
+          "diffdock-nim",
+          "evo2-nim",
+          "genmol-nim",
+          "molmim-nim",
+          "msa-search-nim",
+          "openfold2-nim",
+          "openfold3-nim",
+          "proteinmpnn-nim",
+          "rfdiffusion-nim",
+          "tavily-research",
+          "drug-discovery-pipeline",
+          "msa-structure-prediction-pipeline",
+          "protein-binder-design",
+          "clawbio-catalog"
+        ],
+        "sandbox": {
+          "mode": "off"
+        },
+        "subagents": {
+          "allowAgents": []
+        }
+      }
+    ]
+  },
+  "models": { "mode": "merge", "providers": {} },
+  "mcp": { "sessionIdleTtlMs": 600000, "servers": {} },
+  "tools": {
+    "profile": "minimal",
+    "alsoAllow": [
+      "bionemo_boltz2",
+      "bionemo_diffdock",
+      "bionemo_evo2",
+      "bionemo_genmol",
+      "bionemo_molmim",
+      "bionemo_msa_search",
+      "bionemo_openfold2",
+      "bionemo_openfold3",
+      "bionemo_proteinmpnn",
+      "bionemo_rfdiffusion",
+      "bionemo_research_drug_demo",
+      "bionemo_compare_protein_structures",
+      "bionemo_optimize_ligand_complex",
+      "bionemo_batch_fold_demo",
+      "bionemo_drug_discovery",
+      "bionemo_msa_to_structure",
+      "bionemo_protein_binder_design"
+    ],
+    "deny": [
+      "group:runtime",
+      "group:fs",
+      "group:web",
+      "group:ui",
+      "group:automation",
+      "group:messaging",
+      "group:nodes",
+      "group:agents",
+      "group:sessions",
+      "group:memory",
+      "group:media",
+      "bundle-mcp",
+      "gateway",
+      "cron",
+      "sessions_spawn",
+      "subagents"
+    ],
+    "exec": {
+      "mode": "deny"
+    },
+    "elevated": {
+      "enabled": false
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "allow": ["bionemo-agent-toolkit"],
+    "deny": [],
+    "load": {
+      "paths": ["/opt/bionemo/openclaw-plugin"]
+    },
+    "entries": {
+      "bionemo-agent-toolkit": {
+        "enabled": true,
+        "hooks": {
+          "allowPromptInjection": true,
+          "allowConversationAccess": true
+        },
+        "config": {}
+      }
+    }
+  },
+  "skills": {
+    "limits": {
+      "maxCandidatesPerRoot": 32,
+      "maxSkillsLoadedPerSource": 16,
+      "maxSkillsInPrompt": 15,
+      "maxSkillsPromptChars": 60000,
+      "maxSkillFileBytes": 65536
+    }
+  },
+  "logging": {
+    "level": "info",
+    "consoleLevel": "info",
+    "redactSensitive": "tools"
+  }
+}
