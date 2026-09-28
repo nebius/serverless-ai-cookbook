@@ -23,13 +23,71 @@ customer API. The earlier `clinical_asr serve` runtime is research-only.
 
 ## 1. Train and retain your checkpoint
 
-Use [balanced training](BALANCED_TRAINING.md) with your approved paired domain
-audio and general replay, explicitly selecting `--model-family english_specialist`.
+Skip training if you already have the selected, authorized English artifact:
+its SHA-256 and size are in [selected results](SELECTED_ENGLISH_RESULTS.md).
+Use those exact bytes, not a newly trained substitute. If the App is already
+enabled for you, skip packaging and go directly to section 5. This recipe does
+not distribute the demonstration weights or grant access to its private storage.
+
+For your own data, use the [raw-audio English Job path](README.md#opt-in-english-specialist-candidate-path)
+or [balanced training](BALANCED_TRAINING.md) for already-aligned domain/replay
+clips, explicitly selecting `--model-family english_specialist`.
 Complete a finite smoke and a separately approved main Serverless Job. Retain
 full development selection, source/exposure ledgers, `.nemo` and their full GET
 checksums before releasing that Job's exact GPU/VM/scratch resources. Do not
 stop currently running serving resources. No training is performed at serving
 startup, and a ten-step smoke is not a useful fine-tune by itself.
+
+### Retrieve your Job's export
+
+Both `cloud-run` and `cloud-train` export the development-selected checkpoint
+automatically. They publish these keys in your bucket:
+
+```text
+runs/YOUR_RUN_ID/completed.json
+runs/YOUR_RUN_ID/training/nemotron-clinical-en.nemo
+runs/YOUR_RUN_ID/training/training-provenance.json
+```
+
+`training-provenance.json` records `checkpoint_sha256` and
+`selected_checkpoint_global_step`; that step need not equal the last training
+step. A `.ckpt` is an optimizer/training checkpoint, not the `.nemo` serving
+artifact. An absent `completed.json` or failed Job is not a successful export.
+
+For a **new run of this recipe**, the following uses AWS CLI, `jq` and GNU
+`sha256sum` locally, with bucket-scoped credentials supplied securely by your
+environment/credential provider. Set `ASR_BUCKET`, `ASR_RUN_ID` and
+`ASR_S3_ENDPOINT` to your actual run; do not paste credential values into commands.
+This downloads only to a new private directory, not into the repository:
+
+```bash
+umask 077
+ASR_EXPORT_DIR="$(mktemp -d)" || exit 1
+aws --endpoint-url "$ASR_S3_ENDPOINT" s3 cp \
+  "s3://$ASR_BUCKET/runs/$ASR_RUN_ID/completed.json" \
+  "$ASR_EXPORT_DIR/completed.json" --no-progress || exit 1
+jq -e --arg run "$ASR_RUN_ID" \
+  '.status == "completed" and .run_id == $run and .model_family == "english_specialist"' \
+  "$ASR_EXPORT_DIR/completed.json" || exit 1
+for name in nemotron-clinical-en.nemo training-provenance.json; do
+  key="runs/$ASR_RUN_ID/training/$name"
+  aws --endpoint-url "$ASR_S3_ENDPOINT" s3 cp \
+    "s3://$ASR_BUCKET/$key" "$ASR_EXPORT_DIR/$name" --no-progress || exit 1
+  expected="$(jq -er --arg key "$key" \
+    '[.objects[] | select(.key == $key)] | if length == 1 then .[0].sha256 else error("missing or duplicate export") end' \
+    "$ASR_EXPORT_DIR/completed.json")" || exit 1
+  printf '%s  %s\n' "$expected" "$ASR_EXPORT_DIR/$name" | sha256sum -c - || exit 1
+done
+ASR_CHECKPOINT_SHA256="$(jq -er '.checkpoint_sha256' "$ASR_EXPORT_DIR/training-provenance.json")" || exit 1
+printf '%s  %s\n' "$ASR_CHECKPOINT_SHA256" \
+  "$ASR_EXPORT_DIR/nemotron-clinical-en.nemo" | sha256sum -c - || exit 1
+```
+
+Stop on any failed command or checksum; do not package partial output. Retain
+the completed publication and provenance alongside the evaluation results.
+For the historical selected artifact, obtain its authorized verified export
+from your operator and check the published selected hash/size instead of assuming
+that an older run has the current publication schema.
 
 Create a new model-bundle directory **outside the repository** containing only:
 
@@ -38,6 +96,12 @@ model.nemo       # your actual selected, verified English checkpoint
 MODEL_CARD.md    # parent revision, training provenance, changes and limitations
 MODEL_LICENSE   # applicable upstream license text and derivative obligations
 ```
+
+Copy the verified `nemotron-clinical-en.nemo` to `model.nemo` without conversion;
+renaming does not change its SHA-256. Supply the real model card and license,
+not placeholder documents. Keep training/provenance files outside this three-file
+build context. For your own fine-tune, use its actual SHA, never the demonstration's
+`2a2b…` identity.
 
 Review all model/data license obligations before distributing a derivative or
 an image containing it. The code's Apache license does not cover the weights.
@@ -170,25 +234,100 @@ See the matching platform document
 
 ## 5. Customer API, MCP and LibreChat
 
-Discover `GET /v1/models` and the exact native schema using the ordinary key.
-For a small audio file, the canonical gateway supports multipart
-`POST /v1/audio/transcriptions` with `file`, public `model`, optional
-`language=en-US` and `response_format=verbose_json`. Preserve an
-`Idempotency-Key`. Its limit is 8 MiB; larger recordings use the existing
-begin-upload → trusted byte transfer → finalize artifact → native invocation
-flow. A 202 response is durable acceptance, not a transcript: poll the same
-operation until terminal and retrieve its full result. Never repeat submission
-with a fresh key merely because the worker is cold or queued.
+Use the **native batch contract** as the default: schema discovery → upload
+and finalize a tenant-owned artifact → named native tool → poll → full result.
+These core tools and upload routes are present in platform source
+`654ff215ea122a404e30fc0d64feacaa05102954`. Publishing a batch-native App does
+**not** install `/v1/audio/transcriptions` or `/v1/audio/stream`; main-platform
+multipart audio and live support are not established by this recipe. An operator
+must separately enable the exact App/route and grant your ordinary customer key.
 
-MCP uses the **gateway `/mcp`**, not the worker. Discover tools and call
-`get_model_schema` with `{"model_id":"nemotron-speech-en-medical-0-6b","protocol":"native"}`.
-Use its returned named tool/schema directly; top-level controls are
-`idempotency_key` and `wait_seconds`, not part of the model payload. Transfer
-audio through the trusted artifact helper, never base64 in tool context. Poll
-`get_operation` and retrieve `get_operation_result`. The generic `invoke_model`
-fallback must name the same public App and native protocol explicitly.
+### One native batch request
 
-For live audio, connect through the authenticated gateway/LibreChat relay to
+Connect your MCP client to the operator-supplied **gateway `/mcp`**, not the
+worker. All examples below use the selected demonstration App ID; use the exact
+operator-registered ID for your own fine-tune. If it is absent from your
+authorized discovery, stop and ask the operator—do not silently use the base.
+
+1. Discover tools and call `get_model_schema` with:
+
+   ```json
+   {"model_id":"nemotron-speech-en-medical-0-6b","protocol":"native"}
+   ```
+
+   Retain the returned native `tool_name`, `input_schema` and runtime identity.
+   A schema response is not proof that the worker is ready or the App qualified.
+
+2. Hash one approved WAV locally (`sha256sum "$ASR_AUDIO"`) and obtain its exact
+   byte size (`stat -c %s "$ASR_AUDIO"`). Call `begin_model_artifact_upload` with
+   the same `model_id`, that actual `sha256`, integer `size_bytes`,
+   `media_type: "audio/wav"`, `compression: "none"` and a unique upload
+   `idempotency_key`. Retain its returned **upload** `operation_id`, `upload_id`,
+   `content_path` and `max_content_bytes`. Upload reservation is not inference.
+
+3. A trusted file-transfer client writes the exact bytes outside model context.
+   For a file no larger than the returned `max_content_bytes`, the supported
+   gateway PUT is shown below. Set `ASR_API_ORIGIN` to the operator's HTTPS origin
+   without a trailing slash, and the two IDs from that actual reservation.
+   Confirm the resulting path equals the returned `content_path`; do not invent
+   IDs. `ASR_AUTH_HEADER_FILE` is a private 0600 file provisioned by your secret
+   manager containing `Authorization: Bearer <ordinary-customer-key>`.
+
+   ```bash
+   umask 077
+   ASR_RESPONSE_DIR="$(mktemp -d)" || exit 1
+   curl --disable --silent --show-error --fail-with-body --proto '=https' --noproxy '*' \
+     --connect-timeout 10 --max-time 90 --request PUT \
+     --header "@$ASR_AUTH_HEADER_FILE" --header 'Content-Type: audio/wav' \
+     --data-binary "@$ASR_AUDIO" --output "$ASR_RESPONSE_DIR/upload.json" \
+     "$ASR_API_ORIGIN/v1/scientific-artifacts/uploads/$ASR_UPLOAD_ID/content?operation_id=$ASR_UPLOAD_OPERATION_ID"
+   ```
+
+   This does not follow redirects or retry automatically. For a larger file,
+   use the reservation's write-once `handle` through the trusted transfer client,
+   subject to the model's actual schema limit. Do not print signed URLs/headers,
+   send the gateway key to object storage, or put audio/base64 into MCP arguments.
+
+4. After successful transfer, call `finalize_model_artifact_upload` with those
+   same upload `operation_id` and `upload_id`. Keep its entire verified artifact
+   descriptor. Call the discovered **named native tool** with `audio` equal to
+   that descriptor and `options` matching its schema. For this English worker,
+   the native options are `{"model":"nemotron-speech-en-0.6b","language":"en-US","output_granularity":"word"}`.
+   The wire model is not the public App ID and does not itself identify the
+   fine-tuned weights. Add top-level `idempotency_key` for this intended
+   transcription and `wait_seconds: 0`; do not nest these controls in `audio` or
+   `options`, and do not wrap a named tool's fields in `payload`.
+
+5. Retain the returned **inference** operation ID, distinct from the upload
+   operation. Poll `get_operation` with that ID; `queued`, `activating` and
+   `running` are not final. Only after `succeeded`, call `get_operation_result`
+   with the same ID and save the full result, including text/segments and reported
+   checkpoint/runtime identity. Download any returned artifact through the
+   trusted client and verify its size/hash before acknowledgement or expiry.
+   `failed`, `cancelled`, `preempted` and `expired` are not empty successful
+   transcripts. A timeout has an unknown outcome: reconcile the same operation
+   and idempotency key, never submit a fresh key merely because work is queued.
+
+For clients requiring the generic compatibility tool, `invoke_model` takes the
+same public `model_id`, `protocol: "native"`, `payload: {"audio": <finalized descriptor>, "options": <schema-matching options>}`,
+plus top-level `idempotency_key` and `wait_seconds`. The HTTP equivalent is
+`POST /v1/models/{model_id}:invoke` with `{"operation":"transcribe","payload":...}`,
+an `Idempotency-Key` header and `x-fs2-wait-seconds: 0`. Its 202 response is durable
+acceptance, not a transcript: use `GET /v1/operations/{id}`, then
+`GET /v1/operations/{id}/result`. This native fallback does not depend on a
+multipart audio adapter. Keep credentials and output text private.
+
+### Optional multipart and live integrations: release-specific
+
+Only use `POST /v1/audio/transcriptions` if your installed gateway explicitly
+publishes and qualifies that compatibility route for the selected App. The
+separate speech-adapter implementation supports small multipart uploads up to
+8 MiB; that is **not** a capability implied by a native-only catalog entry.
+Use the native flow above when it is absent; do not change public routing to
+make an undocumented endpoint work.
+
+Likewise, only on a separately enabled and qualified live integration, connect
+through the authenticated gateway/LibreChat relay to
 `/v1/audio/stream`. Public start options identify the chosen App; the gateway
 maps it to the English wire options. Negotiate mono 16 kHz PCM16LE, 560 ms chunks
 and word granularity. Wait for `session.ready` and verify the loaded checkpoint
@@ -197,9 +336,22 @@ Send `input.finish` to flush the tail and require `session.completed`. Only
 native word items provide acoustic times; empty items do not permit invented
 alignment. Cancel/disconnect must release that session without affecting others.
 
-In the Scientific AI LibreChat client configure canonical API/MCP origins,
-ordinary scoped credentials and a new tenant-owned workspace. The requested
-selector is English base → exact fine-tune → **same** fine-tune + Sortformer.
+If your existing LibreChat deployment exposes that qualified microphone choice,
+select it, record, then Stop. Check the selected model
+and returned transcript; do not assume a fresh recording will reproduce a saved
+example. A custom trusted relay sends a `session.start` JSON message with
+`options.model` set to that public App, `language: "en-US"`,
+`chunk_size_ms: 560`, `output_granularity: "word"` and
+`audio: {"encoding":"pcm_s16le","sample_rate_hz":16000,"channels":1}`.
+Then send only binary PCM (not the WAV header) at real-time pace after ready.
+Keep customer credentials in the relay, not browser JavaScript or a WebSocket
+query string. The historical `clinical_asr.probe` targets the single-active
+diagnostic API; it is **not** a client for this shared gateway contract.
+
+For an operator-configured Scientific AI LibreChat integration, use canonical
+API/MCP origins, ordinary scoped credentials and a tenant-owned workspace.
+The demonstration's selector is English base → exact fine-tune → **same** fine-tune + Sortformer;
+this is a separate client integration, not a main-platform live-support claim.
 Sortformer is a separate authorized App, invoked after Stop. Anonymous channels
 are not clinician/patient identities; role assignment and note review are explicit.
 An explicitly selected fine-tuned batch result is saved in full before drafting;

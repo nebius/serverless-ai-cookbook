@@ -55,6 +55,41 @@ If you already have an adapted English checkpoint, the optional
 approved domain data, measure the parent first, and start a fresh optimizer.
 This is not an optimizer resume and does not automatically promote the result.
 
+## Start here: use the selected model or train your own
+
+**Using the existing English demonstration does not require another training
+run.** Its selected checkpoint is
+`2a2b1cae8e96d62e83a82351f7d483df01fc28d1d64793ce45a5de514a6c3b5f`
+(2,473,031,680 bytes). If your operator has enabled that exact App for your
+ordinary customer key, go directly to the
+[batch API example](SHARED_SERVING.md#5-customer-api-mcp-and-librechat).
+Otherwise ask the operator to enable the App; a running worker or a selector
+label alone is not customer API availability. The weights are not included or
+publicly downloadable from this recipe. See
+[selected results and clinical limitations](SELECTED_ENGLISH_RESULTS.md), not a
+claim that this is a clinically safe or universally best model.
+
+For **your own approved English-domain recordings and human transcripts**, use
+this order, running commands from `training/nemotron-clinical-asr`:
+
+| Step | Existing instructions | Result |
+| --- | --- | --- |
+| Prepare | [Data contract](#data-contract): split whole conversations before alignment; keep final test separate | Your mono 16 kHz PCM16 WAVs and train/dev manifests |
+| Build and upload | [Build](#build-and-compute), then [private input upload](#serverless-job) | Immutable training image and your private input keys |
+| Train | [English `cloud-run`](#opt-in-english-specialist-candidate-path), explicitly `--model-family english_specialist` | A finite new Serverless Job; first a 20-step plumbing smoke, then a separately chosen training budget |
+| Select and export | [Evaluate](EVALUATION.md), then [retrieve the exported checkpoint](SHARED_SERVING.md#retrieve-your-jobs-export) | Verified `.nemo`, provenance and full results; export is automatic, not another training job |
+| Serve | [Shared serving](SHARED_SERVING.md#2-build-from-the-public-dependency-recipe) | Exact-checkpoint image, new authenticated worker and operator-enabled customer App |
+| Transcribe | [Batch API first; live optional](SHARED_SERVING.md#5-customer-api-mcp-and-librechat) | Complete transcript and operation ID for your selected App |
+
+The raw-audio `cloud-run` path aligns the original transcripts for you. If you
+already have aligned clips and want domain/replay balancing, use
+[BALANCED_TRAINING.md](BALANCED_TRAINING.md) and `cloud-train` instead; do not run
+both paths for the same experiment. Neither path needs the demonstration's
+private bucket, checkpoint or resource IDs. The default family is still 3.5,
+so do not omit the explicit English option or follow the historical single-active
+Endpoint instructions for shared serving. Live microphones, speakers and clinical
+drafting are optional integrations, not prerequisites for batch transcription.
+
 ## Reproducible components
 
 | Component | Exact revision |
@@ -705,13 +740,13 @@ scores over multilingual 3.5 alone are not evidence of fine-tuning gain.
 `cloud-train` is an alternative for already-aligned, checksum-pinned bundles;
 the `cloud-run` path above does not require an internal experiment bundle.
 
-After artifact, quality and serving checks, add
-`--env MODEL_FAMILY=english_specialist` to the earlier new-endpoint command.
-Keep the exported model's actual object key and SHA256, unchanged authentication,
-and a new state prefix. Inspect authenticated `/v1/models` for the English
-foundation revision and expected checkpoint, then run the HTTP/MCP/paced-stream
-probe above. Do not omit `MODEL_FAMILY`: the compatibility default is 3.5 and a
-restored-class mismatch fails closed. Browser microphone and Sortformer are
+For shared serving, continue with [the exported-checkpoint handoff and shared
+worker](SHARED_SERVING.md#retrieve-your-jobs-export), not the historical `serve`
+command. Only if deliberately testing the older single-active diagnostic,
+add `--env MODEL_FAMILY=english_specialist` to its earlier endpoint command,
+with the actual object key/SHA256 and a new state prefix. That diagnostic's
+compatibility default is 3.5; a restored-class mismatch fails closed. Its probe
+does not qualify the shared customer App. Browser microphone and Sortformer are
 client integrations, not capabilities established by training alone.
 
 The English foundation has different governing terms: see its
