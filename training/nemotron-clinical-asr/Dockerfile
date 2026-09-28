@@ -15,4 +15,4 @@ RUN useradd --uid 10001 --create-home speech \
 USER 10001:10001
 EXPOSE 8000
 ENTRYPOINT ["python", "-m", "clinical_asr"]
-CMD ["serve"]
+CMD ["--help"]

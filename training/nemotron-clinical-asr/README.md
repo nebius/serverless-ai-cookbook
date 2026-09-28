@@ -33,6 +33,9 @@ exact-checkpoint packaging, and Scientific AI gateway/API/MCP/LibreChat setup.
 It is the intended multi-customer architecture. The older standalone `serve`
 instructions below are retained as a **single-active research diagnostic**, not
 a production deployment. Do not expose its shared demo credential to customers.
+Running the training image, or `python -m clinical_asr`, without arguments prints
+usage and exits; it does not start a service. Diagnostic serving requires the
+explicit `serve` command. The shared worker has its own entrypoint.
 The [selected existing English experiment](SELECTED_ENGLISH_RESULTS.md) improves
 known-set word accuracy but still fails its frozen clinical-meaning gates.
 

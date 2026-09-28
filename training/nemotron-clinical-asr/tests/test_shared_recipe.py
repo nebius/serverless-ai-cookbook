@@ -3,6 +3,11 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
+import sys
+from types import SimpleNamespace
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SHARED = ROOT / 'shared-runtime'
@@ -31,7 +36,7 @@ def test_no_private_dependency_or_packaged_demo_weights():
     assert 'USER 10001:10001' in dockerfile
     assert 'FS2_STT_REQUIRE_GATEWAY_AUTH=1' in dockerfile
     assert 'fs2_speech.serverless_entrypoint' in dockerfile
-    assert 'CMD []' in dockerfile  # clear training-image CMD serve
+    assert 'CMD []' in dockerfile  # clear training-image default help arguments
     assert not list(SHARED.rglob('*.nemo'))
 
 
@@ -64,3 +69,37 @@ def test_shared_primary_path_and_unchanged_clinical_limits():
     assert '7.0067%' in results and '12.0952%' in results
     for forbidden in ['project-e00rene', 'aiendpoint-e00', 'storagebucket-e00', 'mbsec-e00', '/home/tux', '.tunnel.applications.']:
         assert forbidden not in readme + shared + results
+
+
+@pytest.mark.parametrize('arguments', [[], ['help'], ['--help'], ['-h']])
+def test_cli_default_and_help_need_no_optional_dependencies(arguments):
+    result = subprocess.run([sys.executable, '-S', '-B', '-m', 'clinical_asr', *arguments],
+                            cwd=ROOT, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert 'shared-runtime' in result.stdout
+    assert 'single-active research diagnostic only' in result.stdout
+    assert 'No command starts automatically.' in result.stdout
+    assert result.stderr == ''
+
+
+def test_unknown_command_fails_without_starting_a_service():
+    result = subprocess.run([sys.executable, '-S', '-B', '-m', 'clinical_asr', 'invalid-command'],
+                            cwd=ROOT, capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0
+    assert 'Commands:' in result.stderr
+
+
+def test_diagnostic_serving_still_requires_explicit_command(monkeypatch):
+    from clinical_asr.__main__ import main
+    calls = []
+    monkeypatch.setitem(sys.modules, 'uvicorn', SimpleNamespace(run=lambda *a, **k: calls.append((a, k))))
+    monkeypatch.setattr(sys, 'argv', ['clinical_asr', 'serve'])
+    main()
+    assert calls == [(('clinical_asr.server:app',), {
+        'host': '0.0.0.0', 'port': 8000, 'workers': 1, 'access_log': False})]
+
+
+def test_training_image_defaults_to_usage_not_diagnostic_service():
+    dockerfile = (ROOT / 'Dockerfile').read_text()
+    commands = re.findall(r'^CMD (.+)$', dockerfile, re.MULTILINE)
+    assert len(commands) == 1 and json.loads(commands[0]) == ['--help']

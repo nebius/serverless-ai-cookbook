@@ -1,9 +1,18 @@
 import sys
 
+USAGE = """Commands: cloud-run, cloud-train, cloud-evaluate, align, segment, train, evaluate, evaluate-english, serve
+
+For multi-customer serving, use shared-runtime (see SHARED_SERVING.md).
+The explicit 'serve' command is a single-active research diagnostic only.
+No command starts automatically.
+"""
+
 
 def main():
-    command = sys.argv.pop(1) if len(sys.argv) > 1 else "serve"
-    if command == "cloud-run":
+    command = sys.argv.pop(1) if len(sys.argv) > 1 else "--help"
+    if command in {"help", "--help", "-h"}:
+        print(USAGE)
+    elif command == "cloud-run":
         from .cloud import main
         main()
     elif command == "cloud-train":
@@ -31,7 +40,7 @@ def main():
         import uvicorn
         uvicorn.run("clinical_asr.server:app", host="0.0.0.0", port=8000, workers=1, access_log=False)
     else:
-        raise SystemExit("Commands: cloud-run, cloud-train, cloud-evaluate, align, segment, train, evaluate, evaluate-english, serve")
+        raise SystemExit(USAGE)
 
 
 if __name__ == "__main__":
