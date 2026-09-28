@@ -134,6 +134,10 @@ External examples and writeups from the community running serverless workloads o
 
 - 📈 **LOB Arena — Adversarial market-surveillance evaluation** — Governed historical + synthetic order-book validation platform for benchmarking surveillance detectors, with Nebius Serverless AI Jobs and Endpoints for scalable evaluation and AI-assisted investigation. — _by Alexey Khabalov_ · [💻 code](https://github.com/khab40/lob-arena) · [📝 post](https://www.linkedin.com/pulse/building-lob-arena-adversarial-market-surveillance-nebius-khabalov-eqilf/)
 
+### Geo / Travel
+
+- 🗺️ **Serverless City Guide — verified local stories** — Drop a pin, get a local story fact-checked against OpenStreetMap, Wikipedia, Wikidata and Tavily. A vLLM Endpoint serves live stories; a GPU batch Job pre-bakes walking tours. — _by Radion Bikmukhamedov_ · [💻 code](https://github.com/RadionBik/serverless-city-guide) · [📝 post](https://www.linkedin.com/pulse/every-place-has-story-building-grounded-city-guide-bikmukhamedov-gbole/)
+
 ---
 
 ## Repository structure
