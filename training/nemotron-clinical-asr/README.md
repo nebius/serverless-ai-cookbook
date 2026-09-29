@@ -26,19 +26,20 @@ the recipe does not invent labels. Use only data you are authorized to process.
    Supply complete, labelled **0.5–30 second, mono 16 kHz PCM16 WAV** segments.
    Split whole conversations between training and validation; keep your final
    test set separate. No forced alignment, dataset download or audio-only magic.
-2. [![Create Job](../../templates/assets/create-job.svg)](https://console.nebius.com/serverless/job/create?platform=gpu-h100-sxm&preset=1gpu-16vcpu-200gb&preemptible=false&volumeMountPath=%2Fdata&volumeSize=100)
-   Select your project, attach the bucket read/write at `/data`, choose the
-   recipe image, and create. Start with one H100/H200, 16 vCPU, 200 GB RAM,
+2. [![Create Job](../../templates/assets/create-job.svg)](https://console.nebius.com/serverless/job/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fnemotron-speech-train%40sha256%3A1a5756455cb3f6a763887511df205648cf1c53afbfc694d0ae6c0f605cb85f67&platform=gpu-h100-sxm&preset=1gpu-16vcpu-200gb&preemptible=false&command=python+%2Fopt%2Frecipe%2Ftrain.py&volumeMountPath=%2Fdata&volumeSize=100)
+   The button prefills the public image pinned by digest and its command.
+   Select your project, attach the bucket read/write at `/data`, and review
+   the form before creating. Start with one H100/H200, 16 vCPU, 200 GB RAM,
    100 GiB container disk and 8 GiB shared memory. The default is 500 steps;
    override the command with `python /opt/recipe/train.py --steps 1000` if needed.
 3. **Get the result:** your bucket contains `runs/<unique-run-id>/model.nemo`,
    `model.sha256`, `metrics/`, and a final `result.json`. Only a checkpoint with
-   finite validation WER is exported. Use that path and SHA in
+   finite validation WER is exported. Use that output folder in
    [recipe 2: deploy stock or fine-tuned speech](../../templates/endpoint-nemotron-speech/README.md).
 
-**Image publication pending:** this source revision has not yet published its
-new recipe image; the button opens the form but deliberately does not name an
-unavailable image. Do not launch until the pinned image is added below.
+**Validation scope:** CPU tests and imports passed for these recipe images.
+No new GPU training or endpoint validation was run; validate your own data and
+deployment before relying on results.
 
 Validation WER selects an export; it is **not clinical validation** or proof that
 your fine-tune improves every use case. Review held-out results before use.

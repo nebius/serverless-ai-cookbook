@@ -23,8 +23,19 @@ platform grant, private checkpoint or separate gateway is required.
    python /opt/recipe/serve.py --checkpoint /data/runs/YOUR_RUN
    ```
 
-2. [![Create Endpoint](../assets/create-endpoint.svg)](https://console.nebius.com/serverless/endpoint/create?platform=gpu-h100-sxm&preset=1gpu-16vcpu-200gb&preemptible=false&volumeMountPath=%2Fdata&volumeSize=100)
-   Choose your project and recipe image, port **8000**, token authentication,
+   The endpoint reads and verifies the sibling `model.sha256` automatically;
+   you do not copy a checksum into the command. An invalid/missing folder fails
+   startup and does not fall back to stock weights.
+
+2. **Stock weights:**
+   [![Create stock Endpoint](../assets/create-endpoint.svg)](https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fnemotron-speech-serve%40sha256%3A62f58367ce6247f4a9e6a2ee255cd607038796d73f5a2583e068f6bdf8498a32&platform=gpu-h100-sxm&preset=1gpu-16vcpu-200gb&preemptible=false&command=python+%2Fopt%2Frecipe%2Fserve.py&volumeMountPath=%2Fdata&volumeSize=100)
+
+   **Your fine-tune:** Replace `YOUR_RUN` in the form's command before creating
+   with the run ID from `runs/<unique-run-id>`, and attach its bucket read-only.
+   [![Create fine-tuned Endpoint](../assets/create-endpoint.svg)](https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00jz93pkqx2m4vqj4%2Fnemotron-speech-serve%40sha256%3A62f58367ce6247f4a9e6a2ee255cd607038796d73f5a2583e068f6bdf8498a32&platform=gpu-h100-sxm&preset=1gpu-16vcpu-200gb&preemptible=false&command=python+%2Fopt%2Frecipe%2Fserve.py+--checkpoint+%2Fdata%2Fruns%2FYOUR_RUN&volumeMountPath=%2Fdata&volumeSize=100)
+
+   Both buttons prefill the same public image pinned by digest. Review the form;
+   choose your project, port **8000**, token authentication,
    100 GiB disk and 8 GiB shared memory. Add secret environment variables:
    `ASR_API_KEYS` = `{"customer-one":"YOUR_RANDOM_32_OR_MORE_CHARACTER_KEY"}`
    and a **different** `ASR_ADMIN_KEY` for operator metrics/drain. Never put
@@ -42,9 +53,9 @@ This file API accepts a raw mono 16 kHz PCM16 WAV, maximum 5 minutes/16 MiB;
 it is **not** the OpenAI multipart API. The JSON result contains unmodified native
 `text`, segments and the loaded checkpoint SHA. `/v1/models` exposes that identity.
 
-**Image publication pending:** the new recipe image is not published yet. The
-button intentionally opens the form without an unavailable image reference;
-the final pinned image must be added before using this source as a launch recipe.
+**Validation scope:** CPU tests and imports passed for these recipe images.
+No new GPU training or endpoint validation was run; configured concurrency is
+not a measured capacity or production-readiness claim.
 
 ## Real-time streaming
 
