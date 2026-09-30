@@ -79,6 +79,8 @@ Lowest-friction first runs.
 
 Model training and fine-tuning workloads.
 
+- [`nemotron-clinical-asr`](./training/nemotron-clinical-asr/README.md) — your labelled audio bucket → one training Job → exported checkpoint
+
 - [`axolotl-finetuning`](./training/axolotl-finetuning/README.md) — get started fine-tuning with Axolotl
 - [`image-classifier-finetuning`](./training/image-classifier-finetuning/README.md) — fine-tune an image classifier on a HuggingFace dataset in a serverless GPU job
 - [`train-and-serve`](./training/train-and-serve/README.md) — fine-tune TinyLlama in a Job and serve it with a vLLM Endpoint
@@ -86,6 +88,8 @@ Model training and fine-tuning workloads.
 ### ⚡ Inference
 
 Endpoint serving and batch inference workloads.
+
+- [`endpoint-nemotron-speech`](./templates/endpoint-nemotron-speech/README.md) — deploy stock or your fine-tuned English speech model; file and real-time transcription
 
 - [`vllm-endpoint`](./inference/vllm-endpoint/README.md) — serve Qwen with an OpenAI-compatible vLLM endpoint
 - [`nim-endpoint`](./inference/nim-endpoint/README.md) — deploy an NVIDIA NIM as an endpoint, including the large-image Container Registry workaround
