@@ -110,6 +110,8 @@ Domain-specific simulation and analysis workloads.
 Robotics and physical-AI experiment loops.
 
 - [`lerobot-finetune-job`](./robotics/lerobot-finetune-job/README.md) — fine-tune a LeRobot ACT or Diffusion policy on a robotics dataset in a serverless GPU job
+- [`flux-action-so101-pick-orange-task-lora`](./robotics/flux-action-so101-pick-orange-task-lora/README.md) — train a task LoRA on BFL's prepared SO-101 policy and compare paired Isaac Sim rollouts
+- [`flux-action-new-embodiment-full-finetune`](./robotics/flux-action-new-embodiment-full-finetune/README.md) — full fine-tune FLUX 3 Action from the action-pretrained base for a new robot embodiment, using ALOHA as the example
 - [`smolva-ft-norma-core`](./robotics/smolva-ft-norma-core/README.md) — fine-tune SmolVLA for SO-101 with bundled trajectories
 
 ---
