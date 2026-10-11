@@ -1,7 +1,11 @@
-.venv
-.pytest_cache
-__pycache__
-*.pyc
-*.pyo
-.ruff_cache
 .git
+.playwright-cli
+.task-output
+coverage
+node_modules
+output
+tests
+*.log
+*.tar
+*.spdx.json
+*.sarif
