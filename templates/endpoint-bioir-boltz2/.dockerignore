@@ -1,0 +1,10 @@
+.git
+.gitignore
+README.md
+scripts
+tests
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+local-output/
