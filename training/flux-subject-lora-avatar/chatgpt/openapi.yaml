@@ -1,0 +1,97 @@
+# OpenAPI schema for a ChatGPT Custom GPT Action calling your endpoint.
+# Paste into: Create a GPT -> Configure -> Actions -> schema field.
+#
+# IMPORTANT: replace the server URL with your endpoint's CURRENT HTTPS URL:
+#   nebius ai endpoint get <endpoint-id> --format json \
+#     | jq -r '.status.public_endpoints[0]'
+# The hostname changes EVERY TIME the endpoint is stopped and started again;
+# re-paste it here (and save the GPT) after each restart.
+openapi: 3.1.0
+info:
+  title: Personal Avatar Image Endpoint
+  description: >-
+    Private FLUX.2 LoRA endpoint that generates photorealistic images of the
+    GPT owner's trained likeness.
+  version: "1.0"
+servers:
+  - url: https://<YOUR-ENDPOINT-HOSTNAME>
+paths:
+  /healthz:
+    get:
+      operationId: checkHealth
+      summary: Check whether the image endpoint is up and the model is loaded.
+      responses:
+        "200":
+          description: Health state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ready:
+                    type: boolean
+                  model:
+                    type: string
+  /generate:
+    post:
+      operationId: generateAvatarImage
+      summary: Generate a photorealistic image and return a temporary image URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: string
+                  description: >-
+                    Must start with "TOK4ME person, " (the trained trigger
+                    token) followed by scene/style only - never describe the
+                    face.
+                width:
+                  type: integer
+                  default: 1024
+                  description: Multiple of 64, 256-1536.
+                height:
+                  type: integer
+                  default: 1024
+                  description: Multiple of 64, 256-1536.
+                steps:
+                  type: integer
+                  default: 28
+                guidance_scale:
+                  type: number
+                  default: 4.0
+                seed:
+                  type: integer
+                  description: Optional. Same seed + prompt reproduces the image.
+                response_format:
+                  type: string
+                  enum: [url]
+                  default: url
+                  description: >-
+                    Always "url". ChatGPT truncates Action responses at about
+                    100 KB, so an inline base64 PNG (megabytes) can never
+                    arrive; the endpoint instead uploads the PNG to Object
+                    Storage and returns a short-lived presigned URL.
+      responses:
+        "200":
+          description: Generated image
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  image_url:
+                    type: string
+                    description: Presigned HTTPS URL of the PNG (expires ~1 hour).
+                  seed:
+                    type: integer
+                  expires_in_seconds:
+                    type: integer
+        "401":
+          description: Missing or invalid Bearer token.
+        "503":
+          description: Model still loading (or auth not configured).
