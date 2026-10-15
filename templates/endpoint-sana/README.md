@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fsana-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fsana-serve%3Angn958&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -118,7 +118,7 @@ creation and cannot be recovered later (recreate the endpoint to rotate it) — 
 
 ```bash
 nebius ai endpoint create \
-  --image cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/sana-serve:d315ae1 \
+  --image cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/sana-serve:ngn958 \
   --public \
   --auth token \
   --platform gpu-l40s-a \
@@ -140,4 +140,4 @@ nebius ai endpoint create \
 - **Very slow first pull** — add optional env `HF_TOKEN`; prefer 500 Gi disk for Hub throughput.
 - **`no CUDA device`** — deployed on a CPU platform/preset.
 - **Black or empty images** — keep text encoder / VAE in bf16; transformer stays fp16.
-- **Wrong image or port** — `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/sana-serve:d315ae1` on container port `8000` (`gpu-l40s-a` / `1gpu-8vcpu-32gb`, preemptible).
+- **Wrong image or port** — `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/sana-serve:ngn958` on container port `8000` (`gpu-l40s-a` / `1gpu-8vcpu-32gb`, preemptible).

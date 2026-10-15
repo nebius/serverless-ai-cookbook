@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fchatterbox-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fchatterbox-serve%3Angn958&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -175,7 +175,7 @@ creation and cannot be recovered later (recreate the endpoint to rotate it) — 
 
 ```bash
 nebius ai endpoint create \
-  --image cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/chatterbox-serve:d315ae1 \
+  --image cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/chatterbox-serve:ngn958 \
   --public \
   --auth token \
   --platform gpu-h100-sxm \
@@ -201,4 +201,4 @@ nebius ai endpoint create \
 | `speed is not supported`                                           | OpenAI `speed` is accepted in the schema but Chatterbox has no speed knob in v1                                                                      |
 | `502 failed to connect to local service`                           | Tunnel up but port 8000 not bound yet — poll `/v1/models`; RUNNING ≠ API ready                                                                       |
 | Slow first pull                                                    | Add optional `HF_TOKEN`; disk throughput scales with size — template asks for 500 Gi                                                                 |
-| Wrong image or port                                                | `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/chatterbox-serve:d315ae1` on container port `8000` (`gpu-h100-sxm` / `1gpu-16vcpu-200gb`, preemptible) |
+| Wrong image or port                                                | `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/chatterbox-serve:ngn958` on container port `8000` (`gpu-h100-sxm` / `1gpu-16vcpu-200gb`, preemptible) |

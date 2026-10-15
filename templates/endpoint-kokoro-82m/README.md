@@ -2,7 +2,7 @@
 
 <!-- factory:deploy -->
 
-<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fkokoro-serve%3Ad315ae1&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
+<a href="https://console.nebius.com/serverless/endpoint/create?image=cr.eu-north1.nebius.cloud%2Fe00gw2b7v3pxetvpy7%2Fkokoro-serve%3Angn958&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-8vcpu-32gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="../assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a>
 
 <!-- /factory:deploy -->
 
@@ -119,7 +119,7 @@ creation and cannot be recovered later (recreate the endpoint to rotate it) — 
 
 ```bash
 nebius ai endpoint create \
-  --image cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/kokoro-serve:d315ae1 \
+  --image cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/kokoro-serve:ngn958 \
   --public \
   --auth token \
   --platform gpu-l40s-a \
@@ -141,4 +141,4 @@ nebius ai endpoint create \
 - **`espeak-ng not found`** — image build skipped `espeak-ng` (required for English G2P fallback).
 - **Empty or failed MP3** — `ffmpeg` missing or synthesis error; check endpoint logs.
 - **Wrong voice locale** — voice prefix must match G2P locale (e.g. `bf_*` needs British English).
-- **Wrong image or port** — `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/kokoro-serve:d315ae1` on port `8000` (`gpu-l40s-a` / `1gpu-8vcpu-32gb`).
+- **Wrong image or port** — `cr.eu-north1.nebius.cloud/e00gw2b7v3pxetvpy7/kokoro-serve:ngn958` on port `8000` (`gpu-l40s-a` / `1gpu-8vcpu-32gb`).
