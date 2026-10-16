@@ -109,6 +109,7 @@ Domain-specific simulation and analysis workloads.
 
 Robotics and physical-AI experiment loops.
 
+- [`isaac-pick-place-sweep`](./robotics/isaac-pick-place-sweep/README.md) — run a Franka pick-and-place parameter sweep as parallel Isaac Sim jobs with S3 results
 - [`lerobot-finetune-job`](./robotics/lerobot-finetune-job/README.md) — fine-tune a LeRobot ACT or Diffusion policy on a robotics dataset in a serverless GPU job
 - [`smolva-ft-norma-core`](./robotics/smolva-ft-norma-core/README.md) — fine-tune SmolVLA for SO-101 with bundled trajectories
 
