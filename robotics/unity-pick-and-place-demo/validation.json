@@ -1,0 +1,714 @@
+{
+  "verified": true,
+  "status": "verified_nebius_digest_pinned_pick_place",
+  "prior_verified_ros_policy_record": "historical_records.validation-ros-1fps.json",
+  "attempts": [
+    {
+      "job_id": "aijob-e00cpn4maamk3f2whc",
+      "run_id": "pick-camera-20261009T185800Z",
+      "state": "FAILED",
+      "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009pick1",
+      "digest": "sha256:947c2b81833328d9e3a3579f15d1f0dd4f000162b32d034f31be9506b218c0aa",
+      "reason": "Red cube camera localization was vertically mirrored; removed extra PNG row flip. Logs downloaded, VM removed."
+    },
+    {
+      "job_id": "aijob-e00rx42vvdz4r3dejd",
+      "run_id": "pick-camera-20261009T190300Z",
+      "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009pick2",
+      "digest": "sha256:024d23ea7a18f9ef5f2fd48280f4a5e3117331610ee0a20d4f2b5751bf35c84e",
+      "state": "COMPLETED",
+      "started_at": "2026-10-09T19:06:19.546026657Z",
+      "finished_at": "2026-10-09T19:12:08.785099796Z",
+      "result": {
+        "success": true,
+        "requested_seconds": 180.0,
+        "model_sha256": "e2d30b0c3477023f1a4728b5e4485583c2d9d2ed01f98f594b8a003965f7351a",
+        "policy_observations": 1787,
+        "applied_commands": 1785,
+        "ros_message_counts": {
+          "/camera/image/compressed": 902,
+          "/cube_ground_truth": 1787,
+          "/goal": 1786,
+          "/gripper_command": 1787,
+          "/gripper_contacts": 1787,
+          "/joint_commands": 1787,
+          "/joint_states": 1787,
+          "/task_phase": 1787,
+          "/tool_pose": 1787,
+          "/tool_position": 1787
+        },
+        "cube_lift_height_m": 0.26590627431869507,
+        "cube_displacement_m": 0.5371092516775395,
+        "placement_error_m": 0.0016707960495601663,
+        "camera_localization_error_m": 0.0026717344625850326,
+        "inference_latency_p50_ms": 0.5442099999868333,
+        "task": "pick_place",
+        "duration_seconds": 179.94005465507507,
+        "joint_samples": 1786,
+        "max_joint_range_deg": 144.593913839131,
+        "grip_range": 0.22339064182597212,
+        "image_count": 2550
+      },
+      "checks": [
+        "Downloaded all artifacts",
+        "check.py passed including PNG/CSV/video/task/ROS counts",
+        "ONNX replay and measured scene kinematics passed",
+        "Inspected lifted, carried and placed cube video frames"
+      ],
+      "vm_removed": true,
+      "artifacts": {
+        "prefix": "s3://simfarm-artifacts/unity-articulations/pick-camera-20261009T190300Z/",
+        "files": 2571,
+        "preview_sha256": "90a66c57863cb651724ab7e5242efb5dc1b3d1f31236e2ba1f18695d3281f748"
+      }
+    },
+    {
+      "job_id": "aijob-e00p0mps18n7q7z0wd",
+      "run_id": "pick-gpu-20261009T191500Z",
+      "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009pickgpu",
+      "digest": "sha256:205cd81680b4c11fa1d7e1f2a4c2f689dd7e0a6a030d56c864446353bda24151",
+      "state": "COMPLETED",
+      "started_at": "2026-10-09T19:18:57.683406619Z",
+      "finished_at": "2026-10-09T19:20:52.664692732Z",
+      "vm_removed": true,
+      "result": {
+        "success": true,
+        "requested_seconds": 180.0,
+        "renderer": {
+          "device": "NVIDIA L40S/PCIe/SSE2",
+          "vendor": "NVIDIA Corporation",
+          "api": "OpenGLCore"
+        },
+        "model_sha256": "e2d30b0c3477023f1a4728b5e4485583c2d9d2ed01f98f594b8a003965f7351a",
+        "policy_observations": 529,
+        "applied_commands": 527,
+        "ros_message_counts": {
+          "/camera/image/compressed": 266,
+          "/cube_ground_truth": 529,
+          "/goal": 528,
+          "/gripper_command": 529,
+          "/gripper_contacts": 529,
+          "/joint_commands": 529,
+          "/joint_states": 529,
+          "/task_phase": 529,
+          "/tool_pose": 529,
+          "/tool_position": 529
+        },
+        "cube_lift_height_m": 0.26414793729782104,
+        "cube_displacement_m": 0.5326675054267369,
+        "placement_error_m": 0.005524687054886634,
+        "camera_localization_error_m": 0.0010464371262307777,
+        "inference_latency_p50_ms": 0.5266830000039135,
+        "task": "pick_place",
+        "duration_seconds": 52.64207100868225,
+        "joint_samples": 528,
+        "max_joint_range_deg": 144.52009312083828,
+        "grip_range": 0.21222342488727008,
+        "image_count": 791
+      },
+      "checks": [
+        "All 816 files downloaded",
+        "check.py passed: PNGs, CSV, video timing, ROS counts, applied commands, lift/contact/carry/release/placement",
+        "Every ROS message deserialized with the image ROS installation",
+        "All recorded learned actions reproduced exactly from supplied ONNX",
+        "Measured Unity kinematics agree with exported grasp-centre chain",
+        "Video frames inspected during lift, carry and after release",
+        "Actual Unity renderer NVIDIA L40S / OpenGLCore",
+        "No active validation VM remains"
+      ],
+      "artifacts": {
+        "prefix": "s3://simfarm-artifacts/unity-articulations/pick-gpu-20261009T191500Z/",
+        "downloaded_files": 816,
+        "preview_sha256": "9a5ee539939e61c65de741987563b28414a94d06c8e15eaed6689d2323ca33f3",
+        "rosbag_sha256": "0bd277814a8228b38df12aa9c98cbad50c23ac6490f98290d25f0203ac1537f4"
+      },
+      "max_fk_error_m": 1.038562488519877e-06,
+      "max_action_replay_error": 0,
+      "video": {
+        "fps": 15,
+        "duration_seconds": 52.733333,
+        "frames": 791,
+        "max_capture_gap_seconds": 0.09350061416625977,
+        "median_capture_gap_seconds": 0.06666374206542969
+      }
+    },
+    {
+      "job_id": "aijob-e00xn56q80jpm8q3by",
+      "run_id": "pick-simple-20261009T202200Z",
+      "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009simple",
+      "digest": "sha256:46e898096b1a7bdfac0cbf2a846ce19a2b7496bd471d5c0baac706a53767ff28",
+      "state": "COMPLETED",
+      "started_at": "2026-10-09T20:22:41.183822425Z",
+      "finished_at": "2026-10-09T20:24:38.804228072Z",
+      "vm_removed": true,
+      "compute_instance_id": "computeinstance-e00wyt2180zs8bxctj",
+      "result": {
+        "success": true,
+        "requested_seconds": 180.0,
+        "renderer": {
+          "device": "NVIDIA L40S/PCIe/SSE2",
+          "vendor": "NVIDIA Corporation",
+          "api": "OpenGLCore"
+        },
+        "model_sha256": "e2d30b0c3477023f1a4728b5e4485583c2d9d2ed01f98f594b8a003965f7351a",
+        "policy_observations": 537,
+        "applied_commands": 535,
+        "ros_message_counts": {
+          "/camera/image/compressed": 270,
+          "/cube_ground_truth": 537,
+          "/goal": 536,
+          "/gripper_command": 537,
+          "/gripper_contacts": 537,
+          "/joint_commands": 537,
+          "/joint_states": 537,
+          "/task_phase": 537,
+          "/tool_pose": 537,
+          "/tool_position": 537
+        },
+        "cube_lift_height_m": 0.2640611529350281,
+        "cube_displacement_m": 0.5392233405130669,
+        "placement_error_m": 0.003796035798771651,
+        "camera_localization_error_m": 0.0010464371262307777,
+        "inference_latency_p50_ms": 0.5158019999953467,
+        "task": "pick_place",
+        "duration_seconds": 53.51450335979462,
+        "joint_samples": 536,
+        "max_joint_range_deg": 144.5682459713334,
+        "grip_range": 0.2196552323148353,
+        "image_count": 804
+      },
+      "checks": [
+        "All 829 files downloaded and checked with the simplified pick-and-place checker",
+        "Every ROS message deserialized inside the fresh image",
+        "Recorded ONNX actions and scene kinematics replay checks passed",
+        "Inspected carried and placed cube images",
+        "Actual Unity renderer NVIDIA L40S / OpenGLCore",
+        "Completed GPU instance confirmed NotFound",
+        "Local startup, permissions, timeout, child cleanup, upload/receipt failure and malformed-artifact regression checks passed",
+        "Tutorial dry-run validation passed; local Markdown links and anchors resolve"
+      ],
+      "artifacts": {
+        "prefix": "s3://simfarm-artifacts/unity-articulations/pick-simple-20261009T202200Z/",
+        "downloaded_files": 829,
+        "preview_sha256": "9613b9682e857d745fa7f706da7662d10728c8089b325f9adc5dccd326b48e7d",
+        "rosbag_sha256": "8fb5a42960944e422db9d35c3d82904a0efb26cb8befe834ac2750e14e46cb4b"
+      },
+      "video": {
+        "fps": 15,
+        "duration_seconds": 53.533333,
+        "frames": 803,
+        "captured_images": 804,
+        "max_capture_gap_seconds": 0.09713530540466309,
+        "median_capture_gap_seconds": 0.06666851043701172
+      }
+    },
+    {
+      "job_id": "aijob-e00ypv9z5fr79zzr86",
+      "run_id": "pick-organized-20261009T205642Z",
+      "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009org",
+      "digest": "sha256:03f3878e078c1c13083356b31f9b96f2692a01c2a779edd132c61b8ebcbeaabf",
+      "state": "COMPLETED",
+      "started_at": "2026-10-09T21:00:15.407162705Z",
+      "finished_at": "2026-10-09T21:02:12.941014544Z",
+      "vm_removed": true,
+      "compute_instance_id": "computeinstance-e00hkhfrmmp09a2785",
+      "result": {
+        "success": true,
+        "requested_seconds": 180.0,
+        "renderer": {
+          "device": "NVIDIA L40S/PCIe/SSE2",
+          "vendor": "NVIDIA Corporation",
+          "api": "OpenGLCore"
+        },
+        "model_sha256": "e2d30b0c3477023f1a4728b5e4485583c2d9d2ed01f98f594b8a003965f7351a",
+        "policy_observations": 535,
+        "applied_commands": 533,
+        "ros_message_counts": {
+          "/camera/image/compressed": 269,
+          "/cube_ground_truth": 535,
+          "/goal": 534,
+          "/gripper_command": 535,
+          "/gripper_contacts": 535,
+          "/joint_commands": 535,
+          "/joint_states": 535,
+          "/task_phase": 535,
+          "/tool_pose": 535,
+          "/tool_position": 535
+        },
+        "cube_lift_height_m": 0.2634474039077759,
+        "cube_displacement_m": 0.5393386523417119,
+        "placement_error_m": 0.007124914913050332,
+        "camera_localization_error_m": 0.0010464371262307777,
+        "inference_latency_p50_ms": 0.5207890000065163,
+        "task": "pick_place",
+        "duration_seconds": 53.313833475112915,
+        "joint_samples": 534,
+        "max_joint_range_deg": 144.55324687574097,
+        "grip_range": 0.22007806766487192,
+        "image_count": 801
+      },
+      "checks": [
+        "Rebuilt and pushed container from the reorganized cookbook",
+        "Actual job.sh dry-run and async submission passed",
+        "All downloaded artifacts passed check.py, including PNG decoding, video timing, CSV, task contacts/lift/carry/release/placement and applied-command consistency",
+        "Every ROS recording message deserialized inside the published image",
+        "Recorded ONNX action replay and measured scene kinematics passed",
+        "Inspected video camera frames during carry and after placement",
+        "Actual Unity renderer NVIDIA L40S / OpenGLCore",
+        "Automatic task shutdown and COMPLETED job state",
+        "GPU instance confirmed NotFound after automatic deletion"
+      ],
+      "artifacts": {
+        "prefix": "s3://simfarm-artifacts/unity-articulations/pick-organized-20261009T205642Z/",
+        "downloaded_files": 826,
+        "preview_sha256": "600bb97b147185047e8e3b734c1c7387ea3aa2fee0b00084e58b5106f4416e4d",
+        "rosbag_sha256": "6bdd1db02a027dfd3d4dd655a5c17795a040aeeaf3a7e2eff7b9dd8dc6c49266"
+      },
+      "video": {
+        "fps": 15,
+        "duration_seconds": 53.333333,
+        "frames": 800,
+        "captured_images": 801,
+        "max_capture_gap_seconds": 0.09686160087585449,
+        "median_capture_gap_seconds": 0.06667041778564453
+      },
+      "unity_build": {
+        "editor_version": "6000.6.5f1",
+        "source_revision": "111705a8a4417fb7fe1816f46daa67ef01342464",
+        "ros": 2
+      }
+    },
+    {
+      "job_id": "aijob-e00qcj1my269jtchjv",
+      "run_id": "pick-pinned-20261016T164545Z",
+      "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1016pin2",
+      "digest": "sha256:01f748fd6ede7f06bf88a5a04516bd6cee86666773213ed7db136e348e9abac3",
+      "base_image": "ros:humble-ros-base-jammy@sha256:860e53793ccf575e5369b5e9a19939de2bfcfb46a299954d06f54f2af54fed19",
+      "tested_source_commit": "10a2f91924ca634eeb02b6300a43a9025681c0e6",
+      "state": "COMPLETED",
+      "started_at": "2026-10-16T16:48:57.742485483Z",
+      "finished_at": "2026-10-16T16:50:55.048753552Z",
+      "vm_removed": true,
+      "compute_instance_id": "computeinstance-e00mn27pdpg4jpmj98",
+      "result": {
+        "success": true,
+        "requested_seconds": 180.0,
+        "renderer": {
+          "device": "NVIDIA L40S/PCIe/SSE2",
+          "vendor": "NVIDIA Corporation",
+          "api": "OpenGLCore"
+        },
+        "model_sha256": "e2d30b0c3477023f1a4728b5e4485583c2d9d2ed01f98f594b8a003965f7351a",
+        "policy_observations": 537,
+        "applied_commands": 535,
+        "ros_message_counts": {
+          "/camera/image/compressed": 270,
+          "/cube_ground_truth": 537,
+          "/goal": 536,
+          "/gripper_command": 537,
+          "/gripper_contacts": 537,
+          "/joint_commands": 537,
+          "/joint_states": 537,
+          "/task_phase": 537,
+          "/tool_pose": 537,
+          "/tool_position": 537
+        },
+        "cube_lift_height_m": 0.2645558714866638,
+        "cube_displacement_m": 0.5399180972844583,
+        "placement_error_m": 0.010239540307807138,
+        "camera_localization_error_m": 0.0010464371262307777,
+        "inference_latency_p50_ms": 0.5380819999913911,
+        "task": "pick_place",
+        "duration_seconds": 53.512611865997314,
+        "joint_samples": 536,
+        "max_joint_range_deg": 144.52535238284503,
+        "grip_range": 0.21012998278820305,
+        "image_count": 804
+      },
+      "checks": [
+        "Built the exact PR Dockerfile with the pinned base; published image and submitted via job.sh",
+        "All 829 downloaded artifacts passed check.py, including PNG decoding, full video decode/timing, CSV values, task contacts/lift/carry/release/placement and applied-command consistency",
+        "Every ROS recording message deserialized inside the published image",
+        "Recorded ONNX action replay, camera localization and measured scene kinematics checks passed inside the published image",
+        "Inspected carry and placed-cube video frames",
+        "Actual Unity renderer NVIDIA L40S / OpenGLCore",
+        "Automatic task shutdown and COMPLETED job state",
+        "GPU instance confirmed NotFound after automatic deletion"
+      ],
+      "artifacts": {
+        "prefix": "s3://simfarm-artifacts/unity-articulations/pick-pinned-20261016T164545Z/",
+        "downloaded_files": 829,
+        "preview_sha256": "4bac1897c3cb491674cca7718ebe7efc7da98ea43f02253c3664fde143840abf",
+        "rosbag_sha256": "e1574be33379420171d741c6a3b5c9784d6398b4138aa0dd1763f4a03a11fa4b"
+      },
+      "video": {
+        "fps": 15,
+        "duration_seconds": 53.533333,
+        "frames": 803,
+        "captured_images": 804,
+        "max_capture_gap_seconds": 0.09641170501708984,
+        "median_capture_gap_seconds": 0.06666946411132812
+      },
+      "unity_build": {
+        "editor_version": "6000.6.5f1",
+        "source_revision": "111705a8a4417fb7fe1816f46daa67ef01342464",
+        "ros": 2
+      },
+      "build_notes": [
+        "Used the existing Unity Linux player; no Editor rebuild",
+        "Built with DOCKER_BUILDKIT=0 to reuse the previously verified dependency layers; pinned Dockerfile unchanged",
+        "The first image, ur3:1016pin1, rebuilt dependency layers but could not be published: Docker upload stalled and a chunked layer finalization returned HTTP 500. No cloud run was submitted for that image",
+        "This run validates the pinned-base configuration with cached packages, not the freshly reinstalled dependency versions from the failed publication attempt"
+      ]
+    }
+  ],
+  "graphics_probes": [
+    {
+      "job_id": "aijob-e00mkp75brbm74eqwx",
+      "state": "COMPLETED",
+      "gpu": "NVIDIA L40S",
+      "driver": "580.173.02",
+      "result": "NVIDIA graphics libraries and Vulkan available with NVIDIA_DRIVER_CAPABILITIES=all; Xvfb still renders on Mesa CPU",
+      "artifacts": "results/gpu-probe-20261009/gpu-probe.json",
+      "vm_removed": true
+    },
+    {
+      "job_id": "aijob-e00kn0mg7k63j5ckxn",
+      "result": "Xorg rejected UseDisplayDevice=None on this virtual-display driver; removed the setting",
+      "state": "COMPLETED",
+      "vm_removed": true
+    },
+    {
+      "job_id": "aijob-e00fh4bmw8rhsdphbt",
+      "state": "COMPLETED",
+      "result": "Native OpenGL renderer NVIDIA L40S/PCIe/SSE2 via Xorg, driver 580.173.02",
+      "artifacts": "results/xorg2-probe-20261009/gpu-probe.json",
+      "vm_removed": true
+    }
+  ],
+  "local_checks": [
+    "test_task.py: rejects absent contact/lift/placement and CPU renderer",
+    "test_policy.py: camera projection, IK, ONNX checksum and bounded closed-loop servo",
+    "test_ros.py: real packaged ROS observation, joint order and watchdog contracts",
+    "GPU-unavailable startup: exits 1 with preserved Xorg logs before ROS/Unity start",
+    "Customer DemoBuild.ExportKinematics exactly matches shipped grasp-centre chain",
+    "Docker /app/run.py SHA256 matches checkout",
+    "test_demo.py: artifact/video gates, startup/permission failures, timeout and process-group cleanup passed on final source"
+  ],
+  "prior_smooth_video_attempt": {
+    "job_id": "aijob-e00smx21qwrzkm771n",
+    "run_id": "ros-smooth-20261009T183037Z",
+    "state": "FAILED",
+    "reason": "15 FPS capture succeeded with 901 frames, but FFmpeg 4.4 rejected concat option directives. Encoder fixed, preview recovered locally; provider failure remains a failure.",
+    "vm_removed": true
+  },
+  "date": "2026-10-16",
+  "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1016pin2",
+  "image_digest": "sha256:01f748fd6ede7f06bf88a5a04516bd6cee86666773213ed7db136e348e9abac3",
+  "limits": [
+    "One calibrated red cube and tray; no randomized-scene benchmark or physical hardware validation",
+    "Color segmentation and geometric IK guide a learned joint servo; gripper task sequence is scripted",
+    "Latency includes planning and ROS publication, not isolated ONNX inference",
+    "ONNX inference uses CPU; camera rendering uses the allocated NVIDIA L40S"
+  ],
+  "post_validation_fixes": {
+    "date": "2026-10-09",
+    "changes": [
+      "Publish result.json last after destination verification; record upload/receipt failures and retain the original process exit status",
+      "Reject invalid/nonfinite CSV fields and non-increasing timestamps for object trajectories and applied commands",
+      "Accept NVIDIA renderer receipts from GPUs other than L40S; keep the L40S cloud preset"
+    ],
+    "checks": [
+      "test_demo.py: artifact publication interruption, destination verification failure, receipt write failure, original exit status preservation, startup/timeout/permission/process cleanup",
+      "test_task.py: numeric and timestamp corruption, RTX acceptance, CPU rejection, physical-task gates",
+      "check.py: all downloaded final GPU run artifacts pass the stricter checks",
+      "test_policy.py: recorded ONNX actions and scene kinematics still pass"
+    ],
+    "fresh_cloud_run": true,
+    "published_image_contains_fixes": true,
+    "verified_job_id": "aijob-e00xn56q80jpm8q3by"
+  },
+  "simplification": {
+    "main_readme_lines": 131,
+    "removed": "Legacy reaching model, training script, kinematics, checker branches and fixtures",
+    "guides": [
+      "docs/build-unity.md",
+      "docs/advanced.md"
+    ],
+    "verified_job_id": "aijob-e00xn56q80jpm8q3by",
+    "bundled_media_run_id": "pick-gpu-20261009T191500Z"
+  },
+  "historical_records": {
+    "validation-ros-1fps.json": {
+      "verified": true,
+      "status": "verified_native_ros_policy_loop_and_zero_command_comparison",
+      "baseline_record": "validation-scripted.json",
+      "attempts": [
+        {
+          "job_id": "aijob-e00xk1fd79fpz5rmem",
+          "provider_state": "COMPLETED",
+          "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009130000",
+          "artifact_uri": "s3://simfarm-artifacts/unity-articulations/ros-20261009T180500Z/",
+          "goals_reached": 2,
+          "issue": "First observation before scene physics settled inflated initial distance and displacement. Later FK error median 0.70 micrometres. Corrected before final validation.",
+          "compute_removed": true
+        },
+        {
+          "job_id": "aijob-e00dwztg2mx7axnbtp",
+          "mode": "learned",
+          "provider_state": "COMPLETED",
+          "artifact_uri": "s3://simfarm-artifacts/unity-articulations/ros-learned-20261009T180908Z/",
+          "issue": "Measured-position drive targets accumulated gravity drift; corrected to persistent targets. Observation schedule changed to avoid timer drift.",
+          "compute_removed": true
+        },
+        {
+          "job_id": "aijob-e00vmyxxd80840qd71",
+          "mode": "zero",
+          "provider_state": "COMPLETED",
+          "artifact_uri": "s3://simfarm-artifacts/unity-articulations/ros-zero-20261009T180914Z/",
+          "issue": "Measured-position drive targets accumulated gravity drift; corrected to persistent targets. Observation schedule changed to avoid timer drift.",
+          "compute_removed": true
+        }
+      ],
+      "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009131800",
+      "image_digest": "sha256:89f0256392b62f3546a9573b56b529d450ef874df854bfd47fc86e8a7ba0657c",
+      "validated_at_utc": "2026-10-09T18:24:56.147502+00:00",
+      "source_revision": "111705a8a4417fb7fe1816f46daa67ef01342464",
+      "unity_editor": "6000.6.5f1",
+      "ros_distro": "humble",
+      "connector_revision": "c27f00c6cf750d2d0564349b3039d19aa3925e7c",
+      "endpoint_revision": "54c1a64b6d5ef6ffa0a0431570bb74329b79b15b",
+      "model_sha256": "4250cc9f01ac6eeb2642d861b9b73dba560c8a7006360d4b94dceed6448be010",
+      "compute": {
+        "platform": "gpu-l40s-a",
+        "preset": "1gpu-8vcpu-32gb",
+        "renderer": "Mesa llvmpipe software OpenGL"
+      },
+      "runs": [
+        {
+          "mode": "learned",
+          "run_id": "ros-hold-learned-20261009T181740Z",
+          "job_id": "aijob-e00xqfa2y69mrrv81b",
+          "provider_state": "COMPLETED",
+          "started_at": "2026-10-09T18:20:42.809697040Z",
+          "finished_at": "2026-10-09T18:22:15.254022561Z",
+          "compute_removed": true,
+          "artifact_uri": "s3://simfarm-artifacts/unity-articulations/ros-hold-learned-20261009T181740Z/",
+          "downloaded_file_count": 76,
+          "artifact_check": {
+            "success": true,
+            "requested_seconds": 60.0,
+            "model_sha256": "4250cc9f01ac6eeb2642d861b9b73dba560c8a7006360d4b94dceed6448be010",
+            "policy_observations": 592,
+            "applied_commands": 590,
+            "ros_message_counts": {
+              "/goal": 592,
+              "/joint_commands": 592,
+              "/joint_states": 592,
+              "/tool_position": 592
+            },
+            "goal_final_distances_m": [
+              0.013542446307837963,
+              0.016866564750671387,
+              0.01663815975189209
+            ],
+            "goals_reached": 3,
+            "tool_displacement_m": 0.333738488698338,
+            "inference_latency_p50_ms": 0.23251899999365833,
+            "policy_mode": "learned",
+            "duration_seconds": 58.93172907829285,
+            "joint_samples": 591,
+            "max_joint_range_deg": 79.0287216028293,
+            "grip_range": 0.017232092912308872,
+            "image_count": 60
+          },
+          "all_ros_messages_deserialized": true,
+          "max_measured_fk_error_m": 9.467657829706202e-07,
+          "onnx_replayed_prediction_max_error": 0.0,
+          "artifact_sha256": {
+            "rosbag.log": "3d6c03b81109d2fcbbf84327e473f1e2fe709246c64d4410abd25c3af1856b31",
+            "result.json": "da48483b3efdda8f86dabc3d1292836d71dd2556f2acc228f449cae1ddde688e",
+            "policy.jsonl": "fe58cdd053759f06e3dc197f9eb71b4326db2733ebf694db9def3802fd94063c",
+            "targets.json": "c01fb509c7ce078c9874ad1caee193c4cdbae91ce4d127446f7b98d20af6bae8",
+            "ffmpeg.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "policy-metadata.json": "b7843a9516611946478fe4a26c5bf55603e1de0c24035fa4c75c1c21398a697c",
+            "endpoint.log": "d5e3e5df896109b4f07013a3e00d5cf705de2b36ef79153b601d86fc6f1c6724",
+            "joints.csv": "a202496ac9560037b179e2462ebf8995ba015bc34d6c790b66baa84f9ae24d7b",
+            "preview.mp4": "2ddf2a499252361ed0c9705a0e41bf54c1d4618beb121e1a440923412acd6600",
+            "unity.log": "03d1ff8859a4b923cc4d930eb021dda641c165ef5e2242a21dcca7863f2f73bf",
+            "applied.csv": "413dc0ee840fcb711fffe3687c97bb0e048b318527e5343988fbcbb2fc4e0574",
+            "simulation.json": "17c258d2fc7ec757f69d30d3efcb0bd9ebab1e7c934adb0e6522fa5c64517549",
+            "goals.csv": "d76ac9bee321347ba8174e790c0e0c3366e25aeb7c4c27f1a4e4d572a20b0ea1",
+            "policy.log": "74ca62dc09011c5eb167dfabd19da45751ff5bf309fb39ea5c1478de4c7a6775",
+            "rosbag/rosbag_0.db3": "31f148c1911fdc408dc86871897d4cc9b3d39b20c3b4fdd95a662981e1f6318b",
+            "rosbag/metadata.yaml": "710f561d00f1e1d7938cc03018daefd183186bb1d097bf9c8678f33b13b201ba"
+          }
+        },
+        {
+          "mode": "zero",
+          "run_id": "ros-hold-zero-20261009T181746Z",
+          "job_id": "aijob-e00nwttgggtkwysh8d",
+          "provider_state": "COMPLETED",
+          "started_at": "2026-10-09T18:20:53.972491426Z",
+          "finished_at": "2026-10-09T18:22:26.017001274Z",
+          "compute_removed": true,
+          "artifact_uri": "s3://simfarm-artifacts/unity-articulations/ros-hold-zero-20261009T181746Z/",
+          "downloaded_file_count": 76,
+          "artifact_check": {
+            "success": true,
+            "requested_seconds": 60.0,
+            "model_sha256": "4250cc9f01ac6eeb2642d861b9b73dba560c8a7006360d4b94dceed6448be010",
+            "policy_observations": 592,
+            "applied_commands": 590,
+            "ros_message_counts": {
+              "/goal": 592,
+              "/joint_commands": 592,
+              "/joint_states": 592,
+              "/tool_position": 592
+            },
+            "goal_final_distances_m": [
+              0.1741400957107544,
+              0.15243880450725555,
+              0.32930928468704224
+            ],
+            "goals_reached": 0,
+            "tool_displacement_m": 1.2379348637321647e-07,
+            "inference_latency_p50_ms": 0.22214849998647423,
+            "policy_mode": "zero",
+            "duration_seconds": 58.92978096008301,
+            "joint_samples": 591,
+            "max_joint_range_deg": 0.0,
+            "grip_range": 0.0,
+            "image_count": 60
+          },
+          "all_ros_messages_deserialized": true,
+          "max_measured_fk_error_m": 7.614319511020053e-07,
+          "onnx_replayed_prediction_max_error": null,
+          "artifact_sha256": {
+            "rosbag.log": "6c4f73d668aa19c6668cf7477e3187d920c65e48f17d1dd35fcdb1ee67bc8042",
+            "result.json": "624b0052d5ea6abc8b445e25e2268a4db9fda3394a8d8a16fc7bd74094699867",
+            "policy.jsonl": "f914209dc48c30cec57e88aaaf84cdefe1a5bb2e5fae77f2f3b2b08dbd736590",
+            "targets.json": "c01fb509c7ce078c9874ad1caee193c4cdbae91ce4d127446f7b98d20af6bae8",
+            "ffmpeg.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "policy-metadata.json": "b7843a9516611946478fe4a26c5bf55603e1de0c24035fa4c75c1c21398a697c",
+            "endpoint.log": "6b286628c17ffe1bde492977d88276c567b2e1be6a4f36299c21f3a0376b9b88",
+            "joints.csv": "388fb6848d47f09102d79a70a4dc23520bb9bb012711e0df358a763ae390bd54",
+            "preview.mp4": "7fb791794afbf37510a56670466f73e82104670c0cd2bdcd87cf093200fc612e",
+            "unity.log": "1497e6620c28efb61c061cf8b3d12674e8d6f593502d22f8bff9ec4ac552941f",
+            "applied.csv": "6903499ba99553f5cf7d0a1caf86d2ee260d54fb592102ac12fd44dd0d43ed1a",
+            "simulation.json": "35220d481f0efc9818bcfc72cff491a8a932e0b35b3fcc5cff47bde04c4d6fc8",
+            "goals.csv": "0643ae21bb0d64412461e3f7deb0afb36ff4efed31d651e042bd81606af4a965",
+            "policy.log": "a68876b5964de0ee7419872e4c269769f6ec6d191bd69f1a394823ab068ee835",
+            "rosbag/rosbag_0.db3": "52c352eb828b0771927a8f9ef1f81b77c984071ba39d846d811adeb527c40b43",
+            "rosbag/metadata.yaml": "bb281b4a2e07afbbea65a17783598d9c8ce2b8db4a361abe6bf03689f9b0177b"
+          }
+        }
+      ],
+      "inspected_frames": [
+        "frame_00000.png",
+        "frame_00030.png",
+        "frame_00059.png"
+      ],
+      "fresh_project_build_verified": true,
+      "fresh_project_kinematics_identical": true,
+      "test_checks": [
+        "test_demo.py",
+        "test_policy.py including sequential targets and native recorded inputs",
+        "test_ros.py including complete bag deserialization",
+        "DemoBuild.ValidateContract executed during builds"
+      ],
+      "failure_test": {
+        "job_id": "aijob-e00tgkc3fvqprwns0e",
+        "provider_state": "FAILED",
+        "expected_failure": true,
+        "fault": "Validation-only policy image stopped commands after 15 observations",
+        "unity_error": "ROS commands stale for two seconds",
+        "policy_error": "Unity observations stopped",
+        "exit_status": 1,
+        "compute_removed": true,
+        "artifact_uri": "s3://simfarm-artifacts/unity-articulations/ros-stale-20261009T180950Z/"
+      },
+      "limitations": [
+        "Three nearby Cartesian position targets, gripper mount tool point, no orientation or grasping policy",
+        "CPU software rendering and ONNX inference; allocated L40S unused"
+      ]
+    },
+    "validation-scripted.json": {
+      "verified": true,
+      "validated_at_utc": "2026-10-09T17:35:20.766285+00:00",
+      "source_revision": "111705a8a4417fb7fe1816f46daa67ef01342464",
+      "unity_editor": "6000.6.5f1",
+      "job_id": "aijob-e00s0ej2dp66evqptn",
+      "provider_state": "COMPLETED",
+      "started_at": "2026-10-09T17:32:01.695622538Z",
+      "finished_at": "2026-10-09T17:33:19.089270999Z",
+      "image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009172835",
+      "image_digest": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3@sha256:28f6378d081417a950ab9f6eb12357d01d5125c49faaf5d79768c4f945684775",
+      "compute": {
+        "platform": "gpu-l40s-a",
+        "preset": "1gpu-8vcpu-32gb",
+        "renderer": "Mesa llvmpipe software OpenGL",
+        "compute_removed": true
+      },
+      "artifact_uri": "s3://simfarm-artifacts/unity-articulations/e2e-20261009T171548Z-r2/",
+      "downloaded_file_count": 66,
+      "artifact_check": {
+        "success": true,
+        "requested_seconds": 60.0,
+        "duration_seconds": 59.9402,
+        "joint_samples": 471,
+        "max_joint_range_deg": 40.9805,
+        "grip_range": 0.9997,
+        "image_count": 60
+      },
+      "inspected_frames": [
+        "frame_00000.png",
+        "frame_00030.png"
+      ],
+      "artifact_sha256": {
+        "result.json": "624064d21dcf4bdedff46f0cfc9a97490776130bcc5a8ba97a39886652641ccb",
+        "joints.csv": "0dceea00319f278edef0f6c53d33176cdbb4d24971493e110d7deae7e7492489",
+        "preview.mp4": "c553deb1163feff051638a407671b9d298bd44b0a14a04df1c50f8afbf57e627"
+      },
+      "previous_attempt": {
+        "job_id": "aijob-e00k52h571089fnvhs",
+        "provider_state": "FAILED",
+        "reason": "shutil.copytree copied unsupported POSIX metadata to the Object Storage mount",
+        "artifact_check_passed_after_download": true,
+        "compute_removed": true
+      },
+      "local_emulation": {
+        "host": "Apple Silicon Docker Desktop",
+        "result": "Mono aborted with exit 134 under x86-64 emulation; native Nebius execution succeeded"
+      },
+      "fixes": [
+        "Updated and validated project migration from Unity 2020.1.0b5 to 6000.6.5f1",
+        "Used a short image tag because the CLI rejects image references exceeding its generated label limit",
+        "Copied file contents without POSIX metadata to Object Storage"
+      ]
+    }
+  },
+  "source_organization": {
+    "folders": [
+      "unity",
+      "runtime",
+      "tests",
+      "tools",
+      "docs",
+      "assets"
+    ],
+    "checks": [
+      "Updated Unity preparation copies and ROS2 setup verified with a local project fixture",
+      "Developer regressions and recorded policy replay pass from tests/",
+      "Docker build succeeds with the reorganized context",
+      "Every downloaded ROS message deserializes inside the reorganized image",
+      "Packaged runtime, checker, configuration and model hashes exactly match the prior cloud-verified image",
+      "Documentation command paths, links and anchors checked"
+    ],
+    "fresh_cloud_run": true,
+    "runtime_matches_verified_image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009simple",
+    "verified_job_id": "aijob-e00ypv9z5fr79zzr86",
+    "verified_image": "cr.eu-north1.nebius.cloud/e00p1dktnvpy0a4qt1/ur3:1009org"
+  },
+  "base_image": "ros:humble-ros-base-jammy@sha256:860e53793ccf575e5369b5e9a19939de2bfcfb46a299954d06f54f2af54fed19"
+}
