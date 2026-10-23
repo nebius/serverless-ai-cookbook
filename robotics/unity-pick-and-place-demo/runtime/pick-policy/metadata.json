@@ -1,0 +1,18 @@
+{
+  "joint_names": [
+    "Base",
+    "Shoulder",
+    "Elbow",
+    "Wrist1",
+    "Wrist2",
+    "Wrist3"
+  ],
+  "input": "joint target minus joint position, radians [6]",
+  "output": "joint velocity rad/s [6]",
+  "velocity_limit": 0.17453292519943295,
+  "seed": 71,
+  "training_samples": 24000,
+  "epochs": 160,
+  "teacher": "bounded proportional servo, gain 4",
+  "sha256": "e2d30b0c3477023f1a4728b5e4485583c2d9d2ed01f98f594b8a003965f7351a"
+}

@@ -1,0 +1,9 @@
+*
+!Dockerfile
+!check.py
+!build/
+!build/**
+!runtime/
+!runtime/**
+runtime/**/__pycache__/
+runtime/**/*.pyc
