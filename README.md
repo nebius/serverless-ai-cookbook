@@ -112,6 +112,8 @@ Robotics and physical-AI experiment loops.
 
 - [`isaac-pick-place-sweep`](./robotics/isaac-pick-place-sweep/README.md) — run a Franka pick-and-place parameter sweep as parallel Isaac Sim jobs with S3 results
 - [`lerobot-finetune-job`](./robotics/lerobot-finetune-job/README.md) — fine-tune a LeRobot ACT or Diffusion policy on a robotics dataset in a serverless GPU job
+- [`bfl-flux-action-so101-pick-orange-task-lora`](./robotics/bfl-flux-action-so101-pick-orange-task-lora/README.md) — prepare Pick Orange data and train a task LoRA on Black Forest Labs' SO-101 policy in a Serverless GPU Job
+- [`bfl-flux-action-new-embodiment-full-finetune`](./robotics/bfl-flux-action-new-embodiment-full-finetune/README.md) — full fine-tune Black Forest Labs FLUX 3 Action from the action-pretrained base for a new robot embodiment, using ALOHA as the example
 - [`smolva-ft-norma-core`](./robotics/smolva-ft-norma-core/README.md) — fine-tune SmolVLA for SO-101 with bundled trajectories
 
 ---
