@@ -89,6 +89,7 @@ Endpoint serving and batch inference workloads.
 
 - [`vllm-endpoint`](./inference/vllm-endpoint/README.md) — serve Qwen with an OpenAI-compatible vLLM endpoint
 - [`nim-endpoint`](./inference/nim-endpoint/README.md) — deploy an NVIDIA NIM as an endpoint, including the large-image Container Registry workaround
+- [`two-models-one-endpoint`](./inference/two-models-one-endpoint/README.md) — run two vLLM models on one multi-GPU endpoint, split by `CUDA_VISIBLE_DEVICES`, each on its own port and URL
 - [`flux2-klein-lora`](./inference/flux2-klein-lora/README.md) — build and serve a verified FLUX.2 Klein base 4B LoRA image endpoint
 
 ### 🤖 Agents
