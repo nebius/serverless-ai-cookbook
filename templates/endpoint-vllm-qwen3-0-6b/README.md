@@ -130,6 +130,14 @@ nebius ai endpoint create \
 
 <!-- /factory:cli -->
 
+## Runtime benchmark and tuning
+
+This template uses the published `vllm/vllm-openai:v0.19.1` image. Its [Dockerfile is maintained upstream in vLLM](https://github.com/vllm-project/vllm/blob/v0.19.1/docker/Dockerfile); this template configures the serving command through the Deploy URL and CLI arguments.
+
+See the [benchmark client](benchmark/README.md) and [measured configuration results](benchmark/RESULTS.md) for Qwen3-0.6B on one RTX PRO 6000 Blackwell Server Edition GPU.
+
+The 19 October 2026 experiments compared the default engine with interactivity mode, interactivity plus FlashInfer attention, and online FP8 quantization. None confirmed a 20% latency or cost-per-request improvement on the tested short-prompt C1/C8 workload, so the template retains its existing BF16 serving configuration. These results do not establish performance or quality for other workloads or GPU shapes.
+
 ## Troubleshooting
 
 - **`502 failed to connect to local service`** — tunnel is up but the container has not bound port 8000 yet (weight download / load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as “API ready”.
