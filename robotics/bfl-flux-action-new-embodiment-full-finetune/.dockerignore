@@ -1,0 +1,4 @@
+results/
+.git/
+.env*
+__pycache__/

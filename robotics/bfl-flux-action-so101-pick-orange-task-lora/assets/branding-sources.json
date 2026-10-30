@@ -1,0 +1,16 @@
+{
+  "black_forest_labs": {
+    "page": "https://bfl.ai/brand",
+    "black": "https://bfl.ai/brand/logotype-black.svg",
+    "white": "https://bfl.ai/brand/logotype-white.svg"
+  },
+  "nebius": {
+    "page": "https://nebius.com/media-kit",
+    "archive": "https://assets.nebius.com/assets/2dd2ad13-45c1-4429-a47c-156bedd4d71d/NEBIUS-logos%2807.25%29%20%281%29.zip?cache-buster=2025-08-27T11%3A29%3A04.907Z",
+    "files": [
+      "SVGs/NEBIUS-outline-black.svg",
+      "SVGs/NEBIUS-outline-white.svg"
+    ]
+  },
+  "modifications": "None; README display sizes preserve aspect ratios."
+}

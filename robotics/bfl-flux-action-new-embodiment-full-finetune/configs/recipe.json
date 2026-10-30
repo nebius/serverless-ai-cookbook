@@ -1,0 +1,30 @@
+{
+  "dataset": {
+    "repo_id": "lerobot/aloha_static_cups_open",
+    "revision": "d793c969cf716001dcca18a0842c3d7e9de9e41b",
+    "robot_type": "aloha",
+    "episodes": 50,
+    "frames": 20000,
+    "fps": 50,
+    "state_key": "observation.state",
+    "action_key": "action",
+    "channels": [
+      "left_waist", "left_shoulder", "left_elbow", "left_forearm_roll",
+      "left_wrist_angle", "left_wrist_rotate", "left_gripper",
+      "right_waist", "right_shoulder", "right_elbow", "right_forearm_roll",
+      "right_wrist_angle", "right_wrist_rotate", "right_gripper"
+    ],
+    "cameras": {
+      "high": "observation.images.cam_high",
+      "left_wrist": "observation.images.cam_left_wrist",
+      "right_wrist": "observation.images.cam_right_wrist"
+    },
+    "val_episodes": 5
+  },
+  "base": {
+    "repo_id": "black-forest-labs/flux-3-action-base",
+    "revision": "62878e2925e59b7a89ec14463ce89932624c490d"
+  },
+  "action_parameterization": "absolute",
+  "absolute_action_dims": []
+}
