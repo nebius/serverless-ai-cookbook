@@ -37,7 +37,7 @@ if [[ ${NEBIUS_PREEMPTIBLE:-0} == 1 ]]; then
   command+=(--preemptible --restart-policy never)
 fi
 if [[ $run_mode == full ]]; then
-  full_steps=${FULL_STEPS:-10000}
+  full_steps=${FULL_STEPS:-60000}
   if [[ ! $full_steps =~ ^[1-9][0-9]*$ ]] || (( full_steps < 10000 || full_steps % 5000 != 0 )); then
     echo "FULL_STEPS must be at least 10000 and a multiple of 5000" >&2
     exit 2

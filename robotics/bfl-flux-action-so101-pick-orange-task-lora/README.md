@@ -28,16 +28,16 @@ The demo downloads pinned data and model revisions, converts LeIsaac's joint val
 
 ## Reference smoke run
 
-| Measured on 2026-10-26 | Result |
+| Measured on 2026-11-03 | Result |
 | --- | --- |
 | GPU | One H200 |
 | Training | 100 microsteps / 25 optimizer updates |
-| Container runtime | 8m 07s |
-| Peak GPU memory | 29.83 GB |
-| Final reported training loss | 0.276 |
+| Container runtime | 7m 53s |
+| Peak allocated GPU memory | 29.83 GiB |
+| Final reported training loss | 0.239 |
 | Output | Raw and EMA adapters, about 472 MB each; both SHA-256 hashes verified |
 
-Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using an image built from this Dockerfile, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. The calibrated 60,000-microstep run remains unverified.
+Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00z1b0bd9770zj4jc` reached `COMPLETED`; the downloaded raw and EMA adapter hashes both passed `scripts/verify.py`. Its resolved config used all 60 episodes with `eval_split: 0.0` and four accumulation steps. The calibrated 60,000-microstep run remains unverified.
 
 ## Workflow
 
@@ -192,7 +192,7 @@ runs/$RUN_NAME/
 ## 3. Train the full adapter
 
 ```bash
-export FULL_STEPS=60000
+export FULL_STEPS=60000 # Default; override explicitly for another budget.
 export RUN_NAME="flux-orange-full-$(date -u +%Y%m%dT%H%M%SZ)"
 bash scripts/job.sh full
 nebius ai job get FULL_JOB_ID --profile "$NEBIUS_PROFILE"
@@ -221,7 +221,11 @@ Dataset preparation and training use local `/workspace/work` storage so video re
 
 A background watcher checks for complete checkpoints every 30 seconds and copies them to the bucket. If publication fails, the runner stops the training process group and fails the job, preserving any checkpoints already published. For the documented 60,000-microstep run, checkpoints are saved every 5,000 microsteps. Publication records adapter hashes in `COMPLETE.json`; `TRAIN_COMPLETE.json` is written only after the requested final checkpoint is published. A completed checkpoint may survive an interrupted job even when the training receipt is absent.
 
-`selected_checkpoint` in the receipt identifies **the final checkpoint**. The runner does not rank checkpoints or run policy evaluation; `quality_evaluation: "not_run"` makes that limit explicit in the receipt.
+`selected_checkpoint` in the receipt identifies **the final checkpoint**. Checkpoint selection is left to you: task quality can decrease during a longer LoRA run, so evaluate intermediate raw and EMA adapters before deployment. The runner does not rank checkpoints or run policy evaluation; `quality_evaluation: "not_run"` makes that limit explicit in the receipt.
+
+The script and runner both default to 60,000 microsteps, with checkpoints every 5,000 (including shorter full runs). Accumulation is explicitly fixed at four microsteps per optimizer update, so the default run has 15,000 optimizer updates. `dataset.eval_split=0` uses all 60 demonstrations; evaluation is disabled. This is an example budget, not a claim that 60,000 steps is best for this task.
+
+The Dockerfile pins the public [LeRobot `f6c0f192`](https://github.com/huggingface/lerobot/tree/f6c0f192952d0dfe5a48805f9688711294461bff), as recommended by the current [FLUX Action LoRA guide](https://github.com/black-forest-labs/flux-action/blob/472653eb48419a0f981da2a6605c7be318d6f4f7/docs/so101-lora.md). The policy intentionally remains at `c9e13b2aca6a0a472b3ea03fd90cff32d3e85849`, the revision used for the recorded calibration check. A model update must recheck the saved processors, statistics, conditioning settings, and dataset calibration together.
 
 Preemptible execution is opt-in with `NEBIUS_PREEMPTIBLE=1` and disables automatic restart. There is no resume path: after interruption, inspect published checkpoints, then use a fresh `RUN_NAME` for a new training run. Reusing a run name is rejected to prevent overwrites.
 

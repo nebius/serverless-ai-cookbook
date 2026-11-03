@@ -16,6 +16,6 @@
     "repo_id": "black-forest-labs/flux-3-action-base",
     "revision": "62878e2925e59b7a89ec14463ce89932624c490d"
   },
-  "lerobot_revision": "1bc0bdfb20ad4f4f76dc8a68a0e0746d54f50de9",
+  "lerobot_revision": "f6c0f192952d0dfe5a48805f9688711294461bff",
   "instruction": "Grab orange and place into plate"
 }

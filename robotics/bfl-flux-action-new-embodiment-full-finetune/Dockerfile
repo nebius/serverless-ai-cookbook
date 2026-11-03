@@ -8,8 +8,8 @@ RUN python3.12 -m venv /opt/uv && /opt/uv/bin/pip install --no-cache-dir uv==0.1
 ENV PATH="/app/.venv/bin:/opt/uv/bin:${PATH}" HF_HOME=/workspace/work/hf
 
 RUN git clone https://github.com/black-forest-labs/flux-action.git /app \
-    && cd /app && git checkout --detach e2dd1d8dbc5977b54315d61f7548c63c043d6d4f \
-    && test "$(git rev-parse HEAD)" = e2dd1d8dbc5977b54315d61f7548c63c043d6d4f
+    && cd /app && git checkout --detach 472653eb48419a0f981da2a6605c7be318d6f4f7 \
+    && test "$(git rev-parse HEAD)" = 472653eb48419a0f981da2a6605c7be318d6f4f7
 WORKDIR /app
 RUN uv sync --no-cache --locked --no-dev --extra encoders --extra data \
     && uv pip install --no-cache --no-deps --python .venv/bin/python \

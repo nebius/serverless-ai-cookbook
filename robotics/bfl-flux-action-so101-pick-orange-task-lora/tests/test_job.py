@@ -25,8 +25,7 @@ class JobTests(unittest.TestCase):
             env = {"PATH": directory + os.pathsep + os.environ["PATH"],
                    "NEBIUS_PROFILE": "test-profile", "NEBIUS_PROJECT_ID": "test-project",
                    "NEBIUS_SUBNET_ID": "test-subnet", "NEBIUS_BUCKET_ID": "test-bucket",
-                   "NEBIUS_IMAGE": "test-image", "RUN_NAME": "test-run",
-                   "FULL_STEPS": "60000"}
+                   "NEBIUS_IMAGE": "test-image", "RUN_NAME": "test-run"}
             for mode in MODES:
                 for dry_run in (False, True):
                     with self.subTest(mode=mode, dry_run=dry_run):
@@ -38,6 +37,8 @@ class JobTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 0, result.stderr)
                         args = json.loads(result.stdout.splitlines()[0])
                         self.assertEqual(args[-1], "--dry-run" if dry_run else "--async")
+                        if mode == "full":
+                            self.assertIn("FULL_STEPS=60000", args)
                         if dry_run:
                             self.assertNotIn("Submitted:", result.stdout)
                         else:

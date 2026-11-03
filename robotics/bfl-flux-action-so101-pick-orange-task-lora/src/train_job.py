@@ -41,7 +41,7 @@ def wandb_options(run_name: str) -> list[str]:
 def training_steps(mode: str) -> int:
     if mode == "smoke":
         return 100
-    value = os.environ.get("FULL_STEPS", "10000")
+    value = os.environ.get("FULL_STEPS", "60000")
     if not re.fullmatch(r"[1-9][0-9]*", value) or int(value) < 10_000 or int(value) % 5_000:
         raise SystemExit("FULL_STEPS must be at least 10000 and a multiple of 5000")
     return int(value)
@@ -84,8 +84,6 @@ def train(work: Path, result: Path, policy: Path, encoders: Path, steps: int) ->
     output = work / "trainer"
     if steps < 500:
         checkpoint_frequency = steps
-    elif steps == 10_000:
-        checkpoint_frequency = 500
     else:
         checkpoint_frequency = 5000
     command = [
@@ -99,6 +97,8 @@ def train(work: Path, result: Path, policy: Path, encoders: Path, steps: int) ->
         f"--dataset.root={work / 'dataset'}",
         f"--dataset.revision={RECIPE['dataset']['revision']}",
         "--dataset.video_backend=pyav",
+        "--dataset.eval_split=0",
+        "--accelerator.gradient_accumulation.steps=4",
         '--rename_map={"observation.images.front":"observation.images.scene"}',
         f"--steps={steps}",
         f"--save_freq={checkpoint_frequency}",

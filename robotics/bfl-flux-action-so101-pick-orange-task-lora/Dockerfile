@@ -9,8 +9,8 @@ RUN python3 -m venv /opt/tools && /opt/tools/bin/pip install --no-cache-dir uv==
 # The pinned LeRobot integration supplies FLUX 3 training, processors, and inference.
 RUN git clone https://github.com/huggingface/lerobot.git /opt/lerobot \
     && cd /opt/lerobot \
-    && git checkout --detach 1bc0bdfb20ad4f4f76dc8a68a0e0746d54f50de9 \
-    && test "$(git rev-parse HEAD)" = 1bc0bdfb20ad4f4f76dc8a68a0e0746d54f50de9 \
+    && git checkout --detach f6c0f192952d0dfe5a48805f9688711294461bff \
+    && test "$(git rev-parse HEAD)" = f6c0f192952d0dfe5a48805f9688711294461bff \
     && /opt/tools/bin/uv sync --locked --extra training --extra flux3 --extra peft --extra diffusion \
     && /opt/tools/bin/uv pip install --python /opt/lerobot/.venv/bin/python \
       'natten==0.21.6+torch2110cu128' --find-links https://whl.natten.org/

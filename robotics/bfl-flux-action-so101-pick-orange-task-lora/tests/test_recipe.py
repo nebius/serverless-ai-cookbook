@@ -28,6 +28,8 @@ train_job = load("train_job")
 
 class RecipeTests(unittest.TestCase):
     def test_long_full_run_uses_requested_steps(self):
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(train_job.training_steps("full"), 60000)
         with patch.dict(os.environ, {"FULL_STEPS": "60000"}):
             self.assertEqual(train_job.training_steps("full"), 60000)
             self.assertEqual(train_job.training_steps("smoke"), 100)
@@ -49,6 +51,9 @@ class RecipeTests(unittest.TestCase):
             command = json.loads((result / "command.json").read_text())
             self.assertIn("--steps=60000", command)
             self.assertIn("--eval_steps=0", command)
+            self.assertIn("--dataset.eval_split=0", command)
+            self.assertIn("--accelerator.gradient_accumulation.steps=4", command)
+            self.assertIn("--save_freq=5000", command)
 
     def test_publication_failure_stops_training_before_it_finishes(self):
         with tempfile.TemporaryDirectory() as directory:

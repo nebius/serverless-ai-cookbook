@@ -12,6 +12,17 @@ MODES = ['smoke', 'full']
 
 
 class JobTests(unittest.TestCase):
+    def test_training_recipe_preserves_master_weights_and_export_defaults(self):
+        config = json.loads((ROOT / "configs/train.json").read_text())
+        recipe = json.loads((ROOT / "configs/recipe.json").read_text())
+        self.assertEqual(config["param_dtype"], "float32")
+        self.assertEqual(config["compute_dtype"], "bfloat16")
+        self.assertEqual(config["windows_per_rank"] * config["grad_accumulation"], 32)
+        self.assertEqual(config["max_grad_norm"], 1.0)
+        self.assertEqual(config["policy"]["num_inference_steps"], 4)
+        self.assertEqual(config["policy"]["guidance_scale"], 4.0)
+        self.assertEqual(recipe["dataset"]["val_episodes"], 0)
+
     def test_submission_summary_and_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             cli = Path(directory) / "nebius"
@@ -25,8 +36,7 @@ class JobTests(unittest.TestCase):
             env = {"PATH": directory + os.pathsep + os.environ["PATH"],
                    "NEBIUS_PROFILE": "test-profile", "NEBIUS_PROJECT_ID": "test-project",
                    "NEBIUS_SUBNET_ID": "test-subnet", "NEBIUS_BUCKET_ID": "test-bucket",
-                   "NEBIUS_IMAGE": "test-image", "RUN_NAME": "test-run",
-                   "FULL_STEPS": "60000"}
+                   "NEBIUS_IMAGE": "test-image", "RUN_NAME": "test-run"}
             for mode in MODES:
                 for dry_run in (False, True):
                     with self.subTest(mode=mode, dry_run=dry_run):

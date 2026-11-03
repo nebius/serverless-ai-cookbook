@@ -28,16 +28,16 @@ The demo downloads pinned model and dataset revisions, trains four updates as a 
 
 ## Reference smoke run
 
-| Measured on 2026-10-26 | Result |
+| Measured on 2026-11-03 | Result |
 | --- | --- |
 | GPU | One H200 |
-| Training | Four optimizer updates |
-| Container runtime | 11m 33s |
-| Peak GPU memory | 68.6 GB |
-| Final training loss | 1.5762 |
+| Training | Four optimizer updates, FP32 weights, effective batch 32 |
+| Container runtime | 20m 53s |
+| Peak allocated GPU memory | 127.7 GiB |
+| Final training loss | 1.9201 |
 | Output | Complete checkpoint plus 13.9 GB BF16 export; export SHA-256 verified |
 
-Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using an image built from this Dockerfile, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. An earlier run completed 3,000 updates; the current export has not been independently loaded into a policy.
+Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00ab2q8vqry7469pj` reached `COMPLETED`; its FP32 checkpoint save alone took 9m 23s. The current 3,000-update recipe has not been run, and the export has not been independently loaded into a policy.
 
 ## Workflow
 
@@ -61,6 +61,10 @@ These are the first decoded frames of the three training camera streams, in reci
 | Stage | Resources | Work |
 | --- | --- | --- |
 | Training | One H200, `1gpu-16vcpu-200gb`, 300 GiB scratch disk | Smoke: four optimizer updates; full run: 3,000. |
+
+The Dockerfile pins [FLUX Action `472653e`](https://github.com/black-forest-labs/flux-action/tree/472653eb48419a0f981da2a6605c7be318d6f4f7). Training keeps FP32 master weights and uses BF16 compute with activation checkpointing and gradient clipping at 1.0. One window per microbatch and 32 accumulation passes give an effective batch of 32 windows per optimizer update. FP32 weights, gradients, and AdamW state need roughly 112 GB for the trunk before activations and other buffers. The four-update FP32 smoke fit on one H200 at 127.7 GiB peak allocated GPU memory. Larger microbatches, resolutions, or EMA profiles may need a two-GPU FSDP setup in upstream FLUX Action; this helper launches one GPU.
+
+All 50 episodes are used for training (`val_episodes: 0`) because this example does not evaluate held-out episodes. EMA is disabled to avoid storing another full-weight profile in this single-GPU example. The export uses raw final weights; compare raw and EMA profiles in a separate quality experiment before choosing deployment weights. Exported inference defaults are four sampling steps and guidance 4.0.
 
 Cold-start time, download size, and peak scratch usage have not been benchmarked. The 168-hour job timeout is a ceiling, not an estimated duration. Account for model/data downloads and export publication as well as training.
 

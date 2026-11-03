@@ -19,7 +19,7 @@
       "left_wrist": "observation.images.cam_left_wrist",
       "right_wrist": "observation.images.cam_right_wrist"
     },
-    "val_episodes": 5
+    "val_episodes": 0
   },
   "base": {
     "repo_id": "black-forest-labs/flux-3-action-base",
