@@ -37,7 +37,9 @@ The demo downloads pinned model and dataset revisions, trains four updates as a 
 | Final training loss | 1.9201 |
 | Output | Complete checkpoint plus 13.9 GB BF16 export; export SHA-256 verified |
 
-Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00ab2q8vqry7469pj` reached `COMPLETED`; its FP32 checkpoint save alone took 9m 23s. The current 3,000-update recipe has not been run, and the export has not been independently loaded into a policy.
+Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00ab2q8vqry7469pj` reached `COMPLETED`; its FP32 checkpoint save alone took 9m 23s. Full-budget completion is not yet verified.
+
+A separate fresh-process H200 job (`aijob-e00w2485veq48c7dd4`) reloaded the published BF16 export and produced finite `[1, 32, 14]` actions from recorded dataset images/state with four sampling steps and guidance 4.0. Its model and output-array hashes were independently checked after download; this was offline inference, not robot evaluation.
 
 ## Workflow
 

@@ -37,7 +37,9 @@ The demo downloads pinned data and model revisions, converts LeIsaac's joint val
 | Final reported training loss | 0.239 |
 | Output | Raw and EMA adapters, about 472 MB each; both SHA-256 hashes verified |
 
-Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00z1b0bd9770zj4jc` reached `COMPLETED`; the downloaded raw and EMA adapter hashes both passed `scripts/verify.py`. Its resolved config used all 60 episodes with `eval_split: 0.0` and four accumulation steps. The calibrated 60,000-microstep run remains unverified.
+Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00z1b0bd9770zj4jc` reached `COMPLETED`; the downloaded raw and EMA adapter hashes both passed `scripts/verify.py`. Its resolved config used all 60 episodes with `eval_split: 0.0` and four accumulation steps.
+
+A separate fresh-process H200 job (`aijob-e00qk2padxhat759vd`) reloaded both raw and EMA adapters with their pinned base and saved processors. Each produced finite `[1, 42, 6]` chunks and postprocessed `[1, 6]` commands over three ticks from recorded observations; all four downloaded SO-101 action arrays passed shape/finite checks. The calibrated 60,000-microstep run remains unverified.
 
 ## Workflow
 
