@@ -1,19 +1,23 @@
-"""LeIsaac motor degrees to the released FLUX SO-101 joint frame.
+"""LeIsaac range-normalized values to the e2584b2 SO-101 degree frame.
 
-LeIsaac first converts USD joint angles to motor ranges. The HF SO-101
-MuJoCo demo documents the physical-angle to FLUX frame correction. Compose
-those two published conversions here for both training and rollout.
+Invert LeIsaac's USD-angle-to-motor-range conversion. The pinned HF demo
+uses the e2584b2 statistics and feeds physical degrees directly to the policy;
+the legacy model's sign flip and offsets must not be applied.
 
 https://github.com/LightwheelAI/leisaac/blob/24d3bcd/source/leisaac/leisaac/utils/robot_utils.py
 https://github.com/LightwheelAI/leisaac/blob/24d3bcd/source/leisaac/leisaac/assets/robots/lerobot.py
-https://huggingface.co/spaces/multimodalart/flux-3-action-so101-sim/blob/73899a12fafef320c10345602be5ebc794dcf382/sim.py
+https://huggingface.co/spaces/multimodalart/flux-3-action-so101-sim/blob/d7da38e032da0e136d6de21c218dc616982a8cc9/app.py
+https://huggingface.co/spaces/multimodalart/flux-3-action-so101-sim/blob/d7da38e032da0e136d6de21c218dc616982a8cc9/sim.py
 """
 
 import math
 import json
+import hashlib
 from pathlib import Path
 
-ID = "leisaac-24d3bcd-to-flux-so101-hf-sim-73899a12"
+POLICY_REVISION = "e2584b2698e3b88368854976e354af87ec9893c6"
+STATE_NORMALIZER_SHA256 = "86b5d152c9df39a640248215469c97a3facf240d481ee0e3e29fd185b423e458"
+ID = "leisaac-24d3bcd-to-flux-so101-e2584b2-sim-d7da38e"
 JOINTS = (
     "shoulder_pan", "shoulder_lift", "elbow_flex",
     "wrist_flex", "wrist_roll", "gripper",
@@ -21,19 +25,16 @@ JOINTS = (
 # Pinned LeIsaac assets/robots/lerobot.py: USD degrees and motor degrees.
 USD_LIMITS = ((-110, 110), (-100, 100), (-100, 90), (-95, 95), (-160, 160))
 MOTOR_LIMITS = ((-100, 100),) * 5
-# HF FLUX SO-101 simulation: physical joint degrees -> checkpoint frame.
-MODEL_SIGN = (1, -1, 1, 1, 1)
-MODEL_OFFSET = (0, 90, 90, 0, -90)
 
 
 def coefficients() -> tuple[tuple[float, ...], tuple[float, ...]]:
     scales, offsets = [], []
-    for (joint_lo, joint_hi), (motor_lo, motor_hi), sign, offset in zip(
-        USD_LIMITS, MOTOR_LIMITS, MODEL_SIGN, MODEL_OFFSET, strict=True
+    for (joint_lo, joint_hi), (motor_lo, motor_hi) in zip(
+        USD_LIMITS, MOTOR_LIMITS, strict=True
     ):
         ratio = (joint_hi - joint_lo) / (motor_hi - motor_lo)
-        scales.append(sign * ratio)
-        offsets.append(sign * (joint_lo - motor_lo * ratio) + offset)
+        scales.append(ratio)
+        offsets.append(joint_lo - motor_lo * ratio)
     # Both LeIsaac and the released policy use gripper percentage points.
     return tuple(scales + [1.0]), tuple(offsets + [0.0])
 
@@ -75,6 +76,9 @@ def check_model_overlap(dataset_root: Path, policy_root: Path, report_path: Path
     from safetensors import safe_open
 
     normalizer = policy_root / "policy_preprocessor_step_3_flux3_observation_history_normalizer.safetensors"
+    digest = hashlib.sha256(normalizer.read_bytes()).hexdigest()
+    if digest != STATE_NORMALIZER_SHA256:
+        raise ValueError("checkpoint statistics do not match the e2584b2 calibration")
     with safe_open(normalizer, framework="np") as weights:
         low = weights.get_tensor("state.q01").tolist()
         high = weights.get_tensor("state.q99").tolist()
@@ -87,8 +91,8 @@ def check_model_overlap(dataset_root: Path, policy_root: Path, report_path: Path
     outside = [0] * 6
     for path in paths:
         for values in pq.read_table(path, columns=["observation.state"]).column(0).to_pylist():
-            if len(values) != 6:
-                raise ValueError(f"calibrated state is not six-dimensional: {path}")
+            if len(values) != 6 or not all(math.isfinite(value) for value in values):
+                raise ValueError(f"calibrated state must contain six finite values: {path}")
             total += 1
             for index, value in enumerate(values):
                 if value < low[index] or value > high[index]:
@@ -97,6 +101,8 @@ def check_model_overlap(dataset_root: Path, policy_root: Path, report_path: Path
         raise ValueError("converted dataset has no state rows")
     report = {
         "calibration_id": ID,
+        "policy_revision": POLICY_REVISION,
+        "state_normalizer_sha256": digest,
         "frames": total,
         "joint_order": JOINTS,
         "policy_scale": SCALE,

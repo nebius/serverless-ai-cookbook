@@ -10,7 +10,7 @@
   },
   "policy": {
     "repo_id": "black-forest-labs/flux-3-action-so101",
-    "revision": "c9e13b2aca6a0a472b3ea03fd90cff32d3e85849"
+    "revision": "e2584b2698e3b88368854976e354af87ec9893c6"
   },
   "encoders": {
     "repo_id": "black-forest-labs/flux-3-action-base",

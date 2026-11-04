@@ -102,16 +102,25 @@ class RecipeTests(unittest.TestCase):
             self.assertEqual(train_job.wandb_options("test-run"), [])
 
     def test_calibration_maps_real_demo_start_and_round_trips(self):
-        # Pinned episode 0, frame 0: the previous code sent lift=-47.5 to a
-        # checkpoint whose shoulder-lift q01 is +84.8 degrees.
+        # LeIsaac episode 0, frame 0, inverted into physical joint degrees.
         motor = [-16.2, -47.5, 55.2, 47.9, 4.5, 4.0]
         model = calibration.to_policy(motor)
-        self.assertGreater(model[1], 84.8)
-        self.assertLess(model[1], 184.3)
-        self.assertGreater(model[2], 61.4)
-        self.assertEqual(model[5], motor[5])
+        expected = [-17.82, -47.5, 47.44, 45.505, 7.2, 4.0]
+        for actual, value in zip(model, expected, strict=True):
+            self.assertAlmostEqual(actual, value)
         for actual, expected in zip(calibration.to_motor(model), motor, strict=True):
             self.assertAlmostEqual(actual, expected)
+
+    def test_calibration_inverts_source_endpoints_and_binds_policy(self):
+        for motor, index in ((-100, 0), (100, 1)):
+            mapped = calibration.to_policy([motor] * 5 + [50])
+            for value, bounds in zip(mapped[:5], calibration.USD_LIMITS, strict=True):
+                self.assertAlmostEqual(value, bounds[index])
+            self.assertEqual(mapped[-1], 50)
+        self.assertEqual(train_job.RECIPE["policy"]["revision"], calibration.POLICY_REVISION)
+        with patch.dict(train_job.RECIPE["policy"], {"revision": "c9e13b2"}):
+            with self.assertRaisesRegex(ValueError, "revision does not match"):
+                train_job.download_models(Path("unused"))
 
     def test_calibration_transforms_episode_statistics(self):
         stats = {
@@ -122,9 +131,9 @@ class RecipeTests(unittest.TestCase):
             for key in ("action", "observation.state")
         }
         converted = calibration.transform_stats(stats)
-        self.assertAlmostEqual(converted["action"]["min"][1], 30)
-        self.assertAlmostEqual(converted["action"]["max"][1], 180)
-        self.assertAlmostEqual(converted["action"]["mean"][1], 100)
+        self.assertAlmostEqual(converted["action"]["min"][1], -90)
+        self.assertAlmostEqual(converted["action"]["max"][1], 60)
+        self.assertAlmostEqual(converted["action"]["mean"][1], -10)
         self.assertAlmostEqual(converted["action"]["std"][2], 3.8)
         self.assertEqual(converted["action"]["count"], [10])
 
@@ -156,14 +165,19 @@ class RecipeTests(unittest.TestCase):
             policy = root / "policy"
             policy.mkdir()
             save_file({
-                "state.q01": np.array([-200, 84.8, -200, -200, -200, -1], dtype=np.float32),
-                "state.q99": np.array([200, 184.3, 200, 200, 200, 101], dtype=np.float32),
+                "state.q01": np.array([-18, -200, -200, -200, -200, -1], dtype=np.float32),
+                "state.q99": np.array([-17, 200, 200, 200, 200, 101], dtype=np.float32),
             }, policy / "policy_preprocessor_step_3_flux3_observation_history_normalizer.safetensors")
-            with self.assertRaisesRegex(ValueError, "shoulder_lift"):
+            normalizer = policy / "policy_preprocessor_step_3_flux3_observation_history_normalizer.safetensors"
+            with self.assertRaisesRegex(ValueError, "statistics do not match"):
                 calibration.check_model_overlap(root, policy, root / "before.json")
-            prepare_dataset.calibrate_source(root, 1)
-            report = calibration.check_model_overlap(root, policy, root / "after.json")
-            self.assertEqual(report["outside_q01_q99_fraction"][1], 0)
+            with patch.object(calibration, "STATE_NORMALIZER_SHA256", hashlib.sha256(normalizer.read_bytes()).hexdigest()):
+                with self.assertRaisesRegex(ValueError, "shoulder_pan"):
+                    calibration.check_model_overlap(root, policy, root / "before.json")
+                prepare_dataset.calibrate_source(root, 1)
+                report = calibration.check_model_overlap(root, policy, root / "after.json")
+            self.assertEqual(report["outside_q01_q99_fraction"][0], 0)
+            self.assertEqual(report["policy_revision"], calibration.POLICY_REVISION)
             mapped = pq.read_table(path).to_pylist()[0]
             converted_stats = json.loads((root / "meta/episodes_stats.jsonl").read_text())["stats"]
             for key in ("action", "observation.state"):

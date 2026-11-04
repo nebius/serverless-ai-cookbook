@@ -12,7 +12,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from calibration import ID as CALIBRATION_ID, check_model_overlap
+from calibration import ID as CALIBRATION_ID, POLICY_REVISION, check_model_overlap
 from prepare_dataset import prepare
 from publish import publish
 
@@ -48,8 +48,9 @@ def training_steps(mode: str) -> int:
 
 
 def download_models(work: Path) -> tuple[Path, Path]:
+    if RECIPE["policy"]["revision"] != POLICY_REVISION:
+        raise ValueError("policy revision does not match the dataset calibration")
     from huggingface_hub import snapshot_download
-
     policy = work / "models/so101"
     encoders = work / "models/base"
     snapshot_download(

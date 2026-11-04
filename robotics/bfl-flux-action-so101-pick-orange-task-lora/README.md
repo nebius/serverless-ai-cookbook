@@ -26,7 +26,32 @@ This demo trains a **task LoRA** on [Black Forest Labs' prepared SO-101 policy](
 
 The demo downloads pinned data and model revisions, converts LeIsaac's joint values into the model's SO-101 frame, trains 100 microsteps for a smoke test or 60,000 for the example full run, and publishes adapters to Nebius Object Storage. Preparation and training run inside the Serverless job; no local GPU or simulator is required. This cookbook ends with published adapters and a training receipt; it does not measure robot task success.
 
-## Reference smoke run
+## Current policy and calibration
+
+The recipe pins policy `e2584b2698e3b88368854976e354af87ec9893c6`. Its saved statistics expect the current SO-101 degree convention, not unconverted `-100..100` range values. The dataset remains the pinned LeIsaac recording; both measured states and absolute action targets are converted before training, and their episode statistics receive the same transform.
+
+The conversion first inverts [LeIsaac's range mapping](https://github.com/LightwheelAI/leisaac/blob/24d3bcd/source/leisaac/leisaac/utils/robot_utils.py) using its [USD joint limits](https://github.com/LightwheelAI/leisaac/blob/24d3bcd/source/leisaac/leisaac/assets/robots/lerobot.py). The updated [SO-101 simulation app](https://huggingface.co/spaces/multimodalart/flux-3-action-so101-sim/blob/d7da38e032da0e136d6de21c218dc616982a8cc9/app.py) uses the exact `e2584b2` quantiles and passes [physical joint degrees directly](https://huggingface.co/spaces/multimodalart/flux-3-action-so101-sim/blob/d7da38e032da0e136d6de21c218dc616982a8cc9/sim.py). The old shoulder-lift sign flip and legacy model-frame offsets are therefore removed. The new coefficients are derived from those coordinate mappings, not fitted to quantiles.
+
+For `policy_value = source_value * scale + offset`:
+
+| Channel | Scale | Offset | Converted states outside new q01–q99 |
+| --- | ---: | ---: | ---: |
+| shoulder_pan | 1.1 | 0 | 17.46% |
+| shoulder_lift | 1.0 | 0 | 11.90% |
+| elbow_flex | 0.95 | -5 | 13.11% |
+| wrist_flex | 0.95 | 0 | 0.07% |
+| wrist_roll | 1.6 | 0 | 78.23% |
+| gripper | 1.0 | 0 | 27.89% |
+
+The gripper remains in percentage points. The November 4 audit checked all 60 episodes / 36,293 frames against the actual downloaded `e2584b2` state normalizer (SHA-256 `86b5d152c9df39a640248215469c97a3facf240d481ee0e3e29fd185b423e458`). Every joint has some overlap, so the coarse preflight passes; the large wrist-roll/gripper tail differences remain a distribution-shift risk. This audit does not establish held-out or robot task performance. Use `to_motor` for the inverse command mapping back to LeIsaac range values. This simulator-specific conversion cannot upgrade arbitrary legacy real-arm recordings: those require their original per-arm calibration or new recordings with current LeRobot and `use_degrees=True`.
+
+## Current revision validation
+
+On November 4, the rebuilt Linux AMD64 image passed all 15 SO-101 tests without skips; its recipe/runtime bytes matched the checkout. Smoke job `aijob-e00gy45pqcjpnsdyy3` reached `COMPLETED` with 100 microsteps / 25 optimizer updates on `e2584b2`, a 7m 49s container runtime, 29.83 GiB peak allocated GPU memory, and final reported training loss 0.334. Its cloud overlap report exactly matched the all-frame audit above. Both downloaded adapter hashes matched the receipt, and their saved history/target normalization tensors exactly matched the new policy package.
+
+Fresh-process H200 job `aijob-e00g96sawhhcsna0qk` also reached `COMPLETED`. It reloaded the raw and EMA adapters with the new base, pinned encoders, and saved processors; both produced finite `[1, 42, 6]` normalized chunks and `[1, 6]` absolute commands across three ticks. All four downloaded action arrays passed independent shape/finite checks. Both validation instances were removed; artifacts were retained. The 60,000-microstep budget has not been rerun on this revision, and robot/simulator task success remains untested.
+
+## Historical smoke run (legacy base)
 
 | Measured on 2026-11-03 | Result |
 | --- | --- |
@@ -37,13 +62,13 @@ The demo downloads pinned data and model revisions, converts LeIsaac's joint val
 | Final reported training loss | 0.239 |
 | Output | Raw and EMA adapters, about 472 MB each; both SHA-256 hashes verified |
 
-Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00z1b0bd9770zj4jc` reached `COMPLETED`; the downloaded raw and EMA adapter hashes both passed `scripts/verify.py`. Its resolved config used all 60 episodes with `eval_split: 0.0` and four accumulation steps.
+Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are historical observations using policy `c9e13b2` and calibration `leisaac-24d3bcd-to-flux-so101-hf-sim-73899a12`, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00z1b0bd9770zj4jc` reached `COMPLETED`; the downloaded raw and EMA adapter hashes both passed `scripts/verify.py`. Its resolved config used all 60 episodes with `eval_split: 0.0` and four accumulation steps.
 
-A separate fresh-process H200 job (`aijob-e00qk2padxhat759vd`) reloaded both raw and EMA adapters with their pinned base and saved processors. Each produced finite `[1, 42, 6]` chunks and postprocessed `[1, 6]` commands over three ticks from recorded observations; all four downloaded SO-101 action arrays passed shape/finite checks. The full run is verified below.
+A separate fresh-process H200 job (`aijob-e00qk2padxhat759vd`) reloaded both raw and EMA adapters with their pinned base and saved processors. Each produced finite `[1, 42, 6]` chunks and postprocessed `[1, 6]` commands over three ticks from recorded observations; all four downloaded SO-101 action arrays passed shape/finite checks. The historical full run is verified below; it does not validate the current `e2584b2` base.
 
-## Full-budget validation
+## Historical full-budget validation (legacy base)
 
-The November 3–4, 2026 run (`aijob-e00jwter5g13jjajrp`) reached `COMPLETED` with 60,000 microsteps / 15,000 optimizer updates, all 60 demonstrations, and accumulation four. Container runtime was 15h 47m; peak allocated GPU memory was 29.83 GiB and final reported training loss was 0.123. The final `060000` completion marker matched `TRAIN_COMPLETE.json`; both published adapters were independently streamed and SHA-256 checked against the receipt.
+The November 3–4, 2026 run on `c9e13b2` (`aijob-e00jwter5g13jjajrp`) reached `COMPLETED` with 60,000 microsteps / 15,000 optimizer updates, all 60 demonstrations, and accumulation four. Container runtime was 15h 47m; peak allocated GPU memory was 29.83 GiB and final reported training loss was 0.123. The final `060000` completion marker matched `TRAIN_COMPLETE.json`; both published adapters were independently streamed and SHA-256 checked against the receipt.
 
 A fresh H200 process (`aijob-e00erfq13f3rj2n440`) restored the final raw and EMA adapters with the pinned base/encoders and saved processors, then reached `COMPLETED`. Each produced finite `[1, 42, 6]` normalized chunks and `[1, 6]` absolute commands over three ticks from recorded observations. All four action arrays were downloaded and independently checked. Validation compute was removed; images and artifacts were retained. This verifies the training/publication/reload/inference path; held-out policy quality and robot/simulator task success were not evaluated.
 
@@ -233,7 +258,7 @@ A background watcher checks for complete checkpoints every 30 seconds and copies
 
 The script and runner both default to 60,000 microsteps, with checkpoints every 5,000 (including shorter full runs). Accumulation is explicitly fixed at four microsteps per optimizer update, so the default run has 15,000 optimizer updates. `dataset.eval_split=0` uses all 60 demonstrations; evaluation is disabled. This is an example budget, not a claim that 60,000 steps is best for this task.
 
-The Dockerfile pins the public [LeRobot `f6c0f192`](https://github.com/huggingface/lerobot/tree/f6c0f192952d0dfe5a48805f9688711294461bff), as recommended by the current [FLUX Action LoRA guide](https://github.com/black-forest-labs/flux-action/blob/472653eb48419a0f981da2a6605c7be318d6f4f7/docs/so101-lora.md). The policy intentionally remains at `c9e13b2aca6a0a472b3ea03fd90cff32d3e85849`, the revision used for the recorded calibration check. A model update must recheck the saved processors, statistics, conditioning settings, and dataset calibration together.
+The Dockerfile retains public [LeRobot `f6c0f192`](https://github.com/huggingface/lerobot/tree/f6c0f192952d0dfe5a48805f9688711294461bff). The policy now pins `e2584b2698e3b88368854976e354af87ec9893c6`, recommended by the updated [FLUX Action guide](https://github.com/black-forest-labs/flux-action/blob/fc1145c/docs/so101-lora.md). Its saved processor configuration and conditioning settings are unchanged from the prior package, but its normalization tensors differ. A future model update must re-derive and validate the calibration; the runner rejects a mismatched policy revision or state-normalizer checksum.
 
 Preemptible execution is opt-in with `NEBIUS_PREEMPTIBLE=1` and disables automatic restart. There is no resume path: after interruption, inspect published checkpoints, then use a fresh `RUN_NAME` for a new training run. Reusing a run name is rejected to prevent overwrites.
 
