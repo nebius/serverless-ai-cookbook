@@ -47,6 +47,10 @@ The November 3–4, 2026 run (`aijob-e00w76xepq5509t6vx`) reached `COMPLETED` wi
 
 A fresh H200 process (`aijob-e00gz2ttjyvm7m8j4b`) restored that export and reached `COMPLETED`, producing finite `[1, 32, 14]` actions from recorded images/state with four sampling steps and guidance 4.0. The downloaded action array passed shape/finite checks and its SHA-256 matched the inference report. Validation compute was removed; images and artifacts were retained. This verifies the training/publication/reload/inference path; held-out policy quality and robot/simulator task success were not evaluated.
 
+![ALOHA training loss across all 3,000 optimizer updates, with logged values and a three-point trailing mean.](assets/full-training-loss.png)
+
+The curve uses all 300 logged points from `runs/pr33-aloha-full-1103/metrics.jsonl`; the line shows a three-point trailing mean. [Download the logged losses](assets/full-training-loss.csv). This is training loss, not a held-out or robot success metric.
+
 ## Workflow
 
 [![ALOHA training workflow: pinned dataset and embodiment settings feed one H200 Serverless job for dataset preparation and full-weight training. Object Storage holds complete checkpoints, a BF16 export, its SHA-256, and the training receipt.](assets/workflow.png)](assets/workflow.png)
