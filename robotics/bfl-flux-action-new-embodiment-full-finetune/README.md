@@ -37,9 +37,15 @@ The demo downloads pinned model and dataset revisions, trains four updates as a 
 | Final training loss | 1.9201 |
 | Output | Complete checkpoint plus 13.9 GB BF16 export; export SHA-256 verified |
 
-Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00ab2q8vqry7469pj` reached `COMPLETED`; its FP32 checkpoint save alone took 9m 23s. Full-budget completion is not yet verified.
+Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00ab2q8vqry7469pj` reached `COMPLETED`; its FP32 checkpoint save alone took 9m 23s.
 
 A separate fresh-process H200 job (`aijob-e00w2485veq48c7dd4`) reloaded the published BF16 export and produced finite `[1, 32, 14]` actions from recorded dataset images/state with four sampling steps and guidance 4.0. Its model and output-array hashes were independently checked after download; this was offline inference, not robot evaluation.
+
+## Full-budget validation
+
+The November 3–4, 2026 run (`aijob-e00w76xepq5509t6vx`) reached `COMPLETED` with 3,000 FP32 optimizer updates, effective batch 32, and all 50 episodes. Container runtime was 17h 56m; peak allocated GPU memory was 127.7 GiB and final reported training loss was 0.05635. The final `step-3000` marker/state and `TRAIN_COMPLETE.json` confirmed the budget. The complete 13.9 GB BF16 export was independently streamed and SHA-256 checked against the receipt.
+
+A fresh H200 process (`aijob-e00gz2ttjyvm7m8j4b`) restored that export and reached `COMPLETED`, producing finite `[1, 32, 14]` actions from recorded images/state with four sampling steps and guidance 4.0. The downloaded action array passed shape/finite checks and its SHA-256 matched the inference report. Validation compute was removed; images and artifacts were retained. This verifies the training/publication/reload/inference path; held-out policy quality and robot/simulator task success were not evaluated.
 
 ## Workflow
 

@@ -39,7 +39,13 @@ The demo downloads pinned data and model revisions, converts LeIsaac's joint val
 
 Container runtime includes preparation, model downloads, training, and publication; it excludes local image build/push, scheduling, and image pull. These are observations from one smoke using the current Dockerfile and recipe, not a time-to-first-run guarantee. Cost and peak scratch usage were not measured; GPU runtime, storage, and transfers can contribute to the bill. Smoke job `aijob-e00z1b0bd9770zj4jc` reached `COMPLETED`; the downloaded raw and EMA adapter hashes both passed `scripts/verify.py`. Its resolved config used all 60 episodes with `eval_split: 0.0` and four accumulation steps.
 
-A separate fresh-process H200 job (`aijob-e00qk2padxhat759vd`) reloaded both raw and EMA adapters with their pinned base and saved processors. Each produced finite `[1, 42, 6]` chunks and postprocessed `[1, 6]` commands over three ticks from recorded observations; all four downloaded SO-101 action arrays passed shape/finite checks. The calibrated 60,000-microstep run remains unverified.
+A separate fresh-process H200 job (`aijob-e00qk2padxhat759vd`) reloaded both raw and EMA adapters with their pinned base and saved processors. Each produced finite `[1, 42, 6]` chunks and postprocessed `[1, 6]` commands over three ticks from recorded observations; all four downloaded SO-101 action arrays passed shape/finite checks. The full run is verified below.
+
+## Full-budget validation
+
+The November 3–4, 2026 run (`aijob-e00jwter5g13jjajrp`) reached `COMPLETED` with 60,000 microsteps / 15,000 optimizer updates, all 60 demonstrations, and accumulation four. Container runtime was 15h 47m; peak allocated GPU memory was 29.83 GiB and final reported training loss was 0.123. The final `060000` completion marker matched `TRAIN_COMPLETE.json`; both published adapters were independently streamed and SHA-256 checked against the receipt.
+
+A fresh H200 process (`aijob-e00erfq13f3rj2n440`) restored the final raw and EMA adapters with the pinned base/encoders and saved processors, then reached `COMPLETED`. Each produced finite `[1, 42, 6]` normalized chunks and `[1, 6]` absolute commands over three ticks from recorded observations. All four action arrays were downloaded and independently checked. Validation compute was removed; images and artifacts were retained. This verifies the training/publication/reload/inference path; held-out policy quality and robot/simulator task success were not evaluated.
 
 ## Workflow
 
