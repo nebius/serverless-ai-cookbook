@@ -49,17 +49,31 @@ The gripper remains in percentage points. The November 4 audit checked all 60 ep
 
 On November 4, the rebuilt Linux AMD64 image passed all 15 SO-101 tests without skips; its recipe/runtime bytes matched the checkout. Smoke job `aijob-e00gy45pqcjpnsdyy3` reached `COMPLETED` with 100 microsteps / 25 optimizer updates on `e2584b2`, a 7m 49s container runtime, 29.83 GiB peak allocated GPU memory, and final reported training loss 0.334. Its cloud overlap report exactly matched the all-frame audit above. Both downloaded adapter hashes matched the receipt, and their saved history/target normalization tensors exactly matched the new policy package.
 
-Fresh-process H200 job `aijob-e00g96sawhhcsna0qk` also reached `COMPLETED`. It reloaded the raw and EMA adapters with the new base, pinned encoders, and saved processors; both produced finite `[1, 42, 6]` normalized chunks and `[1, 6]` absolute commands across three ticks. All four downloaded action arrays passed independent shape/finite checks. Both validation instances were removed; artifacts were retained. Robot/simulator task success remains untested.
+Fresh-process H200 job `aijob-e00g96sawhhcsna0qk` also reached `COMPLETED`. It reloaded the raw and EMA adapters with the new base, pinned encoders, and saved processors; both produced finite `[1, 42, 6]` normalized chunks and `[1, 6]` absolute commands across three ticks. All four downloaded action arrays passed independent shape/finite checks. Both validation instances were removed; artifacts were retained. This smoke did not measure task success; the separate evaluation below uses the full-budget adapters.
 
 ## Full-budget validation on e2584b2
 
 The November 4–5, 2026 H200 run (`aijob-e00a7e2bv7rzehhx0v`, artifacts `runs/pr33-so101-e258-full-1104/`) reached `COMPLETED` with all 60,000 microsteps / 15,000 optimizer updates, all 60 demonstrations, and accumulation four. Container runtime was 15h 49m; peak allocated GPU memory was 29.83 GiB and final reported training loss was 0.146. The receipt binds policy `e2584b2`, the calibration ID above, and the exact state-normalizer checksum. The final `060000` completion marker matched the receipt; both 471,775,248-byte raw/EMA adapters were independently streamed and SHA-256 checked.
 
-Fresh-process H200 inference job `aijob-e00qq9e75207xwfy10` reached `COMPLETED` after restoring the final raw and EMA adapters with the pinned base/encoders and saved processors. Both produced finite `[1, 42, 6]` normalized chunks and `[1, 6]` absolute commands over three ticks from recorded observations. All four downloaded arrays passed independent shape/finite checks; the inference receipt matched the source run, 60,000-step budget, adapter hashes, policy revision, calibration ID, and normalizer checksum. A paginated compute inventory confirmed no validation-owned instances remained; images and artifacts were retained. This verifies the training/publication/reload/inference path. Held-out quality and robot/simulator task success were not evaluated, and the wrist-roll/gripper distribution shift described above remains.
+Fresh-process H200 inference job `aijob-e00qq9e75207xwfy10` reached `COMPLETED` after restoring the final raw and EMA adapters with the pinned base/encoders and saved processors. Both produced finite `[1, 42, 6]` normalized chunks and `[1, 6]` absolute commands over three ticks from recorded observations. All four downloaded arrays passed independent shape/finite checks; the inference receipt matched the source run, 60,000-step budget, adapter hashes, policy revision, calibration ID, and normalizer checksum. A paginated compute inventory confirmed no validation-owned instances remained; images and artifacts were retained. This verifies the training/publication/reload/inference path. That validation measured reload/inference only. The separate quality evaluation below measures held-out error and simulator task success; the wrist-roll/gripper distribution shift described above remains.
 
 ![SO-101 e2584b2 training loss across all 60,000 microsteps, with logged values and a ten-point trailing mean.](assets/full-training-loss.png)
 
 The curve uses all 3,000 logged points from `runs/pr33-so101-e258-full-1104/train.log`; the line shows a ten-point trailing mean. [Download the logged losses](assets/full-training-loss.csv). This is training loss, not a held-out or robot success metric.
+
+## Policy-quality evaluation (November 5–7, 2026)
+
+A separate evaluation completed 25 paired PickOrange simulator seeds for each full-budget base/raw/EMA policy. Raw achieved **10/25 full-task successes**, EMA **9/25**, and base **0/25**. The frozen placement predicate counts whether each orange ever met its plate condition; it does not require final containment.
+
+| Full-data policy | Ever-met placements | Full-task successes | Paired success-rate delta vs base, 95% seed-bootstrap interval |
+| --- | ---: | ---: | --- |
+| Base | 0/75 | 0/25 | Reference |
+| Raw adapter | 52/75 | 10/25 (40%) | +40 percentage points [20, 60] |
+| EMA adapter | 39/75 | 9/25 (36%) | +36 percentage points [16, 56] |
+
+Separately, new adapters trained for the full 60,000 microsteps using only episodes 0–47 reduced normalized action MSE on 48 fixed windows from held-out episodes 48–59: base **0.34148**, raw **0.22230**, EMA **0.21364**. These are different adapters from the full-data simulator policies. Offline error is not task success. No held-out checkpoint selection or tuning was performed.
+
+See [evaluation methods, provenance and limitations](QUALITY_EVALUATION.md), [all simulator seed outcomes and intervals](assets/paired-simulator-quality.json), and [held-out windows, per-channel errors and episode uncertainty](assets/heldout-quality.json). Physical-robot performance was not evaluated. The training helper still ends at artifact publication and records `quality_evaluation: "not_run"`; these results came from separate evaluation jobs.
 
 ## Historical smoke run (legacy base)
 

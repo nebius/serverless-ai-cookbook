@@ -45,11 +45,19 @@ A separate fresh-process H200 job (`aijob-e00w2485veq48c7dd4`) reloaded the publ
 
 The November 3–4, 2026 run (`aijob-e00w76xepq5509t6vx`) reached `COMPLETED` with 3,000 FP32 optimizer updates, effective batch 32, and all 50 episodes. Container runtime was 17h 56m; peak allocated GPU memory was 127.7 GiB and final reported training loss was 0.05635. The final `step-3000` marker/state and `TRAIN_COMPLETE.json` confirmed the budget. The complete 13.9 GB BF16 export was independently streamed and SHA-256 checked against the receipt.
 
-A fresh H200 process (`aijob-e00gz2ttjyvm7m8j4b`) restored that export and reached `COMPLETED`, producing finite `[1, 32, 14]` actions from recorded images/state with four sampling steps and guidance 4.0. The downloaded action array passed shape/finite checks and its SHA-256 matched the inference report. Validation compute was removed; images and artifacts were retained. This verifies the training/publication/reload/inference path; held-out policy quality and robot/simulator task success were not evaluated.
+A fresh H200 process (`aijob-e00gz2ttjyvm7m8j4b`) restored that export and reached `COMPLETED`, producing finite `[1, 32, 14]` actions from recorded images/state with four sampling steps and guidance 4.0. The downloaded action array passed shape/finite checks and its SHA-256 matched the inference report. Validation compute was removed; images and artifacts were retained. This verifies the training/publication/reload/inference path. That full-data run was not eligible for scoring on held-out episodes from the same dataset; the separate experiment below retrained with a reserved split.
 
 ![ALOHA training loss across all 3,000 optimizer updates, with logged values and a three-point trailing mean.](assets/full-training-loss.png)
 
 The curve uses all 300 logged points from `runs/pr33-aloha-full-1103/metrics.jsonl`; the line shows a three-point trailing mean. [Download the logged losses](assets/full-training-loss.csv). This is training loss, not a held-out or robot success metric.
+
+## Held-out quality evaluation (November 5–6, 2026)
+
+A separate full-budget run trained for **3,000 FP32 updates on episodes 0–39 only**, including statistics fitted only to those 40 episodes. Its final BF16 export was scored on four fixed valid windows from each held-out episode 40–49: **40 windows, 14 action channels**. Mean normalized action MSE was **0.01720**, with a 95% episode-bootstrap interval of **[0.01350, 0.02145]**. Sampling used the pinned upstream evaluator, seed 42000, four steps and guidance 4.0.
+
+This is final-policy offline error. There is no matched 14-channel zero-shot or early-checkpoint baseline, so it does not establish an improvement from fine-tuning. Raw command errors use the dataset's recorded coordinates; their physical units are undeclared. [Download all windows, ordered per-channel errors and episode uncertainty](assets/heldout-quality.json), or read the [shared evaluation methods and provenance](../bfl-flux-action-so101-pick-orange-task-lora/QUALITY_EVALUATION.md).
+
+**Cup-opening task success remains unmeasured.** A matching simulator or robot setup, camera/joint contract, success predicate and operator must be identified before running closed-loop ALOHA evaluation. A different ALOHA task cannot substitute for this one. The training helper itself still records `quality_evaluation: "not_run"`.
 
 ## Workflow
 
@@ -76,7 +84,7 @@ These are the first decoded frames of the three training camera streams, in reci
 
 The Dockerfile pins [FLUX Action `472653e`](https://github.com/black-forest-labs/flux-action/tree/472653eb48419a0f981da2a6605c7be318d6f4f7). Training keeps FP32 master weights and uses BF16 compute with activation checkpointing and gradient clipping at 1.0. One window per microbatch and 32 accumulation passes give an effective batch of 32 windows per optimizer update. FP32 weights, gradients, and AdamW state need roughly 112 GB for the trunk before activations and other buffers. The four-update FP32 smoke fit on one H200 at 127.7 GiB peak allocated GPU memory. Larger microbatches, resolutions, or EMA profiles may need a two-GPU FSDP setup in upstream FLUX Action; this helper launches one GPU.
 
-All 50 episodes are used for training (`val_episodes: 0`) because this example does not evaluate held-out episodes. EMA is disabled to avoid storing another full-weight profile in this single-GPU example. The export uses raw final weights; compare raw and EMA profiles in a separate quality experiment before choosing deployment weights. Exported inference defaults are four sampling steps and guidance 4.0.
+All 50 episodes are used for training (`val_episodes: 0`) in the default training recipe. The separate held-out experiment above reserved episodes before training and fitted its statistics on the training split only. EMA is disabled to avoid storing another full-weight profile in this single-GPU example. The export uses raw final weights; compare raw and EMA profiles in a separate quality experiment before choosing deployment weights. Exported inference defaults are four sampling steps and guidance 4.0.
 
 Cold-start time, download size, and peak scratch usage have not been benchmarked. The 168-hour job timeout is a ceiling, not an estimated duration. Account for model/data downloads and export publication as well as training.
 
