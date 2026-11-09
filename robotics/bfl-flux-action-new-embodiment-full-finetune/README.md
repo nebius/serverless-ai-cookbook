@@ -57,7 +57,7 @@ A separate full-budget run trained for **3,000 FP32 updates on episodes 0–39 o
 
 This is final-policy offline error. There is no matched 14-channel zero-shot or early-checkpoint baseline, so it does not establish an improvement from fine-tuning. Raw command errors use the dataset's recorded coordinates; their physical units are undeclared. [Download all windows, ordered per-channel errors and episode uncertainty](assets/heldout-quality.json), or read the [shared evaluation methods and provenance](../bfl-flux-action-so101-pick-orange-task-lora/QUALITY_EVALUATION.md).
 
-**Cup-opening task success remains unmeasured.** A matching simulator or robot setup, camera/joint contract, success predicate and operator must be identified before running closed-loop ALOHA evaluation. A different ALOHA task cannot substitute for this one. The training helper itself still records `quality_evaluation: "not_run"`.
+**Real-world ALOHA evaluation is outside this example’s validation scope.** Cup-opening task success was not measured; the ALOHA results cover training, artifact reload and held-out offline action error. The training helper itself still records `quality_evaluation: "not_run"`.
 
 ## Workflow
 

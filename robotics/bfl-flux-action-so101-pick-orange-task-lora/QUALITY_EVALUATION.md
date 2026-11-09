@@ -81,4 +81,4 @@ The audit bucket is `flux-action-serverless-20260925` at `https://storage.eu-nor
 | Simulator evaluator | `9e2e1c714aced3a6884bff683a55664fecbf719ff75882b47c3f0606d3be6975` |
 | Policy service | `68a7c93356ad0368b028ad4951eff0a018cebd078b33a9c494473cd79228bcfe` |
 
-**Remaining dependency:** ALOHA cup-opening task success needs an identified matching simulator or robot/operator setup, including camera/joint units, control timing, cup assets and a success predicate. No other task or physical hardware was substituted. Both held-out scorers and all feasible SO-101 simulator comparisons are complete.
+**Evaluation scope:** Real-world ALOHA evaluation is excluded. ALOHA cup-opening task success was not measured, and no other task or physical hardware was substituted. Both held-out scorers and all SO-101 simulator comparisons are complete; a physical ALOHA setup is not an outstanding requirement for this example.
