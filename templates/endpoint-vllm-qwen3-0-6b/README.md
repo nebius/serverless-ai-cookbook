@@ -20,9 +20,11 @@ After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
 This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
 
 **First boot:** Nebius can show RUNNING while weights are still downloading.
-`GET /v1/models` may return `502 failed to connect to local service` until the
-API binds port 8000 (often several minutes). Wait until `/v1/models` returns
-JSON before calling `/v1/chat/completions`.
+Until the API binds port 8000 (often several minutes), `GET /v1/models` returns
+warm-up errors: `404 ... No tunnel has this address` while the image is pulled,
+then `503 upstream connect error or disconnect/reset before headers` (or
+`502 failed to connect to local service`). These are normal. Wait until
+`/v1/models` returns JSON before calling `/v1/chat/completions`.
 
 Optional: in the console, add env `HF_TOKEN=<your Hugging Face token>` so the
 first Hub pull is authenticated and usually faster (not required).
@@ -38,7 +40,7 @@ curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
 
 curl -sS -X POST "$BASE_URL/v1/chat/completions" "${AUTH[@]}" \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen3-0.6B","messages":[{"role":"user","content":"Say hello in one short sentence."}],"max_tokens":64,"temperature":0.2}' \
+  -d '{"model":"Qwen/Qwen3-0.6B","messages":[{"role":"user","content":"Say hello in one short sentence."}],"max_tokens":64,"temperature":0.2,"chat_template_kwargs":{"enable_thinking":false}}' \
   | tee reply.json
 python3 -c 'import json; t=json.load(open("reply.json"))["choices"][0]["message"]["content"]; open("reply.txt","w").write(t); print(f"wrote reply.txt ({len(t)} chars)")'
 ```
@@ -76,6 +78,7 @@ body = json.dumps(
         "messages": [{"role": "user", "content": "Say hello in one short sentence."}],
         "max_tokens": 64,
         "temperature": 0.2,
+        "chat_template_kwargs": {"enable_thinking": False},  # Qwen3 reasons by default
     }
 ).encode()
 req = urllib.request.Request(
@@ -106,6 +109,7 @@ creation and cannot be recovered later (recreate the endpoint to rotate it) — 
 
 ```bash
 nebius ai endpoint create \
+  --name qwen3-0-6b \
   --image vllm/vllm-openai:v0.19.1 \
   --public \
   --auth token \
@@ -116,8 +120,8 @@ nebius ai endpoint create \
   --container-port 8000 \
   --shm-size 16Gi \
   --disk-size 500Gi \
-  --container-command bash \
-  --args '-c python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000'
+  --container-command python3 \
+  --args '-m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000'
 ```
 
 `--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
@@ -132,6 +136,6 @@ nebius ai endpoint create \
 
 ## Troubleshooting
 
-- **`502 failed to connect to local service`** — tunnel is up but the container has not bound port 8000 yet (weight download / load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as “API ready”.
+- **`404 No tunnel has this address`, `503 upstream connect error or disconnect/reset before headers`, or `502 failed to connect to local service`** — normal during warm-up: the image is still being pulled (404) or the container has not bound port 8000 yet (weight download / load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as “API ready”.
 - **Very slow first pull** — add optional env `HF_TOKEN` in the console; prefer a larger disk (template asks for 500 Gi) so Hub throughput is higher.
 - **Wrong image or port** — `vllm/vllm-openai:v0.19.1` on container port `8000` (`gpu-l40s-a` / `1gpu-8vcpu-32gb`, preemptible).
