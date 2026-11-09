@@ -1,3 +1,13 @@
+---
+title: Chatterbox
+category: inference
+type: endpoint
+runtime: gpu-h100-sxm
+frameworks: [chatterbox-tts]
+keywords: [tts, text-to-speech, voice-clone, chatterbox, openai-speech, h100]
+difficulty: intermediate
+---
+
 # Chatterbox
 
 <!-- factory:deploy -->
@@ -14,18 +24,6 @@ Chatterbox is a MIT expressive English TTS model with bundled preset voices and 
 
 <!-- /factory:intro -->
 
----
-
-title: Chatterbox
-category: inference
-type: endpoint
-runtime: gpu-h100-sxm
-frameworks: [chatterbox-tts]
-keywords: [tts, text-to-speech, voice-clone, chatterbox, openai-speech, h100]
-difficulty: intermediate
-
----
-
 Expressive English text-to-speech endpoint serving [Chatterbox](https://huggingface.co/ResembleAI/chatterbox)
 (Resemble AI) on a single preemptible H100. ~500M parameters, MIT license, and an
 OpenAI-shaped speech API on port 8000.
@@ -34,21 +32,42 @@ Pair with [Kokoro-82M](../endpoint-kokoro-82m/README.md) for a lighter “simple
 demo on L40S; Chatterbox targets expressive synthesis and zero-shot voice cloning
 from bundled preset reference clips.
 
-## Run
+## Test request
 
-Synthesize speech with the bundled preset voice (`Emily.wav`):
+After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
+This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
+
+**First boot:** Nebius can show RUNNING while weights are still downloading.
+`GET /v1/models` may return `502 failed to connect to local service` until the
+API binds port 8000. Wait until `/v1/models` returns JSON before synthesizing.
+
+Optional: in the console, add env `HF_TOKEN=<your Hugging Face token>` so the
+first Hub pull is authenticated and usually faster (not required).
 
 ```bash
+export BASE_URL='https://…'   # Public endpoints URL from the console
+export TOKEN='<endpoint-auth-token>'   # generated in the create form (or printed once by the CLI)
+AUTH=(-H "Authorization: Bearer $TOKEN")   # AUTH=() if the endpoint has no auth
+curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
+
+# Synthesize speech with the bundled preset voice (Emily.wav)
 curl -sS -X POST "$BASE_URL/v1/audio/speech" "${AUTH[@]}" \
-  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model": "tts-1", "input": "Hello from Chatterbox on Nebius serverless.", "voice": "Emily.wav", "response_format": "wav"}' \
   -o chatterbox-sample.wav
+echo "wrote chatterbox-sample.wav ($(wc -c < chatterbox-sample.wav | tr -d ' ') bytes)"
 ```
 
 Optional fields: `voice` (bundled `*.wav` preset under `/app/voices`), `response_format`
 (`wav` or `mp3`). Use `voice: "default"` to skip reference audio and use Chatterbox's
 built-in speaker.
+
+Token auth is on by default for this template. Keep it on in production; the token is shown once at
+creation and cannot be recovered later (recreate the endpoint to rotate it) — see
+[How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
+
+> ⚠️ When you are done testing, **delete the endpoint** so it stops billing — see
+> [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 ## Expected output
 
@@ -142,32 +161,6 @@ curl -sS localhost:8000/v1/models
   Chatterbox generation is not thread-safe on a single device.
 - **Observability:** Stream synthesis latency and VRAM in logs; alert on repeated 503
   during weight download.
-
-## Test request
-
-After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
-This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
-
-**First boot:** Nebius can show RUNNING while weights are still downloading.
-`GET /v1/models` may return `502 failed to connect to local service` until the
-API binds port 8000. Wait until `/v1/models` returns JSON before synthesizing.
-
-Optional: in the console, add env `HF_TOKEN=<your Hugging Face token>` so the
-first Hub pull is authenticated and usually faster (not required).
-
-```bash
-export BASE_URL='https://…'   # Public endpoints URL from the console
-export TOKEN='<endpoint-auth-token>'   # generated in the create form (or printed once by the CLI)
-AUTH=(-H "Authorization: Bearer $TOKEN")   # AUTH=() if the endpoint has no auth
-curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
-```
-
-Token auth is on by default for this template. Keep it on in production; the token is shown once at
-creation and cannot be recovered later (recreate the endpoint to rotate it) — see
-[How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
-
-> ⚠️ When you are done testing, **delete the endpoint** so it stops billing — see
-> [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 <!-- factory:cli -->
 
