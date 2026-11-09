@@ -10,7 +10,7 @@
 
 Qwen3-VL-Embedding-8B is an Apache-2.0 multimodal embedding model that maps text, images, and video into one shared vector space, served OpenAI-compatibly via vLLM on preemptible H100.
 
-**License:** [Apache-2.0](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B)
+**License:** [Apache-2.0](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B) · **Source:** [Hugging Face](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B)
 
 <!-- /factory:intro -->
 
@@ -29,6 +29,8 @@ single L40S — see [CLI alternative](#cli-alternative).
 ## Test request
 
 Copy the endpoint's public URL from the console (**Public endpoints**) into `BASE_URL`.
+Prefer the managed HTTPS FQDN (`https://port8000-<id>.tunnel.applications.<region>.nebius.cloud`);
+the raw `IP:port` form (`http://<IP>:8000`) also works while it is offered.
 
 > **Auth.** This template's 1-click link **enables token authentication** — the create
 > form opens with Token auth selected, and you generate the token there (it is never put
@@ -36,14 +38,8 @@ Copy the endpoint's public URL from the console (**Public endpoints**) into `BAS
 > and the commands add the header automatically. For a quick public test, set
 > Authentication to None (or drop `auth=true` from the link).
 
-> **URL note.** The examples below use the `IP:port` form. Nebius is moving public
-> access to a managed HTTPS FQDN
-> (`https://port8000-<id>.tunnel.applications.<region>.nebius.cloud`) and retiring
-> raw-IP access — once your endpoint's FQDN responds, prefer it and set
-> `BASE_URL` to it (drop the `http://`, it's already `https://`).
-
 ```bash
-export BASE_URL='http://<IP>:8000'                 # from console → Public endpoints
+export BASE_URL='https://port8000-<id>.tunnel.applications.eu-north1.nebius.cloud'   # from console → Public endpoints
 export TOKEN='<endpoint-auth-token>'               # generated in the create form (or printed once by the CLI)
 AUTH=(-H "Authorization: Bearer $TOKEN")           # omit if the endpoint is --auth none
 ```
@@ -211,8 +207,8 @@ Cheaper variant — the **2B** on a single L40S (change `--model` to
 
 ## Troubleshooting
 
-- **404 `Not Found` (plain text) on every path** — you are hitting a URL the public gateway does not route yet. Use the `IP:port` from **Public endpoints**; if only a managed FQDN is shown and it 404s, the tunnel route may still be provisioning.
-- **`502 failed to connect to local service`** — tunnel/ingress is up but the container has not bound port 8000 yet (weight download/load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as "API ready".
+- **404 `Not Found` (plain text) on every path** — you are hitting a URL the public gateway does not route yet. Copy `BASE_URL` from **Public endpoints**; a 404 `No tunnel has this address` from the managed FQDN right after create means the route is still provisioning (normal during the image pull) — keep polling.
+- **`503 upstream connect error or disconnect/reset before headers` or `502 failed to connect to local service`** — tunnel/ingress is up but the container has not bound port 8000 yet (weight download/load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as "API ready".
 - **`unrecognized arguments` / module errors at start** — pass the real vLLM command, not a hand-split list. Use `--container-command python3` + `--args "-m vllm.entrypoints.openai.api_server --model … --runner pooling …"` exactly as above.
 - **`--runner pooling` not recognized** — older vLLM builds use `--task embed`. This template targets vLLM ≥ 0.14.0 (the pinned `vllm/vllm-openai:v0.19.1` satisfies it).
 - **Trust/remote-code error at load** — `--trust-remote-code` must stay in the command; Qwen3-VL-Embedding ships custom code.
