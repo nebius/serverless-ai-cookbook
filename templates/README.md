@@ -112,7 +112,7 @@ Template code in this repository is Apache-2.0. Some templates deploy third-part
 <tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/67b610677ea7952def8b29c6/N6jQbbeaa_FcUY-wI1dgG.png" width="20" height="20" alt="Wan2.2-I2V-A14B" align="absmiddle">&nbsp;<a href="endpoint-wan22-i2v-a14b/README.md"><strong>Wan2.2-I2V-A14B</strong></a></td>
   <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0&amp;command=vllm%20serve%20Wan-AI%2FWan2.2-I2V-A14B-Diffusers%20--omni%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
-  <td width="580" valign="middle">Wan2.2-I2V-A14B is a flagship Apache-2.0 image-to-video model (~35GB) for 480p clips on preemptible H100 via vLLM-Omni.</td>
+  <td width="580" valign="middle">Wan2.2-I2V-A14B is a flagship Apache-2.0 image-to-video model (~126 GB of weights) for 480p clips on preemptible H100 via vLLM-Omni.</td>
 </tr>
 </tbody>
 </table>
