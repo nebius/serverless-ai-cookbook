@@ -20,9 +20,11 @@ After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
 This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
 
 **First boot:** Nebius can show RUNNING while weights are still downloading.
-`GET /v1/models` may return `502 failed to connect to local service` until the
-API binds port 8000 (often several minutes). Wait until `/v1/models` returns
-JSON before calling `/v1/images/edits`.
+Until the API binds port 8000 (often several minutes), `GET /v1/models` returns
+warm-up errors: `404 ... No tunnel has this address` while the image is pulled,
+then `503 upstream connect error or disconnect/reset before headers` (or
+`502 failed to connect to local service`). These are normal. Wait until
+`/v1/models` returns JSON before calling `/v1/images/edits`.
 
 Optional: in the console, add env `HF_TOKEN=<your Hugging Face token>` so the
 first Hub pull is authenticated and usually faster (not required).
@@ -30,6 +32,7 @@ first Hub pull is authenticated and usually faster (not required).
 Edit is multipart `POST /v1/images/edits` (image file + prompt) — not JSON
 `/v1/images/generations`. Run the curl from this package directory so
 `samples/image.png` resolves (or pass an absolute path).
+The sample (a lighthouse under a plain blue sky) was generated with Z-Image-Turbo.
 
 ### curl
 
@@ -54,16 +57,20 @@ curl -sS -X POST "$BASE_URL/v1/images/edits" "${AUTH[@]}" \
 ### Python
 
 ```python
+import base64
+import json
 import os
 import time
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 base = os.environ["BASE_URL"].rstrip("/")
 token = os.environ.get("TOKEN")            # bearer token; leave unset if the endpoint has no auth
 auth = {"Authorization": f"Bearer {token}"} if token else {}
 image_path = Path("samples/image.png")
+out_path = "qwen-edit.png"
 
 # Wait until the API is up (not just Nebius RUNNING)
 for _ in range(60):  # up to ~15 min
@@ -78,8 +85,36 @@ for _ in range(60):  # up to ~15 min
 else:
     raise SystemExit("timed out waiting for /v1/models")
 
-print("ok /v1/models — use the curl multipart example for /v1/images/edits")
-print("image:", image_path.resolve())
+# Multipart form: text fields plus the image file
+fields = {
+    "model": "Qwen/Qwen-Image-Edit-2511",
+    "prompt": "make the sky a dramatic sunset",
+    "size": "1024x1024",
+    "output_format": "png",
+    "num_inference_steps": "20",
+    "seed": "42",
+}
+boundary = uuid.uuid4().hex
+body = b""
+for name, value in fields.items():
+    body += f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'.encode()
+body += (
+    f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="{image_path.name}"\r\n'
+    "Content-Type: image/png\r\n\r\n"
+).encode() + image_path.read_bytes() + f"\r\n--{boundary}--\r\n".encode()
+
+req = urllib.request.Request(
+    f"{base}/v1/images/edits",
+    data=body,
+    headers={"Content-Type": f"multipart/form-data; boundary={boundary}", **auth},
+    method="POST",
+)
+with urllib.request.urlopen(req, timeout=300) as resp:
+    payload = json.load(resp)
+
+png = base64.b64decode(payload["data"][0]["b64_json"])
+open(out_path, "wb").write(png)
+print(f"wrote {out_path} ({len(png)} bytes)")
 ```
 
 Token auth is on by default for this template. Keep it on in production; the token is shown once at
@@ -95,6 +130,7 @@ creation and cannot be recovered later (recreate the endpoint to rotate it) — 
 
 ```bash
 nebius ai endpoint create \
+  --name qwen-image-edit-2511 \
   --image vllm/vllm-omni:v0.24.0 \
   --public \
   --auth token \
@@ -105,8 +141,8 @@ nebius ai endpoint create \
   --container-port 8000 \
   --shm-size 16Gi \
   --disk-size 500Gi \
-  --container-command bash \
-  --args '-c vllm serve Qwen/Qwen-Image-Edit-2511 --omni --host 0.0.0.0 --port 8000'
+  --container-command vllm \
+  --args 'serve Qwen/Qwen-Image-Edit-2511 --omni --host 0.0.0.0 --port 8000'
 ```
 
 `--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
@@ -121,7 +157,7 @@ nebius ai endpoint create \
 
 ## Troubleshooting
 
-- **`502 failed to connect to local service`** — tunnel is up but the container has not bound port 8000 yet (weight download / load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as “API ready”.
+- **`404 No tunnel has this address`, `503 upstream connect error or disconnect/reset before headers`, or `502 failed to connect to local service`** — normal during warm-up: the image is still being pulled (404) or the container has not bound port 8000 yet (weight download / load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as “API ready”.
 - **Very slow first pull** — add optional env `HF_TOKEN` in the console; prefer a larger disk (template asks for 500 Gi) so Hub throughput is higher.
 - **Wrong field names** — send the input file as form field `image` with a text `prompt`.
 - **Wrong image or port** — `vllm/vllm-omni:v0.24.0` on container port `8000` (`gpu-h100-sxm` / `1gpu-16vcpu-200gb`, preemptible).
