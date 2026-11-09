@@ -20,7 +20,7 @@ export DEBIAN_FRONTEND=noninteractive
 RECIPE="${RECIPE:-nano}"; MAX_ITER="${MAX_ITER:-500}"; SAVE_ITER="${SAVE_ITER:-$MAX_ITER}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/cosmos3-sft}"; RUN_ID="${RUN_ID:-run-$(date +%Y%m%d-%H%M%S)}"
 FRAMEWORK_REF="${FRAMEWORK_REF:-96303bb0bdd1}"      # NVIDIA/cosmos-framework "Release 2026-09-20"
-COSMOS_REF="${COSMOS_REF:-main}"                     # nvidia/cosmos (recipes)
+COSMOS_REF="${COSMOS_REF:-6e2c69afafd6444c1ca14a021aba93fcc6b7996a}"  # nvidia/cosmos (recipes); main dropped cookbooks/ on 2026-10-21
 NPROC="${NPROC:-$(nvidia-smi -L | wc -l)}"
 export HF_HOME=/workspace/hf UV_CACHE_DIR=/workspace/uv-cache          # local NVMe, never the bucket
 mkdir -p /workspace "$HF_HOME" "$UV_CACHE_DIR"; cd /workspace
@@ -33,7 +33,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; export PATH="$H
 log "2/6 Cosmos Framework @ $FRAMEWORK_REF"
 export GIT_LFS_SKIP_SMUDGE=1
 git clone -q https://github.com/NVIDIA/cosmos-framework.git cosmos-framework && (cd cosmos-framework && git checkout -q "$FRAMEWORK_REF")
-git clone -q --depth 1 --branch "$COSMOS_REF" https://github.com/nvidia/cosmos.git cosmos
+git init -q cosmos && git -C cosmos fetch -q --depth 1 https://github.com/nvidia/cosmos.git "$COSMOS_REF" && git -C cosmos checkout -q FETCH_HEAD
 cd /workspace/cosmos-framework
 uv sync --all-extras --group=cu130-train 2>&1 | tail -3
 source .venv/bin/activate
