@@ -1,3 +1,13 @@
+---
+title: Ace-Step 1.5
+category: inference
+type: endpoint
+runtime: gpu-h100-sxm
+frameworks: [ace-step]
+keywords: [t2a, text-to-audio, music-generation, ace-step, openai-audio, h100]
+difficulty: intermediate
+---
+
 # ACE-Step 1.5
 
 <!-- factory:deploy -->
@@ -10,21 +20,9 @@
 
 ACE-Step 1.5 is an MIT text-to-audio (music) model with a sync OpenAI-shaped generation API on preemptible H100.
 
-**License:** [MIT](https://huggingface.co/ACE-Step/Ace-Step1.5/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/ACE-Step/Ace-Step1.5)
+**License:** [MIT](https://huggingface.co/ACE-Step/Ace-Step1.5) · **Source:** [Hugging Face](https://huggingface.co/ACE-Step/Ace-Step1.5)
 
 <!-- /factory:intro -->
-
----
-
-title: Ace-Step 1.5
-category: inference
-type: endpoint
-runtime: gpu-h100-sxm
-frameworks: [ace-step]
-keywords: [t2a, text-to-audio, music-generation, ace-step, openai-audio, h100]
-difficulty: intermediate
-
----
 
 Text-to-audio (music) endpoint serving [ACE-Step 1.5](https://huggingface.co/ACE-Step/Ace-Step1.5)
 (ACE-Step) on a single preemptible H100. MIT license, no gated weights, and a
@@ -34,13 +32,27 @@ Upstream ACE-Step ships an async FastAPI server (`POST /release_task` +
 `POST /query_result`). This template wraps it with `POST /v1/audio/generations`
 that blocks until audio is ready — similar to vLLM-Omni `/v1/videos/sync`.
 
-## Run
+## Test request
 
-Generate a short instrumental clip (DiT-only, no LM “thinking” — faster smoke):
+After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
+This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
+
+**First boot:** Nebius can show RUNNING while weights are still downloading.
+`GET /v1/models` may return `502 failed to connect to local service` until the
+API binds port 8000 (usually ~5 minutes; up to 30 minutes on slow Hub downloads).
+Wait until `/v1/models` returns JSON before generating.
+
+Optional: in the console, add env `HF_TOKEN=<your Hugging Face token>` so the
+first Hub pull is authenticated and usually faster (not required).
 
 ```bash
+export BASE_URL='https://…'   # Public endpoints URL from the console
+export TOKEN='<endpoint-auth-token>'   # generated in the create form (or printed once by the CLI)
+AUTH=(-H "Authorization: Bearer $TOKEN")   # AUTH=() if the endpoint has no auth
+curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
+
+# Generate a short instrumental clip (DiT-only, no LM "thinking" — faster smoke)
 curl -sS -X POST "$BASE_URL/v1/audio/generations" "${AUTH[@]}" \
-  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "ACE-Step/Ace-Step1.5",
@@ -52,13 +64,21 @@ curl -sS -X POST "$BASE_URL/v1/audio/generations" "${AUTH[@]}" \
     "audio_format": "mp3"
   }' \
   -o ace-step-sample.mp3
+echo "wrote ace-step-sample.mp3 ($(wc -c < ace-step-sample.mp3 | tr -d ' ') bytes)"
 ```
 
-Optional fields: `lyrics`, `thinking` (set `true` for LM-enhanced quality),
-`audio_duration`, `inference_steps`, `audio_format` (`mp3` or `wav`), `bpm`,
-`key_scale`, `time_signature`. For longer clips or batch jobs, call upstream
-`POST /release_task` on the internal acestep-api port directly from a sidecar or
-custom client.
+Optional fields: `lyrics`, `thinking` (set `true` for LM-enhanced quality; needs
+`ACESTEP_INIT_LLM=true`), `audio_duration`, `inference_steps`, `audio_format`
+(`mp3` or `wav`), `bpm`, `key_scale`, `time_signature`. For longer clips or batch
+jobs, call upstream `POST /release_task` on the internal acestep-api port directly
+from a sidecar or custom client.
+
+Token auth is on by default for this template. Keep it on in production; the token is shown once at
+creation and cannot be recovered later (recreate the endpoint to rotate it) — see
+[How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
+
+> ⚠️ When you are done testing, **delete the endpoint** so it stops billing — see
+> [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
 
 ## Expected output
 
@@ -66,8 +86,9 @@ custom client.
   `ACE-Step/Ace-Step1.5`.
 - `POST /v1/audio/generations` returns HTTP 200 with a non-empty audio body
   (`audio/mpeg` for MP3 or `audio/wav` for WAV).
-- First boot downloads several GB of DiT + LM weights; cold start on H100 typically
-  reaches READY within tens of minutes. The wrapper binds port 8000 only after
+- First boot downloads the ~10 GB `ACE-Step/Ace-Step1.5` repo (turbo DiT, VAE, text
+  encoder and the bundled 1.7B LM); cold start on H100 usually reaches READY in ~5
+  minutes (up to 30 on slow Hub downloads). The wrapper binds port 8000 only after
   upstream `/health` succeeds.
 
 ## Architecture
@@ -85,7 +106,7 @@ FastAPI wrapper (serve.py)  :8000
   ▼
 acestep-api (upstream)  :8001  —  ACE-Step 1.5 task queue + DiT/LM workers
   ▼
-GPU (H100)  —  acestep-v15-turbo DiT + acestep-5Hz-lm-0.6B (HF Hub cache on disk)
+GPU (H100)  —  acestep-v15-turbo DiT + VAE + Qwen3-Embedding-0.6B (5Hz LM off by default)
 ```
 
 The Nebius endpoint token is enforced at the platform edge; the container does not
@@ -100,12 +121,20 @@ Deploy URLs cannot carry env vars; override only to retune:
 | Var                     | Default                | Meaning                                                           |
 | ----------------------- | ---------------------- | ----------------------------------------------------------------- |
 | `ACESTEP_CONFIG_PATH`   | `acestep-v15-turbo`    | DiT checkpoint loaded at startup                                  |
-| `ACESTEP_LM_MODEL_PATH` | `acestep-5Hz-lm-0.6B`  | 5Hz LM for `thinking=true` / metadata                             |
+| `ACESTEP_LM_MODEL_PATH` | `acestep-5Hz-lm-0.6B`  | 5Hz LM loaded when `ACESTEP_INIT_LLM=true` (unused otherwise)     |
 | `ACESTEP_NO_INIT`       | `false`                | Eager-load models at boot (recommended for smoke)                 |
 | `ACESTEP_INIT_LLM`      | `false`                | Force DiT-only (skip vLLM 5Hz LM). Set `true` for `thinking=true` |
 | `API_MODEL`             | `ACE-Step/Ace-Step1.5` | Catalog model id returned by `/v1/models`                         |
 | `ACESTEP_API_PORT`      | `8001`                 | Internal upstream port (do not expose publicly)                   |
 | `POLL_TIMEOUT_S`        | `900`                  | Max wait for sync generation                                      |
+
+At startup upstream `acestep-api` always downloads the full `ACE-Step/Ace-Step1.5` Hub
+repo (~10 GB: `acestep-v15-turbo` DiT, VAE, `Qwen3-Embedding-0.6B` text encoder, and
+the bundled `acestep-5Hz-lm-1.7B`, ~3.8 GB) into its checkpoints directory, even though
+the LM stays unloaded with the default `ACESTEP_INIT_LLM=false`. Requests may log
+`LLM unavailable, auto-disabling` and run DiT-only. Only with `ACESTEP_INIT_LLM=true`
+is the LM loaded; `ACESTEP_LM_MODEL_PATH` picks which one (the 0.6B default is a separate
+~1.4 GB download).
 
 ## Build the image yourself
 
@@ -151,33 +180,6 @@ curl -sS localhost:8000/v1/models
   one GPU (upstream queue is single-worker by design).
 - **Observability:** Log task ids, queue depth, and VRAM at init; alert on repeated 504s.
 
-## Test request
-
-After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
-This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
-
-**First boot:** Nebius can show RUNNING while weights are still downloading.
-`GET /v1/models` may return `502 failed to connect to local service` until the
-API binds port 8000 (often 15–30+ minutes). Wait until `/v1/models` returns
-JSON before generating.
-
-Optional: in the console, add env `HF_TOKEN=<your Hugging Face token>` so the
-first Hub pull is authenticated and usually faster (not required).
-
-```bash
-export BASE_URL='https://…'   # Public endpoints URL from the console
-export TOKEN='<endpoint-auth-token>'   # generated in the create form (or printed once by the CLI)
-AUTH=(-H "Authorization: Bearer $TOKEN")   # AUTH=() if the endpoint has no auth
-curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
-```
-
-Token auth is on by default for this template. Keep it on in production; the token is shown once at
-creation and cannot be recovered later (recreate the endpoint to rotate it) — see
-[How to call an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-call-an-endpoint).
-
-> ⚠️ When you are done testing, **delete the endpoint** so it stops billing — see
-> [How to delete an endpoint](https://docs.nebius.com/serverless/endpoints/manage#how-to-delete-an-endpoint).
-
 <!-- factory:cli -->
 
 ## CLI alternative
@@ -210,7 +212,7 @@ nebius ai endpoint create \
 
 | Symptom                                        | Cause                                                                                                                                             |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Smoke returns 502 for the first 15–30+ minutes | DiT + LM weights download on first boot; wait for `upstream ready` in logs                                                                        |
+| Smoke returns 502 for the first ~5–30 minutes  | ~10 GB of weights download on first boot; wait for `upstream ready` in logs                                                                       |
 | `no CUDA device` in logs                       | Deployed on a CPU platform/preset                                                                                                                 |
 | `generation timed out`                         | Increase `POLL_TIMEOUT_S` or shorten `audio_duration` / `inference_steps`                                                                         |
 | `502 failed to connect to local service`       | Tunnel up but port 8000 not bound yet — poll `/v1/models`; RUNNING ≠ API ready                                                                    |

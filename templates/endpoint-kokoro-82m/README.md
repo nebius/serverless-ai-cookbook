@@ -10,7 +10,7 @@
 
 Kokoro-82M is an 82M-parameter Apache-2.0 text-to-speech model with an OpenAI-compatible speech API on a single L40S.
 
-**License:** [Apache-2.0](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/hexgrad/Kokoro-82M)
+**License:** [Apache-2.0](https://huggingface.co/hexgrad/Kokoro-82M) · **Source:** [Hugging Face](https://huggingface.co/hexgrad/Kokoro-82M)
 
 <!-- /factory:intro -->
 
