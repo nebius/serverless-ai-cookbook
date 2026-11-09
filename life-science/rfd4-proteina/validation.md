@@ -13,8 +13,15 @@ Checked without starting new GPU work:
   target sequence, atom coordinates, query MSAs and absence of a binder template.
 - Input provenance, hashes, launch-link parameters and shell syntax.
 
-The exact NIM endpoint, CPU bucket client and Hugging Face startup-installation
-job and optional OpenFold3 path have **not** had live end-to-end acceptance. Results from earlier custom
+Run live on 9 November 2026 (eu-north1, `gpu-h100-sxm` / `1gpu-16vcpu-200gb`,
+200 GiB disk, no Hugging Face token): the Hugging Face startup-installation job
+COMPLETED for the monomer and PD-L1 inputs with the corrected command, and both
+runs' CIFs reached the bucket non-empty (monomer 230,369 / 224,664 bytes;
+PD-L1 638,840 / 638,861 bytes, 1,569 ATOM records each). The direct NVCR pull
+stayed inside the cold-start window in that run.
+
+The NIM endpoint, CPU bucket client and the optional OpenFold3 path have
+**not** had live end-to-end acceptance. Results from earlier custom
 images are not presented as validation or benchmarks for these configurations.
 Signed-in console acceptance is also pending; automated console access received
 Cloudflare 403.
