@@ -47,7 +47,7 @@ AUTH=(-H "Authorization: Bearer $TOKEN")           # AUTH=() if the endpoint has
 ```
 
 **First boot:** the 32.6 GiB repository is pulled from the Hub and vLLM compiles CUDA
-graphs — expect ~15 minutes from create to first answer, during which the console
+graphs — expect ~10–15 minutes from create to first answer, during which the console
 already shows RUNNING. Poll until the API answers:
 
 ```bash
@@ -55,14 +55,15 @@ until curl -sf "${AUTH[@]}" "$BASE_URL/v1/models" >/dev/null; do echo "waiting�
 ```
 
 The examples below use NVIDIA's public sample media from the
-[Cosmos cookbooks](https://github.com/nvidia/cosmos/tree/main/cookbooks/cosmos3/reasoner/assets),
+[Cosmos cookbooks](https://github.com/NVIDIA/cosmos-framework/tree/5950e7b4ea3677b99a2de279a7ed7058b5446e42/.agents/skills/cookbooks/cosmos3/reasoner/assets),
 so you can test without uploading anything. Sampling values follow NVIDIA's
-[prompt guide](https://github.com/nvidia/cosmos/blob/main/cookbooks/cosmos3/reasoner/reasoner_prompt_guide.md):
+[prompt guide](https://github.com/NVIDIA/cosmos-framework/blob/5950e7b4ea3677b99a2de279a7ed7058b5446e42/.agents/skills/cookbooks/cosmos3/reasoner/reasoner_prompt_guide.md):
 `temperature 0.7, top_p 0.8, top_k 20, presence_penalty 1.5` without reasoning;
 `temperature 0.6, top_p 0.95, presence_penalty 0` with reasoning.
 
 ```bash
-export ASSETS='https://raw.githubusercontent.com/nvidia/cosmos/main/cookbooks/cosmos3/reasoner/assets'
+# pinned commit of nvidia/cosmos; the same files now live in NVIDIA/cosmos-framework (Git LFS)
+export ASSETS='https://raw.githubusercontent.com/nvidia/cosmos/6e2c69afafd6444c1ca14a021aba93fcc6b7996a/cookbooks/cosmos3/reasoner/assets'
 ```
 
 ### Image caption
@@ -186,7 +187,7 @@ import os
 from openai import OpenAI
 
 client = OpenAI(base_url=f"{os.environ['BASE_URL']}/v1", api_key=os.environ.get("TOKEN", "EMPTY"))
-ASSETS = "https://raw.githubusercontent.com/nvidia/cosmos/main/cookbooks/cosmos3/reasoner/assets"
+ASSETS = "https://raw.githubusercontent.com/nvidia/cosmos/6e2c69afafd6444c1ca14a021aba93fcc6b7996a/cookbooks/cosmos3/reasoner/assets"
 
 r = client.chat.completions.create(
     model="nvidia/Cosmos3-Nano",
@@ -202,7 +203,7 @@ print(r.choices[0].message.content)
 
 More prompts (describe-anything, action trajectories, driving scenes, robot task
 planning) are in NVIDIA's
-[Reasoner notebook](https://github.com/nvidia/cosmos/blob/main/cookbooks/cosmos3/reasoner/run_with_vllm.ipynb);
+[Reasoner notebook](https://github.com/NVIDIA/cosmos-framework/blob/5950e7b4ea3677b99a2de279a7ed7058b5446e42/.agents/skills/cookbooks/cosmos3/reasoner/run_with_vllm.ipynb);
 every one of them runs unchanged against this endpoint by pointing `base_url` at it.
 
 > ⚠️ **Preemptible.** This template runs on a preemptible VM. When Compute reclaims it,
@@ -261,7 +262,7 @@ within ~1.5× of the H100 figures above. Good fit for preemptible capacity.
 
 ## Troubleshooting
 
-- **Console shows RUNNING but requests fail / `502`** — weights (32.6 GiB) are still downloading or vLLM is compiling. Poll `/v1/models`; first boot is ~15 minutes.
+- **Console shows RUNNING but requests fail / `502`** — weights (32.6 GiB) are still downloading or vLLM is compiling. Poll `/v1/models`; first boot is ~10–15 minutes.
 - **Endpoint is STOPPED without you stopping it** — the preemptible VM was reclaimed. `nebius ai endpoint start <id>`, or recreate without `--preemptible`.
 - **Video request rejected while images work** — use `video_url` (not `image_url`), put the media block before the text block, and pass `media_io_kwargs` at the top level of the request body (the OpenAI SDK needs it in `extra_body`).
 - **Long video costs many tokens** — `num_frames: -1` samples the whole clip at `fps`; lower `fps` (e.g. `2`) or set an explicit `num_frames` for long videos. Context is 262k tokens.

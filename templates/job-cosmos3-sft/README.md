@@ -10,7 +10,7 @@
 
 Fine-tunes the Cosmos3-Nano video generator on captioned robot videos with NVIDIA's Cosmos Framework SFT recipe on an 8×H100 node, exports the result as a Diffusers pipeline into your bucket — ready to serve with the Generator endpoint template.
 
-**License:** [OpenMDW-1.1](https://openmdw.ai/license/1-1/) · **Source:** [Cosmos Framework](https://github.com/NVIDIA/cosmos-framework) · [NVIDIA Cosmos recipes](https://github.com/nvidia/cosmos/tree/main/cookbooks/cosmos3/generator/audiovisual/finetune)
+**License:** [OpenMDW-1.1](https://openmdw.ai/license/1-1/) · **Source:** [Cosmos Framework](https://github.com/NVIDIA/cosmos-framework) · [NVIDIA Cosmos recipes](https://github.com/nvidia/cosmos/tree/6e2c69afafd6444c1ca14a021aba93fcc6b7996a/cookbooks/cosmos3/generator/audiovisual/finetune)
 
 <!-- /factory:intro -->
 
@@ -105,6 +105,7 @@ with dense captions; NVIDIA's sample set is the reference for the layout.
 | `OUTPUT_DIR` | `/data/cosmos3-sft` | results root in the bucket |
 | `RUN_ID` | `run-<timestamp>` | result sub-folder |
 | `FRAMEWORK_REF` | pinned release commit | Cosmos Framework git ref |
+| `COSMOS_REF` | pinned commit `6e2c69a` | `nvidia/cosmos` ref (commit or branch) the recipe TOMLs are read from; its `main` no longer has `cookbooks/` |
 | `HF_TOKEN` | unset | only for gated datasets or models |
 
 ### Observed results
