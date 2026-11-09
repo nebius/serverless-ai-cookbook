@@ -8,7 +8,7 @@
 
 <!-- factory:intro -->
 
-Wan2.2-I2V-A14B is a flagship Apache-2.0 image-to-video model (~35GB) for 480p clips on preemptible H100 via vLLM-Omni.
+Wan2.2-I2V-A14B is a flagship Apache-2.0 image-to-video model (~126 GB of weights) for 480p clips on preemptible H100 via vLLM-Omni.
 
 **License:** [Apache-2.0](https://huggingface.co/Wan-AI/Wan2.2-I2V-A14B-Diffusers) · **Source:** [Hugging Face](https://huggingface.co/Wan-AI/Wan2.2-I2V-A14B-Diffusers)
 
@@ -20,9 +20,12 @@ After the endpoint is READY, copy its public URL from the console (`BASE_URL`).
 This template's 1-click link **enables token authentication** — you generate the token in the create form, and every call must send `Authorization: Bearer <token>`. Set `TOKEN` below; the examples add the header. For a quick public test, set Authentication to None (or drop `auth=true` from the link) and leave `AUTH` empty.
 
 **First boot:** Nebius can show RUNNING while weights are still downloading.
-`GET /v1/models` may return `502 failed to connect to local service` until the
-API binds port 8000 (often several minutes). Wait until `/v1/models` returns
-JSON before calling `/v1/videos/sync`.
+The first boot pulls ~126 GB from Hugging Face and takes about 15 min to ready.
+Until the API binds port 8000 (often several minutes), `GET /v1/models` returns
+warm-up errors: `404 ... No tunnel has this address` while the image is pulled,
+then `503 upstream connect error or disconnect/reset before headers` (or
+`502 failed to connect to local service`). These are normal. Wait until
+`/v1/models` returns JSON before calling `/v1/videos/sync`.
 
 Optional: in the console, add env `HF_TOKEN=<your Hugging Face token>` so the
 first Hub pull is authenticated and usually faster (not required).
@@ -32,6 +35,7 @@ source frame as multipart field `input_reference` (not `image`). Wan2.2 I2V at
 480p needs `flow_shift=12.0`, `boundary_ratio=0.875`, and
 `guidance_scale` / `guidance_scale_2` = `1.0`. Run the curl from this package
 directory so `samples/image.png` resolves (or pass an absolute path).
+The sample frame (832x480) was generated with Z-Image-Turbo.
 
 ### curl
 
@@ -103,6 +107,7 @@ creation and cannot be recovered later (recreate the endpoint to rotate it) — 
 
 ```bash
 nebius ai endpoint create \
+  --name wan22-i2v-a14b \
   --image vllm/vllm-omni:v0.24.0 \
   --public \
   --auth token \
@@ -113,8 +118,8 @@ nebius ai endpoint create \
   --container-port 8000 \
   --shm-size 16Gi \
   --disk-size 500Gi \
-  --container-command bash \
-  --args '-c vllm serve Wan-AI/Wan2.2-I2V-A14B-Diffusers --omni --host 0.0.0.0 --port 8000'
+  --container-command vllm \
+  --args 'serve Wan-AI/Wan2.2-I2V-A14B-Diffusers --omni --host 0.0.0.0 --port 8000'
 ```
 
 `--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
@@ -129,7 +134,7 @@ nebius ai endpoint create \
 
 ## Troubleshooting
 
-- **`502 failed to connect to local service`** — tunnel is up but the container has not bound port 8000 yet (weight download / load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as “API ready”.
+- **`404 No tunnel has this address`, `503 upstream connect error or disconnect/reset before headers`, or `502 failed to connect to local service`** — normal during warm-up: the image is still being pulled (404) or the container has not bound port 8000 yet (weight download / load). Poll `/v1/models` until it returns JSON; do not treat Nebius RUNNING as “API ready”.
 - **Very slow first pull** — add optional env `HF_TOKEN` in the console; prefer a larger disk (template asks for 500 Gi) so Hub throughput is higher.
 - **Bad motion / artifacts** — confirm Wan2.2 480p params (`flow_shift=12.0`, `boundary_ratio=0.875`, guidance 1.0).
 - **Wrong upload field** — use `input_reference`, not `image`.
