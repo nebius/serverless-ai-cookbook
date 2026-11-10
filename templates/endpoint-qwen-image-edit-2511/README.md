@@ -43,7 +43,7 @@ curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
 curl -sS -X POST "$BASE_URL/v1/images/edits" "${AUTH[@]}" \
   -F "model=Qwen/Qwen-Image-Edit-2511" \
   -F "image=@samples/image.png" \
-  -F "prompt=make the sky a dramatic sunset" \
+  -F "prompt=replace the background with a dramatic sunset sky, keep the orange sphere unchanged" \
   -F "size=1024x1024" \
   -F "output_format=png" \
   -F "num_inference_steps=20" \
@@ -85,7 +85,7 @@ else:
 # Multipart form, same fields as the curl example
 fields = {
     "model": "Qwen/Qwen-Image-Edit-2511",
-    "prompt": "make the sky a dramatic sunset",
+    "prompt": "replace the background with a dramatic sunset sky, keep the orange sphere unchanged",
     "size": "1024x1024",
     "output_format": "png",
     "num_inference_steps": "20",
