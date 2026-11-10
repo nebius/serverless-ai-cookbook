@@ -67,6 +67,8 @@ import os
 import time
 import urllib.error
 import urllib.request
+import uuid
+from pathlib import Path
 
 base = os.environ["BASE_URL"].rstrip("/")
 token = os.environ.get("TOKEN")            # bearer token; leave unset if the endpoint has no auth
@@ -85,7 +87,43 @@ for _ in range(60):  # up to ~15 min
 else:
     raise SystemExit("timed out waiting for /v1/models")
 
-print("ok /v1/models — use the curl multipart example for /v1/videos/sync (raw MP4)")
+# Multipart form, same fields as the curl example; the response body is the raw MP4
+fields = {
+    "model": "Wan-AI/Wan2.2-I2V-A14B-Diffusers",
+    "prompt": "Camera slowly pushes in, smooth cinematic motion",
+    "size": "832x480",
+    "num_frames": "17",
+    "fps": "16",
+    "num_inference_steps": "20",
+    "guidance_scale": "1.0",
+    "guidance_scale_2": "1.0",
+    "flow_shift": "12.0",
+    "boundary_ratio": "0.875",
+    "seed": "42",
+}
+boundary = uuid.uuid4().hex
+parts = [
+    f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode()
+    for k, v in fields.items()
+]
+parts.append(
+    f'--{boundary}\r\nContent-Disposition: form-data; name="input_reference"; filename="image.png"\r\n'
+    "Content-Type: image/png\r\n\r\n".encode()
+    + Path("samples/image.png").read_bytes()
+    + b"\r\n"
+)
+body = b"".join(parts) + f"--{boundary}--\r\n".encode()
+req = urllib.request.Request(
+    f"{base}/v1/videos/sync",
+    data=body,
+    headers={"Content-Type": f"multipart/form-data; boundary={boundary}", **auth},
+    method="POST",
+)
+with urllib.request.urlopen(req, timeout=900) as resp:
+    video = resp.read()
+
+open("wan22-i2v-sample.mp4", "wb").write(video)
+print(f"wrote wan22-i2v-sample.mp4 ({len(video)} bytes)")
 ```
 
 For longer clips, prefer async `POST /v1/videos` with polling.
