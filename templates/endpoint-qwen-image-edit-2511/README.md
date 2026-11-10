@@ -54,16 +54,20 @@ curl -sS -X POST "$BASE_URL/v1/images/edits" "${AUTH[@]}" \
 ### Python
 
 ```python
+import base64
+import json
 import os
 import time
 import urllib.error
 import urllib.request
+import uuid
 from pathlib import Path
 
 base = os.environ["BASE_URL"].rstrip("/")
 token = os.environ.get("TOKEN")            # bearer token; leave unset if the endpoint has no auth
 auth = {"Authorization": f"Bearer {token}"} if token else {}
 image_path = Path("samples/image.png")
+out_path = "qwen-edit.png"
 
 # Wait until the API is up (not just Nebius RUNNING)
 for _ in range(60):  # up to ~15 min
@@ -78,8 +82,38 @@ for _ in range(60):  # up to ~15 min
 else:
     raise SystemExit("timed out waiting for /v1/models")
 
-print("ok /v1/models — use the curl multipart example for /v1/images/edits")
-print("image:", image_path.resolve())
+# Multipart form, same fields as the curl example
+fields = {
+    "model": "Qwen/Qwen-Image-Edit-2511",
+    "prompt": "make the sky a dramatic sunset",
+    "size": "1024x1024",
+    "output_format": "png",
+    "num_inference_steps": "20",
+    "seed": "42",
+}
+boundary = uuid.uuid4().hex
+parts = [
+    f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode()
+    for k, v in fields.items()
+]
+parts.append(
+    f'--{boundary}\r\nContent-Disposition: form-data; name="image"; filename="{image_path.name}"\r\n'
+    "Content-Type: image/png\r\n\r\n".encode()
+    + image_path.read_bytes()
+    + b"\r\n"
+)
+body = b"".join(parts) + f"--{boundary}--\r\n".encode()
+req = urllib.request.Request(
+    f"{base}/v1/images/edits",
+    data=body,
+    headers={"Content-Type": f"multipart/form-data; boundary={boundary}", **auth},
+    method="POST",
+)
+with urllib.request.urlopen(req, timeout=300) as resp:
+    payload = json.load(resp)
+
+open(out_path, "wb").write(base64.b64decode(payload["data"][0]["b64_json"]))
+print(f"wrote {out_path}")
 ```
 
 Token auth is on by default for this template. Keep it on in production; the token is shown once at
