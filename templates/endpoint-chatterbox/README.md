@@ -40,7 +40,6 @@ Synthesize speech with the bundled preset voice (`Emily.wav`):
 
 ```bash
 curl -sS -X POST "$BASE_URL/v1/audio/speech" "${AUTH[@]}" \
-  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model": "tts-1", "input": "Hello from Chatterbox on Nebius serverless.", "voice": "Emily.wav", "response_format": "wav"}' \
   -o chatterbox-sample.wav
