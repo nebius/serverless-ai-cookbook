@@ -64,7 +64,6 @@ import time
 import urllib.error
 import urllib.request
 import uuid
-from pathlib import Path
 
 base = os.environ["BASE_URL"].rstrip("/")
 token = os.environ.get("TOKEN")            # bearer token; leave unset if the endpoint has no auth
