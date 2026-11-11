@@ -40,7 +40,6 @@ Generate a short instrumental clip (DiT-only, no LM “thinking” — faster sm
 
 ```bash
 curl -sS -X POST "$BASE_URL/v1/audio/generations" "${AUTH[@]}" \
-  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "ACE-Step/Ace-Step1.5",
