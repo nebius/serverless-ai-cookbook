@@ -35,7 +35,11 @@ default Apache-2.0 base model).
 ## CLI alternative
 
 ```bash
+# bucket in the same project + region; create with: nebius storage bucket create --name axolotl-output --parent-id <project-id>
+BUCKET=$(nebius storage bucket get-by-name --name axolotl-output --format jsonpath='{.metadata.id}')
+
 nebius ai job create \
+  --name axolotl-finetune-$(date +%Y%m%d-%H%M%S) \
   --image docker.io/axolotlai/axolotl:main-20260309-py3.11-cu128-2.9.1 \
   --platform gpu-h100-sxm \
   --preset 1gpu-16vcpu-200gb \
@@ -43,8 +47,14 @@ nebius ai job create \
   --follows-spot-price \
   --shm-size 16Gi \
   --disk-size 500Gi \
-  --command 'curl -fsSL https://raw.githubusercontent.com/nebius/serverless-ai-cookbook/main/training/axolotl-finetuning/src/config.yaml -o /workspace/data/config.yaml && export RUN_ID=run-$(date +%Y%m%d-%H%M%S) && axolotl train /workspace/data/config.yaml && mkdir -p /workspace/data/output/$RUN_ID && cp -r /workspace/output/. /workspace/data/output/$RUN_ID'
+  --volume "$BUCKET:/workspace/data:rw" \
+  --container-command bash \
+  --args '-c "curl -fsSL https://raw.githubusercontent.com/nebius/serverless-ai-cookbook/main/training/axolotl-finetuning/src/config.yaml -o /workspace/data/config.yaml && export RUN_ID=run-$(date +%Y%m%d-%H%M%S) && axolotl train /workspace/data/config.yaml && mkdir -p /workspace/data/output/$RUN_ID && cp -r /workspace/output/. /workspace/data/output/$RUN_ID"'
 ```
+
+Keep the outer single quotes: they stop your local shell from expanding `$(date …)` and
+`$RUN_ID`, so the container sets them. With outer double quotes `$RUN_ID` is empty and the
+checkpoints are copied straight into `output/`.
 
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
