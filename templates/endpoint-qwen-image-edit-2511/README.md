@@ -115,7 +115,7 @@ nebius ai endpoint create \
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 <!-- /factory:cli -->
 

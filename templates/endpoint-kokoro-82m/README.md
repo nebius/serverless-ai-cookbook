@@ -10,7 +10,7 @@
 
 Kokoro-82M is an 82M-parameter Apache-2.0 text-to-speech model with an OpenAI-compatible speech API on a single L40S.
 
-**License:** [Apache-2.0](https://huggingface.co/hexgrad/Kokoro-82M/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/hexgrad/Kokoro-82M)
+**License:** [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) · **Source:** [Hugging Face](https://huggingface.co/hexgrad/Kokoro-82M)
 
 <!-- /factory:intro -->
 
@@ -137,7 +137,7 @@ nebius ai endpoint create \
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 ### Other platforms
 
