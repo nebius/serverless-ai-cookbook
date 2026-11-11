@@ -115,8 +115,8 @@ nebius ai endpoint create \
   --container-port 8000 \
   --shm-size 16Gi \
   --disk-size 500Gi \
-  --container-command bash \
-  --args '-c vllm serve Qwen/Qwen-Image --omni --host 0.0.0.0 --port 8000'
+  --container-command vllm \
+  --args 'serve Qwen/Qwen-Image --omni --host 0.0.0.0 --port 8000'
 ```
 
 `--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into

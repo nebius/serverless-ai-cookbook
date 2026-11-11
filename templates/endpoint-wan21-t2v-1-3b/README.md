@@ -63,6 +63,7 @@ import os
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 base = os.environ["BASE_URL"].rstrip("/")
 token = os.environ.get("TOKEN")            # bearer token; leave unset if the endpoint has no auth
@@ -81,7 +82,36 @@ for _ in range(60):  # up to ~15 min
 else:
     raise SystemExit("timed out waiting for /v1/models")
 
-print("ok /v1/models — use the curl multipart example for /v1/videos/sync (raw MP4)")
+# Multipart form, same fields as the curl example; the response body is the raw MP4
+fields = {
+    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "prompt": "A cat walking on a sunny sidewalk, cinematic, smooth camera motion",
+    "size": "832x480",
+    "num_frames": "17",
+    "fps": "16",
+    "num_inference_steps": "20",
+    "guidance_scale": "5.0",
+    "flow_shift": "3.0",
+    "boundary_ratio": "0.0",
+    "seed": "42",
+}
+boundary = uuid.uuid4().hex
+parts = [
+    f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode()
+    for k, v in fields.items()
+]
+body = b"".join(parts) + f"--{boundary}--\r\n".encode()
+req = urllib.request.Request(
+    f"{base}/v1/videos/sync",
+    data=body,
+    headers={"Content-Type": f"multipart/form-data; boundary={boundary}", **auth},
+    method="POST",
+)
+with urllib.request.urlopen(req, timeout=900) as resp:
+    video = resp.read()
+
+open("wan21-sample.mp4", "wb").write(video)
+print(f"wrote wan21-sample.mp4 ({len(video)} bytes)")
 ```
 
 For longer clips, raise `num_frames` and use async `POST /v1/videos` plus polling
@@ -110,8 +140,8 @@ nebius ai endpoint create \
   --container-port 8000 \
   --shm-size 16Gi \
   --disk-size 500Gi \
-  --container-command bash \
-  --args '-c vllm serve Wan-AI/Wan2.1-T2V-1.3B-Diffusers --omni --host 0.0.0.0 --port 8000'
+  --container-command vllm \
+  --args 'serve Wan-AI/Wan2.1-T2V-1.3B-Diffusers --omni --host 0.0.0.0 --port 8000'
 ```
 
 `--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
