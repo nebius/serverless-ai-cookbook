@@ -13,14 +13,14 @@
 #   OUTPUT_DIR    where results are copied     (default /data/cosmos3-sft)
 #   RUN_ID        result sub-folder            (default run-<timestamp>)
 #   DATASET_PATH  your own JSONL dataset dir   (default: NVIDIA's BridgeData2 subset, downloaded)
-#   FRAMEWORK_REF / COSMOS_REF   git refs to pin (defaults below)
+#   FRAMEWORK_REF / RECIPES_REF  cosmos-framework refs for the code / the recipe TOMLs (defaults below)
 #   HF_TOKEN      only needed for gated datasets/models
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 RECIPE="${RECIPE:-nano}"; MAX_ITER="${MAX_ITER:-500}"; SAVE_ITER="${SAVE_ITER:-$MAX_ITER}"
 OUTPUT_DIR="${OUTPUT_DIR:-/data/cosmos3-sft}"; RUN_ID="${RUN_ID:-run-$(date +%Y%m%d-%H%M%S)}"
 FRAMEWORK_REF="${FRAMEWORK_REF:-96303bb0bdd1}"      # NVIDIA/cosmos-framework "Release 2026-09-20"
-COSMOS_REF="${COSMOS_REF:-main}"                     # nvidia/cosmos (recipes)
+RECIPES_REF="${RECIPES_REF:-main}"                  # NVIDIA/cosmos-framework branch or commit the recipe TOMLs are read from (.agents/skills/cookbooks/)
 NPROC="${NPROC:-$(nvidia-smi -L | wc -l)}"
 export HF_HOME=/workspace/hf UV_CACHE_DIR=/workspace/uv-cache          # local NVMe, never the bucket
 mkdir -p /workspace "$HF_HOME" "$UV_CACHE_DIR"; cd /workspace
@@ -33,13 +33,14 @@ curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1; export PATH="$H
 log "2/6 Cosmos Framework @ $FRAMEWORK_REF"
 export GIT_LFS_SKIP_SMUDGE=1
 git clone -q https://github.com/NVIDIA/cosmos-framework.git cosmos-framework && (cd cosmos-framework && git checkout -q "$FRAMEWORK_REF")
-git clone -q --depth 1 --branch "$COSMOS_REF" https://github.com/nvidia/cosmos.git cosmos
+RECIPE_SUBDIR=.agents/skills/cookbooks/cosmos3/generator/audiovisual/finetune   # nvidia/cosmos dropped cookbooks/ on 2026-10-21
+mkdir -p recipes && git -C cosmos-framework archive "$(git -C cosmos-framework rev-parse -q --verify "origin/$RECIPES_REF" || echo "$RECIPES_REF")" "$RECIPE_SUBDIR" | tar -x -C recipes
 cd /workspace/cosmos-framework
 uv sync --all-extras --group=cu130-train 2>&1 | tail -3
 source .venv/bin/activate
 python -c "import torch, cosmos_framework; print('torch', torch.__version__, 'cuda', torch.version.cuda, 'gpus', torch.cuda.device_count())"
 
-RECIPE_DIR=/workspace/cosmos/cookbooks/cosmos3/generator/audiovisual/finetune
+RECIPE_DIR="/workspace/recipes/$RECIPE_SUBDIR"
 cd "$RECIPE_DIR"
 case "$RECIPE" in
   nano)  MODEL=Cosmos3-Nano;  TOML=toml/sft_config/vision_sft_nano.toml ;;

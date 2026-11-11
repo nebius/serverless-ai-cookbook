@@ -59,6 +59,19 @@ def fetch(url_or_path, timeout=120):
     return Path(url_or_path).read_bytes()
 
 
+class FetchError(Exception):
+    """A clip's first frame could not be read: a prompts-file problem, not a server one."""
+
+
+def fetch_frame(src):
+    try:
+        return fetch(src)
+    except urllib.error.HTTPError as e:
+        raise FetchError(f"HTTP {e.code} {src}") from e
+    except (OSError, ValueError) as e:  # unreachable URL, missing /data path, malformed URL
+        raise FetchError(f"{e} ({src})") from e
+
+
 def api(method, path, data=None, headers=None, timeout=120):
     req = urllib.request.Request(SERVER + path, data=data, method=method, headers=headers or {})
     with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -116,7 +129,7 @@ def submit(clip):
         fields["sound_duration"] = f"{(p['num_frames'] / p['fps']):.3f}"
     files = {}
     if clip.get("image"):
-        img = fetch(clip["image"])
+        img = fetch_frame(clip["image"])
         ctype = mimetypes.guess_type(clip["image"])[0] or "image/jpeg"
         files["input_reference"] = (Path(clip["image"]).name, img, ctype)
     body, headers = multipart(fields, files)
@@ -154,6 +167,9 @@ def main():
                 job_id, params = submit(clip)
                 inflight[job_id] = (clip, params, time.time())
                 log(f"submitted {clip['id']} ({'i2v' if clip.get('image') else 't2v'}, {params['num_frames']}f {params['size']}) → {job_id}")
+            except FetchError as e:
+                failed.append((clip["id"], f"first frame: {e}"))
+                log(f"FAILED to fetch first frame for {clip['id']}: {e}")
             except urllib.error.HTTPError as e:
                 failed.append((clip["id"], f"submit HTTP {e.code}: {e.read().decode()[:200]}"))
                 log(f"FAILED to submit {clip['id']}: {failed[-1][1]}")
