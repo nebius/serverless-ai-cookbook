@@ -26,6 +26,8 @@ This demo trains a **task LoRA** on [Black Forest Labs' prepared SO-101 policy](
 
 The demo downloads pinned data and model revisions, converts LeIsaac's joint values into the model's SO-101 frame, trains 100 microsteps for a smoke test or 60,000 for the example full run, and publishes adapters to Nebius Object Storage. Preparation and training run inside the Serverless job; no local GPU or simulator is required. This cookbook ends with published adapters and a training receipt; it does not measure robot task success.
 
+**Upstream maintenance:** This example pins the source, model and dependency versions used for validation. Before upgrading, check the [BFL FLUX Action repository](https://github.com/black-forest-labs/flux-action) and linked BFL documentation for changes to training/inference interfaces, model formats and dependencies. Update the pins together, rebuild the image, and repeat the documented smoke, artifact verification and inference checks. For SO-101, also revalidate joint calibration and normalization before using a new policy revision.
+
 ## Current policy and calibration
 
 The recipe pins policy `e2584b2698e3b88368854976e354af87ec9893c6`. Its saved statistics expect the current SO-101 degree convention, not unconverted `-100..100` range values. The dataset remains the pinned LeIsaac recording; both measured states and absolute action targets are converted before training, and their episode statistics receive the same transform.

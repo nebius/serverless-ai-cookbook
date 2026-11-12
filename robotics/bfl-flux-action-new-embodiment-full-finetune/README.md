@@ -26,6 +26,8 @@ This demo trains the weights of [Black Forest Labs FLUX 3 Action base](https://d
 
 The demo downloads pinned model and dataset revisions, trains four updates as a smoke test or 3,000 updates as a full run, and saves checkpoints and a BF16 export to Nebius Object Storage. Preparation and training run inside the Serverless GPU job. This cookbook ends with published weights and a training receipt; it does not measure robot task success.
 
+**Upstream maintenance:** This example pins the source, model and dependency versions used for validation. Before upgrading, check the [BFL FLUX Action repository](https://github.com/black-forest-labs/flux-action) and linked BFL documentation for changes to training/inference interfaces, model formats and dependencies. Update the pins together, rebuild the image, and repeat the documented smoke, artifact verification and inference checks.
+
 ## Reference smoke run
 
 | Measured on 2026-11-03 | Result |
