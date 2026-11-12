@@ -113,6 +113,8 @@ Robotics and physical-AI experiment loops.
 
 - [`isaac-pick-place-sweep`](./robotics/isaac-pick-place-sweep/README.md) — run one Isaac Sim GPU job per Franka sweep case; verify S3 results and replay recorded motion
 - [`lerobot-finetune-job`](./robotics/lerobot-finetune-job/README.md) — fine-tune a LeRobot ACT or Diffusion policy on a robotics dataset in a serverless GPU job
+- [`bfl-flux-action-so101-pick-orange-task-lora`](./robotics/bfl-flux-action-so101-pick-orange-task-lora/README.md) — prepare Pick Orange data and train a task LoRA on Black Forest Labs' SO-101 policy in a Serverless GPU Job
+- [`bfl-flux-action-new-embodiment-full-finetune`](./robotics/bfl-flux-action-new-embodiment-full-finetune/README.md) — full fine-tune Black Forest Labs FLUX 3 Action from the action-pretrained base for a new robot embodiment, using ALOHA as the example
 - [`smolva-ft-norma-core`](./robotics/smolva-ft-norma-core/README.md) — fine-tune SmolVLA for SO-101 with bundled trajectories
 - [`unity-pick-and-place-demo`](./robotics/unity-pick-and-place-demo/README.md) — run Unity UR3 pick-and-place with ROS 2 and a shipped learned servo in one Nebius GPU job; verify video, recordings, and task evidence from Object Storage
 

@@ -1,0 +1,1607 @@
+{
+  "seeds": [
+    42000,
+    42001,
+    42002,
+    42003,
+    42004,
+    42005,
+    42006,
+    42007,
+    42008,
+    42009,
+    42010,
+    42011,
+    42012,
+    42013,
+    42014,
+    42015,
+    42016,
+    42017,
+    42018,
+    42019,
+    42020,
+    42021,
+    42022,
+    42023,
+    42024
+  ],
+  "bootstrap_seed": 41997,
+  "bootstrap_resamples": 10000,
+  "uncertainty_unit": "paired initial-state seed",
+  "variants": {
+    "base": {
+      "oranges_placed": 0,
+      "possible_oranges": 75,
+      "full_task_successes": 0,
+      "episodes": 25,
+      "placement_rate_95pct": [
+        0.0,
+        0.0
+      ],
+      "task_success_rate_95pct": [
+        0.0,
+        0.0
+      ]
+    },
+    "raw": {
+      "oranges_placed": 52,
+      "possible_oranges": 75,
+      "full_task_successes": 10,
+      "episodes": 25,
+      "placement_rate_95pct": [
+        0.5599999999999999,
+        0.8133333333333334
+      ],
+      "task_success_rate_95pct": [
+        0.2,
+        0.6
+      ]
+    },
+    "ema": {
+      "oranges_placed": 39,
+      "possible_oranges": 75,
+      "full_task_successes": 9,
+      "episodes": 25,
+      "placement_rate_95pct": [
+        0.36000000000000004,
+        0.68
+      ],
+      "task_success_rate_95pct": [
+        0.16,
+        0.56
+      ]
+    }
+  },
+  "paired_deltas_vs_base": {
+    "raw": {
+      "placement_rate_delta": 0.6933333333333334,
+      "placement_rate_delta_95pct": [
+        0.5599999999999999,
+        0.8133333333333334
+      ],
+      "task_success_rate_delta": 0.4,
+      "task_success_rate_delta_95pct": [
+        0.2,
+        0.6
+      ]
+    },
+    "ema": {
+      "placement_rate_delta": 0.52,
+      "placement_rate_delta_95pct": [
+        0.36000000000000004,
+        0.68
+      ],
+      "task_success_rate_delta": 0.36,
+      "task_success_rate_delta_95pct": [
+        0.16,
+        0.56
+      ]
+    }
+  },
+  "limitation": "Paired simulator performance for this task and seed set; no physical-robot or ALOHA task-success claim.",
+  "reports": {
+    "base": {
+      "model": "base",
+      "policy": {
+        "ready": true,
+        "model": "base",
+        "checkpoint": "black-forest-labs/flux-3-action-so101",
+        "adapter_sha256": null,
+        "calibration_id": "leisaac-24d3bcd-to-flux-so101-e2584b2-sim-d7da38e",
+        "policy_revision": "e2584b2698e3b88368854976e354af87ec9893c6",
+        "state_normalizer_sha256": "86b5d152c9df39a640248215469c97a3facf240d481ee0e3e29fd185b423e458"
+      },
+      "dataset": "LightwheelAI/leisaac-pick-orange",
+      "dataset_revision": "fa6e0625d814352b8e6ee1c6d2482194e4da8ed3",
+      "calibration_id": "leisaac-24d3bcd-to-flux-so101-e2584b2-sim-d7da38e",
+      "leisaac_revision": "24d3bcd3f1e4585740fc79921782c41617237812",
+      "task": "LeIsaac-SO101-PickOrange-v0",
+      "seed_start": 42000,
+      "episode_length_s": 120.0,
+      "control_hz": 30,
+      "physics_hz": 60,
+      "physics_steps_per_action": 1,
+      "episodes": [
+        {
+          "episode": 0,
+          "seed": 42000,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 815.83,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "728607b67a92084f3d1cf8cb2e05481865d7c7216c99d03ba84c9418ca4d3a9e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "base-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 1,
+          "seed": 42001,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 823.0,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "76a4963cf98865dbde8192ae17a8925bc9079ec1b6a9b60947129f401f2f8fc1",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "base-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 2,
+          "seed": 42002,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 693.44,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "b8e4464fcfd766c92965555a3f518b98b29eea42b87e303cb7f8261dae5cfa67",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "base-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 3,
+          "seed": 42003,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 781.01,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "e7d03d4db704d0cd3e43f7a514903ffd6df434bfd8e90cf2c082829aeec55227",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 4,
+          "seed": 42004,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 784.26,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "d33f5fa9f44030269183eb20b220c0a6fa6ea03f088e221f089979c909bf81d3",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 5,
+          "seed": 42005,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 794.11,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "d32ea9ac0009b69f12b626f6db7ace513a6395ff62743dcb2d5e111b375ac4d8",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 6,
+          "seed": 42006,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 819.18,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "01e9b3c34addadac8e99ae340949701bb4ce769e38af597135592e4aea99f459",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 7,
+          "seed": 42007,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 766.24,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "c8da2c88f8d050d3e1ef535299c26d33886edf1fb4dafdc78e6c5167d27e6ba9",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 8,
+          "seed": 42008,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 784.46,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "1651dc3542b0f407750c2a86efa8c79a9230bf6d41fb3ce78d66168d0165825f",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 9,
+          "seed": 42009,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 772.27,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "fc2240c00c9140c30bbde1f83c018ba99b4135a8bb33f9937050e9e11c4c7248",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 10,
+          "seed": 42010,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 785.2,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "112e86cacf4f45993e84636a0ebece3edf8a768f3d4bf81ac1eb16834c55409a",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 11,
+          "seed": 42011,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 757.28,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "670bb35493d48670fde97d2b285e02d89e61c588777fe32604481fd50fee960e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 12,
+          "seed": 42012,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 783.38,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "55c9ba07db50458e0e9da92a7cd917f7ecd18a7a10d1e72b9a3d8efd2060d712",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 13,
+          "seed": 42013,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 774.13,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "df362f6589a9d23ca6be1fc6da399bd2d74b484eb02641aa082059fc670beed5",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 14,
+          "seed": 42014,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 807.66,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "450fbca07373a386456a4e2e62339341609fcd0de3fa9b928ae0b2c44f0968ac",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 15,
+          "seed": 42015,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 818.25,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "1d18a1724b18c0f661f48fca9a4369e96991f684519dca696483bbd5f9932925",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 16,
+          "seed": 42016,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 733.27,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "e9b225d04327296c9886dba9b693bb5e70abccb9345ceeb1d2a79fdacd07a856",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 17,
+          "seed": 42017,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 727.48,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "1c2d7faca4e466b0ca888b2003081ed7740a4dfc9094f6a595988b7a9f58d158",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 18,
+          "seed": 42018,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 799.15,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "16f6dc5143083c981095f4d9c27b80529ba5a6d1b449cb0210c761c3b0fd7cd0",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 19,
+          "seed": 42019,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 801.26,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "c952efcc5ac51b7c1e13b615b98fc7c0784e9b7eb63d092b21ce79e4a224e844",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 20,
+          "seed": 42020,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 794.06,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "a12a78bf58fdc28c9f24d20d735aad6a7814002d815b0837b6cb578bde613e04",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 21,
+          "seed": 42021,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 796.24,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "f413ceddbf5945e4e3879a455ec8ffb66be60fe0ab1cfd196e5044c4e2bf8631",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 22,
+          "seed": 42022,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 799.73,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "5d989abf7f1c5499ec96c40f97fc942eb9f116ab062b4e8619bb264ac2d6b2df",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 23,
+          "seed": 42023,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 791.36,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "f63eead080c5f49575da261c2495e6fde763b6a0a6ce9067add6788dc8f564ed",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 24,
+          "seed": 42024,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 792.97,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "bc40f130496c3187fb6ef3d2677c61ad25078aa900bf975adb8e0f84ccdb575e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        }
+      ]
+    },
+    "raw": {
+      "model": "raw",
+      "policy": {
+        "ready": true,
+        "model": "raw",
+        "checkpoint": "black-forest-labs/flux-3-action-so101",
+        "adapter_sha256": "0eb2a428143dd59f7f13600a02fc4a0b6393bf0f201dd29343befac73c369e64",
+        "calibration_id": "leisaac-24d3bcd-to-flux-so101-e2584b2-sim-d7da38e",
+        "policy_revision": "e2584b2698e3b88368854976e354af87ec9893c6",
+        "state_normalizer_sha256": "86b5d152c9df39a640248215469c97a3facf240d481ee0e3e29fd185b423e458"
+      },
+      "dataset": "LightwheelAI/leisaac-pick-orange",
+      "dataset_revision": "fa6e0625d814352b8e6ee1c6d2482194e4da8ed3",
+      "calibration_id": "leisaac-24d3bcd-to-flux-so101-e2584b2-sim-d7da38e",
+      "leisaac_revision": "24d3bcd3f1e4585740fc79921782c41617237812",
+      "task": "LeIsaac-SO101-PickOrange-v0",
+      "seed_start": 42000,
+      "episode_length_s": 120.0,
+      "control_hz": 30,
+      "physics_hz": 60,
+      "physics_steps_per_action": 1,
+      "episodes": [
+        {
+          "episode": 0,
+          "seed": 42000,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            false,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 905.93,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "728607b67a92084f3d1cf8cb2e05481865d7c7216c99d03ba84c9418ca4d3a9e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "raw-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 1,
+          "seed": 42001,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 433,
+          "wall_seconds": 57.47,
+          "simulated_seconds": 7.216666666666667,
+          "initial_state_sha256": "76a4963cf98865dbde8192ae17a8925bc9079ec1b6a9b60947129f401f2f8fc1",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "raw-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 2,
+          "seed": 42002,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 757,
+          "wall_seconds": 99.5,
+          "simulated_seconds": 12.616666666666667,
+          "initial_state_sha256": "b8e4464fcfd766c92965555a3f518b98b29eea42b87e303cb7f8261dae5cfa67",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "raw-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 3,
+          "seed": 42003,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 921.28,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "e7d03d4db704d0cd3e43f7a514903ffd6df434bfd8e90cf2c082829aeec55227",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 4,
+          "seed": 42004,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 951.47,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "d33f5fa9f44030269183eb20b220c0a6fa6ea03f088e221f089979c909bf81d3",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 5,
+          "seed": 42005,
+          "oranges_placed": 2,
+          "placed": [
+            false,
+            true,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 894.74,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "d32ea9ac0009b69f12b626f6db7ace513a6395ff62743dcb2d5e111b375ac4d8",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 6,
+          "seed": 42006,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 898.12,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "01e9b3c34addadac8e99ae340949701bb4ce769e38af597135592e4aea99f459",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 7,
+          "seed": 42007,
+          "oranges_placed": 2,
+          "placed": [
+            false,
+            true,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 869.77,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "c8da2c88f8d050d3e1ef535299c26d33886edf1fb4dafdc78e6c5167d27e6ba9",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 8,
+          "seed": 42008,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 607,
+          "wall_seconds": 79.17,
+          "simulated_seconds": 10.116666666666667,
+          "initial_state_sha256": "1651dc3542b0f407750c2a86efa8c79a9230bf6d41fb3ce78d66168d0165825f",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 9,
+          "seed": 42009,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            false,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 894.83,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "fc2240c00c9140c30bbde1f83c018ba99b4135a8bb33f9937050e9e11c4c7248",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 10,
+          "seed": 42010,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 1186,
+          "wall_seconds": 155.08,
+          "simulated_seconds": 19.766666666666666,
+          "initial_state_sha256": "112e86cacf4f45993e84636a0ebece3edf8a768f3d4bf81ac1eb16834c55409a",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 11,
+          "seed": 42011,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 909.63,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "670bb35493d48670fde97d2b285e02d89e61c588777fe32604481fd50fee960e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 12,
+          "seed": 42012,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 465,
+          "wall_seconds": 60.81,
+          "simulated_seconds": 7.75,
+          "initial_state_sha256": "55c9ba07db50458e0e9da92a7cd917f7ecd18a7a10d1e72b9a3d8efd2060d712",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 13,
+          "seed": 42013,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 931.16,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "df362f6589a9d23ca6be1fc6da399bd2d74b484eb02641aa082059fc670beed5",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 14,
+          "seed": 42014,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 723,
+          "wall_seconds": 94.52,
+          "simulated_seconds": 12.05,
+          "initial_state_sha256": "450fbca07373a386456a4e2e62339341609fcd0de3fa9b928ae0b2c44f0968ac",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 15,
+          "seed": 42015,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 747,
+          "wall_seconds": 99.09,
+          "simulated_seconds": 12.45,
+          "initial_state_sha256": "1d18a1724b18c0f661f48fca9a4369e96991f684519dca696483bbd5f9932925",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 16,
+          "seed": 42016,
+          "oranges_placed": 2,
+          "placed": [
+            false,
+            true,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 918.36,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "e9b225d04327296c9886dba9b693bb5e70abccb9345ceeb1d2a79fdacd07a856",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 17,
+          "seed": 42017,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 917.57,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "1c2d7faca4e466b0ca888b2003081ed7740a4dfc9094f6a595988b7a9f58d158",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 18,
+          "seed": 42018,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 946.7,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "16f6dc5143083c981095f4d9c27b80529ba5a6d1b449cb0210c761c3b0fd7cd0",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 19,
+          "seed": 42019,
+          "oranges_placed": 2,
+          "placed": [
+            false,
+            true,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 917.58,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "c952efcc5ac51b7c1e13b615b98fc7c0784e9b7eb63d092b21ce79e4a224e844",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 20,
+          "seed": 42020,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 366,
+          "wall_seconds": 47.34,
+          "simulated_seconds": 6.1,
+          "initial_state_sha256": "a12a78bf58fdc28c9f24d20d735aad6a7814002d815b0837b6cb578bde613e04",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 21,
+          "seed": 42021,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 2126,
+          "wall_seconds": 277.02,
+          "simulated_seconds": 35.43333333333333,
+          "initial_state_sha256": "f413ceddbf5945e4e3879a455ec8ffb66be60fe0ab1cfd196e5044c4e2bf8631",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 22,
+          "seed": 42022,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 962,
+          "wall_seconds": 125.13,
+          "simulated_seconds": 16.033333333333335,
+          "initial_state_sha256": "5d989abf7f1c5499ec96c40f97fc942eb9f116ab062b4e8619bb264ac2d6b2df",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 23,
+          "seed": 42023,
+          "oranges_placed": 2,
+          "placed": [
+            true,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 918.13,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "f63eead080c5f49575da261c2495e6fde763b6a0a6ce9067add6788dc8f564ed",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 24,
+          "seed": 42024,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 932.61,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "bc40f130496c3187fb6ef3d2677c61ad25078aa900bf975adb8e0f84ccdb575e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        }
+      ]
+    },
+    "ema": {
+      "model": "ema",
+      "policy": {
+        "ready": true,
+        "model": "ema",
+        "checkpoint": "black-forest-labs/flux-3-action-so101",
+        "adapter_sha256": "8d58e800b01da215295db93c8779aa785bdc058029964120245cc42f9479c04f",
+        "calibration_id": "leisaac-24d3bcd-to-flux-so101-e2584b2-sim-d7da38e",
+        "policy_revision": "e2584b2698e3b88368854976e354af87ec9893c6",
+        "state_normalizer_sha256": "86b5d152c9df39a640248215469c97a3facf240d481ee0e3e29fd185b423e458"
+      },
+      "dataset": "LightwheelAI/leisaac-pick-orange",
+      "dataset_revision": "fa6e0625d814352b8e6ee1c6d2482194e4da8ed3",
+      "calibration_id": "leisaac-24d3bcd-to-flux-so101-e2584b2-sim-d7da38e",
+      "leisaac_revision": "24d3bcd3f1e4585740fc79921782c41617237812",
+      "task": "LeIsaac-SO101-PickOrange-v0",
+      "seed_start": 42000,
+      "episode_length_s": 120.0,
+      "control_hz": 30,
+      "physics_hz": 60,
+      "physics_steps_per_action": 1,
+      "episodes": [
+        {
+          "episode": 0,
+          "seed": 42000,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 478,
+          "wall_seconds": 62.18,
+          "simulated_seconds": 7.966666666666667,
+          "initial_state_sha256": "728607b67a92084f3d1cf8cb2e05481865d7c7216c99d03ba84c9418ca4d3a9e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "ema-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 1,
+          "seed": 42001,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            false,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 902.64,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "76a4963cf98865dbde8192ae17a8925bc9079ec1b6a9b60947129f401f2f8fc1",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "ema-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 2,
+          "seed": 42002,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 476,
+          "wall_seconds": 62.26,
+          "simulated_seconds": 7.933333333333334,
+          "initial_state_sha256": "b8e4464fcfd766c92965555a3f518b98b29eea42b87e303cb7f8261dae5cfa67",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": "ema-rollouts/episode-00.mp4",
+          "video_error": null
+        },
+        {
+          "episode": 3,
+          "seed": 42003,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 1946,
+          "wall_seconds": 256.53,
+          "simulated_seconds": 32.43333333333333,
+          "initial_state_sha256": "e7d03d4db704d0cd3e43f7a514903ffd6df434bfd8e90cf2c082829aeec55227",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 4,
+          "seed": 42004,
+          "oranges_placed": 2,
+          "placed": [
+            true,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 923.16,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "d33f5fa9f44030269183eb20b220c0a6fa6ea03f088e221f089979c909bf81d3",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 5,
+          "seed": 42005,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 916.25,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "d32ea9ac0009b69f12b626f6db7ace513a6395ff62743dcb2d5e111b375ac4d8",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 6,
+          "seed": 42006,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 926.25,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "01e9b3c34addadac8e99ae340949701bb4ce769e38af597135592e4aea99f459",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 7,
+          "seed": 42007,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 472,
+          "wall_seconds": 61.93,
+          "simulated_seconds": 7.866666666666666,
+          "initial_state_sha256": "c8da2c88f8d050d3e1ef535299c26d33886edf1fb4dafdc78e6c5167d27e6ba9",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 8,
+          "seed": 42008,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 509,
+          "wall_seconds": 67.22,
+          "simulated_seconds": 8.483333333333333,
+          "initial_state_sha256": "1651dc3542b0f407750c2a86efa8c79a9230bf6d41fb3ce78d66168d0165825f",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 9,
+          "seed": 42009,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 947.0,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "fc2240c00c9140c30bbde1f83c018ba99b4135a8bb33f9937050e9e11c4c7248",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 10,
+          "seed": 42010,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 865.47,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "112e86cacf4f45993e84636a0ebece3edf8a768f3d4bf81ac1eb16834c55409a",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 11,
+          "seed": 42011,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 542,
+          "wall_seconds": 70.99,
+          "simulated_seconds": 9.033333333333333,
+          "initial_state_sha256": "670bb35493d48670fde97d2b285e02d89e61c588777fe32604481fd50fee960e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 12,
+          "seed": 42012,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 502,
+          "wall_seconds": 66.25,
+          "simulated_seconds": 8.366666666666667,
+          "initial_state_sha256": "55c9ba07db50458e0e9da92a7cd917f7ecd18a7a10d1e72b9a3d8efd2060d712",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 13,
+          "seed": 42013,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 912.11,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "df362f6589a9d23ca6be1fc6da399bd2d74b484eb02641aa082059fc670beed5",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 14,
+          "seed": 42014,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 933.0,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "450fbca07373a386456a4e2e62339341609fcd0de3fa9b928ae0b2c44f0968ac",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 15,
+          "seed": 42015,
+          "oranges_placed": 2,
+          "placed": [
+            true,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 928.51,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "1d18a1724b18c0f661f48fca9a4369e96991f684519dca696483bbd5f9932925",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 16,
+          "seed": 42016,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 936.25,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "e9b225d04327296c9886dba9b693bb5e70abccb9345ceeb1d2a79fdacd07a856",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 17,
+          "seed": 42017,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 888.88,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "1c2d7faca4e466b0ca888b2003081ed7740a4dfc9094f6a595988b7a9f58d158",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 18,
+          "seed": 42018,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 6999,
+          "wall_seconds": 911.13,
+          "simulated_seconds": 116.65,
+          "initial_state_sha256": "16f6dc5143083c981095f4d9c27b80529ba5a6d1b449cb0210c761c3b0fd7cd0",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 19,
+          "seed": 42019,
+          "oranges_placed": 3,
+          "placed": [
+            true,
+            true,
+            true
+          ],
+          "full_task_success": true,
+          "timed_out": false,
+          "steps": 732,
+          "wall_seconds": 96.45,
+          "simulated_seconds": 12.2,
+          "initial_state_sha256": "c952efcc5ac51b7c1e13b615b98fc7c0784e9b7eb63d092b21ce79e4a224e844",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 20,
+          "seed": 42020,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 911.25,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "a12a78bf58fdc28c9f24d20d735aad6a7814002d815b0837b6cb578bde613e04",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 21,
+          "seed": 42021,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 915.53,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "f413ceddbf5945e4e3879a455ec8ffb66be60fe0ab1cfd196e5044c4e2bf8631",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 22,
+          "seed": 42022,
+          "oranges_placed": 1,
+          "placed": [
+            false,
+            true,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 941.73,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "5d989abf7f1c5499ec96c40f97fc942eb9f116ab062b4e8619bb264ac2d6b2df",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 23,
+          "seed": 42023,
+          "oranges_placed": 2,
+          "placed": [
+            false,
+            true,
+            true
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 922.54,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "f63eead080c5f49575da261c2495e6fde763b6a0a6ce9067add6788dc8f564ed",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        },
+        {
+          "episode": 24,
+          "seed": 42024,
+          "oranges_placed": 0,
+          "placed": [
+            false,
+            false,
+            false
+          ],
+          "full_task_success": false,
+          "timed_out": true,
+          "steps": 7200,
+          "wall_seconds": 915.44,
+          "simulated_seconds": 120.0,
+          "initial_state_sha256": "bc40f130496c3187fb6ef3d2677c61ad25078aa900bf975adb8e0f84ccdb575e",
+          "placement_definition": "ever met each per-orange plate predicate before termination; full task additionally requires all three and rest pose",
+          "video": null,
+          "video_error": null
+        }
+      ]
+    }
+  },
+  "receipt_sha256": {
+    "base": "e6710bcdb7ec9c4205434135835951fdaa415f065b1e1d25138232c5414b7700",
+    "raw": "44e1a238de1e8c3be66a6528640368d6c2055ad42341639631409f1eb35cee90",
+    "ema": "fc14cf36c04c63df2832642bf6664118907cb2b74359e52374578fb298c00e41"
+  }
+}

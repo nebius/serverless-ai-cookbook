@@ -1,0 +1,21 @@
+{
+  "dataset": {
+    "repo_id": "LightwheelAI/leisaac-pick-orange",
+    "revision": "fa6e0625d814352b8e6ee1c6d2482194e4da8ed3",
+    "source_format": "v2.1",
+    "episodes": 60,
+    "frames": 36293,
+    "fps": 30,
+    "cameras": ["observation.images.front", "observation.images.wrist"]
+  },
+  "policy": {
+    "repo_id": "black-forest-labs/flux-3-action-so101",
+    "revision": "e2584b2698e3b88368854976e354af87ec9893c6"
+  },
+  "encoders": {
+    "repo_id": "black-forest-labs/flux-3-action-base",
+    "revision": "62878e2925e59b7a89ec14463ce89932624c490d"
+  },
+  "lerobot_revision": "f6c0f192952d0dfe5a48805f9688711294461bff",
+  "instruction": "Grab orange and place into plate"
+}
