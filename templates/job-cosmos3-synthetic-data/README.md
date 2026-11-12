@@ -14,6 +14,11 @@ Renders a batch of Cosmos3-Nano videos — image-to-video from your robot or dri
 
 <!-- /factory:intro -->
 
+> ⚠️ **Region.** The 1-click link targets RTX Pro 6000 (`gpu-rtx6000-a` / `1gpu-24vcpu-218gb`,
+> validated in **uk-south2**). That platform is not offered in every region — in **eu-north1**
+> the create fails with `Platform "gpu-rtx6000-a" was not found`. There, switch the form (or the
+> CLI) to **`gpu-h100-sxm` / `1gpu-16vcpu-200gb`** — validated, ~3.5 min per default clip.
+
 ## What you get
 
 A Serverless **Job** that runs vLLM-Omni with Cosmos 3 inside the container, reads a
@@ -144,10 +149,12 @@ nebius ai job create \
   --shm-size 32Gi \
   --disk-size 500Gi \
   --volume "$BUCKET:/data:rw" \
-  --env PROMPTS=/data/prompts.jsonl \
   --container-command bash \
   --args '-c "curl -fsSL https://raw.githubusercontent.com/nebius/serverless-ai-cookbook/main/templates/job-cosmos3-synthetic-data/src/run.sh -o /tmp/run.sh && bash /tmp/run.sh"'
 ```
+
+This renders the bundled sample set. For your own list, upload it to the bucket first (see
+[Bring your own prompts](#bring-your-own-prompts)) and add `--env PROMPTS=/data/prompts.jsonl`.
 
 Fan-out example — four jobs, four shards: add `--env SHARD=0/4` … `--env SHARD=3/4` and the
 same `RUN_ID`. On H100 in eu-north1 use `--platform gpu-h100-sxm --preset 1gpu-16vcpu-200gb`.
@@ -155,7 +162,7 @@ same `RUN_ID`. On H100 in eu-north1 use `--platform gpu-h100-sxm --preset 1gpu-1
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 <!-- /factory:cli -->
 
@@ -165,6 +172,7 @@ same `RUN_ID`. On H100 in eu-north1 use `--platform gpu-h100-sxm --preset 1gpu-1
 - **Job FAILED right after start, log shows `curl: (22)`** — the launcher could not fetch `run.sh`; check egress and the URL.
 - **`vLLM-Omni exited — last log lines` in the log** — the server died before serving; the lines that follow tell why (usually guardrails without `HF_TOKEN`, or out-of-memory on a smaller GPU).
 - **Job restarted and repeated some clips** — a clip is only skipped once its MP4 is fully written; a clip interrupted mid-render is re-done. Expected.
+- **`FAILED to fetch first frame for <id>: HTTP 404 <url>`** — the line's `image` URL or `/data` path cannot be read; the server was never called. Fix the `image` in your prompts file (and check it is uploaded to the bucket).
 - **`summary.json` lists failures** — the job exits 1 so that `on-failure` retries; a prompt that fails every time (e.g. unreadable `image`) will keep the job retrying until `--timeout`. Fix the line or remove it.
 - **`PermissionError: Operation not permitted` writing under `/data`** — the bucket mount is object storage (mountpoint-s3): whole files can be created or replaced, but **append, truncate, chmod and rename are not permitted**. The driver therefore writes each file in one go (MP4, per-clip JSON sidecar, then `manifest.jsonl` and `summary.json` at the end) and never appends; keep that rule if you modify it. Do not point `HF_HOME` or logs at the mount.
 - **Want a live API instead of a batch?** — use the [Generator endpoint](../endpoint-cosmos3-generator/README.md).
