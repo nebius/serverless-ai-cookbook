@@ -1,0 +1,95 @@
+{
+  "scope": "Selected status observations; includes polling delay and can include work already performed, not an exact cold-start benchmark.",
+  "attempts": [
+    {
+      "attempt": "main",
+      "observations": [
+        {
+          "state": "PROVISIONING",
+          "observed_at": "2026-11-13T18:07:47.751838+00:00",
+          "seconds_since_creation": 16.735
+        },
+        {
+          "state": "STARTING",
+          "observed_at": "2026-11-13T18:08:28.215747+00:00",
+          "seconds_since_creation": 57.199
+        },
+        {
+          "state": "IMAGE_PULLING",
+          "observed_at": "2026-11-13T18:09:49.150814+00:00",
+          "seconds_since_creation": 138.134
+        },
+        {
+          "state": "RUNNING",
+          "observed_at": "2026-11-13T18:12:30.743547+00:00",
+          "seconds_since_creation": 299.727
+        },
+        {
+          "state": "COMPLETED",
+          "observed_at": "2026-11-13T18:13:52.909885+00:00",
+          "seconds_since_creation": 381.893
+        }
+      ]
+    },
+    {
+      "attempt": "limited",
+      "observations": [
+        {
+          "state": "PROVISIONING",
+          "observed_at": "2026-11-13T18:14:42.766402+00:00",
+          "seconds_since_creation": 15.642
+        },
+        {
+          "state": "STARTING",
+          "observed_at": "2026-11-13T18:15:26.626441+00:00",
+          "seconds_since_creation": 59.502
+        },
+        {
+          "state": "IMAGE_PULLING",
+          "observed_at": "2026-11-13T18:16:47.630290+00:00",
+          "seconds_since_creation": 140.506
+        },
+        {
+          "state": "RUNNING",
+          "observed_at": "2026-11-13T18:19:29.027761+00:00",
+          "seconds_since_creation": 301.904
+        },
+        {
+          "state": "COMPLETED",
+          "observed_at": "2026-11-13T18:20:51.563957+00:00",
+          "seconds_since_creation": 384.44
+        }
+      ]
+    },
+    {
+      "attempt": "resumed",
+      "observations": [
+        {
+          "state": "PROVISIONING",
+          "observed_at": "2026-11-13T18:21:44.024597+00:00",
+          "seconds_since_creation": 16.44
+        },
+        {
+          "state": "STARTING",
+          "observed_at": "2026-11-13T18:22:24.328177+00:00",
+          "seconds_since_creation": 56.743
+        },
+        {
+          "state": "IMAGE_PULLING",
+          "observed_at": "2026-11-13T18:23:46.032918+00:00",
+          "seconds_since_creation": 138.448
+        },
+        {
+          "state": "RUNNING",
+          "observed_at": "2026-11-13T18:26:27.607061+00:00",
+          "seconds_since_creation": 300.022
+        },
+        {
+          "state": "COMPLETED",
+          "observed_at": "2026-11-13T18:27:49.985320+00:00",
+          "seconds_since_creation": 382.4
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1867 @@
+{
+  "schema": 1,
+  "dataset": "VBench",
+  "repository": "Vchitect/VBench",
+  "revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490",
+  "license": "Apache-2.0",
+  "source_manifest": {
+    "schema": 1,
+    "dataset": "VBench",
+    "repository": "Vchitect/VBench",
+    "revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490",
+    "license": "Apache-2.0",
+    "files": {
+      "LICENSE": {
+        "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+        "bytes": 11356
+      },
+      "prompts/prompts_per_category/animal.txt": {
+        "sha256": "06574782d81fd1e69744afb89ec51a54f71079065c4591157eec18a1f1483086",
+        "bytes": 3299,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/architecture.txt": {
+        "sha256": "d0afc3c90b570e68236c717adc9cd9ed0d4e8b698f5addd77ff7b6eb9e353623",
+        "bytes": 3860,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/food.txt": {
+        "sha256": "5e06d5be0d58e1af66d73913c03c352c6a44c11c91ec83c8ee412d1d78ae2bdb",
+        "bytes": 3480,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/human.txt": {
+        "sha256": "3b0a1cfa429b07fa4cd80efa6f69a47276a35ed2b70902a46a49206309994a52",
+        "bytes": 3786,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/lifestyle.txt": {
+        "sha256": "a85cd6ce4b29719bec0da29e7d0299ee3ae8b2115f2a8aa23d091adc2ed9c0e9",
+        "bytes": 3913,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/plant.txt": {
+        "sha256": "d729b0b198f09d438dee94f1c83ef93760f76270ea7bcfe027cbf14ad1603ec6",
+        "bytes": 3322,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/scenery.txt": {
+        "sha256": "3f0293619c04a3597132c8e04b328d1397b2eff0cf1db44f0c5f94405717187f",
+        "bytes": 3711,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/vehicles.txt": {
+        "sha256": "bd6dda5d801e4ad6758fbf80557ec9ad5e37f9cb4a8ac810c149bc1465cdbbbc",
+        "bytes": 3833,
+        "rows": 100
+      }
+    }
+  },
+  "selection_seed": 42,
+  "per_category": 25,
+  "rows": 200,
+  "selection": [
+    {
+      "id": "vbench-animal-0082",
+      "prompt": "a still video of mosquito biting human",
+      "seed": 1785537283,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 82,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0015",
+      "prompt": "close up view of a brown caterpillar crawling on green leaf",
+      "seed": 286977637,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 15,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0004",
+      "prompt": "a snake crawling on a wooden flooring",
+      "seed": 2113083690,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 4,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0095",
+      "prompt": "a zebra eating grass on the field",
+      "seed": 874227636,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 95,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0036",
+      "prompt": "close up of a scorpion on a rock",
+      "seed": 594370757,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 36,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0032",
+      "prompt": "close up footage of a horse figurine",
+      "seed": 731970836,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 32,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0029",
+      "prompt": "underwater footage of an octopus in a coral reef",
+      "seed": 1515188077,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 29,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0018",
+      "prompt": "a frog eating an ant",
+      "seed": 1256227319,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 18,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0014",
+      "prompt": "red dragonfly perched on green leaf",
+      "seed": 1550982512,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 14,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0087",
+      "prompt": "bat hanging upside down",
+      "seed": 1613572772,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 87,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0070",
+      "prompt": "close up shot of a wild bear",
+      "seed": 2131160951,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 70,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0012",
+      "prompt": "top view of a hermit crab crawling on a wooden surface",
+      "seed": 298628387,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 12,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0076",
+      "prompt": "a bear wearing red jersey",
+      "seed": 410776052,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 76,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0055",
+      "prompt": "a tortoise covered with algae",
+      "seed": 1824535686,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 55,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0005",
+      "prompt": "a close up video of a dragonfly",
+      "seed": 1244500659,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 5,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0098",
+      "prompt": "zookeeper showering a baby elephant",
+      "seed": 2055417508,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 98,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0089",
+      "prompt": "snake on ground",
+      "seed": 1778223648,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 89,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0028",
+      "prompt": "video of parrots perched on bird stand",
+      "seed": 210951778,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 28,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0030",
+      "prompt": "a cute pomeranian dog playing with a soccer ball",
+      "seed": 1903464323,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 30,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0065",
+      "prompt": "group of ring tailed lemurs",
+      "seed": 1256530227,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 65,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0078",
+      "prompt": "beautiful clown fish swimming",
+      "seed": 1361736538,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 78,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0085",
+      "prompt": "a wolf in its natural habitat",
+      "seed": 1278329144,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 85,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0072",
+      "prompt": "porcupine climbs tree branches",
+      "seed": 1635078777,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 72,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0026",
+      "prompt": "a lizard on a bamboo",
+      "seed": 1592322722,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 26,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-animal-0090",
+      "prompt": "a harbour seal swimming near the shore",
+      "seed": 1298911927,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 90,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0054",
+      "prompt": "waterfall and house",
+      "seed": 348230014,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 54,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0029",
+      "prompt": "eiffel tower from the seine river",
+      "seed": 714512803,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 29,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0058",
+      "prompt": "clouds hovering over a mansion",
+      "seed": 516343343,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 58,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0076",
+      "prompt": "aerial view of a luxurious house with pool",
+      "seed": 465729503,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 76,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0036",
+      "prompt": "top view of a high rise building",
+      "seed": 954020426,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 36,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0001",
+      "prompt": "an apartment building with balcony",
+      "seed": 851752887,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 1,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0021",
+      "prompt": "modern wooden house interior",
+      "seed": 1493432504,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 21,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0090",
+      "prompt": "a beach house built over a seawall protected from the sea waves",
+      "seed": 1733056073,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 90,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0055",
+      "prompt": "view of the sky through a building",
+      "seed": 1281186513,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 55,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0044",
+      "prompt": "an under construction concrete house",
+      "seed": 2143072764,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 44,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0096",
+      "prompt": "a video of vessel structure during daytime",
+      "seed": 1786352175,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 96,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0020",
+      "prompt": "high angle shot of a clock tower",
+      "seed": 1067336773,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 20,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0028",
+      "prompt": "a miniature house",
+      "seed": 459649406,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 28,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0091",
+      "prompt": "exotic house surrounded by trees",
+      "seed": 551620507,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 91,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0014",
+      "prompt": "an ancient white building",
+      "seed": 1233094601,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 14,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0012",
+      "prompt": "architecture and designs of buildings in central london",
+      "seed": 1587603687,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 12,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0049",
+      "prompt": "house on seashore",
+      "seed": 1510576501,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 49,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0013",
+      "prompt": "a pancake tower with chocolate syrup and strawberries on top",
+      "seed": 651034978,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 13,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0046",
+      "prompt": "exterior view of arabic style building",
+      "seed": 480380774,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 46,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0045",
+      "prompt": "a watch tower by the sea",
+      "seed": 750894497,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 45,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0078",
+      "prompt": "drone footage of a lookout tower in mountain landscape",
+      "seed": 1272818798,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 78,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0034",
+      "prompt": "mosque in the middle east",
+      "seed": 362420801,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 34,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0006",
+      "prompt": "a church interior",
+      "seed": 456935934,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 6,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0059",
+      "prompt": "light house on the ocean",
+      "seed": 2063020438,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 59,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0069",
+      "prompt": "house in countryside top view",
+      "seed": 116035632,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 69,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0016",
+      "prompt": "rice grains placed on a reusable cloth bag",
+      "seed": 1001123092,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 16,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0049",
+      "prompt": "close up video of a orange juice",
+      "seed": 10801842,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 49,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0011",
+      "prompt": "baked bread with chocolate",
+      "seed": 1089077018,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 11,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0071",
+      "prompt": "cutting an onion with a knife over a wooden chopping board",
+      "seed": 608778451,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 71,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0038",
+      "prompt": "a student eating her sandwich",
+      "seed": 1937056547,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 38,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0081",
+      "prompt": "tasty brunch dish close up",
+      "seed": 1249296890,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 81,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0080",
+      "prompt": "egg yolk being dumped over gourmet dish",
+      "seed": 695081433,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 80,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0047",
+      "prompt": "video of a delicious dessert",
+      "seed": 1126092086,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 47,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0074",
+      "prompt": "people enjoying asian cuisine",
+      "seed": 219452308,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 74,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0025",
+      "prompt": "a mother preparing food with her kids",
+      "seed": 132674809,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 25,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0009",
+      "prompt": "a muffin with a burning candle and a love sign by a ceramic mug",
+      "seed": 549344354,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 9,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0006",
+      "prompt": "close up view of green leafy vegetable",
+      "seed": 95012197,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 6,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0085",
+      "prompt": "flat lay mexican dish",
+      "seed": 1238378312,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 85,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0030",
+      "prompt": "a glass filled with beer",
+      "seed": 2010580660,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 30,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0096",
+      "prompt": "hamburger and fries on restaurant table",
+      "seed": 1005327668,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 96,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0098",
+      "prompt": "a cracker sandwich with cheese filling for snack",
+      "seed": 833048619,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 98,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0087",
+      "prompt": "close up of tea leaves brewing in a glass kettle",
+      "seed": 1194637316,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 87,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0013",
+      "prompt": "a freshly brewed coffee on a pink mug",
+      "seed": 1040723931,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 13,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0099",
+      "prompt": "barista preparing matcha tea",
+      "seed": 1420785242,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 99,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0036",
+      "prompt": "close up view of a man drinking red wine",
+      "seed": 1914760981,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 36,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0059",
+      "prompt": "an orange fruit cut in half",
+      "seed": 1669429753,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 59,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0093",
+      "prompt": "a woman with a slice of a pie",
+      "seed": 1235675677,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 93,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0021",
+      "prompt": "preparing a cocktail drink",
+      "seed": 2013153090,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 21,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0048",
+      "prompt": "deep frying a crab on a wok in high fire",
+      "seed": 1230486097,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 48,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0046",
+      "prompt": "a chef cutting sushi rolls",
+      "seed": 584476968,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 46,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0027",
+      "prompt": "a group of students laughing and talking",
+      "seed": 841953779,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 27,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0086",
+      "prompt": "elderly man lifting kettlebell",
+      "seed": 821178536,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 86,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0035",
+      "prompt": "baseball player holding his bat",
+      "seed": 912355372,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 35,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0090",
+      "prompt": "pregnant woman exercising with trainer",
+      "seed": 910912854,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 90,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0088",
+      "prompt": "dad watching her daughter eat",
+      "seed": 1992813738,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 88,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0083",
+      "prompt": "a farm worker harvesting onions",
+      "seed": 1504120446,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 83,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0010",
+      "prompt": "three women looking at watercolor paintings",
+      "seed": 1379636762,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 10,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0078",
+      "prompt": "young female activist posing with flag",
+      "seed": 10468368,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 78,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0082",
+      "prompt": "a social worker having a conversation with the foster parents",
+      "seed": 990824576,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 82,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0022",
+      "prompt": "friends having a group selfie",
+      "seed": 1636243016,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 22,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0069",
+      "prompt": "a male police officer talking on the radio",
+      "seed": 782406981,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 69,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0032",
+      "prompt": "ice hockey athlete on rink",
+      "seed": 12688038,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 32,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0021",
+      "prompt": "a group of friend place doing hand gestures of agreement",
+      "seed": 1073408431,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 21,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0060",
+      "prompt": "brother and sister using hammock",
+      "seed": 539525999,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 60,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0049",
+      "prompt": "couple dancing slow dance with sun glare",
+      "seed": 1565791246,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 49,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0098",
+      "prompt": "seller showing room to a couple",
+      "seed": 832437612,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 98,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0092",
+      "prompt": "wizard doing a ritual on a woman",
+      "seed": 571024343,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 92,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0072",
+      "prompt": "a young student attending her online classes",
+      "seed": 634598369,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 72,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0029",
+      "prompt": "a person playing golf",
+      "seed": 1532516852,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 29,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0042",
+      "prompt": "man playing a video game",
+      "seed": 1213889822,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 42,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0008",
+      "prompt": "woman adding honey to the cinnamon rolls",
+      "seed": 1448597965,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 8,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0030",
+      "prompt": "a person walking on a wet wooden bridge",
+      "seed": 1953967926,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 30,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0005",
+      "prompt": "men in front of their computer editing photos",
+      "seed": 45284782,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 5,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0041",
+      "prompt": "people playing a board game",
+      "seed": 161037217,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 41,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0052",
+      "prompt": "father and daughter talking together",
+      "seed": 1735612889,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 52,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0035",
+      "prompt": "a woman in protective suit disinfecting the kitchen",
+      "seed": 1193837483,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 35,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0009",
+      "prompt": "a muslim family sitting and talking in the living room",
+      "seed": 1209856012,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 9,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0028",
+      "prompt": "living room with party decoration",
+      "seed": 1463891120,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 28,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0073",
+      "prompt": "home deco with lighted",
+      "seed": 1867615220,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 73,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0092",
+      "prompt": "interior of a recording studio",
+      "seed": 1174778825,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 92,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0041",
+      "prompt": "interior of catholic",
+      "seed": 2034752687,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 41,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0098",
+      "prompt": "a criminal inside a dark room handcuffed in a table",
+      "seed": 792617957,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 98,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0084",
+      "prompt": "a family stacking cardboard boxes in a room",
+      "seed": 885170158,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 84,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0064",
+      "prompt": "rubble in the interior of an abandoned house",
+      "seed": 851127196,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 64,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0051",
+      "prompt": "bedroom in hotel",
+      "seed": 633213690,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 51,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0083",
+      "prompt": "person assembling furniture",
+      "seed": 234796231,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 83,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0059",
+      "prompt": "a couple resting on their home floor",
+      "seed": 56903932,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 59,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0019",
+      "prompt": "colleagues talking to each other near the office windows",
+      "seed": 1821300125,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 19,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0034",
+      "prompt": "the interior design of a jewish synagogue",
+      "seed": 646497434,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 34,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0018",
+      "prompt": "turning on a fluorescent light inside a room",
+      "seed": 488760116,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 18,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0032",
+      "prompt": "a woman in a locker room",
+      "seed": 1405644992,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 32,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0072",
+      "prompt": "teenage girl roller skating at indoor rink",
+      "seed": 1361982796,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 72,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0069",
+      "prompt": "graffiti art on the interior walls of an abandoned mansion",
+      "seed": 1343887340,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 69,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0087",
+      "prompt": "a woman washing strawberries in the kitchen sink",
+      "seed": 1465569393,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 87,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0075",
+      "prompt": "men enjoying office christmas party",
+      "seed": 100967943,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 75,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0055",
+      "prompt": "a woman cleaning mess in the living room",
+      "seed": 875107378,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 55,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0081",
+      "prompt": "a woman sitting by the indoor fire pit",
+      "seed": 1073703220,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 81,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0052",
+      "prompt": "a woman lying in the operating room",
+      "seed": 1751997245,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 52,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0047",
+      "prompt": "chandeliers in room",
+      "seed": 479206532,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 47,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0029",
+      "prompt": "firewood burning in dark room",
+      "seed": 1464964799,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 29,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0018",
+      "prompt": "snow pouring on a tree",
+      "seed": 1401172057,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 18,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0066",
+      "prompt": "trunks of many trees in the forest",
+      "seed": 1556001889,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 66,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0064",
+      "prompt": "close up video of tree bark",
+      "seed": 134749069,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 64,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0012",
+      "prompt": "watering yellow plant",
+      "seed": 2032976959,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 12,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0007",
+      "prompt": "a leafless tree",
+      "seed": 1475971677,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 7,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0015",
+      "prompt": "a footage of the tree leaves",
+      "seed": 496141534,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 15,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0020",
+      "prompt": "leaves in the trees daytime",
+      "seed": 352680218,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 20,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0081",
+      "prompt": "coconut tree near sea under blue sky",
+      "seed": 1538711327,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 81,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0021",
+      "prompt": "a dead tree lying on a grass field",
+      "seed": 1764022939,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 21,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0088",
+      "prompt": "a man holding leaves looking at the camera",
+      "seed": 2080473945,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 88,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0055",
+      "prompt": "squirrels on a tree branch",
+      "seed": 741642821,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 55,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0077",
+      "prompt": "women drying flower petals",
+      "seed": 1956173138,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 77,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0009",
+      "prompt": "close up video of strawberry plant",
+      "seed": 1350756450,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 9,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0050",
+      "prompt": "tree with halloween decoration",
+      "seed": 1964832824,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 50,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0049",
+      "prompt": "jack o lantern hanging on a tree",
+      "seed": 713780195,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 49,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0089",
+      "prompt": "a shadow of a swaying plant",
+      "seed": 1108695721,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 89,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0060",
+      "prompt": "wind blows through leaves of the tree in autumn",
+      "seed": 1023913255,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 60,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0068",
+      "prompt": "leaves swaying in the wind",
+      "seed": 422246916,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 68,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0033",
+      "prompt": "forest of deciduous trees",
+      "seed": 1283629093,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 33,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0071",
+      "prompt": "a plant surrounded by fallen leaves",
+      "seed": 1418130867,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 71,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0002",
+      "prompt": "close up view of a plant",
+      "seed": 1528525373,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 2,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0095",
+      "prompt": "woman cut down tree",
+      "seed": 1040071246,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 95,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0069",
+      "prompt": "low angle shot of baobab tree",
+      "seed": 1591479664,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 69,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0035",
+      "prompt": "tall forest trees on a misty morning",
+      "seed": 255243270,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 35,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0044",
+      "prompt": "single tree in the middle of farmland",
+      "seed": 172674733,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 44,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0015",
+      "prompt": "a bonfire near river",
+      "seed": 741276945,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 15,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0038",
+      "prompt": "natural rock formations on beach under cloudy sky",
+      "seed": 996455691,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 38,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0056",
+      "prompt": "a dark clouds over shadowing the full moon",
+      "seed": 694032177,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 56,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0021",
+      "prompt": "snow on branches in forest",
+      "seed": 1528860200,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 21,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0059",
+      "prompt": "a blooming cherry blossom tree under a blue sky with white clouds",
+      "seed": 177912484,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 59,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0001",
+      "prompt": "scenery of desert landscape",
+      "seed": 1003788100,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 1,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0093",
+      "prompt": "smoke and fire in birds eye view",
+      "seed": 673603134,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 93,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0094",
+      "prompt": "view of a pathway with snow melting on its side",
+      "seed": 1475932747,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 94,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0034",
+      "prompt": "top view of yachts",
+      "seed": 161514444,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 34,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0065",
+      "prompt": "pond by small waterfall in forest",
+      "seed": 1273849135,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 65,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0023",
+      "prompt": "an airplane flying above the sea of clouds",
+      "seed": 1691367161,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 23,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0091",
+      "prompt": "sheep running in a grass field",
+      "seed": 351772116,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 91,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0014",
+      "prompt": "fireworks display in the sky at night",
+      "seed": 24530229,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 14,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0081",
+      "prompt": "a footage of a frozen river",
+      "seed": 2095201034,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 81,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0039",
+      "prompt": "a palm tree against blue sky",
+      "seed": 987403179,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 39,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0082",
+      "prompt": "overlooking view of a city at daylight",
+      "seed": 1734901213,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 82,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0089",
+      "prompt": "top view of the empire state building in manhattan",
+      "seed": 1103539979,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 89,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0078",
+      "prompt": "view from hill on city",
+      "seed": 1398891378,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 78,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0026",
+      "prompt": "scenic view from wooden pathway",
+      "seed": 40363281,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 26,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0020",
+      "prompt": "tall trees in the forest under the clear sky",
+      "seed": 832535025,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 20,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0048",
+      "prompt": "time lapse video of foggy morning during sunrise",
+      "seed": 360195927,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 48,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0097",
+      "prompt": "panoramic view of a town surrounded by snow covered mountains",
+      "seed": 382586390,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 97,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0070",
+      "prompt": "drone shot of an abandoned coliseum on a snowy mountain top",
+      "seed": 2008977278,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 70,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0068",
+      "prompt": "a highway built across an agricultural area in the countryside",
+      "seed": 1356998337,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 68,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0095",
+      "prompt": "ferry under bridge on river near city in malaysia",
+      "seed": 1044984054,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 95,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0077",
+      "prompt": "people crossing the road",
+      "seed": 814235026,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 77,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0042",
+      "prompt": "view through window in airplane",
+      "seed": 508138126,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 42,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0063",
+      "prompt": "a parked motorcycle on a foggy roadside",
+      "seed": 757900024,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 63,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0003",
+      "prompt": "train arriving at a station",
+      "seed": 1797111529,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 3,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0015",
+      "prompt": "video of passengers riding a double decker bus during night",
+      "seed": 2142673518,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 15,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0047",
+      "prompt": "boat sailing in the middle of the ocean",
+      "seed": 451524595,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 47,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0040",
+      "prompt": "policeman in police car talking on radio",
+      "seed": 1927883298,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 40,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0031",
+      "prompt": "young man using laptop in the tram",
+      "seed": 619386560,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 31,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0008",
+      "prompt": "drone footage of motorcycles driving on country road between agricultural fields",
+      "seed": 1111150199,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 8,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0093",
+      "prompt": "pressing the car ignition",
+      "seed": 298815563,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 93,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0073",
+      "prompt": "time lapse of heavy traffic on an avenue",
+      "seed": 800587716,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 73,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0011",
+      "prompt": "vehicle stops for an ambulance passing through city traffic",
+      "seed": 946744532,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 11,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0089",
+      "prompt": "empty boat on the water",
+      "seed": 1036403638,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 89,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0098",
+      "prompt": "ship sailing on sea against sunset",
+      "seed": 1574818895,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 98,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0009",
+      "prompt": "a road in the woods under fog",
+      "seed": 1071754764,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 9,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0069",
+      "prompt": "camera moving at highway construction site",
+      "seed": 890393983,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 69,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0017",
+      "prompt": "elderly couple checking engine of automobile",
+      "seed": 1864679789,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 17,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0084",
+      "prompt": "a woman getting out of the car to walk with their dog",
+      "seed": 1477534858,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 84,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0061",
+      "prompt": "three teenagers fixing a bicycle",
+      "seed": 1969997535,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 61,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0071",
+      "prompt": "a motorbike on highway at timelapse mode",
+      "seed": 1818424422,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 71,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0022",
+      "prompt": "aerial view of a train passing by a bridge",
+      "seed": 2045957071,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 22,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0034",
+      "prompt": "night travel in london street on a public bus",
+      "seed": 1969424416,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 34,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0068",
+      "prompt": "love padlocks on a bridge",
+      "seed": 460767183,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 68,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0055",
+      "prompt": "a white yacht traveling on a river and passing under the bridge",
+      "seed": 1846963025,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 55,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0028",
+      "prompt": "monitor board inside the subway",
+      "seed": 710702620,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 28,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    }
+  ],
+  "input_sha256": "f38cf4cb4cb1b1deb18955567f17abe289157e2636a808776b275f41648ffbd6",
+  "note": "A stratified prompt subset for generation and manual inspection; not a complete VBench evaluation."
+}

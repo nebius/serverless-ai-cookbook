@@ -1,0 +1,139 @@
+{
+  "schema": 1,
+  "dataset": "VBench",
+  "repository": "Vchitect/VBench",
+  "revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490",
+  "license": "Apache-2.0",
+  "source_manifest": {
+    "schema": 1,
+    "dataset": "VBench",
+    "repository": "Vchitect/VBench",
+    "revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490",
+    "license": "Apache-2.0",
+    "files": {
+      "LICENSE": {
+        "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+        "bytes": 11356
+      },
+      "prompts/prompts_per_category/animal.txt": {
+        "sha256": "06574782d81fd1e69744afb89ec51a54f71079065c4591157eec18a1f1483086",
+        "bytes": 3299,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/architecture.txt": {
+        "sha256": "d0afc3c90b570e68236c717adc9cd9ed0d4e8b698f5addd77ff7b6eb9e353623",
+        "bytes": 3860,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/food.txt": {
+        "sha256": "5e06d5be0d58e1af66d73913c03c352c6a44c11c91ec83c8ee412d1d78ae2bdb",
+        "bytes": 3480,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/human.txt": {
+        "sha256": "3b0a1cfa429b07fa4cd80efa6f69a47276a35ed2b70902a46a49206309994a52",
+        "bytes": 3786,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/lifestyle.txt": {
+        "sha256": "a85cd6ce4b29719bec0da29e7d0299ee3ae8b2115f2a8aa23d091adc2ed9c0e9",
+        "bytes": 3913,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/plant.txt": {
+        "sha256": "d729b0b198f09d438dee94f1c83ef93760f76270ea7bcfe027cbf14ad1603ec6",
+        "bytes": 3322,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/scenery.txt": {
+        "sha256": "3f0293619c04a3597132c8e04b328d1397b2eff0cf1db44f0c5f94405717187f",
+        "bytes": 3711,
+        "rows": 100
+      },
+      "prompts/prompts_per_category/vehicles.txt": {
+        "sha256": "bd6dda5d801e4ad6758fbf80557ec9ad5e37f9cb4a8ac810c149bc1465cdbbbc",
+        "bytes": 3833,
+        "rows": 100
+      }
+    }
+  },
+  "selection_seed": 42,
+  "per_category": 1,
+  "rows": 8,
+  "selection": [
+    {
+      "id": "vbench-animal-0082",
+      "prompt": "a still video of mosquito biting human",
+      "seed": 1785537283,
+      "category": "animal",
+      "source_path": "prompts/prompts_per_category/animal.txt",
+      "source_line": 82,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-architecture-0015",
+      "prompt": "friends hanging out at a coffee house",
+      "seed": 286977637,
+      "category": "architecture",
+      "source_path": "prompts/prompts_per_category/architecture.txt",
+      "source_line": 15,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-food-0004",
+      "prompt": "a person slicing a vegetable",
+      "seed": 2113083690,
+      "category": "food",
+      "source_path": "prompts/prompts_per_category/food.txt",
+      "source_line": 4,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-human-0095",
+      "prompt": "a singer of a music band",
+      "seed": 874227636,
+      "category": "human",
+      "source_path": "prompts/prompts_per_category/human.txt",
+      "source_line": 95,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-lifestyle-0036",
+      "prompt": "modern minimalist home interior",
+      "seed": 594370757,
+      "category": "lifestyle",
+      "source_path": "prompts/prompts_per_category/lifestyle.txt",
+      "source_line": 36,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-plant-0032",
+      "prompt": "variety of trees and plants in a botanical garden",
+      "seed": 731970836,
+      "category": "plant",
+      "source_path": "prompts/prompts_per_category/plant.txt",
+      "source_line": 32,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-scenery-0029",
+      "prompt": "a scenic view of the golden hour at norway",
+      "seed": 1515188077,
+      "category": "scenery",
+      "source_path": "prompts/prompts_per_category/scenery.txt",
+      "source_line": 29,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    },
+    {
+      "id": "vbench-vehicles-0018",
+      "prompt": "a green vintage automobile with an open hood parked in a parking area",
+      "seed": 1256227319,
+      "category": "vehicles",
+      "source_path": "prompts/prompts_per_category/vehicles.txt",
+      "source_line": 18,
+      "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+    }
+  ],
+  "input_sha256": "40c6f386ddc9136f8bd2b529072c2ab25421f2ef8adf8105a37a71a24e3b4ba2",
+  "note": "A stratified prompt subset for generation and manual inspection; not a complete VBench evaluation."
+}

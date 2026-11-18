@@ -1,0 +1,12 @@
+.state/
+results*/
+__pycache__/
+*.pyc
+.env
+.venv/
+data/documents/
+
+
+data/job-documents/
+.state/job-data-cache/
+results-job-search/

@@ -1,0 +1,333 @@
+{
+  "validation_date_utc": "2026-11-18",
+  "dataset_completed": 200,
+  "full_batch_checker_result": {
+    "completed": 200,
+    "dataset": "VBench",
+    "frames_per_clip": [
+      49
+    ],
+    "input_sha256": "f38cf4cb4cb1b1deb18955567f17abe289157e2636a808776b275f41648ffbd6",
+    "decode_passed": true
+  },
+  "runtime": {
+    "image": "vllm/vllm-omni:v0.24.0",
+    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "platform": "gpu-h100-sxm",
+    "preset": "1gpu-16vcpu-200gb",
+    "container_port": 8000,
+    "disk_size": "500Gi",
+    "shm_size": "16Gi"
+  },
+  "input": {
+    "dataset": "VBench",
+    "prompts": 200,
+    "categories": 8,
+    "per_category": 25,
+    "sha256": "f38cf4cb4cb1b1deb18955567f17abe289157e2636a808776b275f41648ffbd6",
+    "source_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+  },
+  "invocations": [
+    {
+      "invocation": 1,
+      "new_saved": 54,
+      "reused": 0,
+      "completed_after": 54,
+      "outcome": "interrupted client",
+      "printed_final_summary": false,
+      "note": "The client connection failed after Mac clamshell sleep. No provider preemption was established."
+    },
+    {
+      "invocation": 2,
+      "new_saved": 3,
+      "reused": 54,
+      "completed_after": 57,
+      "outcome": "limited resume succeeded",
+      "printed_final_summary": "Generated 3; reused 54"
+    },
+    {
+      "invocation": 3,
+      "new_saved": 143,
+      "reused": 57,
+      "completed_after": 200,
+      "outcome": "completion and full checker succeeded",
+      "printed_final_summary": "Generated 143; reused 57"
+    }
+  ],
+  "integrity": {
+    "original_54_clip_and_record_hashes_unchanged": true,
+    "original_57_clip_and_record_hashes_unchanged": true,
+    "all_200_actual_file_hashes_match_records": true
+  },
+  "measurements": {
+    "wall_clock_seconds": {
+      "initial_generation_attempt_approx": 4721.347687,
+      "resume_three_command": 49.83246397972107,
+      "finish_143_command": 5141.742598056793,
+      "generation_commands_sum_approx": 9912.922749036516,
+      "nov18_create_to_ready": 395.37276315689087,
+      "completion_restart_to_ready": 398.3415517807007,
+      "full_checker": 32.234516859054565
+    },
+    "initial_wall_span_basis": "Approximate UTC span from the preceding ready-phase finish to the interrupted command finish; exact main start UTC was not recorded.",
+    "generation_wall_sum_scope": "Sum of three client-command spans, including the confirmed initial client-sleep interruption and a separate observed client wall-clock gap during completion whose cause was not confirmed; excludes between-session calendar gaps and repeated startups. Not an awake or uninterrupted 200-clip benchmark.",
+    "initial_attempt_recorded_monotonic_seconds": 927.7300346659904,
+    "monotonic_per_clip_records": {
+      "sum_seconds": 3253.0,
+      "mean_seconds": 16.265,
+      "scope": "Application timer starts after POST submission and pending-ID persistence, covering polling/download/decode; excludes host suspension, POST overhead, later hashing/record writes and gallery export. Not wall-clock command time or GPU busy time."
+    },
+    "completion_client_wall_clock_gap": {
+      "observed_at_utc": "2026-11-18T11:21:13Z",
+      "before_progress": {
+        "command_wall_seconds": 940,
+        "saved": 114
+      },
+      "after_progress": {
+        "command_wall_seconds": 3737,
+        "saved": 115
+      },
+      "cause_confirmed": false,
+      "included_in_finish_143_wall_clock_duration": true,
+      "note": "A client wall-clock gap was observed during completion, and progress continued afterward. Its cause was not confirmed. The completion command wall-clock duration includes this gap."
+    }
+  },
+  "quotes_by_dataset_invocation": [
+    {
+      "quoted_at_utc": "2026-11-17T11:25:40Z",
+      "currency": "USD",
+      "platform": "gpu-h100-sxm",
+      "preset": "1gpu-16vcpu-200gb",
+      "disk_type": "NETWORK_SSD",
+      "disk_gib": 500,
+      "preemptible_compute_hourly": 2.07,
+      "regular_compute_hourly": 4.5,
+      "disk_hourly": 0.048611,
+      "preemptible_total_hourly": 2.118611,
+      "gpu_price_cap_hourly": 2.5
+    },
+    {
+      "quoted_at_utc": "2026-11-18T09:31:38.998825+00:00",
+      "currency": "USD",
+      "platform": "gpu-h100-sxm",
+      "preset": "1gpu-16vcpu-200gb",
+      "disk_type": "NETWORK_SSD",
+      "disk_gib": 500,
+      "preemptible_compute_hourly": 2.37,
+      "regular_compute_hourly": 4.5,
+      "disk_hourly": 0.048611,
+      "preemptible_total_hourly": 2.418611,
+      "gpu_price_cap_hourly": 2.5
+    },
+    {
+      "quoted_at_utc": "2026-11-18T10:07:00.661597+00:00",
+      "currency": "USD",
+      "platform": "gpu-h100-sxm",
+      "preset": "1gpu-16vcpu-200gb",
+      "disk_type": "NETWORK_SSD",
+      "disk_gib": 500,
+      "preemptible_compute_hourly": 2.37,
+      "regular_compute_hourly": 4.5,
+      "disk_hourly": 0.048611,
+      "preemptible_total_hourly": 2.418611,
+      "gpu_price_cap_hourly": 2.5
+    }
+  ],
+  "cost_proxy": {
+    "currency": "USD",
+    "lifecycle_windows": [
+      {
+        "session": "initial interrupted attempt",
+        "start_utc": "2026-11-17T11:29:48.197788+00:00",
+        "stopped_confirmation_utc": "2026-11-17T12:59:53.023359+00:00",
+        "start_is_approximate": true,
+        "lifecycle_window_seconds": 5404.825571,
+        "quote": {
+          "quoted_at_utc": "2026-11-17T11:25:40Z",
+          "currency": "USD",
+          "platform": "gpu-h100-sxm",
+          "preset": "1gpu-16vcpu-200gb",
+          "disk_type": "NETWORK_SSD",
+          "disk_gib": 500,
+          "preemptible_compute_hourly": 2.07,
+          "regular_compute_hourly": 4.5,
+          "disk_hourly": 0.048611,
+          "preemptible_total_hourly": 2.118611,
+          "gpu_price_cap_hourly": 2.5
+        },
+        "launch_quote_cost_proxy_usd": 3.1807563632783005,
+        "gpu_cap_plus_disk_hourly": 2.548611,
+        "cap_rate_window_proxy_usd": 3.826332750925523,
+        "scope": "Includes startup, generation, client suspension/idle time and cleanup for the original 54 saved clips and any unsaved work."
+      },
+      {
+        "session": "fresh attempt and three-clip resume",
+        "start_utc": "2026-11-18T09:32:01.574580+00:00",
+        "stopped_confirmation_utc": "2026-11-18T09:48:48.939942+00:00",
+        "start_is_approximate": false,
+        "lifecycle_window_seconds": 1007.365362,
+        "quote": {
+          "quoted_at_utc": "2026-11-18T09:31:38.998825+00:00",
+          "currency": "USD",
+          "platform": "gpu-h100-sxm",
+          "preset": "1gpu-16vcpu-200gb",
+          "disk_type": "NETWORK_SSD",
+          "disk_gib": 500,
+          "preemptible_compute_hourly": 2.37,
+          "regular_compute_hourly": 4.5,
+          "disk_hourly": 0.048611,
+          "preemptible_total_hourly": 2.418611,
+          "gpu_price_cap_hourly": 2.5
+        },
+        "launch_quote_cost_proxy_usd": 0.6767847070978282,
+        "gpu_cap_plus_disk_hourly": 2.548611,
+        "cap_rate_window_proxy_usd": 0.713161789614495,
+        "scope": "Includes the separate 26-clip attempt, its startup and idle/switching time, the three-clip resume and cleanup. The 26 clips are excluded from the completed dataset."
+      },
+      {
+        "session": "brief start-response recovery",
+        "start_utc": "2026-11-18T10:08:38.140800+00:00",
+        "stopped_confirmation_utc": "2026-11-18T10:08:57.815670+00:00",
+        "start_is_approximate": false,
+        "lifecycle_window_seconds": 19.67487,
+        "quote": {
+          "quoted_at_utc": "2026-11-18T10:07:00.661597+00:00",
+          "currency": "USD",
+          "platform": "gpu-h100-sxm",
+          "preset": "1gpu-16vcpu-200gb",
+          "disk_type": "NETWORK_SSD",
+          "disk_gib": 500,
+          "preemptible_compute_hourly": 2.37,
+          "regular_compute_hourly": 4.5,
+          "disk_hourly": 0.048611,
+          "preemptible_total_hourly": 2.418611,
+          "gpu_price_cap_hourly": 2.5
+        },
+        "launch_quote_cost_proxy_usd": 0.013218293612658331,
+        "gpu_cap_plus_disk_hourly": 2.548611,
+        "cap_rate_window_proxy_usd": 0.013928775029325,
+        "scope": "Brief accepted start followed by cleanup before generation; no clips contributed."
+      },
+      {
+        "session": "final completion and any optional test",
+        "start_utc": "2026-11-18T10:11:09.927777+00:00",
+        "stopped_confirmation_utc": "2026-11-18T11:44:57.935846+00:00",
+        "start_is_approximate": false,
+        "lifecycle_window_seconds": 5628.008069,
+        "quote": {
+          "quoted_at_utc": "2026-11-18T10:07:00.661597+00:00",
+          "currency": "USD",
+          "platform": "gpu-h100-sxm",
+          "preset": "1gpu-16vcpu-200gb",
+          "disk_type": "NETWORK_SSD",
+          "disk_gib": 500,
+          "preemptible_compute_hourly": 2.37,
+          "regular_compute_hourly": 4.5,
+          "disk_hourly": 0.048611,
+          "preemptible_total_hourly": 2.418611,
+          "gpu_price_cap_hourly": 2.5
+        },
+        "launch_quote_cost_proxy_usd": 3.781100617714489,
+        "gpu_cap_plus_disk_hourly": 2.548611,
+        "cap_rate_window_proxy_usd": 3.9843342424283783,
+        "scope": "Includes restart/readiness, the final 143-clip command, full checker, any optional test that ran, idle time and cleanup."
+      }
+    ],
+    "launch_quote_cost_proxy_total": 7.651859981703276,
+    "cap_rate_window_proxy_total": 8.537757557997722,
+    "method": "Compute/disk approximations for the listed lifecycle windows only, holding each launch quote constant. They include startup, idle/sleep time, the separate 26-clip attempt and the listed cleanup windows. Actual within-session spot-rate history and invoices are unavailable. Windows can include unbilled provisioning/polling overhead; tax and charges outside quoted compute/disk are excluded. These are not invoices or per-clip costs.",
+    "unquantified_overhead": "One additional brief diagnostic restart has no recorded interval and is not costed."
+  },
+  "separate_attempt": {
+    "saved_clips": 26,
+    "included_in_dataset": false,
+    "cost_included_in_lifecycle_windows": true
+  },
+  "optional_20_180_test": {
+    "status": "not run live",
+    "full_20_180_live_check_passed": false,
+    "reason": "Not enough validation time remained for the complete 20/180 exercise and cleanup."
+  },
+  "local_tests_passed": 34,
+  "cleanup": {
+    "first_attempt": {
+      "state": "STOPPED",
+      "checked_at": "2026-11-17T12:59:53.023359+00:00"
+    },
+    "nov18_resume": {
+      "state": "STOPPED",
+      "checked_at": "2026-11-18T09:48:48.939942+00:00"
+    },
+    "final": {
+      "state": "STOPPED",
+      "checked_at": "2026-11-18T11:44:57.935846+00:00"
+    }
+  },
+  "completion_recipe_files_sha256": {
+    "scripts/endpoint.py": "5c50c76152a22f155a6f4a02692535c776fca0c72c53b6af6740ca154597ff5e",
+    "src/generate.py": "265a4fbf6c5211a79235ede4ddc3bca38c6372e8ad742078520218c81afe369e",
+    "src/vbench_data.py": "d74bed32169c1a23d937e414953d8c7dd38daa64135543ac861d618f1b641c6b",
+    "config/endpoint.json": "3b766049dff60df5a17b2fd273cfbb8cbe0aa2137268767b6192ad5079fe79d6",
+    "data/prompts.csv": "f38cf4cb4cb1b1deb18955567f17abe289157e2636a808776b275f41648ffbd6",
+    "data/prompts.source.json": "525366d633b50d010d01813951accb72297d8efdb709fc682450963e890e8c6c"
+  },
+  "preview": {
+    "file": "../media/result.jpg",
+    "sha256": "fe5b07c5451ad6c852e9684690b86732ac5cc129217cb3b6513e59f88b0de966",
+    "width": 2000,
+    "height": 924,
+    "complete_input_sha256": "f38cf4cb4cb1b1deb18955567f17abe289157e2636a808776b275f41648ffbd6",
+    "completed_dataset": 200,
+    "selection": [
+      {
+        "category": "animal",
+        "clip_id": "vbench-animal-0082",
+        "middle_frame_index": 24,
+        "sha256": "bcf42183cee043c625d29236dd667373437a6754c4c4f674b5219665aa29c2d5"
+      },
+      {
+        "category": "architecture",
+        "clip_id": "vbench-architecture-0012",
+        "middle_frame_index": 24,
+        "sha256": "3ca0a05ea6b111177a81c379991657e93a86224b032486775580a811c4117c2b"
+      },
+      {
+        "category": "food",
+        "clip_id": "vbench-food-0016",
+        "middle_frame_index": 24,
+        "sha256": "1b77f0a89e7f3714d5b6b18eafe277b576bdfc32aceed0b855f7ec5514a7810b"
+      },
+      {
+        "category": "human",
+        "clip_id": "vbench-human-0027",
+        "middle_frame_index": 24,
+        "sha256": "5436eee81d1089b2a70393c4a15ca7f9e0fd577fb640f1a4cdcdbec775703b71"
+      },
+      {
+        "category": "lifestyle",
+        "clip_id": "vbench-lifestyle-0035",
+        "middle_frame_index": 24,
+        "sha256": "35be4c4ec1350a9f3b4d01525214cc1b37b62be4c58eea9645ce991e7727a71d"
+      },
+      {
+        "category": "plant",
+        "clip_id": "vbench-plant-0018",
+        "middle_frame_index": 24,
+        "sha256": "becc98f5b742381320e5ed666aa3e2d47c9e0c7405487fea8a864441ed872f9e"
+      },
+      {
+        "category": "scenery",
+        "clip_id": "vbench-scenery-0001",
+        "middle_frame_index": 24,
+        "sha256": "3683fd024fe9b0e05c1a76e4e2b9329d6ef168ddb36be2291eee2589a4c74d89"
+      },
+      {
+        "category": "vehicles",
+        "clip_id": "vbench-vehicles-0063",
+        "middle_frame_index": 24,
+        "sha256": "4117ffa13b48307fefa1c56f4c345f2ffa19ecb4001ee50752deab849829fbef"
+      }
+    ],
+    "source": "Frames extracted from the actual Wan-generated MP4s in the checked 200-clip dataset, with the existing official Nebius logo."
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "scope": "Partial live resume check; not a complete 200-clip benchmark",
+  "validation_date_utc": "2026-11-18",
+  "input": {
+    "prompts": 200,
+    "categories": 8,
+    "per_category": 25,
+    "sha256": "f38cf4cb4cb1b1deb18955567f17abe289157e2636a808776b275f41648ffbd6",
+    "vbench_revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490"
+  },
+  "runtime": {
+    "image": "vllm/vllm-omni:v0.24.0",
+    "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+    "platform": "gpu-h100-sxm",
+    "preset": "1gpu-16vcpu-200gb",
+    "preemptible": true,
+    "disk_gib": 500,
+    "settings": {
+      "model": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
+      "size": "832x480",
+      "num_frames": 49,
+      "fps": 16,
+      "num_inference_steps": 20,
+      "guidance_scale": 5.0,
+      "flow_shift": 3.0,
+      "boundary_ratio": 0.0
+    }
+  },
+  "recovery": {
+    "previously_saved": 54,
+    "new": 3,
+    "reused": 54,
+    "completed": 57,
+    "remaining": 143,
+    "limit_new": 3,
+    "original_clip_and_record_hashes_unchanged": true,
+    "old_endpoint_state_before_retry": "STOPPED",
+    "replacement_endpoint": true,
+    "unflagged_probe_reused": 54,
+    "unflagged_probe_outcome": "Refused to replace the unfinished request because its Endpoint changed.",
+    "retry_lost_used": true
+  },
+  "saved_subset_validation": {
+    "completed": 57,
+    "input_rows": 200,
+    "frames_per_clip": [
+      49
+    ],
+    "decode_passed": true,
+    "full_200_batch": false
+  },
+  "measurements": {
+    "clock": "UTC wall clock (time.time)",
+    "create_to_model_api_ready_seconds": 395.37276315689087,
+    "unflagged_resume_probe_seconds": 1.0121960639953613,
+    "three_new_clip_resume_command_seconds": 49.83246397972107,
+    "resume_command_seconds_per_new_clip": 16.61082132657369
+  },
+  "quoted_cost": {
+    "quoted_at_utc": "2026-11-18T09:31:38.998825+00:00",
+    "currency": "USD",
+    "platform": "gpu-h100-sxm",
+    "preset": "1gpu-16vcpu-200gb",
+    "disk_type": "NETWORK_SSD",
+    "disk_gib": 500,
+    "spot_compute_per_hour": "2.37",
+    "regular_compute_per_hour": "4.5",
+    "disk_per_hour": "0.048611",
+    "spot_compute_and_disk_per_hour": "2.418611",
+    "regular_compute_and_disk_per_hour": "4.548611",
+    "gpu_hour_cap": "2.500",
+    "cap_plus_disk_per_hour": "2.548611"
+  },
+  "cleanup": {
+    "state": "STOPPED",
+    "checked_at": "2026-11-18T09:48:48.939942+00:00"
+  },
+  "other_attempts": [
+    {
+      "date_utc": "2026-11-17",
+      "completed": 54,
+      "outcome": "Client connection failure after the Mac entered clamshell sleep. Saved results were preserved and reused in this test.",
+      "provider_preemption_established": false
+    },
+    {
+      "date_utc": "2026-11-18",
+      "completed": 26,
+      "outcome": "Separate fresh output stopped deliberately; excluded from this recovery count and measurement.",
+      "provider_preemption_established": false
+    }
+  ],
+  "limits": "The live test did not finish all 200 inputs or run the optional 20/180 scenario. The complete-batch checker requires all 200 results and was not used to claim success for 57. All 57 saved clips were independently decoded with the shipped per-clip validation functions. No provider-initiated GPU reclamation was established. Times are measurements of these commands, not an inference benchmark or invoice."
+}

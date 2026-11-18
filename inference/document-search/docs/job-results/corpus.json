@@ -1,0 +1,25 @@
+{
+  "scope": "Current corpus preparation from a cached pinned source; no GPU execution in this measurement",
+  "dataset": "Databricks Dolly 15k reference passages",
+  "revision": "bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a",
+  "manifest_sha256": "288db1b5b9470a8e2e0278eb2f00e0a4c0a268048bb882292259fecd1cf9dd9a",
+  "counts": {
+    "documents": 1000,
+    "words": 219197,
+    "text_bytes": 1367367,
+    "chunks_160_words": 1970
+  },
+  "preparation_seconds_cached": 0.06013779199565761,
+  "document_words": {
+    "min": 80,
+    "median": 158.5,
+    "p95": 491,
+    "max": 3681
+  },
+  "document_text_bytes": {
+    "min": 433,
+    "median": 969.0,
+    "p95": 3088,
+    "max": 21189
+  }
+}
