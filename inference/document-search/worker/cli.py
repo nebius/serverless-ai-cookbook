@@ -46,7 +46,7 @@ def write_search(folder: Path, query: str, matches: list[dict], fingerprint: str
     cards = []
     for match in matches:
         title = html.escape(match.get("title", match["source"]))
-        url = match.get("source_url", "")
+        url = match.get("viewer_url") or match.get("source_url", "")
         if not url.startswith("https://"):
             raise ValueError("Search source links must use HTTPS.")
         cards.append(f'<article><h2><a href="{html.escape(url, quote=True)}">{title}</a></h2>'
@@ -184,7 +184,7 @@ def query(args) -> None:
     write_search(args.output_dir, args.text, matches, inspected["stats"]["run_fingerprint"])
     for position, match in enumerate(matches, 1):
         print(f'{position}. {match.get("title", match["source"])} ({match["similarity"]:.4f})\n'
-              f'   {match.get("source_url", "")}\n   {match["text"][:450]}\n')
+              f'   {match.get("viewer_url") or match.get("source_url", "")}\n   {match["text"][:450]}\n')
     print("Saved report:", args.output_dir / "search.html")
 
 

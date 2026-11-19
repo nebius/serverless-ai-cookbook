@@ -10,11 +10,11 @@ difficulty: intermediate
 
 # Build a Document Search Index with a Serverless Job
 
-Build a searchable index of 1,000 Wikipedia reference passages from the Databricks Dolly dataset with Qwen3-Embedding-0.6B, save the embeddings to Object Storage, and search the collection by meaning. A single Serverless Job prepares the input, indexes all 1,970 chunks and writes a readable search report. It runs on a lower-cost preemptible GPU and can pick up where it left off if interrupted.
+Build a searchable index of 1,000 Wikipedia reference passages from the Databricks Dolly dataset with Qwen3-Embedding-0.6B, save the embeddings to Object Storage, and search the collection by meaning. A single Serverless Job prepares the input, indexes all 1,970 chunks and writes a readable search report. It runs on a lower-cost preemptible GPU. If Nebius reclaims it, the next Job reuses the documents already in your bucket.
 
 ## 1. Set up
 
-Run the commands on your computer, from the cookbook folder. You need Git, the [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.305 or newer, and a billing-enabled eu-north1 project with L40S GPU quota and an internet-enabled subnet.
+Start in a terminal on your computer. You need Git, the [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.305 or newer, and a billing-enabled eu-north1 project with L40S GPU quota and an internet-enabled subnet.
 
 ```bash
 git clone https://github.com/nebius/serverless-ai-cookbook.git
@@ -26,7 +26,7 @@ Complete sign-in and select your project. In the [console](https://console.nebiu
 
 - A private Object Storage bucket and an [S3 access key](https://docs.nebius.com/iam/service-accounts/access-keys) for a service account with `storage.object-editor` access to it.
 - A SecretStash secret: open Cryptography → SecretStash → Create secret. Add text entries named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` with the key values; use Add pair for the second entry. Copy the secret's `mbsec-…` ID. [SecretStash setup](https://docs.nebius.com/mysterybox/secrets/create).
-- Your project ID and the ID of an internet-enabled subnet, available on their console pages.
+- Your project ID from the project selector’s ⋯ menu → Copy project ID, and a subnet ID from Networking → Virtual Networks → Subnets.
 
 Your account needs permission to create Jobs and read the secret payload (`mysterybox.payload-viewer`, included in `admin`). Replace all `YOUR_…` values below and use a fresh bucket prefix. The file contains a secret reference, not the S3 credentials.
 
@@ -43,7 +43,7 @@ source .env
 
 Jobs download worker files from `nebius/serverless-ai-cookbook` at `RECIPE_REF`, matching this checkout. Local worker edits aren't uploaded; publish changes and select their commit to test them. For a fork, update the repository URL in `scripts/run_job.py`.
 
-The launcher uses one preemptible L40S AMD GPU, an 80 GiB temporary disk and a one-hour timeout. Review [current prices](https://nebius.com/prices); image and model setup use billable compute too.
+The launcher uses one preemptible NVIDIA L40S GPU, an 80 GiB temporary disk and a one-hour timeout. Review [current prices](https://nebius.com/prices); image and model setup use billable compute too.
 
 Each Job prepares the same pinned passage data automatically. These are reference passages, not full articles; their [provenance and CC BY-SA 3.0 license](worker/data/SOURCE.md) are included.
 
@@ -56,7 +56,7 @@ JOB_NAME=document-index bash scripts/submit.sh --dry-run &&
 JOB_NAME=document-index bash scripts/submit.sh --async
 ```
 
-Open Serverless AI → Jobs → document-index → Logs. Expect roughly five minutes for provisioning and the image pull before Running, based on our tests; logs can be empty during that wait. Wait for Completed and check:
+Open Serverless AI → Jobs → document-index → Logs. In the original recipe’s November 13, 2026 run, the Job took about five minutes to reach Running and about six minutes from submission to completion. Account and storage setup take additional time. Wait for Completed and check:
 
 ```text
 Finished: 1,000 new, 0 reused, 0 remaining.
@@ -70,15 +70,24 @@ The Job automatically asks:
 
 > What is stalemate in chess?
 
-Read the ranked passages and source links in its Logs. The expected first result explains that stalemate occurs when a player has no legal move and isn't in check, and that the game is a draw.
+Open Logs to see the ranked passages and links to the dataset viewer. The [first passage](https://huggingface.co/datasets/databricks/databricks-dolly-15k/viewer/default/train?row=5) explains that stalemate occurs when a player has no legal move and isn’t in check, so the game is a draw.
 
 In Object Storage → your bucket → document-index-demo-01 → outputs, download `search.html` and open it in your browser. `search.json` holds the same passages; the other JSON files record counts and timings. The bucket stays private.
 
+To ask your own question, start a second billed Job on the same `RUN_ROOT` after the first one finishes. It reuses all 1,000 saved documents and embeds only your question. Download the current report first if you want to keep it. The new results replace `outputs/search.html` and `outputs/search.json`.
+
+```bash
+JOB_NAME=document-search-question bash scripts/submit.sh --async \
+  --env 'SEARCH_QUERY=How does a game of chess end in a draw?'
+```
+
+Use a new Job name for each question. Check its logs for **0 new, 1,000 reused, 0 remaining** and the ranked passages.
+
 ## 4. Clean up
 
-Check that `document-index` is Completed. Cancel an unfinished attempt under Serverless AI → Jobs → ⋯ → Cancel. Completed Jobs release their compute; the saved index and reports remain in Object Storage.
+Once a Job shows Completed, its compute has been released. The index and reports stay in Object Storage. Cancel an unfinished attempt under Serverless AI → Jobs → ⋯ → Cancel.
 
-Keep the secret and `.env` if continuing to the optional test below. When you no longer need the data, remove only this run's bucket prefix and temporary SecretStash secret. Preserve shared buckets, access keys and networking. Choose new Job names and fresh prefixes when repeating the guide.
+Keep the secret and `.env` for the optional recovery test below. When you’re finished, delete the prefixes and SecretStash secret you created for this recipe. If you created a dedicated S3 key, delete it under the service account’s Access keys. Keep any keys and buckets you share with other workloads.
 
 ## What if the Job is interrupted?
 
@@ -136,6 +145,6 @@ Run the document-search recipe at my checked-out RECIPE_REF with
 nebius-cloud-basics and nebius-serverless-jobs in my selected project
 and approved GPU budget. Keep credentials in SecretStash. Use the
 default Job to index all 1,000 documents, inspect the search result,
-and confirm the Job finishes as Completed. Preserve the saved
-index and my other resources.
+and confirm the Job finishes as Completed. Check the first passage
+opens in the Dolly dataset viewer. Preserve the index and my other resources.
 ```

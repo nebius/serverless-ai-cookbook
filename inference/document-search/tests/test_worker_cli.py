@@ -134,6 +134,28 @@ class WorkerCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(MockEncoder.instances, [])
         self.assertFalse(output.exists())
 
+    def test_query_existing_index_links_to_dolly_viewer_and_keeps_pinned_source(self):
+        source = json.loads((ROOT / "worker/data/source.json").read_text())
+        pinned = source["source"]["view_url"] + "#L6"
+        viewer = "https://huggingface.co/datasets/databricks/databricks-dolly-15k/viewer/default/train?row=5"
+        self.documents[0].update(id="dolly-context-L00006", source_url=pinned)
+        self.index()
+        store = LocalStore(self.store)
+        saved = {key: store.get(key) for key in store.keys()}
+        self.assertEqual(self.index()["documents_reused"], 2)
+        output = self.root / "query-output"
+        for question in ("What is stalemate?", "What is checkmate?"):
+            status, stdout, stderr = self.call("query", "--text", question, "--output-dir", str(output))
+            self.assertEqual(status, 0, stderr)
+            result = json.loads((output / "search.json").read_text())
+            self.assertEqual(result["query"], question)
+            match = next(item for item in result["matches"] if item["source"] == "dolly-context-L00006")
+            self.assertEqual(match["source_url"], pinned)
+            self.assertEqual(match["viewer_url"], viewer)
+            self.assertIn(f'href="{viewer}"', (output / "search.html").read_text())
+            self.assertIn(viewer, stdout)
+        self.assertEqual({key: store.get(key) for key in store.keys()}, saved)
+
     def test_same_capped_index_command_finishes_remaining_documents_on_rerun(self):
         first = self.index("--max-new-documents", "1")
         self.assertEqual((first["documents_new"], first["documents_remaining"]), (1, 1))

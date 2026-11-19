@@ -1,6 +1,6 @@
 # Validation
 
-## Current full-index flow
+## Recorded GPU runs
 
 On November 13, 2026, three fresh preemptible Serverless Jobs exercised the new full-run default and optional 600/400 test. They executed published commit [`f1d8ca048018c924edef6b7cf21052b5c479974a`](https://github.com/MarouaneKhoukh/nebius-serverless-cookbooks/tree/f1d8ca048018c924edef6b7cf21052b5c479974a/document-search). The main and final resume submissions left `MAX_NEW_DOCUMENTS` unset; the launcher supplied its default `0`. Only the optional first attempt explicitly set `600`. [Effective launch settings](docs/job-results/default-flow/launch-settings.json).
 
@@ -18,9 +18,9 @@ Each Job used one NVIDIA L40S, `pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime`, 
 
 The pinned input contains 1,000 distinct Dolly reference passages and produces 1,970 chunks. Its text volume and provenance are recorded in the unchanged [corpus manifest record](docs/job-results/corpus.json); the worker validates the pinned data before indexing.
 
-## New measured phases
+## Measured phases
 
-Seconds measured inside these new containers, rounded to two decimal places:
+Seconds measured inside the November 13 containers, rounded to two decimal places:
 
 | Phase | Main 1,000 | Optional 600 | Resume 400 |
 | --- | ---: | ---: | ---: |
@@ -40,7 +40,7 @@ The main Job used the default query, “What is stalemate in chess?” The relev
 
 ## Local checks and execution scope
 
-These archived cloud results came from the linked original recipe. This contribution moves the Job into the official cookbook and changes where it downloads its worker files. Run its offline suite from this directory with `python3 -m unittest discover -s tests`. To include the full-corpus fixture recovery test, prepare the pinned input first with `python3 scripts/prepare_job_data.py`.
+These archived cloud results came from the linked original recipe. The official recipe fetches its worker from this repository and adds clickable dataset viewer rows alongside pinned source URLs. The updated worker has been tested offline. A fresh GPU run of this revision is pending. Run its offline suite from this directory with `python3 -m unittest discover -s tests`. To include the full-corpus fixture recovery test, prepare the pinned input first with `python3 scripts/prepare_job_data.py`.
 
 ## Cleanup
 
