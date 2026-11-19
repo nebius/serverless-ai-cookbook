@@ -25,7 +25,7 @@ nebius profile create
 Complete sign-in and select your project. In the [console](https://console.nebius.com), prepare:
 
 - A private Object Storage bucket and an [S3 access key](https://docs.nebius.com/iam/service-accounts/access-keys) for a service account with `storage.object-editor` access to it.
-- A SecretStash secret: open Cryptography → SecretStash → Create secret. Add text entries named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` with the key values; use Add pair for the second entry. Copy the secret's `mbsec-…` ID. [SecretStash setup](https://docs.nebius.com/mysterybox/secrets/create).
+- One active SecretStash secret for this bucket with two text entries, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Reuse the secret from a previous document-index Job if it’s still active. For a first run, open Cryptography → SecretStash → Create secret and use **Add pair** for the second entry. Copy the secret’s `mbsec-…` ID. [SecretStash setup](https://docs.nebius.com/mysterybox/secrets/create).
 - Your project ID from the project selector’s ⋯ menu → Copy project ID, and a subnet ID from Networking → Virtual Networks → Subnets.
 
 Your account needs permission to create Jobs and read the secret payload (`mysterybox.payload-viewer`, included in `admin`). Replace all `YOUR_…` values below and use a fresh bucket prefix. The file contains a secret reference, not the S3 credentials.
@@ -140,13 +140,30 @@ Before deleting resources, check that every Job using them shows Completed, Fail
 
 ## Run with an agent
 
-With the [Nebius skills installed](https://github.com/nebius/skills#install), share this cookbook and ask:
+If your agent has the [Nebius skills](https://github.com/nebius/skills#install), it can use them for Jobs and SecretStash. From this recipe directory, ask:
 
 ```text
-Run the document-search recipe at my checked-out RECIPE_REF with
-nebius-cloud-basics and nebius-serverless-jobs in my selected project
-and approved GPU budget. Keep credentials in SecretStash. Use the
-default Job to index all 1,000 documents, inspect the search result,
-and confirm the Job finishes as Completed. Check the first passage
-opens in the Dolly dataset viewer. Preserve the index and my other resources.
+Run the document-search recipe at my checked-out revision in my selected
+project. Use my approved GPU budget, or ask for a limit before submitting.
+
+Find the S3 secret before asking me for its ID. Check S3_SECRET_ID from
+this recipe first. If it is missing or stale, look at a successful
+document-index Job for the same project and bucket. Read only the secret references bound to AWS_ACCESS_KEY_ID
+and AWS_SECRET_ACCESS_KEY. Both should point to the same mbsec-… ID.
+Check the secret and its primary version using metadata only. Include
+scheduled deletions in discovery (--show-scheduled-for-deletion).
+A secret name alone doesn’t tell you which keys it contains.
+
+Reuse a confirmed active match. If the secret or its primary version is
+scheduled for deletion, ask whether to restore that item or use another.
+After an approved restore, verify both are active. If several candidates
+fit, ask once which reference to use. If access to a known ID is denied,
+explain which metadata you need permission to read or ask for another
+usable reference. For a new secret, guide me through console setup. Ask
+only for the mbsec-… ID. Never fetch the payload or request key values.
+
+Run the offline checks and dry run. Submit one uncapped Job on a fresh
+prefix. Confirm Completed, 1,000 indexed documents and a first-ranked
+stalemate passage that opens in the Dolly dataset viewer. Preserve the
+index and any shared resources.
 ```
