@@ -28,6 +28,8 @@ The initial interruption followed confirmed Mac clamshell sleep; no provider pre
 
 A separate fresh attempt was deliberately stopped after 26 clips to return to the original 54-clip collection and demonstrate recovery. That stop was intentional, with no model or provider failure. Those outputs are excluded from the dataset; their Endpoint time remains included in the cost estimate.
 
+The [sample MP4](docs/media/vbench-scenery-0014.mp4) comes from the completion resume. Its input was VBench scenery line 14, “fireworks display in the sky at night”, seed `24530229`. Its SHA256 `d5c232e7296ae0e1dbd1a21b0affafd74ccaa6bef70c6fe2aa6315617c0aa934` matches the saved record. The article animation shows those same 49 frames at a smaller display size.
+
 ## Runtime and measured time
 
 The runtime was `vllm/vllm-omni:v0.24.0` with `Wan-AI/Wan2.1-T2V-1.3B-Diffusers`, one preemptible H100 (`gpu-h100-sxm`, `1gpu-16vcpu-200gb`) and a 500 GiB temporary disk. Generation used 832×480, 49 frames at 16 fps and 20 steps. The pinned input contains 200 distinct VBench prompts, 25 per category. [Source, seeds and license](data/SOURCE.md).
@@ -67,7 +69,7 @@ The Endpoint was stopped and confirmed STOPPED at 2026-11-18T11:44:57.935846+00:
 
 ## Local checks
 
-34 tests passed with `python3 -m unittest discover -s tests`. They cover input provenance, request/download handling, reuse, changed or corrupt results, lost/ambiguous requests and the Endpoint helper. The actual CLI 0.12.305 returned a plain operation ID for an asynchronous lifecycle command; the helper now accepts that response and polls the resulting state. This compatibility case is covered by a test.
+37 tests passed with `python3 -m unittest discover -s tests`. They cover input provenance, request/download handling, reuse, changed or corrupt results, lost or ambiguous requests, opt-in replacement of retained failed or cancelled IDs, and the Endpoint helper. The terminal-state retry checks use a local fixture. The GPU dataset above predates that fix. The actual CLI 0.12.305 returned a plain operation ID for an asynchronous lifecycle command; the helper now accepts that response and polls the resulting state. This compatibility case is covered by a test.
 
 Earlier local API simulations used fixture-video bytes rather than Wan inference:
 

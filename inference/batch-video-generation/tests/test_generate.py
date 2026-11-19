@@ -27,6 +27,7 @@ class FixtureApi:
     def __init__(self, mp4):
         self.mp4 = mp4
         self.jobs = {}
+        self.statuses = {}
         self.posts = 0
         self.hold = False
         self.truncate_once = False
@@ -64,7 +65,8 @@ class FixtureApi:
                     self.truncate_once = False
                     payload = payload[:len(payload) // 2]
                 return io.BytesIO(payload)
-            return self.response({"id": job_id, "status": "queued" if self.hold else "completed"})
+            status = self.statuses.get(job_id, "queued" if self.hold else "completed")
+            return self.response({"id": job_id, "status": status})
         self.error(req, 404)
 
     @staticmethod
@@ -202,6 +204,42 @@ class RecoveryTests(unittest.TestCase):
         self.api.jobs.clear()  # Represents checking/stopping/restarting the old Endpoint.
         self.assertEqual(self.run_client("--retry-lost"), 0)
         self.assertEqual(self.api.posts, 2)
+
+    def test_retry_terminal_request_preserves_previous_clip(self):
+        self.write_rows(2)
+        for status in ("failed", "cancelled", "canceled"):
+            with self.subTest(status=status):
+                self.api = FixtureApi(self.mp4)
+                self.output = self.root / status
+                self.api.statuses["video-2"] = status
+                self.assertEqual(self.run_client(), 1)
+                saved = self.output / "clip-0.json"
+                original = saved.read_bytes()
+                self.assertEqual(self.run_client(), 1)
+                self.assertEqual(self.api.posts, 2)
+                self.assertEqual(self.run_client("--retry-lost"), 0)
+                self.assertEqual(self.api.posts, 3)
+                self.assertEqual(saved.read_bytes(), original)
+                self.assertEqual(video.read_json(self.output / "clip-1.json")["video_id"], "video-3")
+
+    def test_failed_replacement_requires_another_explicit_retry(self):
+        self.write_rows(1)
+        self.api.statuses.update({"video-1": "failed", "video-2": "failed"})
+        self.assertEqual(self.run_client(), 1)
+        self.assertEqual(self.run_client("--retry-lost"), 1)
+        self.assertEqual(self.api.posts, 2)
+        self.assertEqual(video.read_json(self.output / ".pending/clip-0.json")["video_id"], "video-2")
+        self.assertEqual(self.run_client(), 1)
+        self.assertEqual(self.api.posts, 2)
+
+    def test_retry_flag_keeps_polling_in_progress_request(self):
+        self.write_rows(1)
+        self.api.statuses["video-1"] = "in_progress"
+        self.assertEqual(self.run_client("--generation-timeout", "0.02"), 1)
+        self.assertEqual(self.run_client("--retry-lost", "--generation-timeout", "0.02"), 1)
+        self.api.statuses["video-1"] = "completed"
+        self.assertEqual(self.run_client("--retry-lost"), 0)
+        self.assertEqual(self.api.posts, 1)
 
     def test_hash_mismatch_refuses_corrupt_saved_clip(self):
         self.write_rows(1)

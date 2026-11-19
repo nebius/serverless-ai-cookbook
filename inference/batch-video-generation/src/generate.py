@@ -25,6 +25,7 @@ MODEL = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"
 PROVENANCE_FIELDS = {"category", "source_path", "source_line", "source_revision"}
 CATEGORIES = {"animal", "architecture", "food", "human", "lifestyle", "plant", "scenery", "vehicles"}
 TRANSIENT = {429, 502, 503, 504}
+FAILED_VIDEO_STATUSES = {"failed", "cancelled", "canceled"}
 
 
 class RecipeError(Exception):
@@ -266,13 +267,16 @@ def generate_one(client: Client, row: dict, fields: dict, output: Path, args: ar
         pending = None
     if pending:
         try:
-            client.request("/v1/videos/" + urllib.parse.quote(pending["video_id"], safe=""))
+            previous = client.request("/v1/videos/" + urllib.parse.quote(pending["video_id"], safe=""))
         except ApiError as exc:
             if exc.status != 404:
                 raise
             if not args.retry_lost:
                 raise RecipeError(f"{row['id']}: the server no longer has this request, possibly after the GPU being reclaimed. Restart the Endpoint, then rerun with --retry-lost.") from None
             pending = None
+        else:
+            if args.retry_lost and previous.get("status") in FAILED_VIDEO_STATUSES:
+                pending = None
     if pending is None:
         if (output / f"{row['id']}.mp4").exists() and not pending_path.exists():
             raise RecipeError(f"{row['id']}: untracked MP4 exists. Move it aside or use a new output directory.")
@@ -298,8 +302,8 @@ def generate_one(client: Client, row: dict, fields: dict, output: Path, args: ar
         status = response.get("status")
         if status == "completed":
             break
-        if status in {"failed", "cancelled", "canceled"}:
-            raise RecipeError(f"{row['id']}: generation {status}. Inspect logs; use a new output directory for a deliberate retry.")
+        if status in FAILED_VIDEO_STATUSES:
+            raise RecipeError(f"{row['id']}: generation {status}. Check the Endpoint logs, then rerun in the same output folder with --retry-lost to submit a new paid request for this clip.")
         if status not in {"queued", "in_progress"}:
             raise RecipeError(f"{row['id']}: unknown server status {status!r}; progress remains saved.")
         if time.monotonic() >= deadline:
@@ -394,7 +398,7 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--generation-timeout", type=float, default=900)
     p.add_argument("--poll-interval", type=float, default=5)
     p.add_argument("--request-timeout", type=int, default=60)
-    p.add_argument("--retry-lost", action="store_true", help="Allow a new paid request when a pending ID was lost; check the old Endpoint first.")
+    p.add_argument("--retry-lost", action="store_true", help="Allow a paid replacement for a lost, failed or cancelled request. Check the Endpoint before retrying.")
     p.add_argument("--wait-only", action="store_true")
     p.add_argument("--check-input", action="store_true")
     p.add_argument("--report-only", action="store_true")
