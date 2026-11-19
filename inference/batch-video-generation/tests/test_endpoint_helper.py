@@ -190,6 +190,47 @@ class EndpointHelperTests(unittest.TestCase):
         self.assertEqual(http.call_count, 1)
         self.assertEqual(sleep.call_count, 1)
 
+    def test_start_allows_a_slow_restart_and_initial_stopped_snapshot(self):
+        stopped = {**self.ep, "status": {"state": "STOPPED"}}
+        starting = {**self.ep, "status": {"state": "STARTING"}}
+        with patch("sys.argv", ["endpoint.py", "start"]), \
+             patch.object(endpoint, "cli", side_effect=[stopped, {}, stopped, starting, self.ep]), \
+             patch("time.monotonic", side_effect=[0, 0, 5, 405]), patch("time.sleep"), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            endpoint.main()
+        self.assertEqual(json.loads(output.getvalue())["state"], "RUNNING")
+
+    def test_start_reports_a_terminal_state_without_waiting_for_timeout(self):
+        stopped = {**self.ep, "status": {"state": "STOPPED"}}
+        starting = {**self.ep, "status": {"state": "STARTING"}}
+        for state in ("ERROR", "DELETED", "STOPPED"):
+            terminal = {**self.ep, "status": {"state": state}}
+            with self.subTest(state=state), patch("sys.argv", ["endpoint.py", "start"]), \
+                 patch.object(endpoint, "cli", side_effect=[stopped, {}, starting, terminal]), \
+                 patch("time.monotonic", side_effect=[0, 0, 5, 2000]), patch("time.sleep") as sleep, \
+                 contextlib.redirect_stderr(io.StringIO()) as error, self.assertRaises(SystemExit):
+                endpoint.main()
+            self.assertIn(state, error.getvalue())
+            self.assertEqual(sleep.call_count, 1)
+
+    def test_start_honors_a_shorter_timeout_without_restarting_again(self):
+        starting = {**self.ep, "status": {"state": "STARTING"}}
+        with patch("sys.argv", ["endpoint.py", "start", "--timeout", "30"]), \
+             patch.object(endpoint, "cli", return_value=starting) as cli, \
+             patch("time.monotonic", side_effect=[0, 0, 31]), patch("time.sleep"), \
+             contextlib.redirect_stderr(io.StringIO()) as error, self.assertRaises(SystemExit):
+            endpoint.main()
+        self.assertTrue(all(call.args[0][:3] == ["ai", "endpoint", "get"] for call in cli.call_args_list))
+        self.assertIn("STARTING", error.getvalue())
+
+    def test_start_rejects_nonpositive_timeout_before_any_cloud_call(self):
+        with patch("sys.argv", ["endpoint.py", "start", "--timeout", "0"]), \
+             patch.object(endpoint, "cli") as cli, contextlib.redirect_stderr(io.StringIO()) as error, \
+             self.assertRaises(SystemExit):
+            endpoint.main()
+        cli.assert_not_called()
+        self.assertIn("positive", error.getvalue())
+
     def test_wait_fails_fast_for_wrong_model(self):
         with patch.object(endpoint, "endpoint", return_value=self.ep), \
              patch("urllib.request.urlopen", return_value=io.BytesIO(b'{"data":[{"id":"wrong-model"}]}')), \

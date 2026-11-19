@@ -116,12 +116,14 @@ Use a new output folder when changing prompts, seeds or settings.
 
 In our November 17–18, 2026 run, the laptop went to sleep after saving 54 clips. The first resume added 3. The next reused all 57 and added the final 143. Across those three commands, about 2 hours 45 minutes elapsed, including pauses. [Run records](VALIDATION.md#completed-200-clip-dataset-2026-11-18-utc)
 
-1. Run `python3 scripts/endpoint.py status`. If it shows **RUNNING**, go straight to the generation command below. If it shows **STOPPED**, start the Endpoint when capacity is available and wait for Wan:
+1. Run `python3 scripts/endpoint.py status`. If it shows **RUNNING**, go straight to the generation command below. If it shows **STOPPED**, start the Endpoint and wait for Wan. If it already shows **STARTING**, run just the second command:
 
    ```bash
-   python3 scripts/endpoint.py start
+   python3 scripts/endpoint.py start --timeout 1800
    caffeinate -i python3 scripts/endpoint.py wait --timeout 1800
    ```
+
+   The first command waits up to 30 minutes for **RUNNING**. The second checks that Wan can serve requests. If startup times out, check the Endpoint status before requesting another start.
 
 2. Rerun the original command. It skips verified downloads and checks the saved ID for the unfinished clip:
 

@@ -234,7 +234,7 @@ class S3OperationTests(unittest.TestCase):
                             store.put("document.json", b"{}")
                         else:
                             store.keys()
-                    shown = str(raised.exception) + "".join(traceback.format_exception(raised.exception))
+                    shown = "".join(traceback.TracebackException.from_exception(raised.exception).format())
                     self.assertIn("(" + code + ")", shown)
                     self.assertNotIn("fixture-secret", shown)
                     self.assertNotIn("private.invalid", shown)

@@ -2,7 +2,7 @@
 
 ## Completed 200-clip dataset: 2026-11-18 (UTC)
 
-The [original recipe](https://github.com/MarouaneKhoukh/nebius-serverless-cookbooks/tree/c4e0940963582724ddea57f5f571665917886df1/batch-video-generation) produced the evidence below. The saved Wan dataset reached 200 clips across an interrupted execution and two resumes. The full result checker then passed. [Complete-dataset evidence](docs/resume-results/complete-200.json) · [All 200 clip records](docs/resume-results/clips-200.csv). The earlier [57-clip check](docs/resume-results/summary.json) and [its records](docs/resume-results/clips.csv) remain separate.
+The run used an earlier version of the recipe (`c4e0940`), before it moved to this repository. The saved Wan dataset reached 200 clips across an interrupted execution and two resumes. The full result checker then passed. [Complete-dataset evidence](docs/resume-results/complete-200.json) · [All 200 clip records](docs/resume-results/clips-200.csv). The earlier [57-clip check](docs/resume-results/summary.json) and [its records](docs/resume-results/clips.csv) remain separate.
 
 | Execution | New saved clips | Reused | Total saved | Result |
 | --- | ---: | ---: | ---: | --- |

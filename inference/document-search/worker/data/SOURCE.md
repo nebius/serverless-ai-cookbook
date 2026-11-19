@@ -1,6 +1,6 @@
 # Dataset source and license
 
-This example uses **1,000 distinct reference passages** from the `context` field of [Databricks Dolly 15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k/tree/bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a). They are passage-documents for this search collection, not 1,000 complete articles. The original 55-document Python corpus is a separate example and is unchanged.
+This example indexes **1,000 distinct reference passages** from the `context` field of [Databricks Dolly 15k](https://huggingface.co/datasets/databricks/databricks-dolly-15k/tree/bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a). Each passage is one document in the search index.
 
 The [official dataset card](https://huggingface.co/datasets/databricks/databricks-dolly-15k/blob/bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a/README.md) identifies Databricks as the dataset owner and explains that reference texts for certain task categories were selected from Wikipedia. The dataset does not provide original Wikipedia URLs for each passage; this example links to the exact, pinned dataset record instead of inventing an article URL.
 

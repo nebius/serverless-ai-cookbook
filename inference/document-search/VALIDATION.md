@@ -2,7 +2,7 @@
 
 ## Recorded GPU runs
 
-On November 13, 2026, three fresh preemptible Serverless Jobs exercised the new full-run default and optional 600/400 test. They executed published commit [`f1d8ca048018c924edef6b7cf21052b5c479974a`](https://github.com/MarouaneKhoukh/nebius-serverless-cookbooks/tree/f1d8ca048018c924edef6b7cf21052b5c479974a/document-search). The main and final resume submissions left `MAX_NEW_DOCUMENTS` unset; the launcher supplied its default `0`. Only the optional first attempt explicitly set `600`. [Effective launch settings](docs/job-results/default-flow/launch-settings.json).
+On November 13, 2026, three preemptible Serverless Jobs ran an earlier version of this recipe (`f1d8ca0`). The main Job and the final resume used the default `MAX_NEW_DOCUMENTS=0`. Only the first recovery attempt set a limit of 600. [Effective launch settings](docs/job-results/default-flow/launch-settings.json).
 
 | Attempt | New documents | Reused documents | Remaining | Saved chunks |
 | --- | ---: | ---: | ---: | ---: |
@@ -40,7 +40,7 @@ The main Job used the default query, “What is stalemate in chess?” The relev
 
 ## Local checks and execution scope
 
-These archived cloud results came from the linked original recipe. The official recipe fetches its worker from this repository and adds clickable dataset viewer rows alongside pinned source URLs. The updated worker has been tested offline. A fresh GPU run of this revision is pending. Run its offline suite from this directory with `python3 -m unittest discover -s tests`. To include the full-corpus fixture recovery test, prepare the pinned input first with `python3 scripts/prepare_job_data.py`.
+These archived cloud results predate the move to this repository. The current Job fetches its worker from this repository and links each search result to its dataset viewer row and pinned source. The updated worker has been tested offline. A fresh GPU run of this revision is pending. Run its offline suite from this directory with `python3 -m unittest discover -s tests`. To include the full-corpus fixture recovery test, prepare the pinned input first with `python3 scripts/prepare_job_data.py`.
 
 ## Cleanup
 

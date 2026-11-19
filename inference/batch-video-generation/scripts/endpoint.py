@@ -224,6 +224,33 @@ def wait(args):
     raise RuntimeError('Readiness timed out. Inspect logs, then stop the Endpoint if you are not continuing.')
 
 
+def start(timeout):
+    if timeout <= 0:
+        raise ValueError('--timeout must be a positive number of seconds.')
+    info = summary(endpoint())
+    state = info['state']
+    if state == 'RUNNING':
+        print('Endpoint already RUNNING')
+        return
+    if state == 'STOPPED':
+        cli(['ai', 'endpoint', 'start', '--id', info['id'], '--async', '--retries', '1'])
+    elif state != 'STARTING':
+        raise RuntimeError(f'Cannot start the Endpoint from {state}. Check its status.')
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        info = summary(endpoint())
+        previous, state = state, info['state']
+        if state == 'RUNNING':
+            print(json.dumps(info, indent=2))
+            return
+        # A freshly accepted start may still show the old STOPPED snapshot.
+        if state in {'ERROR', 'DELETING', 'DELETED', 'STOPPING'} or (state == 'STOPPED' and previous != 'STOPPED'):
+            raise RuntimeError(f'Endpoint entered {state} during startup. Check its status and events.')
+        time.sleep(5)
+    raise RuntimeError(f'Endpoint last reported {state} after {timeout}s. Check status before another start.')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
@@ -240,8 +267,10 @@ def main():
     w = sub.add_parser('wait')
     w.add_argument('--timeout', type=int, default=1800)
     sub.add_parser('status')
-    for action in ('stop', 'start'):
-        sub.add_parser(action)
+    sub.add_parser('stop')
+    s = sub.add_parser('start')
+    s.add_argument('--timeout', type=int, default=1800,
+                   help='Seconds to wait for the Endpoint to reach RUNNING (default: 1800).')
     r = sub.add_parser('run')
     r.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
@@ -260,18 +289,19 @@ def main():
             print(json.dumps(summary(endpoint()), indent=2))
         elif args.action == 'wait':
             wait(args)
-        elif args.action in ('stop', 'start'):
+        elif args.action == 'start':
+            start(args.timeout)
+        elif args.action == 'stop':
             ep = endpoint()
             current = ep.get('status', {}).get('state')
-            target = 'STOPPED' if args.action == 'stop' else 'RUNNING'
-            if current == target:
-                print('Endpoint already', target)
+            if current == 'STOPPED':
+                print('Endpoint already STOPPED')
                 return
-            cli(['ai', 'endpoint', args.action, '--id', load_state()['id'], '--async', '--retries', '1'])
+            cli(['ai', 'endpoint', 'stop', '--id', load_state()['id'], '--async', '--retries', '1'])
             deadline = time.monotonic() + 300
             while time.monotonic() < deadline:
                 info = summary(endpoint())
-                if info['state'] == target:
+                if info['state'] == 'STOPPED':
                     print(json.dumps(info, indent=2))
                     return
                 time.sleep(5)
