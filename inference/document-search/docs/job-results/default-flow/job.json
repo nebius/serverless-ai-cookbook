@@ -1,0 +1,19 @@
+{
+  "recipe_ref": "3eda510635994954e84a0cd72f0a3b077d3bf8d8",
+  "state": "COMPLETED",
+  "created_at": "2026-11-19T15:05:32.776717Z",
+  "started_at": "2026-11-19T15:10:16.926591947Z",
+  "finished_at": "2026-11-19T15:11:48.423168824Z",
+  "creation_to_start_seconds": 284.15,
+  "creation_to_completion_seconds": 375.646,
+  "worker_seconds": 90.49545256999997,
+  "image": "pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime",
+  "platform": "gpu-h100-sxm",
+  "preset": "1gpu-16vcpu-200gb",
+  "preemptible": true,
+  "gpu_hour_price_cap_usd": 2.5,
+  "temporary_disk_gib": 80,
+  "timeout": "3600s",
+  "max_new_documents": 0,
+  "document_objects_counted": 1000
+}

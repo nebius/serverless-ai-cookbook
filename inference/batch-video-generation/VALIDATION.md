@@ -69,7 +69,9 @@ The Endpoint was stopped and confirmed STOPPED at 2026-11-18T11:44:57.935846+00:
 
 ## Local checks
 
-37 tests passed with `python3 -m unittest discover -s tests`. They cover input provenance, request/download handling, reuse, changed or corrupt results, lost or ambiguous requests, opt-in replacement of retained failed or cancelled IDs, and the Endpoint helper. The terminal-state retry checks use a local fixture. The GPU dataset above predates that fix. The actual CLI 0.12.305 returned a plain operation ID for an asynchronous lifecycle command; the helper now accepts that response and polls the resulting state. This compatibility case is covered by a test.
+41 tests passed with `python3 -m unittest discover -s tests`. They cover input provenance, request/download handling, reuse, changed or corrupt results, lost or ambiguous requests, opt-in replacement of retained failed or cancelled IDs, and the Endpoint helper. The terminal-state retry checks use a local fixture. The GPU dataset above predates that fix. The actual CLI 0.12.305 returned a plain operation ID for an asynchronous lifecycle command; the helper now accepts that response and polls the resulting state. This compatibility case is covered by a test.
+
+A restart regression test simulates an Endpoint that still reports STOPPED just after the request and reaches RUNNING after 405 seconds. Other tests cover terminal states, an in-progress start and a caller-supplied timeout. The updated restart path was verified offline.
 
 Earlier local API simulations used fixture-video bytes rather than Wan inference:
 

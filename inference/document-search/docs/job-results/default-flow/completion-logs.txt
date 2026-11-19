@@ -1,9 +1,3 @@
-Attempt: main
+{"setup_seconds": 12.02101571899999, "preparation_seconds": 0.7995907479999858}
 Finished: 1,000 new, 0 reused, 0 remaining.
-
-Attempt: limited
-Finished: 600 new, 0 reused, 400 remaining.
-
-Attempt: resumed
-600 documents already saved, 400 to go.
-Finished: 400 new, 600 reused, 0 remaining.
+{"documents_total": 1000, "documents_completed": 1000, "documents_reused": 0, "documents_new": 1000, "documents_remaining": 0, "chunks_saved": 1970, "setup_seconds": 12.02101571899999, "preparation_seconds": 0.7995907479999858, "job_elapsed_seconds": 90.49545256999997}

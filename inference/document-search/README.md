@@ -56,7 +56,7 @@ JOB_NAME=document-index bash scripts/submit.sh --dry-run &&
 JOB_NAME=document-index bash scripts/submit.sh --async
 ```
 
-Open Serverless AI → Jobs → document-index → Logs. In the original recipe’s November 13, 2026 run, the Job took about five minutes to reach Running and about six minutes from submission to completion. Account and storage setup take additional time. Wait for Completed and check:
+Open Serverless AI → Jobs → document-index → Logs. Allow a few minutes for startup. The L40S run on November 13 and the H100 run on November 19, 2026 both finished about six minutes after submission. [Run records](VALIDATION.md). Account and storage setup take additional time. Wait for Completed and check:
 
 ```text
 Finished: 1,000 new, 0 reused, 0 remaining.
@@ -92,7 +92,7 @@ If you’re finished, skip to [step 4 to clean up](#4-clean-up). Keep the index 
 Nebius has an `on-failure` restart policy, which restarts a container that fails inside a running Job. It doesn’t cover preemption, missing capacity at startup, unexpected VM stops, or failures and timeouts during startup. We use `--restart-policy never` here so you can inspect what happened and decide when to resubmit. [Automatic job restarts](https://docs.nebius.com/serverless/jobs/auto-restarts#when-jobs-arent-restarted).
 
 - Wait for the previous attempt to show Completed, Failed, Cancelled or Error.
-- Submit a new Job with a new name and the same input, model settings and `RUN_ROOT`.
+- Give the new Job a new name. Reuse the original `RECIPE_REF`, `RUN_ROOT`, input and model settings.
 - Check the log's reused and remaining counts. An unfinished document is recomputed.
 - Use one active Job per prefix. Changed input or model settings require a fresh prefix.
 

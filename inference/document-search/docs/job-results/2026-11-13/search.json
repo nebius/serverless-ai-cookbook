@@ -1,0 +1,51 @@
+{
+  "query": "What is stalemate in chess?",
+  "run_fingerprint": "35a9d94dfc226815b2e318bb505799a5b256e270d9c6c198fc7c41783b188e3c",
+  "matches": [
+    {
+      "id": "dolly-context-L00006:0",
+      "source": "dolly-context-L00006",
+      "chunk_index": 0,
+      "text": "Stalemate is a situation in chess where the player whose turn it is to move is not in check and has no legal move. Stalemate results in a draw. During the endgame, stalemate is a resource that can enable the player with the inferior position to draw the game rather than lose. In more complex positions, stalemate is much rarer, usually taking the form of a swindle that succeeds only if the superior side is inattentive.[citation needed] Stalemate is also a common theme in endgame studies and other chess problems. The outcome of a stalemate was standardized as a draw in the 19th century. Before this standardization, its treatment varied widely, including being deemed a win for the stalemating player, a half-win for that player, or a loss for that player; not being permitted; and resulting in the stalemated player missing a turn. Stalemate rules vary in other games of the chess family.",
+      "source_url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k/blob/bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a/databricks-dolly-15k.jsonl#L6",
+      "title": "If I have more pieces at the time of stalemate, have I won?",
+      "similarity": 0.8239882077772336
+    },
+    {
+      "id": "dolly-context-L02015:1",
+      "source": "dolly-context-L02015",
+      "chunk_index": 1,
+      "text": "The object of the game is to checkmate the opponent; this occurs when the opponent's king is in check, and there is no legal way to get it out of check. It is never legal for a player to make a move that puts or leaves the player's own king in check. In casual games, it is common to announce \"check\" when putting the opponent's king in check, but this is not required by the rules of chess and is usually not done in tournaments.",
+      "source_url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k/blob/bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a/databricks-dolly-15k.jsonl#L2015",
+      "title": "What is the difference between check and checkmate?",
+      "similarity": 0.5424166293400674
+    },
+    {
+      "id": "dolly-context-L03562:0",
+      "source": "dolly-context-L03562",
+      "chunk_index": 0,
+      "text": "Chess pieces are divided into two different colored sets. While the sets might not be literally white and black (e.g. the light set may be a yellowish or off-white color, the dark set may be brown or red), they are always referred to as \"white\" and \"black\". The players of the sets are referred to as White and Black, respectively. Each set consists of sixteen pieces: one king, one queen, two rooks, two bishops, two knights, and eight pawns. Chess sets come in a wide variety of styles; for competition, the Staunton pattern is preferred. The game is played on a square board of eight rows (called ranks) and eight columns (called files). By convention, the 64 squares alternate in color and are referred to as light and dark squares; common colors for chessboards are white and brown, or white and dark green.",
+      "source_url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k/blob/bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a/databricks-dolly-15k.jsonl#L3562",
+      "title": "What are the chess pieces that a player starts out with?",
+      "similarity": 0.49469188505122474
+    },
+    {
+      "id": "dolly-context-L02015:0",
+      "source": "dolly-context-L02015",
+      "chunk_index": 0,
+      "text": "When a king is under immediate attack, it is said to be in check. A move in response to a check is legal only if it results in a position where the king is no longer in check. This can involve capturing the checking piece; interposing a piece between the checking piece and the king (which is possible only if the attacking piece is a queen, rook, or bishop and there is a square between it and the king); or moving the king to a square where it is not under attack. Castling is not a permissible response to a check.",
+      "source_url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k/blob/bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a/databricks-dolly-15k.jsonl#L2015",
+      "title": "What is the difference between check and checkmate?",
+      "similarity": 0.46735431361184965
+    },
+    {
+      "id": "dolly-context-L02124:1",
+      "source": "dolly-context-L02124",
+      "chunk_index": 1,
+      "text": "the stalemate caused fighting to expand into the Middle East, the Alps, the Balkans, and overseas colonies, bringing Bulgaria, Romania, Greece, and others into the war.",
+      "source_url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k/blob/bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a/databricks-dolly-15k.jsonl#L2124",
+      "title": "Based on the provided paragraph give a bullet list of the names of the countries (regions) which took part in WWI and their reasons?",
+      "similarity": 0.4305687553628559
+    }
+  ]
+}
