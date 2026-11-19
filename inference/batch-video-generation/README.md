@@ -1,5 +1,5 @@
 ---
-title: Generate a Video Dataset with Wan
+title: Turn 200 Text Prompts into Video Clips with Wan
 category: inference
 type: cookbook
 runtime: Nebius Serverless AI Endpoint
@@ -10,7 +10,7 @@ difficulty: intermediate
 
 <img src="docs/brand/nebius-logo.svg" alt="Nebius" width="140">
 
-# Generate a Video Dataset with Wan
+# Turn 200 Text Prompts into Video Clips with Wan
 
 Let’s generate 200 videos from VBench prompts so you can compare how Wan handles motion across eight types of scene. You’ll get an MP4 for each prompt, a gallery for side-by-side review, and a manifest with the seeds and settings to repeat the experiment.
 
