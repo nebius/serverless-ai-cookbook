@@ -24,7 +24,7 @@ Powered by Nebius Serverless AI · [Recorded test runs](VALIDATION.md)
 
 ## 1. Set up
 
-You need macOS or Ubuntu, Git, Python 3.10+, [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.303+, and FFmpeg with `ffprobe`. Use a billing-enabled eu-north1 project with permission to create Endpoints and pricing policies, quota for a preemptible H100 and 500 GiB of disk, and an internet-enabled subnet. No local GPU is needed.
+You need macOS or Ubuntu, Git, Python 3.10+, [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.303+, and FFmpeg with `ffprobe`. Use a billing-enabled eu-north1 project with permission to create Endpoints and use a pricing policy, quota for a preemptible H100 and 500 GiB of disk, and an internet-enabled subnet. No local GPU is needed.
 
 ```bash
 git clone https://github.com/nebius/serverless-ai-cookbook.git
@@ -49,9 +49,9 @@ Expect **200 prompts** and **49 frames at 832×480**. The [source selection and 
 
 ## 2. Start Wan with a price cap
 
-In the [console](https://console.nebius.com), open Billing → Pricing → Pricing policy → Create pricing policy. Select your project and `gpu-h100-sxm`, check the current rate, and enter the maximum price per GPU hour you accept. The cap limits the hourly GPU price. You pay for the time the Endpoint runs, and capacity can still be unavailable. [Pricing policy details](https://docs.nebius.com/signup-billing/manage-pricing-policy).
+In the [console](https://console.nebius.com), open Billing → Pricing → Pricing policy. Look for an active policy in your project for `gpu-h100-sxm` whose GPU-hour price limit fits your budget. If you need one, choose Create pricing policy and set your maximum price per GPU hour. The GPU can be scheduled only while its price is within your cap and capacity is available. [Pricing policies](https://docs.nebius.com/signup-billing/manage-pricing-policy)
 
-Copy the project ID from the project selector’s ⋯ menu → Copy project ID, the subnet ID from Networking → Virtual Networks → Subnets, and the new policy ID. Replace all three values:
+For a first run, copy the policy ID, your project ID (project selector → ⋯ → Copy project ID) and subnet ID (Networking → Virtual Networks → Subnets) into the file below. If you’re resuming, keep your existing `.env`, run `source .env` and [pick up the interrupted batch](#what-if-your-workload-is-interrupted).
 
 ```bash
 cat > .env <<'ENV'
@@ -187,11 +187,41 @@ If you also ran the custom batch, use `python3 scripts/check_results.py results-
 Share the recipe with your coding agent. If it has the [Nebius skills](https://github.com/nebius/skills#install), it can use them for the Endpoint steps.
 
 ```text
-Run the 200-prompt Wan recipe in my selected project and subnet. Confirm my
-GPU price cap and spending budget, validate the config, and start the
-preemptible Endpoint. Generate into results-vbench-200. If interrupted,
-preserve that folder and try the same command first. Ask before retrying
-an ambiguous paid request. Stop the Endpoint after the last download and
-confirm STOPPED. Then check that all 200 clips decode to 49 frames and show
-me the gallery, new and reused counts, and any failures.
+Generate the 200-prompt Wan batch with the bundled settings.
+
+Read the README, run the offline tests and verify the bundled VBench input. Work
+in the existing recipe folder if there is one. Check results-vbench-200 before
+starting a GPU. If the input and settings match and scripts/check_results.py
+verifies all 200 clips, show me the gallery. For a partial batch, keep that
+folder, its pending request IDs and .state/.
+
+For unfinished work, use my signed-in CLI profile. Look for the project, subnet
+and policy IDs in the recipe’s .env and .state/endpoint.json. If an ID is missing,
+check the active project and its internet-enabled subnets. Ask me to choose only
+if the match is unclear. The public Wan model needs no Hugging Face token, bucket
+or SecretStash secret. The launcher handles Endpoint authentication. Never ask me
+to paste credentials or print raw Endpoint details.
+
+Use the hourly GPU cap and total budget I approved for this batch. Ask only for
+what’s missing. Check the saved policy ID first.
+To find policies, run
+nebius billing pricing-policy list --parent-id "$NEBIUS_PROJECT_ID" --all
+Reuse an active gpu-h100-sxm policy within my cap. If its price blocks scheduling,
+tell me and wait for my decision. If none fits, ask before creating a policy or
+changing a cap.
+
+Check the tracked Endpoint with scripts/endpoint.py status. If local state is
+missing, look in the selected project. Before using an Endpoint, confirm it
+belongs to this batch and matches the model, configuration and subnet. Check the
+attached policy ID in spec.pricing_model.spot_pricing_policy.id. The status line
+alone only confirms preemptibility. Ask which Endpoint to use if ownership or
+access is unclear. Wait for a starting Endpoint, reuse a running one, or start a
+stopped one within budget. Only create when there’s no match. Use the README’s dry
+run and pass --spot-pricing-policy-id on both create commands.
+
+Wait for Model API ready, then run the keep-awake command in the same output
+folder. Ask before using --retry-lost for another paid request. If this batch’s
+Endpoint is still running after the last download or when abandoning the run, stop
+it and confirm STOPPED. Verify 200 MP4s with intact hashes and 49 decoded frames
+each. Show me the gallery, the new and reused counts, and any failures.
 ```
