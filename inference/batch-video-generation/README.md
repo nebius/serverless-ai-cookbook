@@ -89,7 +89,9 @@ caffeinate -i python3 scripts/endpoint.py run -- \
   python3 src/generate.py --input data/prompts.csv --output results-vbench-200
 ```
 
-From an empty folder, expect **Generated 200; reused 0**. Allow about an hour of active generation. Clip timers averaged 16 seconds in the batch completed November 18, 2026. Wall time depends on startup and interruptions.
+From an empty folder, expect **Generated 200; reused 0**. If you’re done generating, [stop the Endpoint and review your clips](#4-stop-the-endpoint-and-review-your-clips) now. If the batch stopped early, [resume it in the same folder](#what-if-your-workload-is-interrupted).
+
+Allow about an hour of active generation. Clip timers averaged 16 seconds in the batch completed November 18, 2026. Wall time depends on startup and interruptions.
 
 ### Use your own prompts
 
@@ -107,31 +109,6 @@ caffeinate -i python3 scripts/endpoint.py run -- \
 ```
 
 Use a new output folder when changing prompts, seeds or settings.
-
-## 4. Stop the Endpoint and review your clips
-
-As soon as your last download finishes, stop the Endpoint. The checks and gallery run on your computer.
-
-```bash
-python3 scripts/endpoint.py stop
-python3 scripts/endpoint.py status
-```
-
-Confirm **STOPPED**. Then check the saved videos:
-
-```bash
-python3 scripts/check_results.py results-vbench-200
-```
-
-On November 18, 2026, the checker verified the hashes and decoded all 200 clips from our Wan-AI/Wan2.1-T2V-1.3B-Diffusers run. Look for these fields:
-
-```json
-{"completed": 200, "frames_per_clip": [49], "decode_passed": true}
-```
-
-Open `results-vbench-200/index.html` on your computer with `open results-vbench-200/index.html` on macOS or `xdg-open results-vbench-200/index.html` on Ubuntu. Play a clip beside its prompt and seed. Each MP4 is about three seconds long at 832×480 and 16 fps. The gallery should show **200 of 200 clips saved**. You can use the MP4s and `clips.csv` directly in another workflow.
-
-If you also ran the custom batch, use `python3 scripts/check_results.py results-custom` and open `results-custom/index.html`.
 
 ## What if your workload is interrupted?
 
@@ -160,11 +137,11 @@ In our November 17–18, 2026 run, the laptop went to sleep after saving 54 clip
      python3 src/generate.py --input data/prompts.csv --output results-vbench-200 --retry-lost
    ```
 
-Once the downloads finish, stop the Endpoint and check your files as in step 4.
+Once the last download finishes, [stop the Endpoint](#4-stop-the-endpoint-and-review-your-clips).
 
 ### Try it yourself
 
-To practice recovery during your first 200-clip run, use these commands in place of step 3. If you already completed the main run, repeating it in a fresh folder pays for another 200 clips. Start the Endpoint again and wait for Wan first. This 20/180 split was tested locally with fixture videos.
+To practice recovery during your first 200-clip run, use these commands in place of step 3. If you already completed the main run, repeating it in a fresh folder pays for another 200 clips. If the Endpoint is stopped, start it and wait for Wan first. This 20/180 split was tested locally with fixture videos.
 
 ```bash
 caffeinate -i python3 scripts/endpoint.py run -- \
@@ -178,7 +155,32 @@ caffeinate -i python3 scripts/endpoint.py run -- \
   python3 src/generate.py --input data/prompts.csv --output results-resume-test
 ```
 
-Expect **Generated 180; reused 20**. Stop the Endpoint as in step 4, then run `python3 scripts/check_results.py results-resume-test`.
+Expect **Generated 180; reused 20**. Your 200 clips are in `results-resume-test`.
+
+## 4. Stop the Endpoint and review your clips
+
+As soon as your last download finishes, stop the Endpoint. The checks and gallery run on your computer.
+
+```bash
+python3 scripts/endpoint.py stop
+python3 scripts/endpoint.py status
+```
+
+Confirm **STOPPED**. Then check the saved videos. If you ran the 20/180 exercise, use `results-resume-test` in place of `results-vbench-200` for the checker and gallery below.
+
+```bash
+python3 scripts/check_results.py results-vbench-200
+```
+
+On November 18, 2026, the checker verified the hashes and decoded all 200 clips from our Wan-AI/Wan2.1-T2V-1.3B-Diffusers run. Look for these fields:
+
+```json
+{"completed": 200, "frames_per_clip": [49], "decode_passed": true}
+```
+
+Open `results-vbench-200/index.html` on your computer with `open results-vbench-200/index.html` on macOS or `xdg-open results-vbench-200/index.html` on Ubuntu. Play a clip beside its prompt and seed. Each MP4 is about three seconds long at 832×480 and 16 fps. The gallery should show **200 of 200 clips saved**. You can use the MP4s and `clips.csv` directly in another workflow.
+
+If you also ran the custom batch, use `python3 scripts/check_results.py results-custom` and open `results-custom/index.html`.
 
 ## Run with an agent
 

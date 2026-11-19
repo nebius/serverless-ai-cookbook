@@ -83,11 +83,7 @@ JOB_NAME=document-search-question bash scripts/submit.sh --async \
 
 Use a new Job name for each question. Check its logs for **0 new, 1,000 reused, 0 remaining** and the ranked passages.
 
-## 4. Clean up
-
-Once a Job shows Completed, its compute has been released. The index and reports stay in Object Storage. Cancel an unfinished attempt under Serverless AI → Jobs → ⋯ → Cancel.
-
-Keep the secret and `.env` for the optional recovery test below. When you’re finished, delete the prefixes and SecretStash secret you created for this recipe. If you created a dedicated S3 key, delete it under the service account’s Access keys. Keep any keys and buckets you share with other workloads.
+If you’re finished, skip to [step 4 to clean up](#4-clean-up). Keep the index prefix, `.env` and SecretStash secret if you want to ask more questions or [try recovering a Job](#what-if-the-job-is-interrupted).
 
 ## What if the Job is interrupted?
 
@@ -116,7 +112,7 @@ JOB_NAME=document-index-resume RUN_ROOT="$RUN_ROOT/optional-resume" \
   bash scripts/submit.sh --async
 ```
 
-Expect **“600 documents already saved, 400 to go.”** The Job should finish with **400 new, 600 reused, 0 remaining** and **1,000 documents / 1,970 chunks**. Here the Job stops on purpose; this is not a real preemption. Check both test Jobs are Completed and apply the same cleanup as step 4.
+Expect **“600 documents already saved, 400 to go.”** The Job should finish with **400 new, 600 reused, 0 remaining** and **1,000 documents / 1,970 chunks**. Here the Job stops on purpose; this is not a real preemption. Once both test Jobs show Completed, you can [clean up](#4-clean-up) or try the crash test.
 
 ## Go further
 
@@ -134,7 +130,13 @@ JOB_NAME=document-index-crash-resume RUN_ROOT="$RUN_ROOT/crash-test" \
   bash scripts/submit.sh --async
 ```
 
-Only fully saved documents are reused. Check Completed and **1,000 documents / 1,970 chunks**, then clean up these test Jobs and their prefix. See [worker/durable.py](worker/durable.py) for the pattern and [VALIDATION.md](VALIDATION.md) for actual execution results.
+Only fully saved documents are reused. Check the recovery Job for Completed and **1,000 documents / 1,970 chunks**. See [worker/durable.py](worker/durable.py) for the pattern and [VALIDATION.md](VALIDATION.md) for actual execution results.
+
+## 4. Clean up
+
+Once a Job shows Completed, its compute has been released. The index and reports stay in Object Storage. To stop an unfinished attempt, use Serverless AI → Jobs → ⋯ → Cancel.
+
+Before deleting resources, check that every Job using them shows Completed, Failed, Cancelled or Error. When you’re finished, delete the prefixes and SecretStash secret you created for this recipe. If you created a dedicated S3 key, delete it under the service account’s Access keys. Keep any keys and buckets you share with other workloads.
 
 ## Run with an agent
 
