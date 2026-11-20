@@ -33,7 +33,15 @@ In the [console](https://console.nebius.com), open the same project and prepare:
 
 Your account needs permission to create Jobs and read the secret payload (`mysterybox.payload-viewer`, included in `admin`).
 
-Use `nebius compute platform list --parent-id YOUR_PROJECT_ID` to find a platform marked `allowed_for_preemptibles: true`. Choose one of its single-GPU presets. For example, we ran an L40S in `eu-north1` with platform `gpu-l40s-d` and preset `1gpu-16vcpu-96gb`. In `eu-west1`, an H200 option is `gpu-h200-sxm` with `1gpu-16vcpu-200gb`. The launcher selects the PyTorch CUDA 12.8 image for Blackwell GPUs such as the B200 and RTX PRO 6000. Only L40S and H100 have been tested live. [GPU platforms and presets](https://docs.nebius.com/compute/virtual-machines/types)
+Run `nebius compute platform list --parent-id YOUR_PROJECT_ID` with your project ID. Choose a platform marked `allowed_for_preemptibles: true` and one of its single-GPU presets. [GPU platforms and presets](https://docs.nebius.com/compute/virtual-machines/types).
+
+| GPU | `GPU_PLATFORM` | `GPU_PRESET` |
+| --- | --- | --- |
+| H100 | `gpu-h100-sxm` | `1gpu-16vcpu-200gb` |
+| L40S (AMD) | `gpu-l40s-d` | `1gpu-16vcpu-96gb` |
+| H200 | `gpu-h200-sxm` | `1gpu-16vcpu-200gb` |
+
+We ran the Job live on L40S and H100 GPUs in `eu-north1`. For selected configurations in other regions, offline tests checked the launch arguments only. The launcher selects the PyTorch CUDA 12.8 image for Blackwell GPUs such as B200 and RTX PRO 6000.
 
 Fill in your region, the two GPU IDs and the resource IDs below. Use a fresh bucket prefix. The Job uses `NEBIUS_REGION` to connect to your bucket’s regional S3 endpoint.
 
@@ -59,7 +67,9 @@ Each Job prepares the same pinned passage data automatically. These are referenc
 
 ## 2. Index all 1,000 documents
 
-Submit the Job. The first command checks your settings; the second starts the run.
+The commands below follow the current spot price with no GPU-hour price cap. For our November 19, 2026 run, L40S capacity was unavailable in the test project, so we used an H100 with a separate $2.50/GPU-hour cap.
+
+The first command checks your settings. The second submits the Job.
 
 ```bash
 JOB_NAME=document-index bash scripts/submit.sh --dry-run &&
@@ -99,7 +109,7 @@ If you’re finished, skip to [step 4 to clean up](#4-clean-up). Keep the index 
 
 **Each finished document is saved to Object Storage as its own object.** Its complete chunk embeddings survive the container. Submit the workload again with the same input, settings and prefix; it skips saved documents and finishes the rest. The run manifest refuses incompatible data or model settings.
 
-Nebius has an `on-failure` restart policy, which restarts a container that fails inside a running Job. It doesn’t cover preemption, missing capacity at startup, unexpected VM stops, or failures and timeouts during startup. We use `--restart-policy never` here so you can inspect what happened and decide when to resubmit. [Automatic job restarts](https://docs.nebius.com/serverless/jobs/auto-restarts#when-jobs-arent-restarted).
+Nebius has an `on-failure` restart policy, which restarts a container that fails inside a running Job. It doesn’t cover preemption, missing capacity at startup, unexpected VM stops, or failures and timeouts during startup. We use `--restart-policy never` here so you can inspect what happened and decide when to resubmit. [Automatic job restarts](https://docs.nebius.com/serverless/jobs/auto-restarts#when-jobs-aren%E2%80%99t-restarted).
 
 - Wait for the previous attempt to show Completed, Failed, Cancelled or Error.
 - Give the new Job a new name. Reuse the original `RUN_ROOT` and bucket region (`NEBIUS_REGION`), along with the same `RECIPE_REF`, input and model settings.
@@ -115,7 +125,7 @@ JOB_NAME=document-index-600 RUN_ROOT="$RUN_ROOT/optional-resume" \
   MAX_NEW_DOCUMENTS=600 bash scripts/submit.sh --async
 ```
 
-Wait for Completed, then check the log for **600 new, 0 reused, 400 remaining**. Now submit an uncapped Job against that same test prefix:
+Wait for Completed, then check the log for **600 new, 0 reused, 400 remaining**. Now submit a Job against that same test prefix with the document limit removed:
 
 ```bash
 JOB_NAME=document-index-resume RUN_ROOT="$RUN_ROOT/optional-resume" \
@@ -140,7 +150,7 @@ JOB_NAME=document-index-crash-resume RUN_ROOT="$RUN_ROOT/crash-test" \
   bash scripts/submit.sh --async
 ```
 
-Only fully saved documents are reused. Check the recovery Job for Completed and **1,000 documents / 1,970 chunks**. See [worker/durable.py](worker/durable.py) for the pattern and [VALIDATION.md](VALIDATION.md) for actual execution results.
+Only fully saved documents are reused. Check the recovery Job for Completed and **1,000 documents / 1,970 chunks**. See the [recovery code](worker/durable.py) and [run records](VALIDATION.md).
 
 ## 4. Clean up
 
@@ -157,8 +167,10 @@ Run the document-search recipe at my checked-out revision in the selected projec
 of my Nebius AI Cloud account. Confirm that its region offers Serverless AI and
 use my private bucket in that region. Set NEBIUS_REGION to the bucket's region.
 List the project's platforms and choose an eligible one-GPU preset. The launcher
-selects the CUDA image. Set GPU_PLATFORM and GPU_PRESET to that pair. Use
-my approved budget, or ask for a limit before submitting.
+selects the CUDA image. Set GPU_PLATFORM and GPU_PRESET to that pair.
+The launcher follows the spot price without a GPU-hour cap. If my budget
+requires a hard hourly cap, stop before submitting and explain why.
+Otherwise use my approved budget, or ask for a limit.
 
 Find the S3 secret before asking me for its ID. Check S3_SECRET_ID from
 this recipe first. If it is missing or stale, look at a successful
@@ -178,7 +190,7 @@ only for the mbsec-… ID. Never fetch the payload or request key values.
 
 Prepare the test data with python3 scripts/prepare_job_data.py, then run
 python3 -m unittest discover -s tests. Run the dry run before submitting
-one uncapped Job on a fresh prefix. Confirm Completed, 1,000 indexed documents and a first-ranked
-stalemate passage that opens in the Dolly dataset viewer. Preserve the
-index and any shared resources.
+one Job for all 1,000 documents on a fresh prefix. Confirm Completed,
+1,000 indexed documents and a first-ranked stalemate passage that opens
+in the Dolly dataset viewer. Preserve the index and any shared resources.
 ```
