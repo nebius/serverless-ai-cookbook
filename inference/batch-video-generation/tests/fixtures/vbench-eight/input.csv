@@ -1,0 +1,9 @@
+id,prompt,seed,category,source_path,source_line,source_revision
+vbench-animal-0082,a still video of mosquito biting human,1785537283,animal,prompts/prompts_per_category/animal.txt,82,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0015,friends hanging out at a coffee house,286977637,architecture,prompts/prompts_per_category/architecture.txt,15,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0004,a person slicing a vegetable,2113083690,food,prompts/prompts_per_category/food.txt,4,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0095,a singer of a music band,874227636,human,prompts/prompts_per_category/human.txt,95,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0036,modern minimalist home interior,594370757,lifestyle,prompts/prompts_per_category/lifestyle.txt,36,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0032,variety of trees and plants in a botanical garden,731970836,plant,prompts/prompts_per_category/plant.txt,32,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0029,a scenic view of the golden hour at norway,1515188077,scenery,prompts/prompts_per_category/scenery.txt,29,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0018,a green vintage automobile with an open hood parked in a parking area,1256227319,vehicles,prompts/prompts_per_category/vehicles.txt,18,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490

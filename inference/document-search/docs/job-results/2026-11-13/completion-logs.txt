@@ -1,0 +1,9 @@
+Attempt: main
+Finished: 1,000 new, 0 reused, 0 remaining.
+
+Attempt: limited
+Finished: 600 new, 0 reused, 400 remaining.
+
+Attempt: resumed
+600 documents already saved, 400 to go.
+Finished: 400 new, 600 reused, 0 remaining.

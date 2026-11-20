@@ -1,0 +1,4 @@
+# Preserve the exact upstream bytes verified by source.json on every platform.
+DATASET_CARD.md -text whitespace=-trailing-space
+LICENSE -text
+SOURCE.md -text

@@ -1,0 +1,40 @@
+{
+  "tested_commit": "0621fe97442657d36c340740d1785b74f7f991d5",
+  "platform": "preemptible H100",
+  "gpu_price_cap_usd_per_hour": 2.5,
+  "first_run": {
+    "initial_state": "STOPPED",
+    "start_to_running_seconds": 216.17,
+    "started_at_utc": "2026-11-20T13:13:48.355425+00:00",
+    "running_to_model_check_seconds": 166.74,
+    "client_wall_seconds": 16.99,
+    "client_summary": "Generated 1; reused 0",
+    "first_clip_sha256": "4219735a935dc9a4a90b6435d1d4d5b055e3a93c0a21e6127ebeb997d1c858ad",
+    "first_record_sha256": "e9a2d8db8b0d1fc97d80cc3bf461505ea908ae04054f48b344c83e163da565cf",
+    "final_state": "STOPPED"
+  },
+  "second_run": {
+    "initial_state": "STOPPED",
+    "start_to_running_seconds": 225.62,
+    "started_at_utc": "2026-11-20T13:22:31.405046+00:00",
+    "running_to_model_check_seconds": 176.39,
+    "client_wall_seconds": 17.26,
+    "client_summary": "Generated 1; reused 1",
+    "first_clip_sha256": "4219735a935dc9a4a90b6435d1d4d5b055e3a93c0a21e6127ebeb997d1c858ad",
+    "first_record_sha256": "e9a2d8db8b0d1fc97d80cc3bf461505ea908ae04054f48b344c83e163da565cf",
+    "final_state": "STOPPED"
+  },
+  "checker": {
+    "completed": 2,
+    "dataset": "custom CSV",
+    "frames_per_clip": [
+      49
+    ],
+    "input_sha256": "af5f10a501921398a548008fe8b471490ab5c96da5107212fe64c19e9f30ea3b",
+    "decode_passed": true
+  },
+  "checksums": {
+    "coffee": "4219735a935dc9a4a90b6435d1d4d5b055e3a93c0a21e6127ebeb997d1c858ad",
+    "coast": "ef94b47e3f726f9e97aa33ae876c5bf076c936a0d5a32d63835ef5ab929c4830"
+  }
+}

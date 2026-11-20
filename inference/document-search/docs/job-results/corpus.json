@@ -1,0 +1,25 @@
+{
+  "scope": "Local preparation from the cached, checksum-verified Dolly source on November 19, 2026.",
+  "dataset": "Databricks Dolly 15k reference passages",
+  "revision": "bdd27f4d94b9c1f951818a7da7fd7aeea5dbff1a",
+  "manifest_sha256": "f9f5fbfe8e86e22e0480e9e88aa3cc4b2e099d35b3b54f340674e06515e91c37",
+  "counts": {
+    "documents": 1000,
+    "words": 219197,
+    "text_bytes": 1367367,
+    "chunks_160_words": 1970
+  },
+  "preparation_seconds_cached": 1.176,
+  "document_words": {
+    "min": 80,
+    "median": 158.5,
+    "p95": 491,
+    "max": 3681
+  },
+  "document_text_bytes": {
+    "min": 433,
+    "median": 969.0,
+    "p95": 3088,
+    "max": 21189
+  }
+}

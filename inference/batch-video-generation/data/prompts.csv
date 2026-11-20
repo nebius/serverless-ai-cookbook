@@ -1,0 +1,201 @@
+id,prompt,seed,category,source_path,source_line,source_revision
+vbench-animal-0082,a still video of mosquito biting human,1785537283,animal,prompts/prompts_per_category/animal.txt,82,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0015,close up view of a brown caterpillar crawling on green leaf,286977637,animal,prompts/prompts_per_category/animal.txt,15,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0004,a snake crawling on a wooden flooring,2113083690,animal,prompts/prompts_per_category/animal.txt,4,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0095,a zebra eating grass on the field,874227636,animal,prompts/prompts_per_category/animal.txt,95,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0036,close up of a scorpion on a rock,594370757,animal,prompts/prompts_per_category/animal.txt,36,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0032,close up footage of a horse figurine,731970836,animal,prompts/prompts_per_category/animal.txt,32,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0029,underwater footage of an octopus in a coral reef,1515188077,animal,prompts/prompts_per_category/animal.txt,29,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0018,a frog eating an ant,1256227319,animal,prompts/prompts_per_category/animal.txt,18,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0014,red dragonfly perched on green leaf,1550982512,animal,prompts/prompts_per_category/animal.txt,14,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0087,bat hanging upside down,1613572772,animal,prompts/prompts_per_category/animal.txt,87,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0070,close up shot of a wild bear,2131160951,animal,prompts/prompts_per_category/animal.txt,70,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0012,top view of a hermit crab crawling on a wooden surface,298628387,animal,prompts/prompts_per_category/animal.txt,12,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0076,a bear wearing red jersey,410776052,animal,prompts/prompts_per_category/animal.txt,76,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0055,a tortoise covered with algae,1824535686,animal,prompts/prompts_per_category/animal.txt,55,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0005,a close up video of a dragonfly,1244500659,animal,prompts/prompts_per_category/animal.txt,5,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0098,zookeeper showering a baby elephant,2055417508,animal,prompts/prompts_per_category/animal.txt,98,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0089,snake on ground,1778223648,animal,prompts/prompts_per_category/animal.txt,89,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0028,video of parrots perched on bird stand,210951778,animal,prompts/prompts_per_category/animal.txt,28,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0030,a cute pomeranian dog playing with a soccer ball,1903464323,animal,prompts/prompts_per_category/animal.txt,30,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0065,group of ring tailed lemurs,1256530227,animal,prompts/prompts_per_category/animal.txt,65,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0078,beautiful clown fish swimming,1361736538,animal,prompts/prompts_per_category/animal.txt,78,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0085,a wolf in its natural habitat,1278329144,animal,prompts/prompts_per_category/animal.txt,85,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0072,porcupine climbs tree branches,1635078777,animal,prompts/prompts_per_category/animal.txt,72,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0026,a lizard on a bamboo,1592322722,animal,prompts/prompts_per_category/animal.txt,26,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-animal-0090,a harbour seal swimming near the shore,1298911927,animal,prompts/prompts_per_category/animal.txt,90,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0054,waterfall and house,348230014,architecture,prompts/prompts_per_category/architecture.txt,54,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0029,eiffel tower from the seine river,714512803,architecture,prompts/prompts_per_category/architecture.txt,29,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0058,clouds hovering over a mansion,516343343,architecture,prompts/prompts_per_category/architecture.txt,58,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0076,aerial view of a luxurious house with pool,465729503,architecture,prompts/prompts_per_category/architecture.txt,76,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0036,top view of a high rise building,954020426,architecture,prompts/prompts_per_category/architecture.txt,36,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0001,an apartment building with balcony,851752887,architecture,prompts/prompts_per_category/architecture.txt,1,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0021,modern wooden house interior,1493432504,architecture,prompts/prompts_per_category/architecture.txt,21,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0090,a beach house built over a seawall protected from the sea waves,1733056073,architecture,prompts/prompts_per_category/architecture.txt,90,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0055,view of the sky through a building,1281186513,architecture,prompts/prompts_per_category/architecture.txt,55,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0044,an under construction concrete house,2143072764,architecture,prompts/prompts_per_category/architecture.txt,44,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0096,a video of vessel structure during daytime,1786352175,architecture,prompts/prompts_per_category/architecture.txt,96,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0020,high angle shot of a clock tower,1067336773,architecture,prompts/prompts_per_category/architecture.txt,20,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0028,a miniature house,459649406,architecture,prompts/prompts_per_category/architecture.txt,28,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0091,exotic house surrounded by trees,551620507,architecture,prompts/prompts_per_category/architecture.txt,91,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0014,an ancient white building,1233094601,architecture,prompts/prompts_per_category/architecture.txt,14,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0012,architecture and designs of buildings in central london,1587603687,architecture,prompts/prompts_per_category/architecture.txt,12,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0049,house on seashore,1510576501,architecture,prompts/prompts_per_category/architecture.txt,49,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0013,a pancake tower with chocolate syrup and strawberries on top,651034978,architecture,prompts/prompts_per_category/architecture.txt,13,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0046,exterior view of arabic style building,480380774,architecture,prompts/prompts_per_category/architecture.txt,46,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0045,a watch tower by the sea,750894497,architecture,prompts/prompts_per_category/architecture.txt,45,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0078,drone footage of a lookout tower in mountain landscape,1272818798,architecture,prompts/prompts_per_category/architecture.txt,78,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0034,mosque in the middle east,362420801,architecture,prompts/prompts_per_category/architecture.txt,34,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0006,a church interior,456935934,architecture,prompts/prompts_per_category/architecture.txt,6,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0059,light house on the ocean,2063020438,architecture,prompts/prompts_per_category/architecture.txt,59,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-architecture-0069,house in countryside top view,116035632,architecture,prompts/prompts_per_category/architecture.txt,69,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0016,rice grains placed on a reusable cloth bag,1001123092,food,prompts/prompts_per_category/food.txt,16,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0049,close up video of a orange juice,10801842,food,prompts/prompts_per_category/food.txt,49,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0011,baked bread with chocolate,1089077018,food,prompts/prompts_per_category/food.txt,11,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0071,cutting an onion with a knife over a wooden chopping board,608778451,food,prompts/prompts_per_category/food.txt,71,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0038,a student eating her sandwich,1937056547,food,prompts/prompts_per_category/food.txt,38,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0081,tasty brunch dish close up,1249296890,food,prompts/prompts_per_category/food.txt,81,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0080,egg yolk being dumped over gourmet dish,695081433,food,prompts/prompts_per_category/food.txt,80,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0047,video of a delicious dessert,1126092086,food,prompts/prompts_per_category/food.txt,47,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0074,people enjoying asian cuisine,219452308,food,prompts/prompts_per_category/food.txt,74,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0025,a mother preparing food with her kids,132674809,food,prompts/prompts_per_category/food.txt,25,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0009,a muffin with a burning candle and a love sign by a ceramic mug,549344354,food,prompts/prompts_per_category/food.txt,9,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0006,close up view of green leafy vegetable,95012197,food,prompts/prompts_per_category/food.txt,6,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0085,flat lay mexican dish,1238378312,food,prompts/prompts_per_category/food.txt,85,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0030,a glass filled with beer,2010580660,food,prompts/prompts_per_category/food.txt,30,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0096,hamburger and fries on restaurant table,1005327668,food,prompts/prompts_per_category/food.txt,96,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0098,a cracker sandwich with cheese filling for snack,833048619,food,prompts/prompts_per_category/food.txt,98,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0087,close up of tea leaves brewing in a glass kettle,1194637316,food,prompts/prompts_per_category/food.txt,87,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0013,a freshly brewed coffee on a pink mug,1040723931,food,prompts/prompts_per_category/food.txt,13,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0099,barista preparing matcha tea,1420785242,food,prompts/prompts_per_category/food.txt,99,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0036,close up view of a man drinking red wine,1914760981,food,prompts/prompts_per_category/food.txt,36,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0059,an orange fruit cut in half,1669429753,food,prompts/prompts_per_category/food.txt,59,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0093,a woman with a slice of a pie,1235675677,food,prompts/prompts_per_category/food.txt,93,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0021,preparing a cocktail drink,2013153090,food,prompts/prompts_per_category/food.txt,21,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0048,deep frying a crab on a wok in high fire,1230486097,food,prompts/prompts_per_category/food.txt,48,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-food-0046,a chef cutting sushi rolls,584476968,food,prompts/prompts_per_category/food.txt,46,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0027,a group of students laughing and talking,841953779,human,prompts/prompts_per_category/human.txt,27,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0086,elderly man lifting kettlebell,821178536,human,prompts/prompts_per_category/human.txt,86,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0035,baseball player holding his bat,912355372,human,prompts/prompts_per_category/human.txt,35,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0090,pregnant woman exercising with trainer,910912854,human,prompts/prompts_per_category/human.txt,90,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0088,dad watching her daughter eat,1992813738,human,prompts/prompts_per_category/human.txt,88,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0083,a farm worker harvesting onions,1504120446,human,prompts/prompts_per_category/human.txt,83,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0010,three women looking at watercolor paintings,1379636762,human,prompts/prompts_per_category/human.txt,10,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0078,young female activist posing with flag,10468368,human,prompts/prompts_per_category/human.txt,78,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0082,a social worker having a conversation with the foster parents,990824576,human,prompts/prompts_per_category/human.txt,82,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0022,friends having a group selfie,1636243016,human,prompts/prompts_per_category/human.txt,22,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0069,a male police officer talking on the radio,782406981,human,prompts/prompts_per_category/human.txt,69,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0032,ice hockey athlete on rink,12688038,human,prompts/prompts_per_category/human.txt,32,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0021,a group of friend place doing hand gestures of agreement,1073408431,human,prompts/prompts_per_category/human.txt,21,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0060,brother and sister using hammock,539525999,human,prompts/prompts_per_category/human.txt,60,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0049,couple dancing slow dance with sun glare,1565791246,human,prompts/prompts_per_category/human.txt,49,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0098,seller showing room to a couple,832437612,human,prompts/prompts_per_category/human.txt,98,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0092,wizard doing a ritual on a woman,571024343,human,prompts/prompts_per_category/human.txt,92,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0072,a young student attending her online classes,634598369,human,prompts/prompts_per_category/human.txt,72,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0029,a person playing golf,1532516852,human,prompts/prompts_per_category/human.txt,29,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0042,man playing a video game,1213889822,human,prompts/prompts_per_category/human.txt,42,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0008,woman adding honey to the cinnamon rolls,1448597965,human,prompts/prompts_per_category/human.txt,8,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0030,a person walking on a wet wooden bridge,1953967926,human,prompts/prompts_per_category/human.txt,30,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0005,men in front of their computer editing photos,45284782,human,prompts/prompts_per_category/human.txt,5,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0041,people playing a board game,161037217,human,prompts/prompts_per_category/human.txt,41,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-human-0052,father and daughter talking together,1735612889,human,prompts/prompts_per_category/human.txt,52,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0035,a woman in protective suit disinfecting the kitchen,1193837483,lifestyle,prompts/prompts_per_category/lifestyle.txt,35,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0009,a muslim family sitting and talking in the living room,1209856012,lifestyle,prompts/prompts_per_category/lifestyle.txt,9,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0028,living room with party decoration,1463891120,lifestyle,prompts/prompts_per_category/lifestyle.txt,28,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0073,home deco with lighted,1867615220,lifestyle,prompts/prompts_per_category/lifestyle.txt,73,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0092,interior of a recording studio,1174778825,lifestyle,prompts/prompts_per_category/lifestyle.txt,92,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0041,interior of catholic,2034752687,lifestyle,prompts/prompts_per_category/lifestyle.txt,41,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0098,a criminal inside a dark room handcuffed in a table,792617957,lifestyle,prompts/prompts_per_category/lifestyle.txt,98,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0084,a family stacking cardboard boxes in a room,885170158,lifestyle,prompts/prompts_per_category/lifestyle.txt,84,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0064,rubble in the interior of an abandoned house,851127196,lifestyle,prompts/prompts_per_category/lifestyle.txt,64,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0051,bedroom in hotel,633213690,lifestyle,prompts/prompts_per_category/lifestyle.txt,51,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0083,person assembling furniture,234796231,lifestyle,prompts/prompts_per_category/lifestyle.txt,83,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0059,a couple resting on their home floor,56903932,lifestyle,prompts/prompts_per_category/lifestyle.txt,59,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0019,colleagues talking to each other near the office windows,1821300125,lifestyle,prompts/prompts_per_category/lifestyle.txt,19,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0034,the interior design of a jewish synagogue,646497434,lifestyle,prompts/prompts_per_category/lifestyle.txt,34,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0018,turning on a fluorescent light inside a room,488760116,lifestyle,prompts/prompts_per_category/lifestyle.txt,18,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0032,a woman in a locker room,1405644992,lifestyle,prompts/prompts_per_category/lifestyle.txt,32,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0072,teenage girl roller skating at indoor rink,1361982796,lifestyle,prompts/prompts_per_category/lifestyle.txt,72,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0069,graffiti art on the interior walls of an abandoned mansion,1343887340,lifestyle,prompts/prompts_per_category/lifestyle.txt,69,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0087,a woman washing strawberries in the kitchen sink,1465569393,lifestyle,prompts/prompts_per_category/lifestyle.txt,87,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0075,men enjoying office christmas party,100967943,lifestyle,prompts/prompts_per_category/lifestyle.txt,75,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0055,a woman cleaning mess in the living room,875107378,lifestyle,prompts/prompts_per_category/lifestyle.txt,55,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0081,a woman sitting by the indoor fire pit,1073703220,lifestyle,prompts/prompts_per_category/lifestyle.txt,81,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0052,a woman lying in the operating room,1751997245,lifestyle,prompts/prompts_per_category/lifestyle.txt,52,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0047,chandeliers in room,479206532,lifestyle,prompts/prompts_per_category/lifestyle.txt,47,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-lifestyle-0029,firewood burning in dark room,1464964799,lifestyle,prompts/prompts_per_category/lifestyle.txt,29,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0018,snow pouring on a tree,1401172057,plant,prompts/prompts_per_category/plant.txt,18,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0066,trunks of many trees in the forest,1556001889,plant,prompts/prompts_per_category/plant.txt,66,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0064,close up video of tree bark,134749069,plant,prompts/prompts_per_category/plant.txt,64,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0012,watering yellow plant,2032976959,plant,prompts/prompts_per_category/plant.txt,12,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0007,a leafless tree,1475971677,plant,prompts/prompts_per_category/plant.txt,7,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0015,a footage of the tree leaves,496141534,plant,prompts/prompts_per_category/plant.txt,15,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0020,leaves in the trees daytime,352680218,plant,prompts/prompts_per_category/plant.txt,20,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0081,coconut tree near sea under blue sky,1538711327,plant,prompts/prompts_per_category/plant.txt,81,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0021,a dead tree lying on a grass field,1764022939,plant,prompts/prompts_per_category/plant.txt,21,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0088,a man holding leaves looking at the camera,2080473945,plant,prompts/prompts_per_category/plant.txt,88,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0055,squirrels on a tree branch,741642821,plant,prompts/prompts_per_category/plant.txt,55,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0077,women drying flower petals,1956173138,plant,prompts/prompts_per_category/plant.txt,77,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0009,close up video of strawberry plant,1350756450,plant,prompts/prompts_per_category/plant.txt,9,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0050,tree with halloween decoration,1964832824,plant,prompts/prompts_per_category/plant.txt,50,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0049,jack o lantern hanging on a tree,713780195,plant,prompts/prompts_per_category/plant.txt,49,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0089,a shadow of a swaying plant,1108695721,plant,prompts/prompts_per_category/plant.txt,89,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0060,wind blows through leaves of the tree in autumn,1023913255,plant,prompts/prompts_per_category/plant.txt,60,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0068,leaves swaying in the wind,422246916,plant,prompts/prompts_per_category/plant.txt,68,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0033,forest of deciduous trees,1283629093,plant,prompts/prompts_per_category/plant.txt,33,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0071,a plant surrounded by fallen leaves,1418130867,plant,prompts/prompts_per_category/plant.txt,71,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0002,close up view of a plant,1528525373,plant,prompts/prompts_per_category/plant.txt,2,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0095,woman cut down tree,1040071246,plant,prompts/prompts_per_category/plant.txt,95,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0069,low angle shot of baobab tree,1591479664,plant,prompts/prompts_per_category/plant.txt,69,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0035,tall forest trees on a misty morning,255243270,plant,prompts/prompts_per_category/plant.txt,35,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-plant-0044,single tree in the middle of farmland,172674733,plant,prompts/prompts_per_category/plant.txt,44,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0015,a bonfire near river,741276945,scenery,prompts/prompts_per_category/scenery.txt,15,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0038,natural rock formations on beach under cloudy sky,996455691,scenery,prompts/prompts_per_category/scenery.txt,38,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0056,a dark clouds over shadowing the full moon,694032177,scenery,prompts/prompts_per_category/scenery.txt,56,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0021,snow on branches in forest,1528860200,scenery,prompts/prompts_per_category/scenery.txt,21,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0059,a blooming cherry blossom tree under a blue sky with white clouds,177912484,scenery,prompts/prompts_per_category/scenery.txt,59,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0001,scenery of desert landscape,1003788100,scenery,prompts/prompts_per_category/scenery.txt,1,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0093,smoke and fire in birds eye view,673603134,scenery,prompts/prompts_per_category/scenery.txt,93,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0094,view of a pathway with snow melting on its side,1475932747,scenery,prompts/prompts_per_category/scenery.txt,94,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0034,top view of yachts,161514444,scenery,prompts/prompts_per_category/scenery.txt,34,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0065,pond by small waterfall in forest,1273849135,scenery,prompts/prompts_per_category/scenery.txt,65,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0023,an airplane flying above the sea of clouds,1691367161,scenery,prompts/prompts_per_category/scenery.txt,23,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0091,sheep running in a grass field,351772116,scenery,prompts/prompts_per_category/scenery.txt,91,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0014,fireworks display in the sky at night,24530229,scenery,prompts/prompts_per_category/scenery.txt,14,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0081,a footage of a frozen river,2095201034,scenery,prompts/prompts_per_category/scenery.txt,81,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0039,a palm tree against blue sky,987403179,scenery,prompts/prompts_per_category/scenery.txt,39,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0082,overlooking view of a city at daylight,1734901213,scenery,prompts/prompts_per_category/scenery.txt,82,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0089,top view of the empire state building in manhattan,1103539979,scenery,prompts/prompts_per_category/scenery.txt,89,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0078,view from hill on city,1398891378,scenery,prompts/prompts_per_category/scenery.txt,78,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0026,scenic view from wooden pathway,40363281,scenery,prompts/prompts_per_category/scenery.txt,26,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0020,tall trees in the forest under the clear sky,832535025,scenery,prompts/prompts_per_category/scenery.txt,20,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0048,time lapse video of foggy morning during sunrise,360195927,scenery,prompts/prompts_per_category/scenery.txt,48,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0097,panoramic view of a town surrounded by snow covered mountains,382586390,scenery,prompts/prompts_per_category/scenery.txt,97,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0070,drone shot of an abandoned coliseum on a snowy mountain top,2008977278,scenery,prompts/prompts_per_category/scenery.txt,70,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0068,a highway built across an agricultural area in the countryside,1356998337,scenery,prompts/prompts_per_category/scenery.txt,68,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-scenery-0095,ferry under bridge on river near city in malaysia,1044984054,scenery,prompts/prompts_per_category/scenery.txt,95,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0077,people crossing the road,814235026,vehicles,prompts/prompts_per_category/vehicles.txt,77,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0042,view through window in airplane,508138126,vehicles,prompts/prompts_per_category/vehicles.txt,42,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0063,a parked motorcycle on a foggy roadside,757900024,vehicles,prompts/prompts_per_category/vehicles.txt,63,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0003,train arriving at a station,1797111529,vehicles,prompts/prompts_per_category/vehicles.txt,3,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0015,video of passengers riding a double decker bus during night,2142673518,vehicles,prompts/prompts_per_category/vehicles.txt,15,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0047,boat sailing in the middle of the ocean,451524595,vehicles,prompts/prompts_per_category/vehicles.txt,47,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0040,policeman in police car talking on radio,1927883298,vehicles,prompts/prompts_per_category/vehicles.txt,40,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0031,young man using laptop in the tram,619386560,vehicles,prompts/prompts_per_category/vehicles.txt,31,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0008,drone footage of motorcycles driving on country road between agricultural fields,1111150199,vehicles,prompts/prompts_per_category/vehicles.txt,8,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0093,pressing the car ignition,298815563,vehicles,prompts/prompts_per_category/vehicles.txt,93,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0073,time lapse of heavy traffic on an avenue,800587716,vehicles,prompts/prompts_per_category/vehicles.txt,73,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0011,vehicle stops for an ambulance passing through city traffic,946744532,vehicles,prompts/prompts_per_category/vehicles.txt,11,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0089,empty boat on the water,1036403638,vehicles,prompts/prompts_per_category/vehicles.txt,89,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0098,ship sailing on sea against sunset,1574818895,vehicles,prompts/prompts_per_category/vehicles.txt,98,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0009,a road in the woods under fog,1071754764,vehicles,prompts/prompts_per_category/vehicles.txt,9,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0069,camera moving at highway construction site,890393983,vehicles,prompts/prompts_per_category/vehicles.txt,69,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0017,elderly couple checking engine of automobile,1864679789,vehicles,prompts/prompts_per_category/vehicles.txt,17,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0084,a woman getting out of the car to walk with their dog,1477534858,vehicles,prompts/prompts_per_category/vehicles.txt,84,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0061,three teenagers fixing a bicycle,1969997535,vehicles,prompts/prompts_per_category/vehicles.txt,61,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0071,a motorbike on highway at timelapse mode,1818424422,vehicles,prompts/prompts_per_category/vehicles.txt,71,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0022,aerial view of a train passing by a bridge,2045957071,vehicles,prompts/prompts_per_category/vehicles.txt,22,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0034,night travel in london street on a public bus,1969424416,vehicles,prompts/prompts_per_category/vehicles.txt,34,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0068,love padlocks on a bridge,460767183,vehicles,prompts/prompts_per_category/vehicles.txt,68,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0055,a white yacht traveling on a river and passing under the bridge,1846963025,vehicles,prompts/prompts_per_category/vehicles.txt,55,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490
+vbench-vehicles-0028,monitor board inside the subway,710702620,vehicles,prompts/prompts_per_category/vehicles.txt,28,fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490

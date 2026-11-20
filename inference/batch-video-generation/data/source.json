@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "dataset": "VBench",
+  "repository": "Vchitect/VBench",
+  "revision": "fd18b3d055cb0fc6f066ca90fe2c3c8cbb698490",
+  "license": "Apache-2.0",
+  "files": {
+    "LICENSE": {
+      "sha256": "43070e2d4e532684de521b885f385d0841030efa2b1a20bafb76133a5e1379c1",
+      "bytes": 11356
+    },
+    "prompts/prompts_per_category/animal.txt": {
+      "sha256": "06574782d81fd1e69744afb89ec51a54f71079065c4591157eec18a1f1483086",
+      "bytes": 3299,
+      "rows": 100
+    },
+    "prompts/prompts_per_category/architecture.txt": {
+      "sha256": "d0afc3c90b570e68236c717adc9cd9ed0d4e8b698f5addd77ff7b6eb9e353623",
+      "bytes": 3860,
+      "rows": 100
+    },
+    "prompts/prompts_per_category/food.txt": {
+      "sha256": "5e06d5be0d58e1af66d73913c03c352c6a44c11c91ec83c8ee412d1d78ae2bdb",
+      "bytes": 3480,
+      "rows": 100
+    },
+    "prompts/prompts_per_category/human.txt": {
+      "sha256": "3b0a1cfa429b07fa4cd80efa6f69a47276a35ed2b70902a46a49206309994a52",
+      "bytes": 3786,
+      "rows": 100
+    },
+    "prompts/prompts_per_category/lifestyle.txt": {
+      "sha256": "a85cd6ce4b29719bec0da29e7d0299ee3ae8b2115f2a8aa23d091adc2ed9c0e9",
+      "bytes": 3913,
+      "rows": 100
+    },
+    "prompts/prompts_per_category/plant.txt": {
+      "sha256": "d729b0b198f09d438dee94f1c83ef93760f76270ea7bcfe027cbf14ad1603ec6",
+      "bytes": 3322,
+      "rows": 100
+    },
+    "prompts/prompts_per_category/scenery.txt": {
+      "sha256": "3f0293619c04a3597132c8e04b328d1397b2eff0cf1db44f0c5f94405717187f",
+      "bytes": 3711,
+      "rows": 100
+    },
+    "prompts/prompts_per_category/vehicles.txt": {
+      "sha256": "bd6dda5d801e4ad6758fbf80557ec9ad5e37f9cb4a8ac810c149bc1465cdbbbc",
+      "bytes": 3833,
+      "rows": 100
+    }
+  }
+}

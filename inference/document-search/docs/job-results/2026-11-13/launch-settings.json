@@ -1,0 +1,44 @@
+[
+  {
+    "captured_at": "2026-11-13T18:28:12.773381+00:00",
+    "state": "COMPLETED",
+    "environment": {
+      "RECIPE_REF": "f1d8ca048018c924edef6b7cf21052b5c479974a",
+      "MAX_NEW_DOCUMENTS": "0"
+    },
+    "image": "pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime",
+    "platform": "gpu-l40s-d",
+    "preset": "1gpu-16vcpu-96gb",
+    "preemptible": true,
+    "timeout": "3600s",
+    "restart_attempts": 0
+  },
+  {
+    "captured_at": "2026-11-13T18:28:13.013228+00:00",
+    "state": "COMPLETED",
+    "environment": {
+      "RECIPE_REF": "f1d8ca048018c924edef6b7cf21052b5c479974a",
+      "MAX_NEW_DOCUMENTS": "600"
+    },
+    "image": "pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime",
+    "platform": "gpu-l40s-d",
+    "preset": "1gpu-16vcpu-96gb",
+    "preemptible": true,
+    "timeout": "3600s",
+    "restart_attempts": 0
+  },
+  {
+    "captured_at": "2026-11-13T18:28:13.264350+00:00",
+    "state": "COMPLETED",
+    "environment": {
+      "RECIPE_REF": "f1d8ca048018c924edef6b7cf21052b5c479974a",
+      "MAX_NEW_DOCUMENTS": "0"
+    },
+    "image": "pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime",
+    "platform": "gpu-l40s-d",
+    "preset": "1gpu-16vcpu-96gb",
+    "preemptible": true,
+    "timeout": "3600s",
+    "restart_attempts": 0
+  }
+]

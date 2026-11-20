@@ -1,0 +1,15 @@
+{
+  "model": "Qwen/Qwen3-Embedding-0.6B",
+  "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+  "dimensions": 1024,
+  "chunk_words": 160,
+  "batch_size": 16,
+  "encoder_settings": {
+    "pooling": "last-token",
+    "normalize": true,
+    "max_length": 8192,
+    "dtype": "float16",
+    "torch": "2.7.1",
+    "transformers": "4.51.3"
+  }
+}

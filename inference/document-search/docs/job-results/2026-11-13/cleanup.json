@@ -1,0 +1,31 @@
+{
+  "checked_at": "2026-11-13T18:28:40.946524+00:00",
+  "jobs": [
+    {
+      "attempt": "main",
+      "state": "COMPLETED",
+      "reported_instance_references": 0,
+      "compute_checks": []
+    },
+    {
+      "attempt": "limited",
+      "state": "COMPLETED",
+      "reported_instance_references": 0,
+      "compute_checks": []
+    },
+    {
+      "attempt": "resumed",
+      "state": "COMPLETED",
+      "reported_instance_references": 1,
+      "compute_checks": [
+        {
+          "deleted": true
+        }
+      ]
+    }
+  ],
+  "temporary_secret": "deleted; metadata lookup returned NotFound",
+  "existing_s3_access_key_and_bucket": "preserved",
+  "durable_index_and_results": "retained",
+  "all_test_compute_released": true
+}
