@@ -14,17 +14,20 @@ Build a searchable index of 1,000 Wikipedia reference passages from the Databric
 
 ## 1. Set up
 
-Start in a terminal on your computer. You need Git, the [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.305 or newer, and a billing-enabled eu-north1 project with L40S GPU quota and an internet-enabled subnet.
+To run this cookbook, you need a [Nebius AI Cloud account](https://docs.nebius.com/signup-billing/sign-up) with access to a billing-enabled project in `eu-north1`. The Job needs L40S GPU quota and a subnet with internet access.
+
+On your computer, install Git and the [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.305 or newer, then get the recipe:
 
 ```bash
 git clone https://github.com/nebius/serverless-ai-cookbook.git
 cd serverless-ai-cookbook/inference/document-search
-nebius profile create
 ```
 
-Complete sign-in and select your project. In the [console](https://console.nebius.com), prepare:
+Use your existing CLI profile for that project (`nebius profile activate PROFILE_NAME` to switch). If this is your first sign-in, run `nebius profile create` and select the project.
 
-- A private Object Storage bucket and an [S3 access key](https://docs.nebius.com/iam/service-accounts/access-keys) for a service account with `storage.object-editor` access to it.
+In the [console](https://console.nebius.com), open the same project and prepare:
+
+- A private Object Storage bucket in `eu-north1` and an [S3 access key](https://docs.nebius.com/iam/service-accounts/access-keys) for a service account with `storage.object-editor` access to it.
 - One active SecretStash secret for this bucket with two text entries, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Reuse the secret from a previous document-index Job if it’s still active. For a first run, open Cryptography → SecretStash → Create secret and use **Add pair** for the second entry. Copy the secret’s `mbsec-…` ID. [SecretStash setup](https://docs.nebius.com/mysterybox/secrets/create).
 - Your project ID from the project selector’s ⋯ menu → Copy project ID, and a subnet ID from Networking → Virtual Networks → Subnets.
 
@@ -143,8 +146,10 @@ Before deleting resources, check that every Job using them shows Completed, Fail
 If your agent has the [Nebius skills](https://github.com/nebius/skills#install), it can use them for Jobs and SecretStash. From this recipe directory, ask:
 
 ```text
-Run the document-search recipe at my checked-out revision in my selected
-project. Use my approved GPU budget, or ask for a limit before submitting.
+Run the document-search recipe at my checked-out revision. Confirm my Nebius
+AI Cloud account is signed in to the intended billing-enabled project in
+eu-north1. Use my private bucket in that region. Use my approved GPU budget,
+or ask for a limit before submitting.
 
 Find the S3 secret before asking me for its ID. Check S3_SECRET_ID from
 this recipe first. If it is missing or stale, look at a successful
@@ -162,8 +167,9 @@ explain which metadata you need permission to read or ask for another
 usable reference. For a new secret, guide me through console setup. Ask
 only for the mbsec-… ID. Never fetch the payload or request key values.
 
-Run the offline checks and dry run. Submit one uncapped Job on a fresh
-prefix. Confirm Completed, 1,000 indexed documents and a first-ranked
+Prepare the test data with python3 scripts/prepare_job_data.py, then run
+python3 -m unittest discover -s tests. Run the dry run before submitting
+one uncapped Job on a fresh prefix. Confirm Completed, 1,000 indexed documents and a first-ranked
 stalemate passage that opens in the Dolly dataset viewer. Preserve the
 index and any shared resources.
 ```

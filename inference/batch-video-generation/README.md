@@ -24,17 +24,18 @@ Powered by Nebius Serverless AI · [Recorded test runs](VALIDATION.md)
 
 ## 1. Set up
 
-You need macOS or Ubuntu, Git, Python 3.10+, [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.303+, and FFmpeg with `ffprobe`. Use a billing-enabled eu-north1 project with permission to create Endpoints and use a pricing policy, quota for a preemptible H100 and 500 GiB of disk, and an internet-enabled subnet. No local GPU is needed.
+To run this cookbook, you need a [Nebius AI Cloud account](https://docs.nebius.com/signup-billing/sign-up) with access to a billing-enabled project in `eu-north1`. You’ll need permission to create Endpoints and use a pricing policy, quota for one preemptible H100 and a 500 GiB disk, and a subnet with internet access.
+
+On your Mac or Ubuntu machine, you need Git, Python 3.10+, the [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.303+, and FFmpeg with `ffprobe`. The GPU runs on Nebius.
 
 ```bash
 git clone https://github.com/nebius/serverless-ai-cookbook.git
 cd serverless-ai-cookbook/inference/batch-video-generation
-nebius profile create
 ```
 
-Complete sign-in and choose your project. If already configured, use `nebius profile activate YOUR_PROFILE_NAME` instead. Run the remaining commands from this cookbook folder.
+Use your existing CLI profile for that project (`nebius profile activate PROFILE_NAME` to switch). If this is your first sign-in, run `nebius profile create` and select the project.
 
-For missing tools, follow [CLI installation](https://docs.nebius.com/cli/install) or run `nebius update`. Install FFmpeg with `brew install ffmpeg` on macOS or `sudo apt-get update && sudo apt-get install -y ffmpeg` on Ubuntu. If needed, [create a network and subnet](https://docs.nebius.com/vpc/networking/resources). Return here after opening a new terminal.
+Install FFmpeg with `brew install ffmpeg` on macOS or `sudo apt-get update && sudo apt-get install -y ffmpeg` on Ubuntu. If needed, [create a network and subnet](https://docs.nebius.com/vpc/networking/resources). Return here after opening a new terminal.
 
 Check the tools and the bundled prompts:
 
@@ -114,7 +115,7 @@ Use a new output folder when changing prompts, seeds or settings.
 
 **Keep the same output folder.** It holds each finished MP4, its completion record and the pending request IDs. Keep `.state/` too, so the helper can find your Endpoint. Use the same prompts, seeds and model settings, with one client writing to the folder.
 
-In our November 17–18, 2026 run, the laptop went to sleep after saving 54 clips. The first resume added 3. The next reused all 57 and added the final 143. Across those three commands, about 2 hours 45 minutes elapsed, including pauses. [Run records](VALIDATION.md#completed-200-clip-dataset-2026-11-18-utc)
+We finished the 200-clip batch across three runs on November 17–18, 2026. The last run reused 57 clips and generated the remaining 143. On November 20 we also stopped the Endpoint between two requests. After restart, the client kept the first clip and generated the second. [Run records](VALIDATION.md#completed-200-clip-dataset-2026-11-18-utc)
 
 1. Run `python3 scripts/endpoint.py status`. If it shows **RUNNING**, go straight to the generation command below. If it shows **STOPPED**, start the Endpoint and wait for Wan. If it already shows **STARTING**, run just the second command:
 
@@ -197,7 +198,8 @@ starting a GPU. If the input and settings match and scripts/check_results.py
 verifies all 200 clips, show me the gallery. For a partial batch, keep that
 folder, its pending request IDs and .state/.
 
-For unfinished work, use my signed-in CLI profile. Look for the project, subnet
+For unfinished work, confirm my Nebius AI Cloud account is signed in to the
+intended billing-enabled project in eu-north1. Look for the project, subnet
 and policy IDs in the recipe’s .env and .state/endpoint.json. If an ID is missing,
 check the active project and its internet-enabled subnets. Ask me to choose only
 if the match is unclear. The public Wan model needs no Hugging Face token, bucket
