@@ -30,9 +30,12 @@ class EndpointHelperTests(unittest.TestCase):
                        "container_command": "vllm", "args": "serve sample-model --omni"}
         (self.root / "config/endpoint.json").write_text(json.dumps(self.config))
         self.patches = [patch.object(endpoint, "ROOT", self.root),
-                        patch.object(endpoint, "STATE", self.root / ".state/endpoint.json")]
+                        patch.object(endpoint, "STATE", self.root / ".state/endpoint.json"),
+                        patch.dict(os.environ)]
         for item in self.patches:
             item.start()
+        os.environ.pop("GPU_PLATFORM", None)
+        os.environ.pop("GPU_PRESET", None)
         self.ep = {"metadata": {"id": "aiendpoint-recipe", "name": "recipe-spot", "parent_id": "project-test"},
                    "spec": {"preemptible": True, "platform": self.config["platform"], "preset": self.config["preset"],
                             "auth_token": FIXTURE_TOKEN},
@@ -289,6 +292,52 @@ class EndpointHelperTests(unittest.TestCase):
              contextlib.redirect_stdout(io.StringIO()):
             with self.assertRaises(RuntimeError):
                 endpoint.create(self.create_args(spot_pricing_policy_id="pricingpolicy-cap"))
+
+    def test_regional_platform_preset_and_price_cap_reach_both_create_commands(self):
+        hardware = {"GPU_PLATFORM": "gpu-b200-sxm", "GPU_PRESET": "1gpu-20vcpu-224gb"}
+        regional_spec = {**self.ep["spec"], "platform": hardware["GPU_PLATFORM"], "preset": hardware["GPU_PRESET"]}
+        regional = {**self.ep, "spec": regional_spec}
+        with patch.dict(os.environ, hardware), patch.object(endpoint, "version_check"), \
+             patch.object(endpoint, "cli", side_effect=[{}, None, {}, regional, regional]) as cli, \
+             contextlib.redirect_stdout(io.StringIO()):
+            endpoint.create(self.create_args(spot_pricing_policy_id="pricingpolicy-cap", dry_run=True))
+            endpoint.create(self.create_args(spot_pricing_policy_id="pricingpolicy-cap"))
+            endpoint.create(self.create_args(spot_pricing_policy_id="pricingpolicy-cap"))
+        commands = [call.args[0] for call in cli.call_args_list if call.args[0][:3] == ["ai", "endpoint", "create"]]
+        self.assertEqual(len(commands), 2)
+        self.assertIn("--dry-run", commands[0])
+        self.assertIn("--async", commands[1])
+        for command in commands:
+            self.assertEqual(command[command.index("--platform") + 1], hardware["GPU_PLATFORM"])
+            self.assertEqual(command[command.index("--preset") + 1], hardware["GPU_PRESET"])
+            self.assertIn("--preemptible", command)
+            self.assertEqual(command[command.index("--spot-pricing-policy-id") + 1], "pricingpolicy-cap")
+
+    def test_create_requires_platform_and_preset_together(self):
+        for hardware in ({"GPU_PLATFORM": "gpu-h200-sxm"}, {"GPU_PRESET": "1gpu-16vcpu-200gb"}):
+            with self.subTest(hardware=hardware), patch.dict(os.environ, hardware), \
+                 patch.object(endpoint, "version_check"), patch.object(endpoint, "cli") as cli, \
+                 contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(ValueError, "GPU_PLATFORM.*GPU_PRESET"):
+                endpoint.create(self.create_args(dry_run=True))
+            cli.assert_not_called()
+
+    def test_same_name_is_reused_only_for_the_requested_hardware(self):
+        with patch.object(endpoint, "version_check"), \
+             patch.object(endpoint, "cli", side_effect=[None, {}, self.ep]), \
+             contextlib.redirect_stdout(io.StringIO()):
+            endpoint.create(self.create_args())
+        stored = endpoint.load_state()
+        # Older state records only the subnet and policy. The template supplied the GPU pair.
+        self.assertEqual(stored["launch_options"], {"subnet_id": "vpcsubnet-test", "spot_pricing_policy_id": None})
+        with patch.dict(os.environ, {"GPU_PLATFORM": self.config["platform"], "GPU_PRESET": self.config["preset"]}), \
+             patch.object(endpoint, "version_check"), patch.object(endpoint, "cli", return_value=self.ep) as cli, \
+             contextlib.redirect_stdout(io.StringIO()):
+            endpoint.create(self.create_args())
+            cli.assert_called_once()
+            os.environ["GPU_PLATFORM"] = "gpu-h200-sxm"
+            with self.assertRaises(RuntimeError):
+                endpoint.create(self.create_args())
+        self.assertEqual(endpoint.load_state(), stored)
 
 
 if __name__ == "__main__":

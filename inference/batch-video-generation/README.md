@@ -24,7 +24,7 @@ Powered by Nebius Serverless AI · [Recorded test runs](VALIDATION.md)
 
 ## 1. Set up
 
-To run this cookbook, you need a [Nebius AI Cloud account](https://docs.nebius.com/signup-billing/sign-up) with access to a billing-enabled project in `eu-north1`. You’ll need permission to create Endpoints and use a pricing policy, quota for one preemptible H100 and a 500 GiB disk, and a subnet with internet access.
+You need a [Nebius AI Cloud account](https://docs.nebius.com/signup-billing/sign-up) and a project where you can run a paid GPU Endpoint. Use your project’s region if it offers Serverless AI and a compatible preemptible GPU. You’ll need an internet-enabled subnet, 500 GiB of disk quota and permission to use a pricing policy. [Availability by region](https://docs.nebius.com/overview/regions)
 
 On your Mac or Ubuntu machine, you need Git, Python 3.10+, the [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.303+, and FFmpeg with `ffprobe`. The GPU runs on Nebius.
 
@@ -50,20 +50,30 @@ Expect **200 prompts** and **49 frames at 832×480**. The [source selection and 
 
 ## 2. Start Wan with a price cap
 
-In the [console](https://console.nebius.com), open Billing → Pricing → Pricing policy. Look for an active policy in your project for `gpu-h100-sxm` whose GPU-hour price limit fits your budget. If you need one, choose Create pricing policy and set your maximum price per GPU hour. The GPU can be scheduled only while its price is within your cap and capacity is available. [Pricing policies](https://docs.nebius.com/signup-billing/manage-pricing-policy)
+Already have a partial batch? Keep your existing `.env`, run `source .env` and [resume it](#what-if-your-workload-is-interrupted).
 
-For a first run, copy the policy ID, your project ID (project selector → ⋯ → Copy project ID) and subnet ID (Networking → Virtual Networks → Subnets) into the file below. If you’re resuming, keep your existing `.env`, run `source .env` and [pick up the interrupted batch](#what-if-your-workload-is-interrupted).
+For a first run, copy your project ID from the [console](https://console.nebius.com) (project selector → ⋯ → Copy project ID). List the GPU platforms and presets it offers:
+
+```bash
+nebius compute platform list --parent-id YOUR_PROJECT_ID
+```
+
+Choose a platform marked `allowed_for_preemptibles: true` and a single-GPU preset. We tested `gpu-h100-sxm` with `1gpu-16vcpu-200gb` in `eu-north1`. If your project offers an H200, for example, you can select `gpu-h200-sxm` and `1gpu-16vcpu-200gb`. [GPU platforms and presets](https://docs.nebius.com/compute/virtual-machines/types)
+
+In Billing → Pricing → Pricing policy, select an active policy for **the same project and GPU platform**. If you need one, choose Create pricing policy and set your maximum price per GPU hour. Copy its ID and the subnet ID (Networking → Virtual Networks → Subnets) into the file below. Set `GPU_PLATFORM` and `GPU_PRESET` to the pair you chose. [Pricing policies](https://docs.nebius.com/signup-billing/manage-pricing-policy)
 
 ```bash
 cat > .env <<'ENV'
 export NEBIUS_PROJECT_ID="YOUR_PROJECT_ID"
 export NEBIUS_SUBNET_ID="YOUR_SUBNET_ID"
 export SPOT_PRICING_POLICY_ID="YOUR_POLICY_ID"
+export GPU_PLATFORM="YOUR_GPU_PLATFORM"
+export GPU_PRESET="YOUR_ONE_GPU_PRESET"
 ENV
 source .env
 ```
 
-Wan runs with vLLM-Omni 0.24.0, one H100 and a 500 GiB temporary disk. Startup and idle time count toward the bill. On November 17–18, 2026, we were quoted $2.12–$2.42 an hour for GPU and disk combined. At those rates, allow a few dollars for a run with about an hour of generation plus startup. Longer interruptions can cost more while the Endpoint is running. [Recorded rates and costs](VALIDATION.md#quoted-compute-and-disk-costs)
+Wan runs with vLLM-Omni 0.24.0 and a 500 GiB temporary disk. Check the quote for your selected GPU. On November 17–18, 2026, our H100 and disk were quoted at $2.12–$2.42 per hour combined. At those rates, allow a few dollars for about an hour of generation plus startup. Idle time counts toward the bill while the Endpoint is running. [Recorded rates and costs](VALIDATION.md#quoted-compute-and-disk-costs)
 
 Check the configuration, create the Endpoint and wait for Wan. On Ubuntu, replace `caffeinate -i` with [`systemd-inhibit --what=sleep --mode=block`](https://manpages.ubuntu.com/manpages/noble/man1/systemd-inhibit.1.html) in every command.
 
@@ -198,25 +208,26 @@ starting a GPU. If the input and settings match and scripts/check_results.py
 verifies all 200 clips, show me the gallery. For a partial batch, keep that
 folder, its pending request IDs and .state/.
 
-For unfinished work, confirm my Nebius AI Cloud account is signed in to the
-intended billing-enabled project in eu-north1. Look for the project, subnet
-and policy IDs in the recipe’s .env and .state/endpoint.json. If an ID is missing,
-check the active project and its internet-enabled subnets. Ask me to choose only
-if the match is unclear. The public Wan model needs no Hugging Face token, bucket
-or SecretStash secret. The launcher handles Endpoint authentication. Never ask me
-to paste credentials or print raw Endpoint details.
+For unfinished work, use my Nebius AI Cloud account and selected project.
+Read the project, subnet, policy and GPU settings from the recipe’s .env and
+.state/endpoint.json if present. For a new Endpoint, list platforms in my
+project and choose a compatible preemptible platform and single-GPU preset.
+Set GPU_PLATFORM and GPU_PRESET together. Use my project’s internet-enabled
+subnet. Ask if a choice is unclear. The launcher handles authentication for
+the public Wan model. Never ask me to paste credentials or print raw Endpoint
+details.
 
 Use the hourly GPU cap and total budget I approved for this batch. Ask only for
 what’s missing. Check the saved policy ID first.
 To find policies, run
 nebius billing pricing-policy list --parent-id "$NEBIUS_PROJECT_ID" --all
-Reuse an active gpu-h100-sxm policy within my cap. If its price blocks scheduling,
+Reuse an active policy for the selected GPU platform within my cap. If its price blocks scheduling,
 tell me and wait for my decision. If none fits, ask before creating a policy or
 changing a cap.
 
 Check the tracked Endpoint with scripts/endpoint.py status. If local state is
 missing, look in the selected project. Before using an Endpoint, confirm it
-belongs to this batch and matches the model, configuration and subnet. Check the
+belongs to this batch and matches the model, GPU platform, preset and subnet. Check the
 attached policy ID in spec.pricing_model.spot_pricing_policy.id. The status line
 alone only confirms preemptibility. Ask which Endpoint to use if ownership or
 access is unclear. Wait for a starting Endpoint, reuse a running one, or start a

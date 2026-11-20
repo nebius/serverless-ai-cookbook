@@ -86,23 +86,65 @@ class JobRunnerTests(unittest.TestCase):
         self.assertEqual([c.args[0] for c in store.put.call_args_list], ["search.json", "search.html"])
         self.assertIn("s3://test-bucket/recipe/outputs/search.html", output)
 
-    def test_launcher_defaults_to_no_cap_and_forwards_explicit_limit(self):
+    def launch(self, **settings):
         with tempfile.TemporaryDirectory() as temp:
             executable = Path(temp) / "nebius"
             executable.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
             executable.chmod(0o755)
             env = {"PATH": temp + os.pathsep + os.defpath, "NEBIUS_PROJECT_ID": "project-fixture",
                    "NEBIUS_SUBNET_ID": "vpcsubnet-fixture", "S3_SECRET_ID": "mbsec-fixture",
-                   "RUN_ROOT": "s3://fixture-bucket/run", "JOB_NAME": "document-index"}
-            for extra, expected in (({}, "0"), ({"MAX_NEW_DOCUMENTS": "600"}, "600")):
-                with self.subTest(limit=expected):
-                    result = subprocess.run(["bash", str(ROOT / "scripts/submit.sh"), "--dry-run"],
-                                            cwd=temp, env={**env, **extra}, capture_output=True,
-                                            text=True, check=True)
-                    args = result.stdout.splitlines()
-                    position = args.index("MAX_NEW_DOCUMENTS=" + expected)
-                    self.assertEqual(args[position - 1], "--env")
-                    self.assertEqual(args[-1], "--dry-run")
+                   "RUN_ROOT": "s3://fixture-bucket/run", "JOB_NAME": "document-index", **settings}
+            return subprocess.run(["bash", str(ROOT / "scripts/submit.sh"), "--dry-run"], cwd=temp,
+                                  env=env, capture_output=True, text=True)
+
+    def test_launcher_defaults_to_no_cap_and_forwards_explicit_limit(self):
+        for extra, expected in (({}, "0"), ({"MAX_NEW_DOCUMENTS": "600"}, "600")):
+            with self.subTest(limit=expected):
+                result = self.launch(**extra)
+                result.check_returncode()
+                args = result.stdout.splitlines()
+                position = args.index("MAX_NEW_DOCUMENTS=" + expected)
+                self.assertEqual(args[position - 1], "--env")
+                self.assertEqual(args[-1], "--dry-run")
+
+    def test_launcher_uses_selected_gpu_and_regional_storage(self):
+        for region, platform, preset, settings in [
+            ("eu-north1", "gpu-l40s-d", "1gpu-16vcpu-96gb", {}),
+            ("eu-west1", "gpu-h200-sxm", "1gpu-16vcpu-200gb",
+             {"NEBIUS_REGION": "eu-west1", "GPU_PLATFORM": "gpu-h200-sxm", "GPU_PRESET": "1gpu-16vcpu-200gb"}),
+        ]:
+            with self.subTest(region=region):
+                result = self.launch(**settings)
+                result.check_returncode()
+                args = result.stdout.splitlines()
+                self.assertEqual(args[args.index("--platform") + 1], platform)
+                self.assertEqual(args[args.index("--preset") + 1], preset)
+                self.assertEqual(args[args.index("--image") + 1], "pytorch/pytorch:2.7.1-cuda12.6-cudnn9-runtime")
+                self.assertIn(f"AWS_DEFAULT_REGION={region}", args)
+                self.assertIn(f"S3_ENDPOINT_URL=https://storage.{region}.nebius.cloud", args)
+                self.assertIn("--preemptible", args)
+
+    def test_launcher_selects_blackwell_cuda_image(self):
+        for region, platform, preset in [
+            ("us-central1", "gpu-b200-sxm", "1gpu-20vcpu-224gb"),
+            ("me-west1", "gpu-b200-sxm-a", "1gpu-20vcpu-224gb"),
+            ("us-central1", "gpu-rtx6000", "1gpu-24vcpu-218gb"),
+            ("eu-south1", "gpu-rtx6000-a", "1gpu-24vcpu-218gb"),
+            ("eu-west2", "gpu-b300-sxm", "1gpu-24vcpu-346gb"),
+        ]:
+            with self.subTest(platform=platform):
+                result = self.launch(NEBIUS_REGION=region, GPU_PLATFORM=platform, GPU_PRESET=preset)
+                result.check_returncode()
+                args = result.stdout.splitlines()
+                self.assertEqual(args[args.index("--image") + 1], "pytorch/pytorch:2.7.1-cuda12.8-cudnn9-runtime")
+
+    def test_launcher_needs_a_gpu_pair_for_another_region(self):
+        for settings in ({"NEBIUS_REGION": "eu-west1"}, {"GPU_PLATFORM": "gpu-h200-sxm"}):
+            with self.subTest(settings=settings):
+                result = self.launch(**settings)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, "")
+                self.assertIn("GPU_PRESET", result.stderr)
 
     def test_index_failure_does_not_publish_or_search(self):
         code, calls, store, open_store, _ = self.execute(index_code=1)

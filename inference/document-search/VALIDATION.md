@@ -2,7 +2,7 @@
 
 ## November 19, 2026 · official recipe
 
-One preemptible Serverless Job fetched the worker from [commit `3eda510`](https://github.com/nebius/serverless-ai-cookbook/tree/3eda510635994954e84a0cd72f0a3b077d3bf8d8/inference/document-search). It used a fresh bucket prefix, the bundled input and model, and the default uncapped document count. The cookbook’s L40S preset had no reported capacity, so this run used one H100 with a $2.50/GPU-hour price ceiling, an 80 GiB temporary disk and a one-hour timeout.
+One preemptible Serverless Job fetched the worker from [commit `3eda510`](https://github.com/nebius/serverless-ai-cookbook/tree/3eda510635994954e84a0cd72f0a3b077d3bf8d8/inference/document-search). It used a fresh bucket prefix, the bundled input and model, and the default uncapped document count. The L40S preset in the test project had no reported capacity, so this run used one H100 with a $2.50/GPU-hour price ceiling, an 80 GiB temporary disk and a one-hour timeout.
 
 The Job reached **Completed** in 6 min 16 s from creation. Nebius recorded 4 min 44 s from creation to start. The worker measured 90.50 s from bootstrap through uploading the search report. [Job settings and service timestamps](docs/job-results/default-flow/job.json) · [Completion log](docs/job-results/default-flow/completion-logs.txt)
 
@@ -67,7 +67,9 @@ All three test Jobs completed and their managed compute was removed. The tempora
 
 ## Offline checks
 
-All 38 tests passed on macOS Python 3.9.6 and Python 3.14.4, including the full-corpus recovery fixture. To repeat both data preparation and testing from this directory:
+All 41 tests passed on macOS with Python 3.9.6 and 3.14.4, including the full-corpus recovery fixture. A stub CLI captured the Job arguments for the original L40S settings in `eu-north1` and an H200 configuration in `eu-west1`. The checks covered the GPU platform, preset, preemptible flag, regional S3 endpoint and signing region. The launcher selects the original CUDA 12.6 image for L40S and H200. Offline tests also checked that B200, RTX PRO 6000 and B300 platform IDs select the CUDA 12.8 variant of PyTorch 2.7.1. These checks verify Job arguments only. The live runs used L40S and H100 in `eu-north1`; other regions and GPU types have not been run live. [PyTorch 2.7 Blackwell support](https://pytorch.org/blog/pytorch-2-7/#prototype-nvidia-blackwell-architecture-support)
+
+To repeat the data preparation and tests from this directory:
 
 ```bash
 python3 scripts/prepare_job_data.py

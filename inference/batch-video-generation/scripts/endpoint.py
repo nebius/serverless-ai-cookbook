@@ -135,8 +135,17 @@ def create(args):
     config = json.loads(config_bytes)
     config_hash = hashlib.sha256(config_bytes).hexdigest()
     launch_options = {'subnet_id': args.subnet_id, 'spot_pricing_policy_id': args.spot_pricing_policy_id}
+    platform_override = os.environ.get('GPU_PLATFORM')
+    preset_override = os.environ.get('GPU_PRESET')
+    if bool(platform_override) != bool(preset_override):
+        raise ValueError('Set GPU_PLATFORM and GPU_PRESET together to select different hardware.')
+    platform = platform_override or config['platform']
+    preset = preset_override or config['preset']
+    # Older state files used the GPU pair from the checked-in template.
+    if (platform, preset) != (config['platform'], config['preset']):
+        launch_options.update(platform=platform, preset=preset)
     command = ['ai', 'endpoint', 'create', '--parent-id', args.project_id, '--name', args.name,
-               '--image', config['image'], '--platform', config['platform'], '--preset', config['preset'],
+               '--image', config['image'], '--platform', platform, '--preset', preset,
                '--container-port', str(config.get('container_port', 8000)), '--auth', 'token',
                '--disk-size', config.get('disk_size', '500Gi'), '--shm-size', config.get('shm_size', '16Gi'),
                '--preemptible', '--container-command', config['container_command']]
@@ -170,6 +179,8 @@ def create(args):
         if (previous.get('id') != existing['metadata']['id'] or previous.get('config_sha256') != config_hash
                 or previous.get('launch_options') != launch_options):
             raise RuntimeError('That name is already in use outside this exact tracked configuration. Choose a new name, or deliberately attach its ID.')
+        if (existing['spec'].get('platform'), existing['spec'].get('preset')) != (platform, preset):
+            raise RuntimeError('The tracked Endpoint now has a different GPU platform or preset.')
         ep = existing
         print('Using the existing Spot Endpoint with this exact name; no duplicate was created.')
     else:

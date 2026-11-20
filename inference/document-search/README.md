@@ -14,7 +14,7 @@ Build a searchable index of 1,000 Wikipedia reference passages from the Databric
 
 ## 1. Set up
 
-To run this cookbook, you need a [Nebius AI Cloud account](https://docs.nebius.com/signup-billing/sign-up) with access to a billing-enabled project in `eu-north1`. The Job needs L40S GPU quota and a subnet with internet access.
+You need a [Nebius AI Cloud account](https://docs.nebius.com/signup-billing/sign-up) with access to a project that can run paid GPU workloads. Use your project's region if it offers Serverless AI, Object Storage and a compatible preemptible GPU. The Job needs a subnet with internet access. [Regional availability](https://docs.nebius.com/overview/regions)
 
 On your computer, install Git and the [Nebius CLI](https://docs.nebius.com/cli/install) 0.12.305 or newer, then get the recipe:
 
@@ -27,16 +27,23 @@ Use your existing CLI profile for that project (`nebius profile activate PROFILE
 
 In the [console](https://console.nebius.com), open the same project and prepare:
 
-- A private Object Storage bucket in `eu-north1` and an [S3 access key](https://docs.nebius.com/iam/service-accounts/access-keys) for a service account with `storage.object-editor` access to it.
+- A private Object Storage bucket in your project's region and an [S3 access key](https://docs.nebius.com/iam/service-accounts/access-keys) for a service account with `storage.object-editor` access to it.
 - One active SecretStash secret for this bucket with two text entries, `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Reuse the secret from a previous document-index Job if it’s still active. For a first run, open Cryptography → SecretStash → Create secret and use **Add pair** for the second entry. Copy the secret’s `mbsec-…` ID. [SecretStash setup](https://docs.nebius.com/mysterybox/secrets/create).
 - Your project ID from the project selector’s ⋯ menu → Copy project ID, and a subnet ID from Networking → Virtual Networks → Subnets.
 
-Your account needs permission to create Jobs and read the secret payload (`mysterybox.payload-viewer`, included in `admin`). Replace all `YOUR_…` values below and use a fresh bucket prefix. The file contains a secret reference, not the S3 credentials.
+Your account needs permission to create Jobs and read the secret payload (`mysterybox.payload-viewer`, included in `admin`).
+
+Use `nebius compute platform list --parent-id YOUR_PROJECT_ID` to find a platform marked `allowed_for_preemptibles: true`. Choose one of its single-GPU presets. For example, we ran an L40S in `eu-north1` with platform `gpu-l40s-d` and preset `1gpu-16vcpu-96gb`. In `eu-west1`, an H200 option is `gpu-h200-sxm` with `1gpu-16vcpu-200gb`. The launcher selects the PyTorch CUDA 12.8 image for Blackwell GPUs such as the B200 and RTX PRO 6000. Only L40S and H100 have been tested live. [GPU platforms and presets](https://docs.nebius.com/compute/virtual-machines/types)
+
+Fill in your region, the two GPU IDs and the resource IDs below. Use a fresh bucket prefix. The Job uses `NEBIUS_REGION` to connect to your bucket’s regional S3 endpoint.
 
 ```bash
 cat > .env <<'ENV'
 export NEBIUS_PROJECT_ID="YOUR_PROJECT_ID"
 export NEBIUS_SUBNET_ID="YOUR_SUBNET_ID"
+export NEBIUS_REGION="YOUR_BUCKET_REGION"
+export GPU_PLATFORM="YOUR_GPU_PLATFORM"
+export GPU_PRESET="YOUR_ONE_GPU_PRESET"
 export S3_SECRET_ID="YOUR_SECRET_ID"
 export RUN_ROOT="s3://YOUR_BUCKET/document-index-demo-01"
 export RECIPE_REF="$(git rev-parse HEAD)"
@@ -46,7 +53,7 @@ source .env
 
 Jobs download worker files from `nebius/serverless-ai-cookbook` at `RECIPE_REF`, matching this checkout. Local worker edits aren't uploaded; publish changes and select their commit to test them. For a fork, update the repository URL in `scripts/run_job.py`.
 
-The launcher uses one preemptible NVIDIA L40S GPU, an 80 GiB temporary disk and a one-hour timeout. Review [current prices](https://nebius.com/prices); image and model setup use billable compute too.
+The Job uses the selected GPU, an 80 GiB temporary disk and a one-hour timeout. You’re billed while the image and model load. [Current prices](https://nebius.com/prices)
 
 Each Job prepares the same pinned passage data automatically. These are reference passages, not full articles; their [provenance and CC BY-SA 3.0 license](worker/data/SOURCE.md) are included.
 
@@ -95,7 +102,7 @@ If you’re finished, skip to [step 4 to clean up](#4-clean-up). Keep the index 
 Nebius has an `on-failure` restart policy, which restarts a container that fails inside a running Job. It doesn’t cover preemption, missing capacity at startup, unexpected VM stops, or failures and timeouts during startup. We use `--restart-policy never` here so you can inspect what happened and decide when to resubmit. [Automatic job restarts](https://docs.nebius.com/serverless/jobs/auto-restarts#when-jobs-arent-restarted).
 
 - Wait for the previous attempt to show Completed, Failed, Cancelled or Error.
-- Give the new Job a new name. Reuse the original `RECIPE_REF`, `RUN_ROOT`, input and model settings.
+- Give the new Job a new name. Reuse the original `RUN_ROOT` and bucket region (`NEBIUS_REGION`), along with the same `RECIPE_REF`, input and model settings.
 - Check the log's reused and remaining counts. An unfinished document is recomputed.
 - Use one active Job per prefix. Changed input or model settings require a fresh prefix.
 
@@ -146,10 +153,12 @@ Before deleting resources, check that every Job using them shows Completed, Fail
 If your agent has the [Nebius skills](https://github.com/nebius/skills#install), it can use them for Jobs and SecretStash. From this recipe directory, ask:
 
 ```text
-Run the document-search recipe at my checked-out revision. Confirm my Nebius
-AI Cloud account is signed in to the intended billing-enabled project in
-eu-north1. Use my private bucket in that region. Use my approved GPU budget,
-or ask for a limit before submitting.
+Run the document-search recipe at my checked-out revision in the selected project
+of my Nebius AI Cloud account. Confirm that its region offers Serverless AI and
+use my private bucket in that region. Set NEBIUS_REGION to the bucket's region.
+List the project's platforms and choose an eligible one-GPU preset. The launcher
+selects the CUDA image. Set GPU_PLATFORM and GPU_PRESET to that pair. Use
+my approved budget, or ask for a limit before submitting.
 
 Find the S3 secret before asking me for its ID. Check S3_SECRET_ID from
 this recipe first. If it is missing or stale, look at a successful
