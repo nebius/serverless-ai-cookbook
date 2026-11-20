@@ -67,11 +67,24 @@ The separate 20/180 exercise was not run live because the remaining validation w
 
 The Endpoint was stopped and confirmed STOPPED at 2026-11-18T11:44:57.935846+00:00. The earlier Endpoints were also confirmed STOPPED. Downloaded clips, records and galleries remain on the client’s disk.
 
+## Live stop and resume · November 20, 2026
+
+We ran [revision `0621fe9`](https://github.com/nebius/serverless-ai-cookbook/tree/0621fe97442657d36c340740d1785b74f7f991d5/inference/batch-video-generation) with the README’s coffee and coast prompts on one preemptible H100. Both invocations used `--limit 1` and the same initially empty output folder.
+
+| Invocation | Client output | Endpoint state after download |
+| --- | --- | --- |
+| Generate the coffee clip | `Generated 1; reused 0` | STOPPED |
+| Restart the same Endpoint and resume | `Generated 1; reused 1` | STOPPED |
+
+The first restart request returned an error. We checked that the Endpoint was still stopped and no new start operation had been recorded before retrying. The accepted restart reached RUNNING in 225.62 seconds. The model API was ready another 176.39 seconds later. The client skipped the saved coffee clip and generated the coast clip. Both the coffee MP4 and its completion record kept their original SHA-256 hashes. The result checker decoded both MP4s to 49 frames each at 832×480. A final independent status check confirmed STOPPED. [Timings, checksums and checker output](docs/resume-results/two-clip-restart.json)
+
+We stopped the Endpoint by hand. The live restart to RUNNING took less than five minutes. The 405-second case below tests the longer path.
+
 ## Local checks
 
 41 tests passed with `python3 -m unittest discover -s tests`. They cover input provenance, request/download handling, reuse, changed or corrupt results, lost or ambiguous requests, opt-in replacement of retained failed or cancelled IDs, and the Endpoint helper. The terminal-state retry checks use a local fixture. The GPU dataset above predates that fix. The actual CLI 0.12.305 returned a plain operation ID for an asynchronous lifecycle command; the helper now accepts that response and polls the resulting state. This compatibility case is covered by a test.
 
-A restart regression test simulates an Endpoint that still reports STOPPED just after the request and reaches RUNNING after 405 seconds. Other tests cover terminal states, an in-progress start and a caller-supplied timeout. The updated restart path was verified offline.
+A restart regression test simulates an Endpoint that still reports STOPPED just after the request and reaches RUNNING after 405 seconds. Other tests cover terminal states, an in-progress start and a caller-supplied timeout.
 
 Earlier local API simulations used fixture-video bytes rather than Wan inference:
 
