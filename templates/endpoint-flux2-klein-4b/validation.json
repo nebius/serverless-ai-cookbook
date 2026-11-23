@@ -1,0 +1,104 @@
+{
+  "date": "2026-10-28",
+  "status": "verified_generation_and_editing_on_nebius",
+  "tested_source_commit": "c241567d5dc07790fa6848c5812f24b344d35ae5",
+  "image": "vllm/vllm-omni:v0.24.0@sha256:566d89d7eaba08dd313dab2464e67fe984825d281c77437582e3008a917bbf7c",
+  "model_id": "black-forest-labs/FLUX.2-klein-4B",
+  "requested_model_revision": "e7b7dc27f91deacad38e78976d1f2b499d76a294",
+  "platform": "gpu-l40s-a",
+  "preset": "1gpu-16vcpu-64gb",
+  "disk_gib": 500,
+  "shared_memory_gib": 16,
+  "preemptible": false,
+  "hf_token_used": false,
+  "cold_start_to_model_api_seconds": 1008.7804841995239,
+  "reported_model_load_gib": 14.8745,
+  "reported_process_gpu_memory_after_load_gib": 15.36,
+  "requests": [
+    {
+      "check": "missing token",
+      "http_status": 401
+    },
+    {
+      "check": "wrong token",
+      "http_status": 401
+    },
+    {
+      "check": "README curl generation",
+      "http_status": 200,
+      "client_wall_seconds": 3.047726957942359
+    },
+    {
+      "check": "README curl editing",
+      "http_status": 200,
+      "client_wall_seconds": 5.695365292020142
+    },
+    {
+      "check": "README Python generations",
+      "http_status": 200,
+      "request_wall_seconds": 2.7938290840247646
+    },
+    {
+      "check": "README Python edits",
+      "http_status": 200,
+      "request_wall_seconds": 12.198566667037085
+    },
+    {
+      "check": "decoded output",
+      "file": "klein-edited.png",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "bytes": 3147861,
+      "sha256": "69992499acde26f5bf7b794678ce8d04b4ca976acd246027014ad4ca1a6014cd"
+    },
+    {
+      "check": "decoded output",
+      "file": "klein-generated.png",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "bytes": 3147861,
+      "sha256": "e0ef541309b52cf1dc591a6a981e5a315be3926ea4260c868fbd1ba84324f8f1"
+    },
+    {
+      "check": "decoded output",
+      "file": "python-edited.png",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "bytes": 3147861,
+      "sha256": "bf7230dbf8f05e4c6bdec6e5b74b549c517ac99b175c1e48aa05ef7260cbe081"
+    },
+    {
+      "check": "decoded output",
+      "file": "python-generated.png",
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "bytes": 3147861,
+      "sha256": "2c5a28338a658af81689a941c8832fa856dcb2351fff6f5c106f19aa764aa232"
+    }
+  ],
+  "visual_checks": [
+    "Both generated examples show red ceramic teapots on wooden tables",
+    "Both edited examples change the teapot to blue while retaining its shape, table, background and viewpoint"
+  ],
+  "cleanup": {
+    "endpoint_removed": true,
+    "vm_removed": true
+  },
+  "limits": [
+    "One endpoint, two example prompts and one edit instruction; no concurrency or image-quality benchmark",
+    "Cold start includes resource-allocation retries, image pulling and model initialization",
+    "curl wall times include response decoding; Python wall times cover requests.post, including response transfer",
+    "Serving image is immutable; upstream Klein component loaders do not honor model revision for every component",
+    "On-demand compute tested; preemptible setup not validated with the installed CLI",
+    "Peak host RAM, peak GPU memory during inference, and cost not measured",
+    "Tenant-specific endpoint, VM and project IDs and managed URL intentionally omitted"
+  ]
+}

@@ -28,6 +28,11 @@ Template code in this repository is Apache-2.0. Some templates deploy third-part
 </thead>
 <tbody>
 <tr>
+  <td width="220" valign="middle"><a href="endpoint-flux2-klein-4b/README.md"><strong>FLUX.2 Klein 4B</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0%40sha256%3A566d89d7eaba08dd313dab2464e67fe984825d281c77437582e3008a917bbf7c&amp;command=vllm+serve+black-forest-labs%2FFLUX.2-klein-4B+--omni+--host+0.0.0.0+--port+8000+--revision+e7b7dc27f91deacad38e78976d1f2b499d76a294&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-16vcpu-64gb&amp;diskSize=500GiB&amp;preemptible=false&amp;auth=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Black Forest Labs' Apache-2.0 distilled 4B image generator and editor, served on one L40S via vLLM-Omni.</td>
+</tr>
+<tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/6215ca5692c0ecfba9186921/hrRM50-6XcdWgg2AKpENG.jpeg" width="20" height="20" alt="Qwen-Image" align="absmiddle">&nbsp;<a href="endpoint-qwen-image/README.md"><strong>Qwen-Image</strong></a></td>
   <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0&amp;command=vllm%20serve%20Qwen%2FQwen-Image%20--omni%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
   <td width="580" valign="middle">Qwen-Image is an Apache-2.0 multimodal image generation model with strong text rendering, served on preemptible H100 via vLLM-Omni.</td>
@@ -61,6 +66,11 @@ Template code in this repository is Apache-2.0. Some templates deploy third-part
 </tr>
 </thead>
 <tbody>
+<tr>
+  <td width="220" valign="middle"><a href="endpoint-flux2-klein-4b/README.md"><strong>FLUX.2 Klein 4B</strong></a></td>
+  <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0%40sha256%3A566d89d7eaba08dd313dab2464e67fe984825d281c77437582e3008a917bbf7c&amp;command=vllm+serve+black-forest-labs%2FFLUX.2-klein-4B+--omni+--host+0.0.0.0+--port+8000+--revision+e7b7dc27f91deacad38e78976d1f2b499d76a294&amp;targetPort=8000&amp;platform=gpu-l40s-a&amp;preset=1gpu-16vcpu-64gb&amp;diskSize=500GiB&amp;preemptible=false&amp;auth=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
+  <td width="580" valign="middle">Black Forest Labs' Apache-2.0 distilled 4B image generator and editor, served on one L40S via vLLM-Omni.</td>
+</tr>
 <tr>
   <td width="220" valign="middle"><img src="https://cdn-avatars.huggingface.co/v1/production/uploads/6215ca5692c0ecfba9186921/hrRM50-6XcdWgg2AKpENG.jpeg" width="20" height="20" alt="Qwen-Image-Edit-2511" align="absmiddle">&nbsp;<a href="endpoint-qwen-image-edit-2511/README.md"><strong>Qwen-Image-Edit-2511</strong></a></td>
   <td width="160" valign="middle" align="center"><a href="https://console.nebius.com/serverless/endpoint/create?image=vllm%2Fvllm-omni%3Av0.24.0&amp;command=vllm%20serve%20Qwen%2FQwen-Image-Edit-2511%20--omni%20--host%200.0.0.0%20--port%208000&amp;targetPort=8000&amp;platform=gpu-h100-sxm&amp;preset=1gpu-16vcpu-200gb&amp;diskSize=500GiB&amp;preemptible=true&amp;auth=true"><img src="./assets/create-endpoint.svg" alt="Create Endpoint" width="138" height="20"></a></td>
