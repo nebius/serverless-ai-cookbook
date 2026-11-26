@@ -38,7 +38,7 @@ curl -sS "${AUTH[@]}" "$BASE_URL/v1/models"
 
 curl -sS -X POST "$BASE_URL/v1/chat/completions" "${AUTH[@]}" \
   -H "Content-Type: application/json" \
-  -d '{"model":"Qwen/Qwen3-0.6B","messages":[{"role":"user","content":"Say hello in one short sentence."}],"max_tokens":64,"temperature":0.2}' \
+  -d '{"model":"Qwen/Qwen3-0.6B","messages":[{"role":"user","content":"Say hello in one short sentence."}],"max_tokens":64,"temperature":0.2,"chat_template_kwargs":{"enable_thinking":false}}' \
   | tee reply.json
 python3 -c 'import json; t=json.load(open("reply.json"))["choices"][0]["message"]["content"]; open("reply.txt","w").write(t); print(f"wrote reply.txt ({len(t)} chars)")'
 ```
@@ -76,6 +76,8 @@ body = json.dumps(
         "messages": [{"role": "user", "content": "Say hello in one short sentence."}],
         "max_tokens": 64,
         "temperature": 0.2,
+        # Qwen3 thinks by default and would spend all 64 tokens inside <think>
+        "chat_template_kwargs": {"enable_thinking": False},
     }
 ).encode()
 req = urllib.request.Request(
@@ -116,8 +118,8 @@ nebius ai endpoint create \
   --container-port 8000 \
   --shm-size 16Gi \
   --disk-size 500Gi \
-  --container-command bash \
-  --args '-c python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000'
+  --container-command python3 \
+  --args '-m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000'
 ```
 
 `--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
@@ -126,7 +128,7 @@ nebius ai endpoint create \
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 <!-- /factory:cli -->
 

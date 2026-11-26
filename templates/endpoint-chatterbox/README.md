@@ -40,7 +40,6 @@ Synthesize speech with the bundled preset voice (`Emily.wav`):
 
 ```bash
 curl -sS -X POST "$BASE_URL/v1/audio/speech" "${AUTH[@]}" \
-  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model": "tts-1", "input": "Hello from Chatterbox on Nebius serverless.", "voice": "Emily.wav", "response_format": "wav"}' \
   -o chatterbox-sample.wav
@@ -193,7 +192,7 @@ nebius ai endpoint create \
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 ### Other platforms
 

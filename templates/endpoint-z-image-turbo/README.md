@@ -119,8 +119,8 @@ nebius ai endpoint create \
   --container-port 8000 \
   --shm-size 16Gi \
   --disk-size 500Gi \
-  --container-command bash \
-  --args '-c vllm serve Tongyi-MAI/Z-Image-Turbo --omni --host 0.0.0.0 --port 8000'
+  --container-command vllm \
+  --args 'serve Tongyi-MAI/Z-Image-Turbo --omni --host 0.0.0.0 --port 8000'
 ```
 
 `--auth token` makes Nebius generate a bearer token and print it **once** (`Token: …`) — copy it into
@@ -129,7 +129,7 @@ nebius ai endpoint create \
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 <!-- /factory:cli -->
 

@@ -51,17 +51,17 @@ This gives a practical baseline for adapter fine-tuning with managed GPUs and pe
 Create a bucket for config and outputs:
 
 ```bash
-nebius storage bucket create --name fine-tuning-axalotl
+nebius storage bucket create --name fine-tuning-axolotl
 ```
 
 Get bucket ID (used for volume mounting):
 
 ```bash
-BUCKET_ID=$(nebius storage bucket get-by-name --name fine-tuning-axalotl --format json | jq -r '.metadata.id')
+BUCKET_ID=$(nebius storage bucket get-by-name --name fine-tuning-axolotl --format json | jq -r '.metadata.id')
 echo "$BUCKET_ID"
 ```
 
-Create `config.yaml` in this directory:
+The training config is in [`src/config.yaml`](src/config.yaml):
 
 ```yaml
 base_model: Qwen/Qwen2.5-0.5B

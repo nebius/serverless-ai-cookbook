@@ -55,14 +55,16 @@ until curl -sf "${AUTH[@]}" "$BASE_URL/v1/models" >/dev/null; do echo "waiting�
 ```
 
 The examples below use NVIDIA's public sample media from the
-[Cosmos cookbooks](https://github.com/nvidia/cosmos/tree/main/cookbooks/cosmos3/reasoner/assets),
-so you can test without uploading anything. Sampling values follow NVIDIA's
-[prompt guide](https://github.com/nvidia/cosmos/blob/main/cookbooks/cosmos3/reasoner/reasoner_prompt_guide.md):
+[Cosmos cookbooks](https://github.com/NVIDIA/cosmos-framework/tree/main/.agents/skills/cookbooks/cosmos3/reasoner/assets),
+so you can test without uploading anything. The files are stored in Git LFS, so `ASSETS` uses
+`media.githubusercontent.com` (a `raw.githubusercontent.com` URL returns an LFS pointer, not the file).
+Sampling values follow NVIDIA's
+[prompt guide](https://github.com/NVIDIA/cosmos-framework/blob/main/.agents/skills/cosmos3-inference-reasoning/references/prompt-guide.md):
 `temperature 0.7, top_p 0.8, top_k 20, presence_penalty 1.5` without reasoning;
 `temperature 0.6, top_p 0.95, presence_penalty 0` with reasoning.
 
 ```bash
-export ASSETS='https://raw.githubusercontent.com/nvidia/cosmos/main/cookbooks/cosmos3/reasoner/assets'
+export ASSETS='https://media.githubusercontent.com/media/NVIDIA/cosmos-framework/main/.agents/skills/cookbooks/cosmos3/reasoner/assets'
 ```
 
 ### Image caption
@@ -186,7 +188,7 @@ import os
 from openai import OpenAI
 
 client = OpenAI(base_url=f"{os.environ['BASE_URL']}/v1", api_key=os.environ.get("TOKEN", "EMPTY"))
-ASSETS = "https://raw.githubusercontent.com/nvidia/cosmos/main/cookbooks/cosmos3/reasoner/assets"
+ASSETS = "https://media.githubusercontent.com/media/NVIDIA/cosmos-framework/main/.agents/skills/cookbooks/cosmos3/reasoner/assets"
 
 r = client.chat.completions.create(
     model="nvidia/Cosmos3-Nano",
@@ -202,7 +204,7 @@ print(r.choices[0].message.content)
 
 More prompts (describe-anything, action trajectories, driving scenes, robot task
 planning) are in NVIDIA's
-[Reasoner notebook](https://github.com/nvidia/cosmos/blob/main/cookbooks/cosmos3/reasoner/run_with_vllm.ipynb);
+[Reasoner vLLM walkthrough](https://github.com/NVIDIA/cosmos-framework/blob/main/.agents/skills/cosmos3-inference-reasoning/references/vllm.md);
 every one of them runs unchanged against this endpoint by pointing `base_url` at it.
 
 > ⚠️ **Preemptible.** This template runs on a preemptible VM. When Compute reclaims it,
@@ -241,7 +243,7 @@ Pass `--token <value>` to set your own, or `--token-secret <secret-version-id>` 
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 ### Other platforms
 

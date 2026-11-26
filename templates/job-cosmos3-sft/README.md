@@ -10,7 +10,7 @@
 
 Fine-tunes the Cosmos3-Nano video generator on captioned robot videos with NVIDIA's Cosmos Framework SFT recipe on an 8×H100 node, exports the result as a Diffusers pipeline into your bucket — ready to serve with the Generator endpoint template.
 
-**License:** [OpenMDW-1.1](https://openmdw.ai/license/1-1/) · **Source:** [Cosmos Framework](https://github.com/NVIDIA/cosmos-framework) · [NVIDIA Cosmos recipes](https://github.com/nvidia/cosmos/tree/main/cookbooks/cosmos3/generator/audiovisual/finetune)
+**License:** [OpenMDW-1.1](https://openmdw.ai/license/1-1/) · **Source:** [Cosmos Framework](https://github.com/NVIDIA/cosmos-framework) · [NVIDIA Cosmos recipes](https://github.com/NVIDIA/cosmos-framework/tree/main/.agents/skills/cookbooks/cosmos3/generator/audiovisual/finetune)
 
 <!-- /factory:intro -->
 
@@ -105,6 +105,7 @@ with dense captions; NVIDIA's sample set is the reference for the layout.
 | `OUTPUT_DIR` | `/data/cosmos3-sft` | results root in the bucket |
 | `RUN_ID` | `run-<timestamp>` | result sub-folder |
 | `FRAMEWORK_REF` | pinned release commit | Cosmos Framework git ref |
+| `RECIPES_REF` | `main` | Cosmos Framework branch or commit the recipe TOMLs are read from (`.agents/skills/cookbooks/cosmos3/…/finetune`; `nvidia/cosmos` no longer has `cookbooks/`) |
 | `HF_TOKEN` | unset | only for gated datasets or models |
 
 ### Observed results
@@ -178,7 +179,7 @@ the container with `--ipc=host`). The 8×H100 preset has 1.6 TB of RAM, so 128 G
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 <!-- /factory:cli -->
 
@@ -191,4 +192,4 @@ the container with `--ipc=host`). The 8×H100 preset has 1.6 TB of RAM, so 128 G
 - **NCCL or shared-memory errors at training start** — raise `--shm-size`; the console form's default is too small for 8 ranks.
 - **Job ends FAILED after preemption** — expected with `--restart-policy never`; rerun, or untick *Preemptible* for long runs.
 - **Out of memory on smaller GPUs** — the Nano full fine-tune is tuned for 8×80 GB. Use `RECIPE=edge`, or `RECIPE=super` (LoRA) only on 8×H200.
-- **Want to train the Reasoner instead?** — NVIDIA's `reasoner/finetune` recipes follow the same framework; point `COSMOS_REF`/recipe paths at them (not wrapped by this template yet).
+- **Want to train the Reasoner instead?** — NVIDIA's `reasoner/finetune` recipes follow the same framework; point `RECIPES_REF`/recipe paths at them (not wrapped by this template yet).

@@ -10,7 +10,7 @@
 
 Qwen3-VL-Embedding-8B is an Apache-2.0 multimodal embedding model that maps text, images, and video into one shared vector space, served OpenAI-compatibly via vLLM on preemptible H100.
 
-**License:** [Apache-2.0](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B)
+**License:** [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) · **Source:** [Hugging Face](https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B)
 
 <!-- /factory:intro -->
 
@@ -205,7 +205,7 @@ Cheaper variant — the **2B** on a single L40S (change `--model` to
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 <!-- /factory:cli -->
 

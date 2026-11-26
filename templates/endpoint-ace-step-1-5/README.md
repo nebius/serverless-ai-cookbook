@@ -10,7 +10,7 @@
 
 ACE-Step 1.5 is an MIT text-to-audio (music) model with a sync OpenAI-shaped generation API on preemptible H100.
 
-**License:** [MIT](https://huggingface.co/ACE-Step/Ace-Step1.5/blob/main/LICENSE) · **Source:** [Hugging Face](https://huggingface.co/ACE-Step/Ace-Step1.5)
+**License:** [MIT](https://opensource.org/license/mit) · **Source:** [Hugging Face](https://huggingface.co/ACE-Step/Ace-Step1.5)
 
 <!-- /factory:intro -->
 
@@ -40,7 +40,6 @@ Generate a short instrumental clip (DiT-only, no LM “thinking” — faster sm
 
 ```bash
 curl -sS -X POST "$BASE_URL/v1/audio/generations" "${AUTH[@]}" \
-  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "ACE-Step/Ace-Step1.5",
@@ -202,7 +201,7 @@ nebius ai endpoint create \
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 <!-- /factory:cli -->
 

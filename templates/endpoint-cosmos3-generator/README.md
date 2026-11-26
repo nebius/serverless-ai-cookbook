@@ -28,7 +28,7 @@ A vLLM-Omni server exposing the Cosmos 3 Generator:
 
 Forward/inverse dynamics, action policy and transfer controls (edge, depth,
 segmentation) use the same server; see NVIDIA's
-[Generator notebooks](https://github.com/nvidia/cosmos/tree/main/cookbooks/cosmos3/generator).
+[Generator notebooks](https://github.com/NVIDIA/cosmos-framework/tree/main/.agents/skills/cookbooks/cosmos3/generator).
 World *understanding* (captioning, grounding, reasoning) is the Reasoner surface —
 use the [Cosmos 3 Reasoner](../endpoint-cosmos3-reasoner/README.md) template for that.
 
@@ -121,7 +121,7 @@ Upload the conditioning image as `input_reference` (multipart). The example uses
 public sample frame.
 
 ```bash
-curl -sfLO https://raw.githubusercontent.com/nvidia/cosmos/main/cookbooks/cosmos3/generator/audiovisual/assets/images/image2video/car_driving.jpg
+curl -fL -o car_driving.jpg https://media.githubusercontent.com/media/NVIDIA/cosmos-framework/main/.agents/skills/cookbooks/cosmos3/generator/audiovisual/assets/images/image2video/car_driving.jpg
 
 JOB=$(curl -sS -X POST "$BASE_URL/v1/videos" "${AUTH[@]}" -H "Accept: application/json" \
   -F "model=nvidia/Cosmos3-Nano" \
@@ -171,6 +171,8 @@ while (s := requests.get(f"{BASE}/v1/videos/{job['id']}", headers=H, timeout=30)
 if s["status"] == "completed":
     open("cosmos3_t2v.mp4", "wb").write(requests.get(f"{BASE}/v1/videos/{job['id']}/content", headers=H, timeout=120).content)
 ```
+
+`progress` can stay `0` until the job completes on this build; rely on `status`.
 
 ### Observed results
 
@@ -224,7 +226,7 @@ tag, so pin by digest for reproducible deployments.
 > ⚠️ `--follows-spot-price` accepts the current spot price with no cap. The price can
 > change every 15 minutes while the resource is running, and a higher price does not
 > stop it. Capacity preemption can still stop it — see
-> [Following the spot price](https://docs.nebius.com/signup-billing/pricing-policy#following-the-spot-price).
+> [Choosing a pricing option](https://docs.nebius.com/signup-billing/pricing-policy#choosing-a-pricing-option).
 
 ### Other platforms
 
