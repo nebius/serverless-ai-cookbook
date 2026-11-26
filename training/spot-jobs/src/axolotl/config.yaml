@@ -1,0 +1,45 @@
+base_model: Qwen/Qwen2.5-0.5B
+
+load_in_4bit: true
+adapter: qlora
+
+datasets:
+  - path: Salesforce/wikitext
+    name: wikitext-2-raw-v1
+    split: "train[:2000]"
+    type: completion
+    field: text
+
+sequence_len: 128
+micro_batch_size: 1
+gradient_accumulation_steps: 1
+
+learning_rate: 2e-4
+max_steps: 3000  # long enough to see a preemption
+val_set_size: 0
+logging_steps: 5
+
+# Axolotl writes to local disk; checkpoint_plugin copies checkpoints to
+# the bucket.
+output_dir: /workspace/output
+dataset_prepared_path: /workspace/prepared
+
+# Checkpoint and resume
+save_strategy: steps
+save_steps: 200
+save_total_limit: 2
+auto_resume_from_checkpoints: true  # resume from output_dir/checkpoint-N
+plugins:
+  - checkpoint_plugin.CheckpointPlugin
+
+lora_r: 8
+lora_alpha: 16
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
