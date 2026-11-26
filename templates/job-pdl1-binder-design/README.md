@@ -81,7 +81,10 @@ the bucket: the mount is object storage (mountpoint-s3), which does not accept t
 incremental writes the CIF writer makes, so an `out_dir` on the mount yields 0-byte
 structures from a job that still reports success.
 
-> This contribution has not had live end-to-end acceptance yet; see the
+> Run live end to end on 9 November 2026 (H100, eu-north1): the job completed and
+> both PD-L1 CIFs reached the bucket non-empty. The RFD4 NIM path and the optional
+> OpenFold3 check have not had live acceptance, and signed-in console acceptance of
+> the button is still pending; see the
 > [validation status](../../life-science/rfd4-proteina/validation.md).
 
 <!-- /factory:cli -->
