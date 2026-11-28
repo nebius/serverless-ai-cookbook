@@ -1,0 +1,589 @@
+{
+  "scope": "Qwen3-0.6B warmed serving: one exploratory and two confirmation A/B rounds per profile, at concurrency 1 and 8.",
+  "dates": "2026-10-19",
+  "hardware": {
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition 96GB",
+    "platform": "gpu-rtx6000-a",
+    "preset": "1gpu-24vcpu-218gb",
+    "disk": "500 GiB NETWORK_SSD",
+    "shm": "16 GiB",
+    "region": "eu-south1",
+    "driver_versions_observed": [
+      "580.173.02"
+    ]
+  },
+  "price": {
+    "usd_per_hour": 1.8486301369863014,
+    "basis": "on-demand public list including disk, captured2026-10-16; heldconstant, not invoice cost"
+  },
+  "profiles": [
+    {
+      "profile": "interactivity",
+      "transport": "fresh",
+      "model_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "image": "vllm/vllm-openai@sha256:89c1d0629d377daa3f7f369cbea6167a7b48ea89aaacd12555e2b0b2f7f740d3",
+      "baseline_command": "python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000 --revision c1899de289a04d12100db370d81485cdf75e47ca --tokenizer-revision c1899de289a04d12100db370d81485cdf75e47ca",
+      "candidate_command": "python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000 --revision c1899de289a04d12100db370d81485cdf75e47ca --tokenizer-revision c1899de289a04d12100db370d81485cdf75e47ca --performance-mode interactivity",
+      "payload": {
+        "model": "Qwen/Qwen3-0.6B",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello in one short sentence."
+          }
+        ],
+        "max_tokens": 64,
+        "temperature": 0.2,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "confirmation_summary": {
+        "c1": {
+          "p95_reduction_pct_by_round": [
+            -3.982786852864617,
+            0.1306512517516123
+          ],
+          "goodput_gain_pct_by_round": [
+            -3.8277597135422115,
+            0.38531439234270604
+          ],
+          "p95_reduction_pct_median": -1.9260678005565024,
+          "goodput_gain_pct_median": -1.7212226605997527,
+          "validated_request_cost_reduction_pct_by_round": [
+            -3.9801087113504607,
+            0.3838354192294946
+          ],
+          "validated_request_cost_reduction_pct_median": -1.798136646060483,
+          "p95_gain_confirmed": false,
+          "cost_gain_confirmed": false
+        },
+        "c8": {
+          "p95_reduction_pct_by_round": [
+            -1.2679895148355103,
+            0.6857937166284134
+          ],
+          "goodput_gain_pct_by_round": [
+            -0.8771955887313609,
+            -6.109085885066823
+          ],
+          "p95_reduction_pct_median": -0.29109789910354844,
+          "goodput_gain_pct_median": -3.493140736899092,
+          "validated_request_cost_reduction_pct_by_round": [
+            -0.8849584048205461,
+            -6.5065783442991965
+          ],
+          "validated_request_cost_reduction_pct_median": -3.6957683745598713,
+          "p95_gain_confirmed": false,
+          "cost_gain_confirmed": false
+        }
+      },
+      "adoption_supported": false,
+      "rejection_reasons": [
+        "Round1/C1: Candidate added HTTP/transport failures",
+        "Round3/C8: Validated-goodput regression exceeds5% or is unavailable",
+        "Neither concurrency shows the same >=20% p95 or validated-request-cost reduction in both confirmation rounds"
+      ],
+      "quality": {
+        "baseline": [
+          {
+            "prompt": "Reply with only the digit that equals 2 + 2.",
+            "expected": "4",
+            "answer": "2 + 2 = 4. so the digit that equals 2 + 2 is **4**",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          },
+          {
+            "prompt": "Reply with only the word blue.",
+            "expected": "blue",
+            "answer": "blue",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word yes.",
+            "expected": "yes",
+            "answer": "yes",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          }
+        ],
+        "interactivity": [
+          {
+            "prompt": "Reply with only the digit that equals 2 + 2.",
+            "expected": "4",
+            "answer": "2 + 2 = 4, so the digit that equals 2 + 2 is **4**",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          },
+          {
+            "prompt": "Reply with only the word blue.",
+            "expected": "blue",
+            "answer": "blue",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word yes.",
+            "expected": "yes",
+            "answer": "yes",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          }
+        ]
+      },
+      "decision_rule": "Round1 exploratory. The same p95-latency or USD/1k-validated-request metric must decrease >=20% in each of rounds2/3 at one matched concurrency. At a fixed hourly rate,20% cost reduction requires25% greater validated goodput;20% greater goodput alone is insufficient. Confirmation p50,p95 and validated goodput cannot regress >5% at either C1/C8. No added failures, complete usage coverage, mean completion tokens within5%, both deterministic semantic/technical suites pass and candidate adds no format failures versus baseline, all phases and successful controller completion required.",
+      "phase_audit_passed": true
+    },
+    {
+      "profile": "flashinfer",
+      "transport": "persistent",
+      "model_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "image": "vllm/vllm-openai@sha256:89c1d0629d377daa3f7f369cbea6167a7b48ea89aaacd12555e2b0b2f7f740d3",
+      "baseline_command": "python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000 --revision c1899de289a04d12100db370d81485cdf75e47ca --tokenizer-revision c1899de289a04d12100db370d81485cdf75e47ca",
+      "candidate_command": "python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000 --revision c1899de289a04d12100db370d81485cdf75e47ca --tokenizer-revision c1899de289a04d12100db370d81485cdf75e47ca --performance-mode interactivity --attention-backend FLASHINFER",
+      "payload": {
+        "model": "Qwen/Qwen3-0.6B",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello in one short sentence."
+          }
+        ],
+        "max_tokens": 64,
+        "temperature": 0.2,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "confirmation_summary": {
+        "c1": {
+          "p95_reduction_pct_by_round": [
+            5.367974753116245,
+            -47.63284307962054
+          ],
+          "goodput_gain_pct_by_round": [
+            -7.705768367378141,
+            -14.983277418820295
+          ],
+          "p95_reduction_pct_median": -21.13243416325215,
+          "goodput_gain_pct_median": -11.344522893099217,
+          "validated_request_cost_reduction_pct_by_round": [
+            -8.349133235163642,
+            -17.623917935101808
+          ],
+          "validated_request_cost_reduction_pct_median": -12.986525585132725,
+          "p95_gain_confirmed": false,
+          "cost_gain_confirmed": false
+        },
+        "c8": {
+          "p95_reduction_pct_by_round": [
+            -41.03442740844096,
+            -32.13204621485741
+          ],
+          "goodput_gain_pct_by_round": [
+            -15.220612184889449,
+            -12.589441809159629
+          ],
+          "p95_reduction_pct_median": -36.583236811649186,
+          "goodput_gain_pct_median": -13.905026997024539,
+          "validated_request_cost_reduction_pct_by_round": [
+            -17.953198975773475,
+            -14.402655777204366
+          ],
+          "validated_request_cost_reduction_pct_median": -16.17792737648892,
+          "p95_gain_confirmed": false,
+          "cost_gain_confirmed": false
+        }
+      },
+      "adoption_supported": false,
+      "rejection_reasons": [
+        "Round2/C1: p50 regression exceeds5% or is unavailable",
+        "Round2/C1: Validated-goodput regression exceeds5% or is unavailable",
+        "Round2/C8: p50 regression exceeds5% or is unavailable",
+        "Round2/C8: p95 regression exceeds5% or is unavailable",
+        "Round2/C8: Validated-goodput regression exceeds5% or is unavailable",
+        "Round3/C1: p50 regression exceeds5% or is unavailable",
+        "Round3/C1: p95 regression exceeds5% or is unavailable",
+        "Round3/C1: Validated-goodput regression exceeds5% or is unavailable",
+        "Round3/C8: p50 regression exceeds5% or is unavailable",
+        "Round3/C8: p95 regression exceeds5% or is unavailable",
+        "Round3/C8: Validated-goodput regression exceeds5% or is unavailable",
+        "Neither concurrency shows the same >=20% p95 or validated-request-cost reduction in both confirmation rounds"
+      ],
+      "quality": {
+        "baseline": [
+          {
+            "prompt": "Reply with only the digit that equals 2 + 2.",
+            "expected": "4",
+            "answer": "2 + 2 = 4. so the digit that equals 2 + 2 is **4**",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          },
+          {
+            "prompt": "Reply with only the word blue.",
+            "expected": "blue",
+            "answer": "blue",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word yes.",
+            "expected": "yes",
+            "answer": "yes",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          }
+        ],
+        "flashinfer": [
+          {
+            "prompt": "Reply with only the digit that equals 2 + 2.",
+            "expected": "4",
+            "answer": "2 + 2 = 4, so the digit that equals 2 + 2 is **4**",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          },
+          {
+            "prompt": "Reply with only the word blue.",
+            "expected": "blue",
+            "answer": "blue",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word yes.",
+            "expected": "yes",
+            "answer": "yes",
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          }
+        ]
+      },
+      "decision_rule": "Round1 exploratory. The same p95-latency or USD/1k-validated-request metric must decrease >=20% in each of rounds2/3 at one matched concurrency. At a fixed hourly rate,20% cost reduction requires25% greater validated goodput;20% greater goodput alone is insufficient. Confirmation p50,p95 and validated goodput cannot regress >5% at either C1/C8. No added failures, complete usage coverage, mean completion tokens within5%, both deterministic semantic/technical suites pass and candidate adds no format failures versus baseline, all phases and successful controller completion required.",
+      "phase_audit_passed": true
+    },
+    {
+      "profile": "fp8",
+      "transport": "persistent",
+      "model_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "image": "vllm/vllm-openai@sha256:89c1d0629d377daa3f7f369cbea6167a7b48ea89aaacd12555e2b0b2f7f740d3",
+      "baseline_command": "python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000 --revision c1899de289a04d12100db370d81485cdf75e47ca --tokenizer-revision c1899de289a04d12100db370d81485cdf75e47ca",
+      "candidate_command": "python3 -m vllm.entrypoints.openai.api_server --model Qwen/Qwen3-0.6B --host 0.0.0.0 --port 8000 --revision c1899de289a04d12100db370d81485cdf75e47ca --tokenizer-revision c1899de289a04d12100db370d81485cdf75e47ca --quantization fp8",
+      "payload": {
+        "model": "Qwen/Qwen3-0.6B",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Say hello in one short sentence."
+          }
+        ],
+        "max_tokens": 64,
+        "temperature": 0.2,
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        }
+      },
+      "confirmation_summary": {
+        "c1": {
+          "p95_reduction_pct_by_round": [
+            0.09728961000798897,
+            0.39096357463048736
+          ],
+          "goodput_gain_pct_by_round": [
+            1.6020668262982873,
+            4.709326864726138
+          ],
+          "p95_reduction_pct_median": 0.24412659231923817,
+          "goodput_gain_pct_median": 3.1556968455122125,
+          "validated_request_cost_reduction_pct_by_round": [
+            1.5768053508569135,
+            4.497523769597067
+          ],
+          "validated_request_cost_reduction_pct_median": 3.0371645602269903,
+          "p95_gain_confirmed": false,
+          "cost_gain_confirmed": false
+        },
+        "c8": {
+          "p95_reduction_pct_by_round": [
+            -3.2167579386680467,
+            -4.878384429615856
+          ],
+          "goodput_gain_pct_by_round": [
+            0.8040300172421855,
+            1.0994511488243486
+          ],
+          "p95_reduction_pct_median": -4.047571184141951,
+          "goodput_gain_pct_median": 0.951740583033267,
+          "validated_request_cost_reduction_pct_by_round": [
+            0.7976169376409548,
+            1.0874946761144089
+          ],
+          "validated_request_cost_reduction_pct_median": 0.9425558068776818,
+          "p95_gain_confirmed": false,
+          "cost_gain_confirmed": false
+        }
+      },
+      "adoption_supported": false,
+      "rejection_reasons": [
+        "Neither concurrency shows the same >=20% p95 or validated-request-cost reduction in both confirmation rounds"
+      ],
+      "quality": {
+        "baseline": [
+          {
+            "prompt": "Reply with only the digit that equals 2 + 2.",
+            "expected": "4",
+            "answer": "2 + 2 = 4. so the digit that equals 2 + 2 is **4**",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          },
+          {
+            "prompt": "Reply with only the word blue.",
+            "expected": "blue",
+            "answer": "blue",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word yes.",
+            "expected": "yes",
+            "answer": "yes",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word green.",
+            "expected": "green",
+            "answer": "green",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word no.",
+            "expected": "no",
+            "answer": "no",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word red.",
+            "expected": "red",
+            "answer": "red",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word cat.",
+            "expected": "cat",
+            "answer": "cat",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word dog.",
+            "expected": "dog",
+            "answer": "dog",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word hello.",
+            "expected": "hello",
+            "answer": "hello",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "What is 1 plus 1? Reply with only the digit.",
+            "expected": "2",
+            "answer": "1",
+            "technical_valid": true,
+            "pass": false,
+            "semantic_correct": false,
+            "format_pass": false
+          },
+          {
+            "prompt": "What is 5 minus 2? Reply with only the digit.",
+            "expected": "3",
+            "answer": "5 - 2 = 3",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          },
+          {
+            "prompt": "What is 3 times 3? Reply with only the digit.",
+            "expected": "9",
+            "answer": "3 \u00d7 3 = 9\n\nreply with only the digit: **9**",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          }
+        ],
+        "fp8": [
+          {
+            "prompt": "Reply with only the digit that equals 2 + 2.",
+            "expected": "4",
+            "answer": "2 + 2 = 4",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          },
+          {
+            "prompt": "Reply with only the word blue.",
+            "expected": "blue",
+            "answer": "blue",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word yes.",
+            "expected": "yes",
+            "answer": "yes",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word green.",
+            "expected": "green",
+            "answer": "green",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word no.",
+            "expected": "no",
+            "answer": "no",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word red.",
+            "expected": "red",
+            "answer": "red",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word cat.",
+            "expected": "cat",
+            "answer": "cat",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word dog.",
+            "expected": "dog",
+            "answer": "dog",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "Reply with only the word hello.",
+            "expected": "hello",
+            "answer": "hello",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": true
+          },
+          {
+            "prompt": "What is 1 plus 1? Reply with only the digit.",
+            "expected": "2",
+            "answer": "1",
+            "technical_valid": true,
+            "pass": false,
+            "semantic_correct": false,
+            "format_pass": false
+          },
+          {
+            "prompt": "What is 5 minus 2? Reply with only the digit.",
+            "expected": "3",
+            "answer": "5 - 2 = 3",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          },
+          {
+            "prompt": "What is 3 times 3? Reply with only the digit.",
+            "expected": "9",
+            "answer": "3 \u00d7 3 = 9",
+            "technical_valid": true,
+            "pass": true,
+            "semantic_correct": true,
+            "format_pass": false
+          }
+        ]
+      },
+      "decision_rule": "Round1 exploratory. The same p95-latency or USD/1k-validated-request metric must decrease >=20% in each of rounds2/3 at one matched concurrency. At a fixed hourly rate,20% cost reduction requires25% greater validated goodput;20% greater goodput alone is insufficient. Confirmation p50,p95 and validated goodput cannot regress >5% at either C1/C8. No added failures, complete usage coverage, mean completion tokens within5%, quality policy must pass (strict all-correct by default; explicit paired policy requires technical validity and no per-question semantic/format regression, with shared errors disclosed), all phases and successful controller completion required.",
+      "phase_audit_passed": true
+    }
+  ],
+  "phase_count": 36,
+  "attempted": 65372,
+  "validated_success": 65369,
+  "portable_validation_compatibility": {
+    "http_success_with_finish_stop": 65369,
+    "other_finish_reasons": [],
+    "same_valid_output_denominator": true,
+    "portable_validator_valid_responses": 65369,
+    "validation_mismatches": 0,
+    "completion_token_counts_observed": [
+      10
+    ]
+  },
+  "limitations": [
+    "Variants used different physical GPU/VM identities, without hardware crossover.",
+    "Short hello workload at C1/C8; client/network resources were not dedicated. No maximum server capacity or broader workload claim.",
+    "Only within-profile A/B percentages are eligible. Transports and client details differ across experiments.",
+    "The portable client follows the workload/timing contract but is not the literal orchestration harness. SSL-context and connection-cleanup differences are disclosed. All saved responses were rechecked with its validator.",
+    "The small word/arithmetic suite retains shared baseline errors and does not certify general model quality.",
+    "The model/tokenizer revision and AMD64 image were pinned. The FP8 numerical precision change is explicit."
+  ]
+}
